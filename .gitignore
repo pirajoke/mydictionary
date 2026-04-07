@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+audio_cache/
+config.yaml
+progress.json
+.env

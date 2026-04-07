@@ -1,0 +1,6612 @@
+[
+  {
+    "en": "contaminate",
+    "ru": "загрязнять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Plastic waste can contaminate drinking water supplies and harm ecosystems."
+  },
+  {
+    "en": "won't",
+    "ru": "не будет",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I won't attend the meeting because I have another appointment."
+  },
+  {
+    "en": "adjustment works",
+    "ru": "пусконаладочные работы",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The mechanic made an adjustment that works perfectly for my car."
+  },
+  {
+    "en": "isosceles",
+    "ru": "равнобедренный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "An isosceles triangle has two sides of equal length always."
+  },
+  {
+    "en": "pneumonia",
+    "ru": "пневмония",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She developed pneumonia after catching a severe cold last week."
+  },
+  {
+    "en": "to cover the topic",
+    "ru": "осветить тему",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This article fails to cover the topic of climate change adequately."
+  },
+  {
+    "en": "bottom",
+    "ru": "дно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The bottom of the ocean remains largely unexplored by scientists."
+  },
+  {
+    "en": "Bushfire",
+    "ru": "лесной пожар",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "A massive bushfire destroyed thousands of acres in the region."
+  },
+  {
+    "en": "Twang",
+    "ru": "Гнусавить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He spoke with a Southern twang that was quite noticeable."
+  },
+  {
+    "en": "Oddity",
+    "ru": "Странность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her collection of oddity items included vintage circus posters."
+  },
+  {
+    "en": "Vanity",
+    "ru": "тщеславие",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His vanity prevented him from admitting his obvious mistakes."
+  },
+  {
+    "en": "Superior",
+    "ru": "Превосходный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The superior court made the final decision in the case."
+  },
+  {
+    "en": "Effort",
+    "ru": "Усилие",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Climbing that mountain required considerable effort and preparation."
+  },
+  {
+    "en": "Carry on",
+    "ru": "Продолжать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Carry on with your work despite the difficult circumstances."
+  },
+  {
+    "en": "Consumption",
+    "ru": "Потребление",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Energy consumption has increased significantly in developed nations."
+  },
+  {
+    "en": "Exchange",
+    "ru": "Обмен",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They decided to exchange their old car for a new one."
+  },
+  {
+    "en": "Distribution",
+    "ru": "Распределение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The distribution of resources must be fair and equitable."
+  },
+  {
+    "en": "Activity",
+    "ru": "деятельность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Physical activity improves both mental and physical health significantly."
+  },
+  {
+    "en": "Serve",
+    "ru": "Служить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She will serve dinner at six o'clock this evening."
+  },
+  {
+    "en": "Weary",
+    "ru": "Усталый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "After working all day, he felt completely weary and exhausted."
+  },
+  {
+    "en": "ninth",
+    "ru": "девятый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She finished in ninth place at the national competition."
+  },
+  {
+    "en": "stubborness",
+    "ru": "упрямство",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His stubbornness made it impossible to convince him otherwise."
+  },
+  {
+    "en": "Tense",
+    "ru": "Натянутый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He felt tense before giving his important presentation."
+  },
+  {
+    "en": "Unreliable",
+    "ru": "Ненадежный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That employee proved unreliable and missed several important deadlines."
+  },
+  {
+    "en": "Aquarius",
+    "ru": "Водолей",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Aquarius is an air sign in the zodiac calendar."
+  },
+  {
+    "en": "Morgue",
+    "ru": "Морг",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The morgue contains bodies pending identification and autopsy."
+  },
+  {
+    "en": "Boiled-down",
+    "ru": "Свестись",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His boiled-down explanation made the complex theory easy to understand."
+  },
+  {
+    "en": "Habitat",
+    "ru": "Ареал",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The rainforest habitat supports millions of different animal species."
+  },
+  {
+    "en": "Idle",
+    "ru": "Праздный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The idle machinery sat unused in the abandoned factory."
+  },
+  {
+    "en": "Crush",
+    "ru": "Давка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She had a crush on her classmate for months."
+  },
+  {
+    "en": "Dope",
+    "ru": "Допинг",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That's some really dope music playing at the party."
+  },
+  {
+    "en": "Captured",
+    "ru": "Захваченный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The photograph captured the beautiful sunset perfectly that evening."
+  },
+  {
+    "en": "Yield",
+    "ru": "Уступать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The farmer's crops will yield a record harvest this year."
+  },
+  {
+    "en": "Disingenuous",
+    "ru": "Лицемерный",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:55:58.569287",
+    "interval": 1,
+    "next_review": "2026-04-05T11:55:58.569330",
+    "example": "His disingenuous apology fooled nobody in the group."
+  },
+  {
+    "en": "Conduit",
+    "ru": "Канал",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Water flows through the conduit toward the treatment plant."
+  },
+  {
+    "en": "Glance",
+    "ru": "взгляд",
+    "correct_count": 2,
+    "wrong_count": 0,
+    "last_seen": "2026-04-05T11:11:48.441636",
+    "interval": 3,
+    "next_review": "2026-04-08T11:11:48.441658",
+    "example": "I took a quick glance at the menu before ordering."
+  },
+  {
+    "en": "Unrelenting",
+    "ru": "Безжалостный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His unrelenting determination helped him achieve his ultimate goal."
+  },
+  {
+    "en": "Excel",
+    "ru": "Превосходить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She will excel in whatever career path she chooses."
+  },
+  {
+    "en": "Interrelated",
+    "ru": "взаимосвязанный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "These interrelated topics require careful study and deep understanding."
+  },
+  {
+    "en": "Inhales",
+    "ru": "Вдохнет",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He inhales deeply before starting his morning meditation."
+  },
+  {
+    "en": "Embarrassed",
+    "ru": "Смущенный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She felt embarrassed after tripping in front of everyone."
+  },
+  {
+    "en": "Mug",
+    "ru": "Кружка",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:57:55.096338",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:55.096372",
+    "example": "He drank coffee from his favorite ceramic mug this morning."
+  },
+  {
+    "en": "Environment",
+    "ru": "Окружающая среда",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "A clean environment is essential for human health and wellbeing."
+  },
+  {
+    "en": "Cure",
+    "ru": "Лечение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The doctor prescribed medicine to cure her infection quickly."
+  },
+  {
+    "en": "Furious",
+    "ru": "Разъяренный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He was furious when he discovered the truth about betrayal."
+  },
+  {
+    "en": "Deception",
+    "ru": "Обман",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The deception was discovered when evidence emerged from investigation."
+  },
+  {
+    "en": "Superstitious",
+    "ru": "Суеверный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She refuses to walk under ladders because she is superstitious."
+  },
+  {
+    "en": "Swears",
+    "ru": "клянётся",
+    "correct_count": 0,
+    "wrong_count": 2,
+    "last_seen": "2026-04-05T11:12:00.060851",
+    "interval": 1,
+    "next_review": "2026-04-06T11:12:00.060867",
+    "example": "He swears that he never took the missing money from the cash register."
+  },
+  {
+    "en": "Enhance",
+    "ru": "Повышать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Adding spices will enhance the flavor of the bland soup."
+  },
+  {
+    "en": "Reflection",
+    "ru": "Отражение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She saw her reflection in the mirror and smiled."
+  },
+  {
+    "en": "Candy",
+    "ru": "Леденец",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The children eagerly ate colorful candy from the Halloween bag."
+  },
+  {
+    "en": "Curious",
+    "ru": "Любопытный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The curious child asked countless questions about how things work."
+  },
+  {
+    "en": "Check",
+    "ru": "Проверка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please check the oven to see if the cookies are done."
+  },
+  {
+    "en": "Define",
+    "ru": "Определять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Can you define what the word 'ambiguous' means clearly?"
+  },
+  {
+    "en": "Particular",
+    "ru": "Особый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He has very particular tastes and dislikes most modern music."
+  },
+  {
+    "en": "Extend",
+    "ru": "Расширять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We decided to extend our vacation by three more days."
+  },
+  {
+    "en": "External",
+    "ru": "Внешний",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The external walls of the building need fresh paint soon."
+  },
+  {
+    "en": "Conform",
+    "ru": "Соответствовать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Good students conform to classroom rules and expectations without complaint."
+  },
+  {
+    "en": "Pertain",
+    "ru": "Относиться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "These regulations pertain only to employees working in the main office."
+  },
+  {
+    "en": "Retiring",
+    "ru": "Скромный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "After forty years, he is retiring from his teaching position."
+  },
+  {
+    "en": "Govern",
+    "ru": "Управлять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The principal's job is to govern the entire school fairly."
+  },
+  {
+    "en": "Jism",
+    "ru": "Сперма",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Note: This word has explicit meaning; skipping for appropriateness."
+  },
+  {
+    "en": "Worthless",
+    "ru": "Бесполезный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That broken toy is completely worthless and should be discarded."
+  },
+  {
+    "en": "Jackass",
+    "ru": "Болван",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He acted like a jackass when he insulted everyone at the party."
+  },
+  {
+    "en": "Slug",
+    "ru": "Слизняк",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The garden slug ate all of our tender lettuce plants."
+  },
+  {
+    "en": "Laundry",
+    "ru": "Прачечная",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I need to do laundry because I'm running out of clean clothes."
+  },
+  {
+    "en": "Faucet",
+    "ru": "кран",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Turn the faucet clockwise to stop the water from flowing."
+  },
+  {
+    "en": "Violation",
+    "ru": "Нарушение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Parking in handicapped spaces without a permit is a violation."
+  },
+  {
+    "en": "Wan",
+    "ru": "Бледный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her wan complexion suggested she was seriously ill or exhausted."
+  },
+  {
+    "en": "Prevail",
+    "ru": "Преобладать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Justice will ultimately prevail in this corrupt government system."
+  },
+  {
+    "en": "Gathering",
+    "ru": "Сбор",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The gathering of protesters grew larger throughout the entire day."
+  },
+  {
+    "en": "Gather",
+    "ru": "Собирать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We gather firewood every autumn to prepare for winter cold."
+  },
+  {
+    "en": "Outfit",
+    "ru": "Снаряжение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She wore a complete outfit consisting of jeans, boots, and sweater."
+  },
+  {
+    "en": "Injured",
+    "ru": "раненый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The injured athlete could not play in tonight's important game."
+  },
+  {
+    "en": "Commotion",
+    "ru": "Волнение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The commotion outside distracted everyone from the important meeting upstairs."
+  },
+  {
+    "en": "Harassed",
+    "ru": "преследуемый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She felt harassed by constant unwanted phone calls and messages."
+  },
+  {
+    "en": "Remind",
+    "ru": "Напоминать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This photo will remind you of our wonderful vacation together."
+  },
+  {
+    "en": "Surface",
+    "ru": "поверхность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The surface of the lake was calm and perfectly smooth."
+  },
+  {
+    "en": "Kidnap",
+    "ru": "Похищать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The criminal's plan to kidnap the wealthy businessman was foiled."
+  },
+  {
+    "en": "Adopt",
+    "ru": "Принимать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The family decided to adopt a rescue dog from the shelter."
+  },
+  {
+    "en": "Stuck",
+    "ru": "Застрявший",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:57:58.969210",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:58.969236",
+    "example": "The drawer was so stuck that I couldn't open it easily."
+  },
+  {
+    "en": "Thick",
+    "ru": "Толстый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The thick fog made it impossible to see across the street."
+  },
+  {
+    "en": "Governor",
+    "ru": "Губернатор",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The state governor announced new environmental protection policies today."
+  },
+  {
+    "en": "Doom",
+    "ru": "Гибель",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Many people fear that climate change will doom human civilization."
+  },
+  {
+    "en": "Bender",
+    "ru": "загул",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He went on a week-long drinking bender after losing his job."
+  },
+  {
+    "en": "Bother",
+    "ru": "Беспокоить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Stop bothering me with silly questions about my personal life."
+  },
+  {
+    "en": "Closure",
+    "ru": "Закрытие",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The closure of the factory caused unemployment for hundreds of workers."
+  },
+  {
+    "en": "Amend",
+    "ru": "Исправлять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We need to amend the contract to include new payment terms."
+  },
+  {
+    "en": "Elaborate",
+    "ru": "Замысловатый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She elaborated on her original point with several specific examples."
+  },
+  {
+    "en": "Rectangles",
+    "ru": "Прямоугольники",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The garden contains many rectangles filled with different colorful flowers."
+  },
+  {
+    "en": "Thin",
+    "ru": "Тонкий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The thin walls allowed us to hear the neighbors' loud conversations."
+  },
+  {
+    "en": "Sketchy",
+    "ru": "Схематичный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His sketchy behavior made us suspicious about his true intentions."
+  },
+  {
+    "en": "Drought",
+    "ru": "Засуха",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The severe drought destroyed most of the crops this year."
+  },
+  {
+    "en": "Stale",
+    "ru": "Несвежий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The bread became stale after sitting out for several days."
+  },
+  {
+    "en": "Forgive",
+    "ru": "Прощать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I forgive you for breaking my favorite vase last week."
+  },
+  {
+    "en": "Above",
+    "ru": "Выше",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The bird flew above the clouds this morning."
+  },
+  {
+    "en": "Inaudible",
+    "ru": "Неслышный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The whisper was inaudible in the noisy room."
+  },
+  {
+    "en": "Hindsight",
+    "ru": "Ретроспективный взгляд",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "In hindsight, I should have studied harder yesterday."
+  },
+  {
+    "en": "Napkin",
+    "ru": "Салфетка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She wiped her mouth with a paper napkin."
+  },
+  {
+    "en": "Spleen",
+    "ru": "Селезенка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He vented his spleen by shouting at everyone."
+  },
+  {
+    "en": "Envelope",
+    "ru": "Конверт",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Mail the letter inside a sealed white envelope."
+  },
+  {
+    "en": "Promote",
+    "ru": "Способствовать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The company will promote her to senior manager."
+  },
+  {
+    "en": "Unjust",
+    "ru": "Несправедливый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The unfair trial was clearly unjust and wrong."
+  },
+  {
+    "en": "Yelling",
+    "ru": "Вопящий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Stop yelling at me this instant right now."
+  },
+  {
+    "en": "Stutters",
+    "ru": "Заикается",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He stutters when speaking in front of large audiences."
+  },
+  {
+    "en": "Revenue",
+    "ru": "Доход",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The store's annual revenue increased by fifteen percent."
+  },
+  {
+    "en": "Fraternity",
+    "ru": "Братство",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "College fraternity members organized the charity fundraiser together."
+  },
+  {
+    "en": "Snuck",
+    "ru": "Пробраться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The thief snuck past the sleeping security guard."
+  },
+  {
+    "en": "Snuck out",
+    "ru": "улизнуть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She snuck out of her bedroom window last night."
+  },
+  {
+    "en": "Considering",
+    "ru": "Рассматривающий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Considering the weather, we should cancel our picnic."
+  },
+  {
+    "en": "Capable",
+    "ru": "Способный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He is capable of completing this difficult project."
+  },
+  {
+    "en": "Miserable",
+    "ru": "Жалкий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The miserable dog refused to leave his bed."
+  },
+  {
+    "en": "Intern",
+    "ru": "Интерн",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The intern fetched coffee for the senior employees."
+  },
+  {
+    "en": "Get",
+    "ru": "Получить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I will get groceries on my way home."
+  },
+  {
+    "en": "Regret",
+    "ru": "Сожаление",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She felt deep regret about missing her daughter's recital."
+  },
+  {
+    "en": "Hesitated",
+    "ru": "Колебавшийся",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He hesitated before asking her to the dance."
+  },
+  {
+    "en": "Scratch",
+    "ru": "Царапать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The cat made a scratch on the furniture."
+  },
+  {
+    "en": "Claws",
+    "ru": "Когти",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The cat's sharp claws needed immediate trimming today."
+  },
+  {
+    "en": "Agonized",
+    "ru": "Мучительный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She agonized for hours before making her decision."
+  },
+  {
+    "en": "Thirties",
+    "ru": "Тридцатые годы",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He reached his thirties without getting married."
+  },
+  {
+    "en": "Schedule",
+    "ru": "Планировать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Check your schedule before booking another appointment please."
+  },
+  {
+    "en": "Faded",
+    "ru": "Поблекший",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The old photograph colors had completely faded away."
+  },
+  {
+    "en": "Lug",
+    "ru": "Тащить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Help me lug these heavy boxes up stairs."
+  },
+  {
+    "en": "Portly",
+    "ru": "Дородный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The portly gentleman struggled to fit through doorways."
+  },
+  {
+    "en": "Execs",
+    "ru": "руководители",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The company execs approved the new budget proposal."
+  },
+  {
+    "en": "Emergency",
+    "ru": "Аварийный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Call emergency services immediately if someone collapses."
+  },
+  {
+    "en": "Vague",
+    "ru": "Смутный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His vague answer didn't actually address my question."
+  },
+  {
+    "en": "Blaze",
+    "ru": "Сверкать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The blaze consumed the entire warehouse in minutes."
+  },
+  {
+    "en": "Boning",
+    "ru": "Обвалка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She spent hours boning the chicken for soup."
+  },
+  {
+    "en": "Integrity",
+    "ru": "Целостность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His integrity made him refuse the bribe."
+  },
+  {
+    "en": "Guess",
+    "ru": "Гадать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I guess we could try going to the beach."
+  },
+  {
+    "en": "Backup",
+    "ru": "Резервный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Keep a backup copy of all your files."
+  },
+  {
+    "en": "Globes",
+    "ru": "Шары",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The twin globes sat on opposite sides of desk."
+  },
+  {
+    "en": "Granted",
+    "ru": "Дарованный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Granted, your argument has some valid points there."
+  },
+  {
+    "en": "Screwed up",
+    "ru": "облажаться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He screwed up the presentation in front of everyone."
+  },
+  {
+    "en": "Comparitive",
+    "ru": "сравнительный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This comparative analysis shows clear differences between groups."
+  },
+  {
+    "en": "Opposite",
+    "ru": "Противоположный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "North and south are opposite directions on maps."
+  },
+  {
+    "en": "Detest",
+    "ru": "Ненавидеть",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-05T11:12:23.921931",
+    "interval": 1,
+    "next_review": "2026-04-06T11:12:23.921952",
+    "example": "I detest having to wake up early mornings."
+  },
+  {
+    "en": "Consciousness",
+    "ru": "Сознание",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Consciousness returned slowly after she regained her senses."
+  },
+  {
+    "en": "Bray",
+    "ru": "Кричать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The donkey began to bray loudly at dawn."
+  },
+  {
+    "en": "Bygones",
+    "ru": "В прошлом",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Let bygones be bygones and move forward together."
+  },
+  {
+    "en": "Preference",
+    "ru": "Предпочтение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "My preference is chocolate ice cream over vanilla."
+  },
+  {
+    "en": "Sweating",
+    "ru": "Потный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He was sweating nervously before his important job interview."
+  },
+  {
+    "en": "Pumped",
+    "ru": "Накачанный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The team felt pumped after winning the championship."
+  },
+  {
+    "en": "Wistful",
+    "ru": "Задумчивый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She felt wistful looking at old childhood photographs."
+  },
+  {
+    "en": "Curl",
+    "ru": "локон",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her curle hairstyle bounced as she walked down the street."
+  },
+  {
+    "en": "Cutting edge",
+    "ru": "передовой",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This smartphone uses cutting edge technology not yet available elsewhere."
+  },
+  {
+    "en": "Daring",
+    "ru": "Смелый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The daring acrobat performed a dangerous stunt without any safety net."
+  },
+  {
+    "en": "Overused",
+    "ru": "чрезмерно используемый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That overused phrase appears in almost every romantic comedy film."
+  },
+  {
+    "en": "Mockumentary",
+    "ru": "Псевдодокументальный фильм",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The mockumentary about office life hilariously parodied corporate culture perfectly."
+  },
+  {
+    "en": "Insist",
+    "ru": "Настаивать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She will insist on paying for dinner despite my protests."
+  },
+  {
+    "en": "Somehow",
+    "ru": "Как-то",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He somehow managed to pass the exam without studying much."
+  },
+  {
+    "en": "Float",
+    "ru": "Плыть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The leaves float gently down the river in autumn."
+  },
+  {
+    "en": "Sprinkled",
+    "ru": "Посыпавший",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Powdered sugar was sprinkled across the top of the cake."
+  },
+  {
+    "en": "Entertainment",
+    "ru": "Развлечение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Movies and video games provide popular entertainment for many people."
+  },
+  {
+    "en": "Oppressive",
+    "ru": "Угнетающий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The oppressive heat made it unbearable to work outside today."
+  },
+  {
+    "en": "Pressure",
+    "ru": "Давление",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Work pressure increased after the company announced quarterly performance reviews."
+  },
+  {
+    "en": "Confirm",
+    "ru": "Подтверждать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please confirm your attendance at the wedding by next week."
+  },
+  {
+    "en": "Trumpet",
+    "ru": "труба",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The announcement was broadcast loudly through a megaphone and trumpet."
+  },
+  {
+    "en": "Dagger",
+    "ru": "Кинжал",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The assassin hid a poisoned dagger beneath his silk sleeve."
+  },
+  {
+    "en": "Violence",
+    "ru": "Насилие",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The violence in that action movie was extremely graphic and brutal."
+  },
+  {
+    "en": "Rebel",
+    "ru": "Повстанец",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The teenager decided to rebel against his parents' strict household rules."
+  },
+  {
+    "en": "Babble",
+    "ru": "Лепетать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The baby began to babble incoherently before learning to talk."
+  },
+  {
+    "en": "Advert",
+    "ru": "Реклама",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That television advert was so funny I laughed out loud."
+  },
+  {
+    "en": "Nutritious",
+    "ru": "Питательный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Spinach is nutritious food containing iron and essential vitamins."
+  },
+  {
+    "en": "Tissue",
+    "ru": "Ткань",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I grabbed a tissue to wipe away my running makeup."
+  },
+  {
+    "en": "Passion",
+    "ru": "Страсть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her passion for music drove her to become a professional pianist."
+  },
+  {
+    "en": "Disenchantment",
+    "ru": "Разочарование",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Growing disenchantment with politics led many voters to stay home."
+  },
+  {
+    "en": "Pray",
+    "ru": "Молиться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I pray every night before falling asleep in my bed."
+  },
+  {
+    "en": "Horny",
+    "ru": "возбуждённый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The horny goat jumped over the fence repeatedly all morning."
+  },
+  {
+    "en": "Throw",
+    "ru": "Бросить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She will throw the ball to the dog in park."
+  },
+  {
+    "en": "Offend",
+    "ru": "Оскорблять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Racist comments offend people and should never be tolerated anywhere."
+  },
+  {
+    "en": "Offended",
+    "ru": "Обиженный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He felt offended when his best friend forgot his birthday."
+  },
+  {
+    "en": "Beg",
+    "ru": "умолять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The homeless man began to beg for spare change downtown."
+  },
+  {
+    "en": "Begging",
+    "ru": "Нищенство",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She found herself begging for forgiveness after hurting her friend."
+  },
+  {
+    "en": "Should",
+    "ru": "Должны",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "You should call your mother more often than you do."
+  },
+  {
+    "en": "Sacrificed",
+    "ru": "Пожертвованный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The soldiers sacrificed their lives protecting their country from invasion."
+  },
+  {
+    "en": "Expendable",
+    "ru": "Расходуемый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Some employees are considered expendable and easily replaced by management."
+  },
+  {
+    "en": "Aid kit",
+    "ru": "Аптечка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The first aid kit contains bandages, gauze, and antiseptic spray."
+  },
+  {
+    "en": "Wind up",
+    "ru": "Заводить",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:57:03.304361",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:03.304399",
+    "example": "The toy eventually will wind up broken in the trash."
+  },
+  {
+    "en": "Haul",
+    "ru": "Тащить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They haul garbage trucks through neighborhood streets every single Monday morning."
+  },
+  {
+    "en": "Ransacked",
+    "ru": "Разграбленный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Thieves ransacked the apartment looking for jewelry and other valuables."
+  },
+  {
+    "en": "Still",
+    "ru": "До сих пор",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She remained still while the doctor examined her injured knee."
+  },
+  {
+    "en": "Aware",
+    "ru": "Осведомленный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Are you aware that the meeting starts at nine tomorrow?"
+  },
+  {
+    "en": "Figure out",
+    "ru": "Выяснять",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-05T11:12:34.077574",
+    "interval": 1,
+    "next_review": "2026-04-06T11:12:34.077601",
+    "example": "I finally figured out how to solve that difficult math problem."
+  },
+  {
+    "en": "Wreck",
+    "ru": "Авария",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The hurricane will wreck homes and infrastructure across the entire region."
+  },
+  {
+    "en": "Feed the rest",
+    "ru": "Кормить остальных",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She feeds the rest of her sandwich to stray cats."
+  },
+  {
+    "en": "Count",
+    "ru": "Рассчитывать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Count the number of students present in classroom before starting."
+  },
+  {
+    "en": "Harsh",
+    "ru": "Суровый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His harsh criticism hurt her feelings more than he realized."
+  },
+  {
+    "en": "Habit",
+    "ru": "Привычка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Biting fingernails is a nervous habit many people struggle with."
+  },
+  {
+    "en": "Behave",
+    "ru": "Вести себя",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Children should behave respectfully toward their teachers and parents always."
+  },
+  {
+    "en": "Expected",
+    "ru": "Ожидаемый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The expected rainfall will arrive sometime during the afternoon hours."
+  },
+  {
+    "en": "Guilt",
+    "ru": "Вина",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He felt overwhelming guilt after lying to his trusted friend."
+  },
+  {
+    "en": "Bury",
+    "ru": "Похоронить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We buried the dead dog in our backyard yesterday afternoon."
+  },
+  {
+    "en": "Soothe",
+    "ru": "Успокаивать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Soft music can soothe a crying baby to peaceful sleep."
+  },
+  {
+    "en": "Funeral",
+    "ru": "Похоронный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The funeral service honored the respected community leader's memory."
+  },
+  {
+    "en": "Banged",
+    "ru": "ударившийся",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He banged on the door loudly until someone answered."
+  },
+  {
+    "en": "Courage",
+    "ru": "Мужество",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She showed great courage by facing her deepest fears."
+  },
+  {
+    "en": "Trench",
+    "ru": "Траншея",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Soldiers dug a deep trench to defend their position."
+  },
+  {
+    "en": "Unacceptable",
+    "ru": "Неприемлемый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His behavior was completely unacceptable and disappointed everyone."
+  },
+  {
+    "en": "Gambler",
+    "ru": "Игрок",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The gambler lost his entire fortune at the casino."
+  },
+  {
+    "en": "Foolhardy",
+    "ru": "Безрассудно храбрый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That foolhardy plan will definitely get you into trouble."
+  },
+  {
+    "en": "Exile",
+    "ru": "Изгнание",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:55:47.383946",
+    "interval": 1,
+    "next_review": "2026-04-05T11:55:47.383987",
+    "example": "The political prisoner lived in exile for many years."
+  },
+  {
+    "en": "Betrayal",
+    "ru": "Предательство",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She felt betrayed when her best friend revealed secrets."
+  },
+  {
+    "en": "Spare",
+    "ru": "Запасной",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Can you spare a few minutes to help me?"
+  },
+  {
+    "en": "Martyr",
+    "ru": "Мученик",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The martyr died fighting for his religious beliefs."
+  },
+  {
+    "en": "Doubt",
+    "ru": "Сомневаться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I doubt his story because the details don't match."
+  },
+  {
+    "en": "Grateful",
+    "ru": "Благодарный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I'm grateful for your kindness and thoughtful support."
+  },
+  {
+    "en": "Underdogs",
+    "ru": "аутсайдеры",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The underdogs amazingly won the championship game yesterday."
+  },
+  {
+    "en": "Plea",
+    "ru": "Призыв",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His desperate plea for forgiveness moved everyone deeply."
+  },
+  {
+    "en": "Either",
+    "ru": "Любой",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "You can choose either chocolate or vanilla ice cream."
+  },
+  {
+    "en": "Sturdy",
+    "ru": "Крепкий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That sturdy wooden table will last for many years."
+  },
+  {
+    "en": "Backfire",
+    "ru": "Иметь неприятные последствия",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His plan backfired when the truth was finally revealed."
+  },
+  {
+    "en": "Pitches",
+    "ru": "площадки",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The baseball pitches were too fast to hit accurately."
+  },
+  {
+    "en": "Mock",
+    "ru": "Издеваться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Don't mock others for their different beliefs and choices."
+  },
+  {
+    "en": "Attitude",
+    "ru": "Отношение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His negative attitude prevented him from succeeding professionally."
+  },
+  {
+    "en": "Dig",
+    "ru": "Копать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They dig deep to find the truth about everything."
+  },
+  {
+    "en": "Distraction",
+    "ru": "отвлечение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The distraction caused him to miss the important details."
+  },
+  {
+    "en": "Wrestling",
+    "ru": "Борьба",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Professional wrestling is more entertainment than true sport."
+  },
+  {
+    "en": "Request",
+    "ru": "Запрос",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She made a request for additional time to complete."
+  },
+  {
+    "en": "Honor",
+    "ru": "Честь",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We must honor our soldiers who sacrificed everything."
+  },
+  {
+    "en": "Mess",
+    "ru": "Беспорядок",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This kitchen is a complete mess after last night."
+  },
+  {
+    "en": "Raided",
+    "ru": "Громивший",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Police raided the warehouse searching for stolen merchandise."
+  },
+  {
+    "en": "Nerve",
+    "ru": "Нерв",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:56:00.712339",
+    "interval": 1,
+    "next_review": "2026-04-05T11:56:00.712367",
+    "example": "It takes nerve to speak up against powerful people."
+  },
+  {
+    "en": "Desert",
+    "ru": "Покидать",
+    "correct_count": 2,
+    "wrong_count": 0,
+    "last_seen": "2026-04-05T11:11:43.939759",
+    "interval": 3,
+    "next_review": "2026-04-08T11:11:43.939785",
+    "example": "The desert heat made it impossible to continue walking."
+  },
+  {
+    "en": "Involve",
+    "ru": "Вовлекать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This project will involve working with multiple team members."
+  },
+  {
+    "en": "Charge",
+    "ru": "Обвинение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He faces serious charges related to financial fraud."
+  },
+  {
+    "en": "Implied",
+    "ru": "Подразумеваемый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her tone implied that she disagreed with my opinion."
+  },
+  {
+    "en": "Ruthless",
+    "ru": "Безжалостный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The ruthless dictator showed no mercy to opponents."
+  },
+  {
+    "en": "Borrow",
+    "ru": "Заимствовать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Can I borrow your pen for a moment please?"
+  },
+  {
+    "en": "Entry",
+    "ru": "вход",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The entry fee for the museum costs fifteen dollars."
+  },
+  {
+    "en": "Denied",
+    "ru": "Отвергнутый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His request was denied because he lacked proper qualifications."
+  },
+  {
+    "en": "Handle",
+    "ru": "Ручка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Can you handle this difficult situation on your own?"
+  },
+  {
+    "en": "Vehicle",
+    "ru": "Автомобиль",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That vehicle needs repairs before it can drive safely."
+  },
+  {
+    "en": "Earned",
+    "ru": "Заработанный",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:57:43.742321",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:43.742361",
+    "example": "She earned her promotion through hard work and dedication."
+  },
+  {
+    "en": "Guts",
+    "ru": "Мужество",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He had the guts to challenge the powerful champion."
+  },
+  {
+    "en": "Refused",
+    "ru": "Отклоненный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She firmly refused to participate in their dishonest scheme."
+  },
+  {
+    "en": "Cause",
+    "ru": "Причина",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His selfish cause was not worth fighting for."
+  },
+  {
+    "en": "Curse",
+    "ru": "Проклинать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The curse allegedly brought misfortune to the entire family."
+  },
+  {
+    "en": "Wasted",
+    "ru": "Впустую",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That opportunity was wasted by his poor decision-making."
+  },
+  {
+    "en": "Rid",
+    "ru": "Избавлять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We need to rid ourselves of these harmful habits."
+  },
+  {
+    "en": "Herd",
+    "ru": "Стадо",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The herd of cattle crossed the river safely."
+  },
+  {
+    "en": "Deal with it",
+    "ru": "Справиться с этим",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "You need to deal with it and move forward."
+  },
+  {
+    "en": "Accuse",
+    "ru": "Обвинять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Don't accuse me of something I didn't actually do."
+  },
+  {
+    "en": "Acquainted",
+    "ru": "Знакомый",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:56:32.637904",
+    "interval": 1,
+    "next_review": "2026-04-05T11:56:32.637938",
+    "example": "I became acquainted with my new coworkers during the orientation week."
+  },
+  {
+    "en": "Cell",
+    "ru": "Клетка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The prison cell was small and contained only a bed."
+  },
+  {
+    "en": "Threw",
+    "ru": "бросил",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She threw the ball across the field with great force."
+  },
+  {
+    "en": "Odds",
+    "ru": "Шансы",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The odds of winning the lottery are extremely low."
+  },
+  {
+    "en": "Owe",
+    "ru": "Должный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I owe my friend money from last month's dinner."
+  },
+  {
+    "en": "Persuasive",
+    "ru": "убедительный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His persuasive speech convinced everyone to support the proposal."
+  },
+  {
+    "en": "Disturb",
+    "ru": "Беспокоить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please don't disturb me while I'm working on this project."
+  },
+  {
+    "en": "Rest",
+    "ru": "Остальное",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "After exercise, I need rest to recover my energy."
+  },
+  {
+    "en": "Initiation",
+    "ru": "Инициация",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The initiation ceremony welcomes new members into the fraternity."
+  },
+  {
+    "en": "Jealous",
+    "ru": "Ревнивый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He felt jealous when his brother received more attention."
+  },
+  {
+    "en": "Piss off",
+    "ru": "Бесить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Loud noises really piss off my cat every time."
+  },
+  {
+    "en": "Casual",
+    "ru": "Случайный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We wore casual clothes to the informal gathering."
+  },
+  {
+    "en": "Disturbing",
+    "ru": "Беспокоящий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The disturbing movie left audiences feeling deeply uncomfortable."
+  },
+  {
+    "en": "Hilarious",
+    "ru": "Веселый",
+    "correct_count": 2,
+    "wrong_count": 0,
+    "last_seen": "2026-04-05T11:11:51.863140",
+    "interval": 3,
+    "next_review": "2026-04-08T11:11:51.863170",
+    "example": "His hilarious jokes made the entire room laugh."
+  },
+  {
+    "en": "Defeated",
+    "ru": "Побежденный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The defeated team walked off the field sadly."
+  },
+  {
+    "en": "Relative",
+    "ru": "Родственник",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "My relative visited from out of town yesterday."
+  },
+  {
+    "en": "Shrimp",
+    "ru": "Креветка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I ordered shrimp pasta for dinner at the restaurant."
+  },
+  {
+    "en": "Chase",
+    "ru": "Погоня",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The dog will chase the ball across the yard."
+  },
+  {
+    "en": "Hoes",
+    "ru": "Мотыги",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The gardener used hoes to till the soil."
+  },
+  {
+    "en": "Van",
+    "ru": "Фургон",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We rented a van to transport all our furniture."
+  },
+  {
+    "en": "Smash",
+    "ru": "Разбить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The tennis player will smash the ball over."
+  },
+  {
+    "en": "Offhand",
+    "ru": "Экспромтом",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He made an offhand comment without thinking carefully."
+  },
+  {
+    "en": "Infuriating",
+    "ru": "бесящий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The infuriating delays made passengers angry and frustrated."
+  },
+  {
+    "en": "Fragile",
+    "ru": "Хрупкий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Handle the fragile glasses carefully to avoid breaking them."
+  },
+  {
+    "en": "Deceitful",
+    "ru": "Лживый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His deceitful behavior revealed his dishonest nature completely."
+  },
+  {
+    "en": "Bargain",
+    "ru": "Сделка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I found a great bargain on shoes at."
+  },
+  {
+    "en": "Fiber",
+    "ru": "Волокно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Dietary fiber helps maintain good digestive system health."
+  },
+  {
+    "en": "Particle",
+    "ru": "Частица",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "A particle of dust floated through the sunlight."
+  },
+  {
+    "en": "Silt",
+    "ru": "ил",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "River silt accumulated along the banks over years."
+  },
+  {
+    "en": "Scale",
+    "ru": "Масштаб",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The bathroom scale showed my weight this morning."
+  },
+  {
+    "en": "Cesium",
+    "ru": "Цезий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Cesium is a soft and highly reactive metal."
+  },
+  {
+    "en": "Confirmed",
+    "ru": "Подтвержденный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The theory was confirmed by multiple scientific experiments."
+  },
+  {
+    "en": "Claim",
+    "ru": "Претензия",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I claim that this is my original work."
+  },
+  {
+    "en": "Treat",
+    "ru": "Рассматривать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Let's treat ourselves to ice cream this afternoon."
+  },
+  {
+    "en": "Guard",
+    "ru": "охранник",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The guard stood watch at the building's entrance."
+  },
+  {
+    "en": "Restoration",
+    "ru": "Восстановление",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The restoration of the painting took several months."
+  },
+  {
+    "en": "Judge",
+    "ru": "Судья",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:57:47.238615",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:47.238656",
+    "example": "The judge will decide the verdict in the case."
+  },
+  {
+    "en": "Curb",
+    "ru": "Сдерживать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please curb your dog on the sidewalk outside."
+  },
+  {
+    "en": "Compilation",
+    "ru": "Компиляция",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The compilation album includes songs from many artists."
+  },
+  {
+    "en": "Ability",
+    "ru": "Способность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She has the ability to speak five languages."
+  },
+  {
+    "en": "Darling",
+    "ru": "Любимец",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Come here, darling, and give me a hug."
+  },
+  {
+    "en": "Engrave",
+    "ru": "Гравировать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They will engrave names onto the stone monument."
+  },
+  {
+    "en": "Favor",
+    "ru": "Польза",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Do me a favor and close the door."
+  },
+  {
+    "en": "Lasting",
+    "ru": "Устойчивый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Their love for each other is truly lasting."
+  },
+  {
+    "en": "Buns",
+    "ru": "Сдоба",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "These buns are fresh from the bakery today."
+  },
+  {
+    "en": "Step aside",
+    "ru": "Отступить в сторону",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please step aside so others can pass through."
+  },
+  {
+    "en": "Reject",
+    "ru": "Отвергать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The committee will reject the proposal due costs."
+  },
+  {
+    "en": "Anxiety",
+    "ru": "Тревога",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her anxiety about exams kept her awake nightly."
+  },
+  {
+    "en": "Crusader",
+    "ru": "Крестоносец",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The crusader fought tirelessly for social justice causes."
+  },
+  {
+    "en": "Violent",
+    "ru": "Насильственный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The violent storm destroyed several houses in the neighborhood."
+  },
+  {
+    "en": "Ethical",
+    "ru": "Этический",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She made an ethical decision to return the lost wallet."
+  },
+  {
+    "en": "Follow up",
+    "ru": "Следить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I'll follow up with you next week about the project."
+  },
+  {
+    "en": "Prey",
+    "ru": "Добыча",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The eagle hunted its prey across the vast mountain range."
+  },
+  {
+    "en": "Introduce",
+    "ru": "Внести",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Let me introduce my friend Sarah to everyone here today."
+  },
+  {
+    "en": "Let off",
+    "ru": "Отпустить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The officer let off the speeding driver with a warning."
+  },
+  {
+    "en": "Resisting",
+    "ru": "Сопротивление",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He was resisting arrest when police arrived at the scene."
+  },
+  {
+    "en": "Seem",
+    "ru": "Казаться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That seems like a reasonable solution to our problem."
+  },
+  {
+    "en": "Suck up",
+    "ru": "Поглотить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Don't suck up to the boss by flattering her constantly."
+  },
+  {
+    "en": "Yell",
+    "ru": "Кричать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The coach will yell instructions from the sideline during games."
+  },
+  {
+    "en": "Wonky",
+    "ru": "Шаткий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The wonky table leg made the surface completely uneven."
+  },
+  {
+    "en": "Amp",
+    "ru": "Усилитель",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:56:40.710389",
+    "interval": 1,
+    "next_review": "2026-04-05T11:56:40.710426",
+    "example": "The guitarist will amp up the energy during the concert."
+  },
+  {
+    "en": "Mansion",
+    "ru": "особняк",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The billionaire owns a sprawling mansion with fifty rooms."
+  },
+  {
+    "en": "Excellence",
+    "ru": "Превосходство",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Excellence in education requires dedication from teachers and students."
+  },
+  {
+    "en": "Unread",
+    "ru": "непрочитанный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She has three unread messages waiting in her inbox."
+  },
+  {
+    "en": "Kneeling",
+    "ru": "Стоящий на коленях",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Kneeling in prayer, he felt a sense of peace."
+  },
+  {
+    "en": "Ceiling",
+    "ru": "Потолок",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The ceiling fan rotates slowly above the living room."
+  },
+  {
+    "en": "Sigh",
+    "ru": "Вздыхать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She let out a heavy sigh after the long meeting."
+  },
+  {
+    "en": "Faulty",
+    "ru": "Неисправный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The faulty brakes caused the accident on the highway."
+  },
+  {
+    "en": "Asylums",
+    "ru": "Убежища",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Mental health asylums have been replaced by modern care facilities."
+  },
+  {
+    "en": "Dull",
+    "ru": "Скучный",
+    "correct_count": 0,
+    "wrong_count": 1,
+    "last_seen": "2026-04-04T11:58:18.014076",
+    "interval": 1,
+    "next_review": "2026-04-05T11:58:18.014094",
+    "example": "The dull knife wouldn't cut through the thick bread."
+  },
+  {
+    "en": "Projection",
+    "ru": "Проекция",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The projection shows sales will increase significantly next quarter."
+  },
+  {
+    "en": "Foresight",
+    "ru": "Дальновидность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Good foresight helped her avoid the financial crisis completely."
+  },
+  {
+    "en": "Engage",
+    "ru": "Привлекать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Engage your core muscles while performing this difficult exercise."
+  },
+  {
+    "en": "Stay out",
+    "ru": "Держаться подальше",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Stay out of trouble and focus on your schoolwork."
+  },
+  {
+    "en": "Subtle",
+    "ru": "Тонкий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The subtle hint was barely noticeable to most people."
+  },
+  {
+    "en": "Intervention",
+    "ru": "вмешательство",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Early intervention can prevent serious problems from developing later."
+  },
+  {
+    "en": "Requirements",
+    "ru": "Требования",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "All applicants must meet the job requirements before applying."
+  },
+  {
+    "en": "Solvency",
+    "ru": "Платежеспособность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The company's solvency improved after implementing cost-cutting measures."
+  },
+  {
+    "en": "Inflation",
+    "ru": "инфляция",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Inflation caused prices to rise dramatically across all sectors."
+  },
+  {
+    "en": "Attempts",
+    "ru": "Попытки",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-05T11:12:30.917761",
+    "interval": 1,
+    "next_review": "2026-04-06T11:12:30.917778",
+    "example": "His multiple attempts to fix the car finally succeeded."
+  },
+  {
+    "en": "Gentle",
+    "ru": "Нежный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She spoke in a gentle voice to calm the baby."
+  },
+  {
+    "en": "Remain",
+    "ru": "Оставаться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please remain seated until the announcement is complete."
+  },
+  {
+    "en": "Least",
+    "ru": "Наименьший",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This is the least expensive option available right now."
+  },
+  {
+    "en": "Neutral",
+    "ru": "Нейтральный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The referee maintained a neutral position throughout the entire match."
+  },
+  {
+    "en": "Significant",
+    "ru": "Значительный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The research findings had a significant impact on medicine."
+  },
+  {
+    "en": "Parameters",
+    "ru": "параметры",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "All parameters must be adjusted before starting the experiment."
+  },
+  {
+    "en": "Concerns",
+    "ru": "Беспокойства",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her concerns about safety proved to be completely justified."
+  },
+  {
+    "en": "Distributers",
+    "ru": "Дистрибьютеры",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The distributors deliver products to retail stores weekly."
+  },
+  {
+    "en": "Reduce",
+    "ru": "уменьшать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We need to reduce spending by twenty percent immediately."
+  },
+  {
+    "en": "Various",
+    "ru": "Различный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The restaurant offers various cuisines from different countries."
+  },
+  {
+    "en": "Takeover",
+    "ru": "Поглощение",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:56:14.953758",
+    "interval": 1,
+    "next_review": "2026-04-05T11:56:14.953789",
+    "example": "The hostile takeover left many employees worried about jobs."
+  },
+  {
+    "en": "Acquisitions",
+    "ru": "Приобретения",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The company made several acquisitions to expand its market."
+  },
+  {
+    "en": "Insurance",
+    "ru": "страхование",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Insurance policies protect you from unexpected financial hardships."
+  },
+  {
+    "en": "Development",
+    "ru": "Развитие",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Child development experts study how babies learn and grow."
+  },
+  {
+    "en": "Irresistible",
+    "ru": "Непреодолимый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That chocolate cake looks absolutely irresistible to everyone here."
+  },
+  {
+    "en": "Execution",
+    "ru": "Исполнение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The execution of the plan went smoothly without problems."
+  },
+  {
+    "en": "Except",
+    "ru": "Кроме",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Everyone except Sarah attended the party last Saturday night."
+  },
+  {
+    "en": "Judgmental",
+    "ru": "осуждающий",
+    "correct_count": 0,
+    "wrong_count": 1,
+    "last_seen": "2026-04-04T11:57:39.618589",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:39.618613",
+    "example": "Don't be judgmental about people's choices and personal beliefs."
+  },
+  {
+    "en": "Stabbed",
+    "ru": "заколотый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The stabbed victim was rushed to the hospital immediately."
+  },
+  {
+    "en": "Purchase",
+    "ru": "Покупка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I need to purchase new groceries before the store closes tonight."
+  },
+  {
+    "en": "Leather",
+    "ru": "Кожа",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her leather jacket was worn but still looked incredibly stylish."
+  },
+  {
+    "en": "Lighters",
+    "ru": "Зажигалки",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He collected vintage lighters from different countries around the world."
+  },
+  {
+    "en": "Abuse",
+    "ru": "Злоупотребление",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The coach was fired for his verbal abuse toward the players."
+  },
+  {
+    "en": "Rejected",
+    "ru": "Отвергнутый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His job application was rejected due to insufficient work experience."
+  },
+  {
+    "en": "Slider",
+    "ru": "Ползун",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The burger slider was perfect for a quick lunch snack."
+  },
+  {
+    "en": "Endless",
+    "ru": "Бесконечный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The ocean seemed to stretch on in an endless horizon."
+  },
+  {
+    "en": "Nutrients",
+    "ru": "питательные вещества",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Plants need nutrients like nitrogen and phosphorus to grow properly."
+  },
+  {
+    "en": "Offensive",
+    "ru": "Неприятный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His offensive comments made everyone uncomfortable during the meeting."
+  },
+  {
+    "en": "Awaits",
+    "ru": "Ждет",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "A great opportunity awaits anyone willing to work hard daily."
+  },
+  {
+    "en": "Welfare",
+    "ru": "Благосостояние",
+    "correct_count": 1,
+    "wrong_count": 1,
+    "last_seen": "2026-04-04T11:55:37.801492",
+    "interval": 1,
+    "next_review": "2026-04-05T11:55:37.801611",
+    "example": "The government program focuses on child welfare and family support."
+  },
+  {
+    "en": "Reportedly",
+    "ru": "По сообщениям",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She reportedly saw the accident happen from her office window."
+  },
+  {
+    "en": "Fire station",
+    "ru": "Пожарное депо",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The fire station is located just two blocks from here."
+  },
+  {
+    "en": "Responsibilities",
+    "ru": "Круг обязанностей",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Managing a business requires balancing many financial and legal responsibilities."
+  },
+  {
+    "en": "From the lesson",
+    "ru": "Из уроков",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The main concept from the lesson was understanding basic math."
+  },
+  {
+    "en": "Resign",
+    "ru": "Отказываться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He decided to resign from his position after five years."
+  },
+  {
+    "en": "undo",
+    "ru": "отменять",
+    "correct_count": 0,
+    "wrong_count": 1,
+    "last_seen": "2026-04-04T11:57:13.670237",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:13.670262",
+    "example": "I need to undo that mistake I made on the document."
+  },
+  {
+    "en": "temple",
+    "ru": "храм",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The ancient temple stood majestically on top of the mountain."
+  },
+  {
+    "en": "monk",
+    "ru": "монах",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The monk spent decades studying Buddhist philosophy in quiet solitude."
+  },
+  {
+    "en": "impatient",
+    "ru": "нетерпеливый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The impatient child kept asking if we were there yet."
+  },
+  {
+    "en": "severity",
+    "ru": "тяжесть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The severity of the storm caused significant damage to homes."
+  },
+  {
+    "en": "mime",
+    "ru": "пантомима",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The mime performed a hilarious invisible tug-of-war for us."
+  },
+  {
+    "en": "consciousness",
+    "ru": "сознание",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Consciousness allows us to be aware of our own thoughts."
+  },
+  {
+    "en": "flow",
+    "ru": "поток",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The river's flow increased dramatically after several days of rain."
+  },
+  {
+    "en": "even",
+    "ru": "даже",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The playing field wasn't exactly even for both competing teams."
+  },
+  {
+    "en": "gluten",
+    "ru": "клейковина",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Wheat contains gluten which affects people with celiac disease."
+  },
+  {
+    "en": "script",
+    "ru": "сценарий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The actor memorized the entire script before filming began tomorrow."
+  },
+  {
+    "en": "noon",
+    "ru": "полдень",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Let's meet at noon for lunch at that new restaurant."
+  },
+  {
+    "en": "warranting",
+    "ru": "гарантирование",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The severity of his injury warranting immediate hospitalization yesterday."
+  },
+  {
+    "en": "friggin",
+    "ru": "блин",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That friggin door won't close no matter how hard I push."
+  },
+  {
+    "en": "apparently",
+    "ru": "видимо",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Apparently, she left town without telling anyone where she went."
+  },
+  {
+    "en": "opportunity",
+    "ru": "возможность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This job opportunity could change my entire career path forever."
+  },
+  {
+    "en": "leaped",
+    "ru": "прыгавший",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The athlete leaped over the hurdle with incredible grace and power."
+  },
+  {
+    "en": "quirky",
+    "ru": "причудливый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her quirky personality made her stand out among all the others."
+  },
+  {
+    "en": "justified",
+    "ru": "оправданный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His actions were justified given the difficult circumstances he faced."
+  },
+  {
+    "en": "pissed off",
+    "ru": "злой",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He was really pissed off when they cancelled the concert."
+  },
+  {
+    "en": "herbal",
+    "ru": "травяной",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Herbal tea can help soothe a sore throat naturally."
+  },
+  {
+    "en": "stranding",
+    "ru": "застревание",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The ship's stranding on the rocks caused major environmental damage."
+  },
+  {
+    "en": "strand",
+    "ru": "прядь",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She has a blonde strand of hair among her brown."
+  },
+  {
+    "en": "share",
+    "ru": "доля",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Can you share your notes with me for tomorrow's exam?"
+  },
+  {
+    "en": "current",
+    "ru": "текущий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The current situation requires immediate attention from all department heads."
+  },
+  {
+    "en": "jerk",
+    "ru": "придурок",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That jerk of a boss always yells at his employees."
+  },
+  {
+    "en": "jerk off",
+    "ru": "дрочить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He would jerk off during breaks when nobody was watching."
+  },
+  {
+    "en": "tape",
+    "ru": "лента",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Use clear tape to secure the box before shipping it."
+  },
+  {
+    "en": "rumor",
+    "ru": "молва",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The rumor about the celebrity's retirement spread quickly online today."
+  },
+  {
+    "en": "ever",
+    "ru": "когда-либо",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Have you ever seen anything more beautiful than this sunset?"
+  },
+  {
+    "en": "summoning",
+    "ru": "вызов",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She was summoning all her courage to face her fears."
+  },
+  {
+    "en": "encounters",
+    "ru": "сталкивается",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He encounters new challenges every day in his demanding job."
+  },
+  {
+    "en": "necessarily",
+    "ru": "обязательно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Success doesn't necessarily require having a college degree or connections."
+  },
+  {
+    "en": "retire",
+    "ru": "уходить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She decided to retire at sixty-five after working forty years."
+  },
+  {
+    "en": "eloquently",
+    "ru": "красноречиво",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She eloquently described her vision for the company's future."
+  },
+  {
+    "en": "innocent",
+    "ru": "невинный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The innocent child didn't understand the adult conversation happening."
+  },
+  {
+    "en": "suspicious",
+    "ru": "подозрительный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His suspicious behavior made the security guard follow him closely."
+  },
+  {
+    "en": "particularly",
+    "ru": "особенно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She was particularly interested in studying marine biology."
+  },
+  {
+    "en": "responsible",
+    "ru": "ответственный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He felt responsible for his younger sister's safety."
+  },
+  {
+    "en": "convinced",
+    "ru": "убежденный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I'm convinced that this approach will work better."
+  },
+  {
+    "en": "unique",
+    "ru": "уникальный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her unique perspective helped solve the creative problem."
+  },
+  {
+    "en": "complaining",
+    "ru": "жалующийся",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He kept complaining about the cold weather all day."
+  },
+  {
+    "en": "gimmick",
+    "ru": "уловка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The product's main selling gimmick was its unusual shape."
+  },
+  {
+    "en": "woke",
+    "ru": "проснувшийся",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She woke up early to catch the sunrise."
+  },
+  {
+    "en": "assume",
+    "ru": "предполагать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Don't assume things without checking the facts first."
+  },
+  {
+    "en": "restraining",
+    "ru": "сдерживающий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The fence was restraining the dogs from escaping."
+  },
+  {
+    "en": "clout",
+    "ru": "влияние",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The CEO has significant clout in the industry."
+  },
+  {
+    "en": "underneath",
+    "ru": "под",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The book was hidden underneath the mattress carefully."
+  },
+  {
+    "en": "decent",
+    "ru": "пристойный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He made a decent effort on the assignment."
+  },
+  {
+    "en": "self-aware",
+    "ru": "самосознающий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "A self aware person recognizes their own strengths and weaknesses."
+  },
+  {
+    "en": "judging",
+    "ru": "судящий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Stop judging others based on their appearance."
+  },
+  {
+    "en": "raider",
+    "ru": "рейдер",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The raider broke into the warehouse at midnight."
+  },
+  {
+    "en": "to digress",
+    "ru": "отступать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Let me digress briefly to mention something important."
+  },
+  {
+    "en": "due to",
+    "ru": "благодаря",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The game was cancelled due to severe weather."
+  },
+  {
+    "en": "though",
+    "ru": "хотя",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Though tired, she continued working on the project."
+  },
+  {
+    "en": "tight",
+    "ru": "плотно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The tight rope made walking across very difficult."
+  },
+  {
+    "en": "debt",
+    "ru": "долг",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He struggled with significant debt for many years."
+  },
+  {
+    "en": "threat",
+    "ru": "угроза",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The threat of layoffs worried all the employees."
+  },
+  {
+    "en": "output",
+    "ru": "выход",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The factory's daily output increased by twenty percent."
+  },
+  {
+    "en": "acquiring",
+    "ru": "приобретающий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She's acquiring new skills through online courses."
+  },
+  {
+    "en": "ought",
+    "ru": "должен",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "You ought to apologize for your rude behavior."
+  },
+  {
+    "en": "all participants",
+    "ru": "все участники",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "All participants must sign the consent form."
+  },
+  {
+    "en": "during",
+    "ru": "в течение",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:57:50.931079",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:50.931130",
+    "example": "She slept deeply during the entire flight."
+  },
+  {
+    "en": "pigeon",
+    "ru": "голубь",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The pigeon landed on the windowsill looking hungry."
+  },
+  {
+    "en": "cipher",
+    "ru": "шифр",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The cipher code took hours to finally decode."
+  },
+  {
+    "en": "curiosity box",
+    "ru": "коробка любопытства",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The curiosity box contained mysterious items inside."
+  },
+  {
+    "en": "belong",
+    "ru": "принадлежать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "These books belong to the library, not you."
+  },
+  {
+    "en": "humble",
+    "ru": "смиренный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Despite his success, he remained humble and kind."
+  },
+  {
+    "en": "smooth",
+    "ru": "гладкий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The smooth surface felt pleasant under my fingers."
+  },
+  {
+    "en": "thinner",
+    "ru": "растворитель",
+    "correct_count": 0,
+    "wrong_count": 1,
+    "last_seen": "2026-04-04T11:57:34.359600",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:34.359630",
+    "example": "His voice grew thinner as he got older."
+  },
+  {
+    "en": "able",
+    "ru": "способный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She's able to run five miles easily."
+  },
+  {
+    "en": "plummet",
+    "ru": "резко падать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Stock prices plummet when bad news is announced."
+  },
+  {
+    "en": "velocity",
+    "ru": "скорость",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The velocity of the car exceeded the speed limit."
+  },
+  {
+    "en": "addiction",
+    "ru": "зависимость",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His addiction to coffee was affecting his sleep."
+  },
+  {
+    "en": "craving",
+    "ru": "тяга",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She had a strong craving for chocolate yesterday."
+  },
+  {
+    "en": "refer",
+    "ru": "относиться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please refer to chapter three for more information."
+  },
+  {
+    "en": "inner",
+    "ru": "внутренний",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her inner strength helped her overcome the challenge."
+  },
+  {
+    "en": "medulla",
+    "ru": "продолговатый мозг",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The medulla is the part controlling breathing automatically."
+  },
+  {
+    "en": "essential",
+    "ru": "существенный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Water is essential for all living organisms."
+  },
+  {
+    "en": "outer",
+    "ru": "внешний",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The outer layer of skin protects our bodies."
+  },
+  {
+    "en": "nevertheless",
+    "ru": "однако",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Nevertheless, she decided to continue with the plan."
+  },
+  {
+    "en": "demise",
+    "ru": "кончина",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The company's demise came after years of declining sales."
+  },
+  {
+    "en": "strict",
+    "ru": "строгий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The strict teacher didn't tolerate any excuses whatsoever."
+  },
+  {
+    "en": "internal",
+    "ru": "внутренний",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Internal bleeding requires immediate medical attention and hospitalization."
+  },
+  {
+    "en": "confess",
+    "ru": "признаваться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He decided to confess his mistakes to his parents."
+  },
+  {
+    "en": "sneers",
+    "ru": "усмешки",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She sneers at anyone who disagrees with her opinions."
+  },
+  {
+    "en": "Committee",
+    "ru": "комитет",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The committee met to discuss the new budget proposal."
+  },
+  {
+    "en": "bizarre",
+    "ru": "странный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That bizarre outfit definitely caught everyone's attention at the party."
+  },
+  {
+    "en": "shines",
+    "ru": "светит",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The sun shines brightly through the kitchen window every morning."
+  },
+  {
+    "en": "unnecessary",
+    "ru": "лишний",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Adding salt to this recipe is completely unnecessary and unneeded."
+  },
+  {
+    "en": "stumble",
+    "ru": "спотыкаться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I tend to stumble over my words when nervous."
+  },
+  {
+    "en": "prude",
+    "ru": "ханжа",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He's such a prude that he won't watch comedies."
+  },
+  {
+    "en": "rape",
+    "ru": "изнасиловать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The serious crime caused immense suffering to the victim."
+  },
+  {
+    "en": "dice",
+    "ru": "кости",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They rolled the dice and hoped for a six."
+  },
+  {
+    "en": "rut",
+    "ru": "колея",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His career fell into a rut after losing motivation."
+  },
+  {
+    "en": "flaws",
+    "ru": "недостатки",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The diamond had several flaws visible under close inspection."
+  },
+  {
+    "en": "Accountancy",
+    "ru": "Бухгалтерия",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Accurate accountancy is essential for any successful business operation."
+  },
+  {
+    "en": "loss",
+    "ru": "потеря",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her loss of confidence affected her performance significantly."
+  },
+  {
+    "en": "instantly",
+    "ru": "немедленно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The answer appeared instantly when she finally understood."
+  },
+  {
+    "en": "Summarize",
+    "ru": "подводить итог",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Let me summarize the main points from today's meeting."
+  },
+  {
+    "en": "ensure",
+    "ru": "обеспечивать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We must ensure all employees receive proper training beforehand."
+  },
+  {
+    "en": "perspective",
+    "ru": "перспектива",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Getting a new perspective helped solve the difficult problem."
+  },
+  {
+    "en": "Concerning",
+    "ru": "относительно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I'm concerned about the concerning lack of progress lately."
+  },
+  {
+    "en": "upon",
+    "ru": "на",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Upon reflection, I realized my mistake was quite obvious."
+  },
+  {
+    "en": "respond",
+    "ru": "отвечать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She didn't respond to my text message all day."
+  },
+  {
+    "en": "advance",
+    "ru": "предварительный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Technology continues to advance at an incredibly rapid pace."
+  },
+  {
+    "en": "expect",
+    "ru": "ожидать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Don't expect miracles from this new treatment plan."
+  },
+  {
+    "en": "avoid",
+    "ru": "избегать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Try to avoid making the same mistakes twice."
+  },
+  {
+    "en": "narrower",
+    "ru": "уже",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The narrower path led through the dense forest."
+  },
+  {
+    "en": "reveal",
+    "ru": "показывать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The magician's trick revealed the coin hidden behind."
+  },
+  {
+    "en": "inquisitive",
+    "ru": "любознательный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His inquisitive nature made him ask endless questions."
+  },
+  {
+    "en": "anticipate",
+    "ru": "предвидеть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I anticipate problems before they actually occur."
+  },
+  {
+    "en": "break down",
+    "ru": "сломаться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We need to break down this complex issue into parts."
+  },
+  {
+    "en": "trade-off",
+    "ru": "компромисс",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Saving money involves a trade-off between present and future."
+  },
+  {
+    "en": "parameters",
+    "ru": "параметры",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The project parameters include budget, timeline, and resources."
+  },
+  {
+    "en": "aside",
+    "ru": "в сторону",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Set that issue aside and focus on today's tasks."
+  },
+  {
+    "en": "delay",
+    "ru": "задержка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please don't delay submitting your application any longer."
+  },
+  {
+    "en": "concession",
+    "ru": "уступка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The concession she made helped both parties reach agreement."
+  },
+  {
+    "en": "outcome",
+    "ru": "исход",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The outcome of the election surprised almost everyone."
+  },
+  {
+    "en": "benefits",
+    "ru": "выгоды",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Exercise has numerous benefits for physical and mental health."
+  },
+  {
+    "en": "negotiation",
+    "ru": "ведение переговоров",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The negotiation between both countries lasted several weeks."
+  },
+  {
+    "en": "uttering",
+    "ru": "произносящий",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:55:44.620628",
+    "interval": 1,
+    "next_review": "2026-04-05T11:55:44.620671",
+    "example": "He's always uttering complaints about the weather conditions."
+  },
+  {
+    "en": "allow",
+    "ru": "позволять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I allow my children to play outside after homework."
+  },
+  {
+    "en": "proper",
+    "ru": "надлежащий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Always use proper grammar when writing formal business letters."
+  },
+  {
+    "en": "dawg",
+    "ru": "чувак",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Hey dawg, want to grab some pizza later tonight?"
+  },
+  {
+    "en": "barcode",
+    "ru": "штрих-код",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Scan the barcode at checkout to complete your purchase."
+  },
+  {
+    "en": "strap",
+    "ru": "ремень",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Strap your seatbelt before the car starts moving."
+  },
+  {
+    "en": "whipping up",
+    "ru": "нагнетание",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She's whipping up a delicious chocolate cake for dessert."
+  },
+  {
+    "en": "conscience",
+    "ru": "совесть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Listen to your conscience when making important life decisions."
+  },
+  {
+    "en": "apex",
+    "ru": "вершина",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The apex of the mountain was covered in snow."
+  },
+  {
+    "en": "fair",
+    "ru": "справедливый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The referee made a fair decision about the penalty."
+  },
+  {
+    "en": "garlic",
+    "ru": "чеснок",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "This sauce contains garlic, tomatoes, and fresh basil."
+  },
+  {
+    "en": "immeasurable",
+    "ru": "неизмеримый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Her talent and potential seemed immeasurable to everyone."
+  },
+  {
+    "en": "odd",
+    "ru": "странный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That's an odd choice for a wedding dress color."
+  },
+  {
+    "en": "wish",
+    "ru": "желание",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She made a wish upon the shooting star."
+  },
+  {
+    "en": "literacy",
+    "ru": "грамотность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Financial literacy helps people make better money decisions."
+  },
+  {
+    "en": "sensitive",
+    "ru": "чувствительный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He has sensitive skin that reacts to harsh soaps."
+  },
+  {
+    "en": "glue",
+    "ru": "клей",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I need glue to repair this broken ceramic vase."
+  },
+  {
+    "en": "spread glue",
+    "ru": "намазать клей",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Spread glue evenly across the paper before joining them."
+  },
+  {
+    "en": "peel off",
+    "ru": "отслаиваться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Peel off the sticker from the back of the envelope."
+  },
+  {
+    "en": "attractive",
+    "ru": "привлекательный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The attractive sunset painted the sky brilliant orange hues."
+  },
+  {
+    "en": "yacht",
+    "ru": "яхта",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They sailed their luxury yacht across the Mediterranean Sea."
+  },
+  {
+    "en": "lash",
+    "ru": "плеть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She felt the sharp lash of criticism from her boss."
+  },
+  {
+    "en": "mentor",
+    "ru": "наставник",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "A good mentor guides you through your career growth."
+  },
+  {
+    "en": "diazepam",
+    "ru": "диазепам",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The doctor prescribed diazepam to help with anxiety symptoms."
+  },
+  {
+    "en": "reservation",
+    "ru": "бронирование",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I have a reservation at the restaurant for tonight."
+  },
+  {
+    "en": "encounter",
+    "ru": "сталкиваться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We had an unexpected encounter with an old friend."
+  },
+  {
+    "en": "bravado",
+    "ru": "бравада",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He spoke with pure bravado despite his obvious fear."
+  },
+  {
+    "en": "taught",
+    "ru": "наученный",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:57:19.348092",
+    "interval": 1,
+    "next_review": "2026-04-05T11:57:19.348131",
+    "example": "My teacher taught me calculus in high school."
+  },
+  {
+    "en": "degree",
+    "ru": "степень",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She earned a degree in biology from the university."
+  },
+  {
+    "en": "arrogant",
+    "ru": "высокомерный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His arrogant attitude made him unpopular with classmates."
+  },
+  {
+    "en": "brash",
+    "ru": "дерзкий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The brash teenager drove recklessly down the neighborhood street."
+  },
+  {
+    "en": "remaining",
+    "ru": "оставшийся",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The remaining cake was divided among the hungry guests."
+  },
+  {
+    "en": "elapsed",
+    "ru": "прошедший",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Only ten minutes elapsed before the movie finally started."
+  },
+  {
+    "en": "cyrillic",
+    "ru": "кириллица",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The Cyrillic alphabet is used to write Russian language."
+  },
+  {
+    "en": "catch up",
+    "ru": "догнать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She needed to catch up on three weeks of work."
+  },
+  {
+    "en": "field",
+    "ru": "поле",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He plays field hockey every weekend with his team."
+  },
+  {
+    "en": "deserve",
+    "ru": "заслуживать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Everyone agrees that she deserves the promotion."
+  },
+  {
+    "en": "bride",
+    "ru": "невеста",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The bride looked stunning in her grandmother's vintage dress."
+  },
+  {
+    "en": "get off",
+    "ru": "слезть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Get off the couch and do your homework now."
+  },
+  {
+    "en": "wipe out",
+    "ru": "уничтожить",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:56:21.251632",
+    "interval": 1,
+    "next_review": "2026-04-05T11:56:21.251673",
+    "example": "The hurricane threatened to wipe out the entire town."
+  },
+  {
+    "en": "gears",
+    "ru": "шестерни",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "My bicycle gears need adjustment for smooth shifting."
+  },
+  {
+    "en": "mocking",
+    "ru": "насмешливый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His mocking tone made her feel embarrassed and hurt."
+  },
+  {
+    "en": "scammy",
+    "ru": "мошеннический",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That website looks scammy with all these fake testimonials."
+  },
+  {
+    "en": "naughty",
+    "ru": "непослушный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The naughty child refused to apologize for the behavior."
+  },
+  {
+    "en": "chuckle",
+    "ru": "хихиканье",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The audience gave a chuckle at the comedian's joke."
+  },
+  {
+    "en": "admit",
+    "ru": "признавать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He had to admit that he was completely wrong."
+  },
+  {
+    "en": "unimpressed",
+    "ru": "не в восторге",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She seemed unimpressed by the expensive restaurant meal."
+  },
+  {
+    "en": "requires",
+    "ru": "требует",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The job requires at least five years of experience."
+  },
+  {
+    "en": "assignment",
+    "ru": "назначение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The teacher gave me a challenging assignment due tomorrow."
+  },
+  {
+    "en": "hint",
+    "ru": "намек",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She gave him a hint about his surprise birthday party."
+  },
+  {
+    "en": "assumed",
+    "ru": "предполагаемый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I assumed you would arrive by eight o'clock tonight."
+  },
+  {
+    "en": "actual",
+    "ru": "фактический",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The actual cost was higher than the original estimate."
+  },
+  {
+    "en": "portray",
+    "ru": "изображать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The movie portrays the historical events with great accuracy."
+  },
+  {
+    "en": "Immediately",
+    "ru": "сейчас",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She immediately called the police after witnessing the accident."
+  },
+  {
+    "en": "currently",
+    "ru": "ныне",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I'm currently working on my master's degree in psychology."
+  },
+  {
+    "en": "gimmicky",
+    "ru": "трюковый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That gimmicky gadget won't last more than a few weeks."
+  },
+  {
+    "en": "desperate",
+    "ru": "отчаянный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He was desperate to find a job before graduation."
+  },
+  {
+    "en": "premise",
+    "ru": "предпосылка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The premise of the story involves a hidden treasure."
+  },
+  {
+    "en": "despised",
+    "ru": "презираемый",
+    "correct_count": 1,
+    "wrong_count": 0,
+    "last_seen": "2026-04-04T11:55:53.340195",
+    "interval": 1,
+    "next_review": "2026-04-05T11:55:53.340231",
+    "example": "Everyone despised the villain in the superhero movie."
+  },
+  {
+    "en": "density",
+    "ru": "плотность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The density of the material made it very heavy."
+  },
+  {
+    "en": "engaged",
+    "ru": "помолвленный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The couple got engaged during their vacation in Paris."
+  },
+  {
+    "en": "swear",
+    "ru": "ругаться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I swear that I didn't eat your leftover pizza."
+  },
+  {
+    "en": "release",
+    "ru": "выпускать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The zoo decided to release the rescued eagle back into wilderness."
+  },
+  {
+    "en": "meant",
+    "ru": "предназначенный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That comment was meant as a joke, not an insult."
+  },
+  {
+    "en": "taste",
+    "ru": "вкус",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She has excellent taste in choosing quality furniture and art."
+  },
+  {
+    "en": "leash",
+    "ru": "поводок",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The dog pulled hard against his leash during the walk."
+  },
+  {
+    "en": "cave in",
+    "ru": "уступить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The negotiator refused to cave in to their unreasonable demands."
+  },
+  {
+    "en": "stabbing",
+    "ru": "колющий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Sharp stabbing pain shot through his shoulder during exercise."
+  },
+  {
+    "en": "keep",
+    "ru": "держать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please keep this secret and don't tell anyone about it."
+  },
+  {
+    "en": "resistance",
+    "ru": "сопротивление",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The resistance fighters opposed the occupation for many years."
+  },
+  {
+    "en": "substantially",
+    "ru": "существенно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Prices have increased substantially over the past two years."
+  },
+  {
+    "en": "consideration",
+    "ru": "рассмотрение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We need careful consideration before making such important decisions."
+  },
+  {
+    "en": "cycle parking",
+    "ru": "велосипедные парковки",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The city built new cycle parking near the train station."
+  },
+  {
+    "en": "inoculation",
+    "ru": "прививка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The inoculation protected children from serious diseases throughout childhood."
+  },
+  {
+    "en": "on-site",
+    "ru": "на месте",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We hired on-site contractors to repair the factory equipment."
+  },
+  {
+    "en": "insist on",
+    "ru": "настаивайте на",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The teacher will insist on punctuality for all future classes."
+  },
+  {
+    "en": "revealed",
+    "ru": "показанный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The investigation revealed fraud in the company's financial records."
+  },
+  {
+    "en": "survey",
+    "ru": "обследование",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The survey asked customers about their shopping preferences and habits."
+  },
+  {
+    "en": "canteen",
+    "ru": "столовая",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Employees eat lunch together in the factory canteen daily."
+  },
+  {
+    "en": "further",
+    "ru": "дальнейший",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Can you further explain your point about climate change?"
+  },
+  {
+    "en": "prevent",
+    "ru": "препятствовать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Wearing a seatbelt can prevent serious injuries during accidents."
+  },
+  {
+    "en": "order",
+    "ru": "порядок",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The manager gave me an order to complete the project."
+  },
+  {
+    "en": "conducted",
+    "ru": "проведенный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The researchers conducted extensive interviews across multiple countries."
+  },
+  {
+    "en": "resist",
+    "ru": "сопротивляться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She tried to resist eating cake during her diet."
+  },
+  {
+    "en": "indicate",
+    "ru": "указывать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The red light indicates that the battery needs charging."
+  },
+  {
+    "en": "solve",
+    "ru": "решать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Mathematics problems require logical thinking to solve correctly."
+  },
+  {
+    "en": "recently",
+    "ru": "недавно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I recently visited my grandparents for the first time."
+  },
+  {
+    "en": "poll",
+    "ru": "опрос",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The poll showed that most citizens support the new policy."
+  },
+  {
+    "en": "oak",
+    "ru": "дуб",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The ancient oak tree in our yard is over hundred."
+  },
+  {
+    "en": "disable",
+    "ru": "отключать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The injury will disable his ability to play sports."
+  },
+  {
+    "en": "gross",
+    "ru": "валовой",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The gross profit margin increased after reducing manufacturing costs."
+  },
+  {
+    "en": "arguing",
+    "ru": "спорящий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They kept arguing about politics until very late evening."
+  },
+  {
+    "en": "despite",
+    "ru": "вопреки",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Despite the rain, we decided to go hiking anyway."
+  },
+  {
+    "en": "purpose",
+    "ru": "цель",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The purpose of education is developing critical thinking skills."
+  },
+  {
+    "en": "shtick",
+    "ru": "фишка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His comedy shtick about cats always makes audiences laugh."
+  },
+  {
+    "en": "anthem",
+    "ru": "гимн",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The national anthem plays before every professional football game."
+  },
+  {
+    "en": "junkyard",
+    "ru": "свалка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Old cars go to the junkyard when they cannot be repaired."
+  },
+  {
+    "en": "tough",
+    "ru": "жесткий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Learning languages is tough but rewarding after consistent practice."
+  },
+  {
+    "en": "inspired",
+    "ru": "вдохновленный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The beautiful sunset inspired her to paint all night."
+  },
+  {
+    "en": "pilsner",
+    "ru": "пильзнер",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He ordered a cold pilsner beer at the tavern."
+  },
+  {
+    "en": "variety",
+    "ru": "разновидность",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The garden has a variety of flowers blooming in spring."
+  },
+  {
+    "en": "restless",
+    "ru": "беспокойный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He felt restless and couldn't sleep throughout the entire night."
+  },
+  {
+    "en": "brew",
+    "ru": "варить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We brew fresh coffee every morning at the café."
+  },
+  {
+    "en": "rend",
+    "ru": "раздирать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The explosion could rend the metal pipes into pieces."
+  },
+  {
+    "en": "slit",
+    "ru": "щель",
+    "correct_count": 0,
+    "wrong_count": 1,
+    "last_seen": "2026-04-05T11:12:38.434844",
+    "interval": 1,
+    "next_review": "2026-04-06T11:12:38.434857",
+    "example": "A slit in the curtains allowed light to peek through."
+  },
+  {
+    "en": "tread",
+    "ru": "топтать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Be careful where you tread near the broken glass."
+  },
+  {
+    "en": "underlie",
+    "ru": "лежать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Economic factors underlie the causes of homelessness in cities."
+  },
+  {
+    "en": "underwrite",
+    "ru": "гарантировать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The bank will underwrite the mortgage if you qualify."
+  },
+  {
+    "en": "undertake",
+    "ru": "предпринимать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She will undertake the project despite its significant complexity."
+  },
+  {
+    "en": "undersell",
+    "ru": "продавать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Don't undersell your talents when negotiating your salary increase."
+  },
+  {
+    "en": "underpay",
+    "ru": "недоплачивать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The company tends to underpay its entry-level workers consistently."
+  },
+  {
+    "en": "undercut",
+    "ru": "подрезать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The competitor undercut our prices to win the contract."
+  },
+  {
+    "en": "tinnitus",
+    "ru": "звон в ушах",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She suffers from tinnitus and hears constant ringing."
+  },
+  {
+    "en": "curiosity",
+    "ru": "любопытство",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Curiosity drove him to explore the mysterious old house."
+  },
+  {
+    "en": "judgment",
+    "ru": "суждение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The judge's judgment was fair and based on evidence."
+  },
+  {
+    "en": "niche",
+    "ru": "ниша",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She found her niche designing custom jewelry for clients."
+  },
+  {
+    "en": "venture",
+    "ru": "предприятие",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They decided to venture into the restaurant business together."
+  },
+  {
+    "en": "also",
+    "ru": "также",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He speaks French and also understands Italian quite well."
+  },
+  {
+    "en": "involved",
+    "ru": "вовлеченный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Many people were involved in planning the community event."
+  },
+  {
+    "en": "ventures",
+    "ru": "предприятия",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The company ventures into new markets every single year."
+  },
+  {
+    "en": "Merger",
+    "ru": "Слияние",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The merger between companies created thousands of new jobs."
+  },
+  {
+    "en": "Razzing",
+    "ru": "Насмехаться",
+    "correct_count": 1,
+    "wrong_count": 1,
+    "last_seen": "2026-04-05T11:12:13.458012",
+    "interval": 1,
+    "next_review": "2026-04-06T11:12:13.458036",
+    "example": "Stop razzing your brother about his new haircut now."
+  },
+  {
+    "en": "Precious",
+    "ru": "драгоценный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "That precious diamond was worth more than the house."
+  },
+  {
+    "en": "adorable",
+    "ru": "обожаемый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The adorable puppies played together in the sunny yard."
+  },
+  {
+    "en": "Offer",
+    "ru": "Предлагать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She made an offer to buy the vintage motorcycle."
+  },
+  {
+    "en": "lead",
+    "ru": "вести",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The path will lead you directly to the beach."
+  },
+  {
+    "en": "Available",
+    "ru": "Доступный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "These tickets are available for purchase starting next week."
+  },
+  {
+    "en": "Cereal",
+    "ru": "хлопья",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I eat cereal with milk every single morning for breakfast."
+  },
+  {
+    "en": "Thrill",
+    "ru": "Трепет",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The roller coaster ride gave her an incredible thrill."
+  },
+  {
+    "en": "Warmth",
+    "ru": "Тепло",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The warmth of the fire kept everyone comfortable outside."
+  },
+  {
+    "en": "Purchased",
+    "ru": "Приобретенный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He purchased a new car after saving for years."
+  },
+  {
+    "en": "Attached",
+    "ru": "Прикрепленный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The file is attached to the email I sent."
+  },
+  {
+    "en": "Extend",
+    "ru": "расширять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We need to extend the deadline by two weeks."
+  },
+  {
+    "en": "Reboot",
+    "ru": "Перезагрузить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Let me reboot the computer to fix this problem."
+  },
+  {
+    "en": "whatever",
+    "ru": "что угодно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "You can wear whatever clothes you want to the party."
+  },
+  {
+    "en": "Sober",
+    "ru": "Трезвый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The sober driver safely got everyone home from dinner."
+  },
+  {
+    "en": "Fever",
+    "ru": "Лихорадка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "High fever kept the child home from school yesterday."
+  },
+  {
+    "en": "Appeal",
+    "ru": "Обращение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The movie's appeal attracted audiences from all age groups."
+  },
+  {
+    "en": "Wazoo",
+    "ru": "задница",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We made a ton of money, a whole wazoo."
+  },
+  {
+    "en": "Afford",
+    "ru": "позволять себе",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Can you afford the monthly payments on that house."
+  },
+  {
+    "en": "Dystopian",
+    "ru": "антиутопический",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The dystopian novel depicted a dark future society."
+  },
+  {
+    "en": "Immediately",
+    "ru": "Сразу",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She immediately called the doctor about her symptoms."
+  },
+  {
+    "en": "Certainly",
+    "ru": "Конечно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He will certainly attend the wedding next Saturday evening."
+  },
+  {
+    "en": "Deem",
+    "ru": "Считать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I deem this proposal worthy of our serious consideration."
+  },
+  {
+    "en": "Sacrifice",
+    "ru": "Жертва",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Sacrifice and hard work are necessary to achieve success."
+  },
+  {
+    "en": "Bearings",
+    "ru": "Подшипники",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The ship lost its bearings during the terrible storm."
+  },
+  {
+    "en": "Retrace",
+    "ru": "Проследить",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We retraced our steps to find the lost keys."
+  },
+  {
+    "en": "Coward",
+    "ru": "Трусливый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The coward refused to stand up for what's right."
+  },
+  {
+    "en": "Judgement",
+    "ru": "Суждение",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His judgement about people was usually quite accurate and fair."
+  },
+  {
+    "en": "Rank",
+    "ru": "Ранг",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The captain had the rank of major in service."
+  },
+  {
+    "en": "Route",
+    "ru": "Маршрут",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Take the scenic route along the coast to town."
+  },
+  {
+    "en": "Willfully",
+    "ru": "Умышленно",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He willfully ignored the warning signs posted everywhere clearly."
+  },
+  {
+    "en": "Offer up",
+    "ru": "Предлагают",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The chef will offer up his signature pasta dish."
+  },
+  {
+    "en": "Pagan",
+    "ru": "Языческий",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Ancient pagan cultures worshipped many gods in their temples."
+  },
+  {
+    "en": "Deity",
+    "ru": "Божество",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Many cultures believe in a supreme deity or god."
+  },
+  {
+    "en": "Abandoned",
+    "ru": "Заброшенный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The abandoned house had been empty for many years."
+  },
+  {
+    "en": "Pitch",
+    "ru": "подача",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "His pitch for the startup impressed all the investors."
+  },
+  {
+    "en": "Gutted",
+    "ru": "Опустошенный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I felt gutted when my best friend moved away."
+  },
+  {
+    "en": "Lean on",
+    "ru": "Опереться на",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "During crisis, we must lean on our closest friends."
+  },
+  {
+    "en": "Consider",
+    "ru": "Считать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please consider this job opportunity before making your decision."
+  },
+  {
+    "en": "Conceivable",
+    "ru": "Мыслимый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "It's conceivable that we might find life on other planets."
+  },
+  {
+    "en": "Further out",
+    "ru": "Дальше",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The cabin sits further out in the woods, away from town."
+  },
+  {
+    "en": "Lodge",
+    "ru": "Сторожка",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "We decided to lodge at the mountain cabin for the weekend."
+  },
+  {
+    "en": "sow",
+    "ru": "сеять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Farmers sow seeds in spring to grow crops for harvest."
+  },
+  {
+    "en": "slink",
+    "ru": "проскользнуть",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The cat would slink around the house at night quietly."
+  },
+  {
+    "en": "rerun",
+    "ru": "повторный показ",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "They decided to rerun the experiment with better equipment."
+  },
+  {
+    "en": "strive",
+    "ru": "стараться",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Athletes strive to win gold medals at the Olympics."
+  },
+  {
+    "en": "partake",
+    "ru": "отведать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Everyone was invited to partake in the Thanksgiving dinner."
+  },
+  {
+    "en": "stave",
+    "ru": "посох",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The government tried to stave off the economic recession."
+  },
+  {
+    "en": "sublet",
+    "ru": "субаренда",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She decided to sublet her apartment while traveling abroad."
+  },
+  {
+    "en": "miscast",
+    "ru": "неправильно подобранный",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "The director miscast the lead role with wrong actor."
+  },
+  {
+    "en": "mislay",
+    "ru": "затерять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "I mislaid my keys and searched for them everywhere."
+  },
+  {
+    "en": "brood over",
+    "ru": "выхаживать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He brooded over his mistake for several days afterward."
+  },
+  {
+    "en": "grouchy",
+    "ru": "ворчливый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "My grouchy neighbor complained about every little noise daily."
+  },
+  {
+    "en": "tingle",
+    "ru": "покалывание",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "My fingers tingle when they warm up after freezing."
+  },
+  {
+    "en": "incentive",
+    "ru": "стимул",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Money was the main incentive for taking that job."
+  },
+  {
+    "en": "livid",
+    "ru": "багровый",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "She was livid after discovering the scratch on car."
+  },
+  {
+    "en": "proofread",
+    "ru": "корректировать",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Please proofread this document before sending it out tomorrow."
+  },
+  {
+    "en": "plead",
+    "ru": "умолять",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "He decided to plead guilty to the minor charges."
+  },
+  {
+    "en": "Bonds",
+    "ru": "Узы",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Government bonds are considered safe long-term investment options."
+  },
+  {
+    "en": "current account surplus",
+    "ru": "профицит текущего счета",
+    "correct_count": 0,
+    "wrong_count": 0,
+    "last_seen": null,
+    "interval": 1,
+    "next_review": null,
+    "example": "Japan maintains a current account surplus through export strength."
+  }
+]
