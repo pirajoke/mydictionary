@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MAX Context Bot — Word Quiz Telegram Bot for learning English-Russian vocabulary."""
+"""MAX Context Bot — multilingual word quiz Telegram bot."""
 
 import asyncio
 import json
@@ -45,12 +45,14 @@ ALLOWED_USER = int(ALLOWED_USER)
 LANG_FILES = {
     "en": "words.json",
     "vi": "words_vi.json",
+    "ja": "words_ja.json",
 }
 LANG_LABELS = {
     "en": "🇬🇧 English",
     "vi": "🇻🇳 Tiếng Việt",
+    "ja": "🇯🇵 日本語",
 }
-LANG_FLAGS = {"en": "🇬🇧", "vi": "🇻🇳"}
+LANG_FLAGS = {"en": "🇬🇧", "vi": "🇻🇳", "ja": "🇯🇵"}
 
 def _words_path(lang: str) -> Path:
     """Return path to word file — DATA_DIR if exists there, else BASE_DIR (and copy on first write)."""
@@ -195,29 +197,33 @@ def get_example(idx: int) -> str:
     ex = W()[idx].get("example")
     return f"\n💡 _{ex}_" if ex else ""
 
-def get_ipa(idx: int) -> str:
-    """Return IPA transcription string if available (Vietnamese only)."""
-    ipa = W()[idx].get("ipa")
+def get_pronunciation(idx: int) -> str:
+    """Return kana reading or IPA transcription when available."""
+    word = W()[idx]
+    reading = word.get("reading")
+    if reading and reading != word["en"]:
+        return f" [{reading}]"
+    ipa = word.get("ipa")
     return f" {ipa}" if ipa else ""
 
 def format_word_label(idx: int) -> str:
-    """Format word with flag + IPA for display: 🇻🇳 *xin chào* /sin caw/"""
+    """Format a word with its language flag and optional pronunciation."""
     w = W()[idx]
     flag = LANG_FLAGS.get(PROGRESS["active_lang"], "")
-    ipa = get_ipa(idx)
-    return f"{flag} *{w['en']}*{ipa}"
+    pronunciation = get_pronunciation(idx)
+    return f"{flag} *{w['en']}*{pronunciation}"
 
 def get_lang_keyboard():
     """Return one-time ReplyKeyboardMarkup with language buttons."""
     return ReplyKeyboardMarkup(
-        [["🇬🇧 English", "🇻🇳 Tiếng Việt"]],
+        [[LANG_LABELS["en"], LANG_LABELS["vi"]], [LANG_LABELS["ja"]]],
         resize_keyboard=True,
         one_time_keyboard=True,
     )
 
-LANG_SWITCH_TEXTS = {"🇬🇧 English": "en", "🇻🇳 Tiếng Việt": "vi"}
+LANG_SWITCH_TEXTS = {label: code for code, label in LANG_LABELS.items()}
 
-FORVO_LANG_CODES = {"en": "en", "vi": "vi"}
+FORVO_LANG_CODES = {"en": "en", "vi": "vi", "ja": "ja"}
 
 def forvo_button(idx: int) -> InlineKeyboardButton:
     """Return an inline button linking to Forvo pronunciation page."""
@@ -873,8 +879,8 @@ def format_study_list(indices: list[int]) -> str:
     lines = []
     for n, idx in enumerate(indices, 1):
         w = W()[idx]
-        ipa = get_ipa(idx)
-        lines.append(f"{n}. *{w['en']}*{ipa} — {w['ru']}")
+        pronunciation = get_pronunciation(idx)
+        lines.append(f"{n}. *{w['en']}*{pronunciation} — {w['ru']}")
     return "\n".join(lines)
 
 
@@ -1261,7 +1267,7 @@ async def manual_polling():
 
     # Language switch via persistent keyboard buttons
     app.add_handler(MessageHandler(
-        filters.TEXT & filters.Regex(r"^(🇬🇧 English|🇻🇳 Tiếng Việt)$"),
+        filters.TEXT & filters.Regex(r"^(🇬🇧 English|🇻🇳 Tiếng Việt|🇯🇵 日本語)$"),
         handle_lang_switch
     ))
 

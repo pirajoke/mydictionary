@@ -14,6 +14,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 VOICES = {
     "vi": "vi-VN-HoaiMyNeural",
     "en": "en-US-AriaNeural",
+    "ja": "ja-JP-NanamiNeural",
 }
 
 
