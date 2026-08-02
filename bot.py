@@ -20,6 +20,12 @@ from telegram.ext import (
 )
 
 from tts import get_audio
+from vocabulary_topics import (
+    TOPIC_LABELS,
+    topic_counts,
+    topics_for_word,
+    transcription_for,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -198,20 +204,43 @@ def get_example(idx: int) -> str:
     return f"\n💡 _{ex}_" if ex else ""
 
 def get_pronunciation(idx: int) -> str:
-    """Return kana reading or IPA transcription when available."""
+    """Return pronunciation for a prompt without revealing the translation."""
     word = W()[idx]
-    reading = word.get("reading")
-    if reading and reading != word["en"]:
-        return f" [{reading}]"
-    ipa = word.get("ipa")
-    return f" {ipa}" if ipa else ""
+    transcription = transcription_for(word, PROGRESS["active_lang"])
+    if not transcription:
+        return ""
+    if PROGRESS["active_lang"] == "ja":
+        return f"\n🔤 {transcription}"
+    return f" {transcription}"
 
 def format_word_label(idx: int) -> str:
-    """Format a word with its language flag and optional pronunciation."""
+    """Format a question prompt without exposing the Russian answer."""
     w = W()[idx]
     flag = LANG_FLAGS.get(PROGRESS["active_lang"], "")
     pronunciation = get_pronunciation(idx)
     return f"{flag} *{w['en']}*{pronunciation}"
+
+
+def format_word_details(idx: int) -> str:
+    """Format a revealed card: Russian first, foreign word, transcription."""
+    word = W()[idx]
+    lang = PROGRESS["active_lang"]
+    flag = LANG_FLAGS.get(lang, "")
+    lines = [f"🇷🇺 *{word['ru']}*", f"{flag} *{word['en']}*"]
+    transcription = transcription_for(word, lang)
+    if transcription:
+        lines.append(f"🔤 {transcription}")
+    return "\n".join(lines)
+
+
+def format_plain_word_prompt(idx: int) -> str:
+    """Format a compact prompt for Telegram surfaces without Markdown."""
+    word = W()[idx]
+    lang = PROGRESS["active_lang"]
+    flag = LANG_FLAGS.get(lang, "")
+    transcription = transcription_for(word, lang)
+    suffix = f" ({transcription})" if transcription else ""
+    return f"{flag} {word['en']}{suffix}"
 
 def get_lang_keyboard():
     """Return one-time ReplyKeyboardMarkup with language buttons."""
@@ -446,10 +475,10 @@ async def quiz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if is_correct:
         xp, sb = mark_correct(idx)
-        text = f"✅ Correct! {format_word_label(idx)} = {word['ru']}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = f"✅ Правильно!\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
     else:
         xp, sb = mark_wrong(idx)
-        text = f"❌ Wrong! {format_word_label(idx)} = {word['ru']}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = f"❌ Ошибка!\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
 
     next_btn = InlineKeyboardMarkup([
         [forvo_button(idx), InlineKeyboardButton("Next ➡️", callback_data="next_quiz")]
@@ -486,11 +515,11 @@ async def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
 
     await query.edit_message_text(
-        f"{format_word_label(new_idx)}\n\nChoose the correct translation:",
+        f"{format_word_label(idx)}\n\nВыбери правильный перевод:",
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode="Markdown"
     )
-    await send_pronunciation(query.message.chat_id, new_idx, context)
+    await send_pronunciation(query.message.chat_id, idx, context)
 
 @auth
 async def cmd_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -542,9 +571,9 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Block type mode
     if context.user_data.get("block_typing"):
         if is_correct:
-            text = f"✅ {format_word_label(idx)} = {word['ru']}"
+            text = f"✅\n{format_word_details(idx)}"
         else:
-            text = f"❌ {format_word_label(idx)} = {word['ru']}\nТвой ответ: _{answer}_"
+            text = f"❌\n{format_word_details(idx)}\nТвой ответ: _{answer}_"
         await update.message.reply_text(text, parse_mode="Markdown")
         await send_pronunciation(update.message.chat_id, idx, context)
         context.user_data["type_idx"] = None
@@ -557,10 +586,10 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["type_idx"] = None
         if is_correct:
             xp, sb = mark_correct(idx)
-            text = f"✅ {format_word_label(idx)} = {word['ru']}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+            text = f"✅\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
         else:
             xp, sb = mark_wrong(idx)
-            text = f"❌ {format_word_label(idx)} = {word['ru']}\nТвой ответ: _{answer}_{get_example(idx)}\n{format_xp_line(xp, sb)}"
+            text = f"❌\n{format_word_details(idx)}\nТвой ответ: _{answer}_{get_example(idx)}\n{format_xp_line(xp, sb)}"
         next_btn = InlineKeyboardMarkup([
             [forvo_button(idx), InlineKeyboardButton("Дальше ➡️", callback_data="next_smart")]
         ])
@@ -571,10 +600,10 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Regular type mode
     if is_correct:
         xp, sb = mark_correct(idx)
-        text = f"✅ Correct! {format_word_label(idx)} = {word['ru']}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = f"✅ Правильно!\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
     else:
         xp, sb = mark_wrong(idx)
-        text = f"❌ Wrong! {format_word_label(idx)} = {word['ru']}\nYou typed: _{answer}_{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = f"❌ Ошибка!\n{format_word_details(idx)}\nТвой ответ: _{answer}_{get_example(idx)}\n{format_xp_line(xp, sb)}"
 
     context.user_data["type_idx"] = None
 
@@ -628,7 +657,7 @@ async def flash_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     ])
     await query.edit_message_text(
-        f"{format_word_label(idx)}\n🇷🇺 {word['ru']}",
+        format_word_details(idx),
         reply_markup=buttons,
         parse_mode="Markdown"
     )
@@ -685,7 +714,7 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         key=lambda w: w["wrong_count"] - w["correct_count"],
         reverse=True
     )[:10]
-    weak_text = "\n".join(f"  • {w['en']} — {w['ru']}" for w in weak) if weak else "  None yet!"
+    weak_text = "\n".join(f"  • {w['ru']} — {w['en']}" for w in weak) if weak else "  Пока нет"
 
     # Overdue
     now = datetime.now().isoformat()
@@ -727,7 +756,7 @@ async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["type_idx"] = idx
         context.user_data["smart_mode"] = True
         await update.message.reply_text(
-            f"✍️ *{word['en']}*\n\nНапиши перевод:",
+            f"✍️ {format_word_label(idx)}\n\nНапиши перевод:",
             parse_mode="Markdown"
         )
     else:
@@ -738,7 +767,7 @@ async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await update.message.reply_text(
-            f"❓ *{word['en']}*\n\nВыбери перевод:",
+            f"❓ {format_word_label(idx)}\n\nВыбери перевод:",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode="Markdown"
         )
@@ -754,10 +783,10 @@ async def smart_quiz_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if is_correct:
         xp, sb = mark_correct(idx)
-        text = f"✅ {format_word_label(idx)} = {word['ru']}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = f"✅\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
     else:
         xp, sb = mark_wrong(idx)
-        text = f"❌ {format_word_label(idx)} = {word['ru']}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = f"❌\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
 
     next_btn = InlineKeyboardMarkup([
         [forvo_button(idx), InlineKeyboardButton("Дальше ➡️", callback_data="next_smart")]
@@ -778,7 +807,7 @@ async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["type_idx"] = idx
         context.user_data["smart_mode"] = True
         await query.edit_message_text(
-            f"✍️ *{word['en']}*\n\nНапиши перевод:",
+            f"✍️ {format_word_label(idx)}\n\nНапиши перевод:",
             parse_mode="Markdown"
         )
     else:
@@ -789,7 +818,7 @@ async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await query.edit_message_text(
-            f"❓ *{word['en']}*\n\nВыбери перевод:",
+            f"❓ {format_word_label(idx)}\n\nВыбери перевод:",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode="Markdown"
         )
@@ -806,11 +835,11 @@ async def cmd_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     options, correct_pos = build_quiz_options(idx)
 
     msg = await update.message.reply_poll(
-        question=f"{LANG_FLAGS.get(PROGRESS['active_lang'], '')} {word['en']} — перевод?",
+        question=f"{format_plain_word_prompt(idx)} — перевод?",
         options=options,
         type="quiz",
         correct_option_id=correct_pos,
-        explanation=word.get("example", f"{word['en']} = {word['ru']}"),
+        explanation=word.get("example", f"{word['ru']} — {word['en']}"),
         open_period=15,
         is_anonymous=False,
     )
@@ -842,11 +871,11 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     opts, new_correct = build_quiz_options(new_idx)
     msg = await context.bot.send_poll(
         chat_id=answer.user.id,
-        question=f"{LANG_FLAGS.get(PROGRESS['active_lang'], '')} {new_word['en']} — перевод?",
+        question=f"{format_plain_word_prompt(new_idx)} — перевод?",
         options=opts,
         type="quiz",
         correct_option_id=new_correct,
-        explanation=new_word.get("example", f"{new_word['en']} = {new_word['ru']}"),
+        explanation=new_word.get("example", f"{new_word['ru']} — {new_word['en']}"),
         open_period=15,
         is_anonymous=False,
     )
@@ -856,11 +885,25 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 # Block learning mode (/learn)
 # ---------------------------------------------------------------------------
 
-def pick_block(size: int = 10) -> list[int]:
-    """Pick a block of words with SR priority: overdue → new → random."""
+def activate_block_language(user_data: dict):
+    """Keep block indices bound to the language used to create the block."""
+    lang = user_data.get("block_lang")
+    if lang in DICTS and PROGRESS["active_lang"] != lang:
+        PROGRESS["active_lang"] = lang
+        save_progress(PROGRESS)
+
+
+def pick_block(
+    size: int = 10,
+    topic: str | None = None,
+    exclude_indices: set[int] | None = None,
+) -> list[int]:
+    """Pick a themed block with SR priority: overdue → new → random."""
     now = datetime.now().isoformat()
     overdue, new_words, rest = [], [], []
     for i, w in enumerate(W()):
+        if topic and topic not in topics_for_word(w, PROGRESS["active_lang"]):
+            continue
         if w["next_review"] is None and w["correct_count"] == 0:
             new_words.append(i)
         elif w["next_review"] and w["next_review"] <= now:
@@ -872,6 +915,10 @@ def pick_block(size: int = 10) -> list[int]:
     random.shuffle(new_words)
     random.shuffle(rest)
     pool = overdue + new_words + rest
+    if exclude_indices:
+        fresh_pool = [idx for idx in pool if idx not in exclude_indices]
+        if len(fresh_pool) >= min(size, len(pool)):
+            pool = fresh_pool
     return pool[:size]
 
 
@@ -879,9 +926,54 @@ def format_study_list(indices: list[int]) -> str:
     lines = []
     for n, idx in enumerate(indices, 1):
         w = W()[idx]
-        pronunciation = get_pronunciation(idx)
-        lines.append(f"{n}. *{w['en']}*{pronunciation} — {w['ru']}")
+        lang = PROGRESS["active_lang"]
+        flag = LANG_FLAGS.get(lang, "")
+        lines.append(f"{n}. 🇷🇺 *{w['ru']}*")
+        lines.append(f"   {flag} *{w['en']}*")
+        transcription = transcription_for(w, lang)
+        if transcription:
+            lines.append(f"   🔤 {transcription}")
     return "\n".join(lines)
+
+
+def build_topic_keyboard(lang: str) -> InlineKeyboardMarkup:
+    """Build a topic picker for one language using actual dictionary counts."""
+    counts = topic_counts(DICTS[lang], lang)
+    rows = [[InlineKeyboardButton(
+        f"🌐 Все слова ({len(DICTS[lang])})",
+        callback_data=f"ltopic:{lang}:all",
+    )]]
+    topic_buttons = [
+        InlineKeyboardButton(
+            f"{TOPIC_LABELS[topic]} ({count})",
+            callback_data=f"ltopic:{lang}:{topic}",
+        )
+        for topic, count in counts.items()
+    ]
+    rows.extend([button] for button in topic_buttons)
+    return InlineKeyboardMarkup(rows)
+
+
+def topic_title(topic: str | None) -> str:
+    return TOPIC_LABELS.get(topic, "🌐 Все слова")
+
+
+def reset_block_state(user_data: dict, indices: list[int], lang: str, topic: str | None):
+    user_data["block_indices"] = indices
+    user_data["block_pos"] = 0
+    user_data["block_correct"] = 0
+    user_data["block_wrong"] = []
+    user_data["block_mode"] = None
+    user_data["block_typing"] = False
+    user_data["block_lang"] = lang
+    user_data["block_topic"] = topic
+
+
+def format_block_intro(indices: list[int], topic: str | None) -> str:
+    return (
+        f"📖 *{topic_title(topic)}*\n"
+        f"Запомни {len(indices)} слов:\n\n{format_study_list(indices)}"
+    )
 
 
 def build_study_buttons(indices: list[int]) -> InlineKeyboardMarkup:
@@ -900,21 +992,61 @@ def build_study_buttons(indices: list[int]) -> InlineKeyboardMarkup:
     if audio_row2:
         rows.append(audio_row2)
     rows.append(mode_row)
+    rows.append([InlineKeyboardButton("Темы 📚", callback_data="btopics")])
     return InlineKeyboardMarkup(rows)
 
 
 @auth
 async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    indices = pick_block()
-    ud = context.user_data
-    ud["block_indices"] = indices
-    ud["block_pos"] = 0
-    ud["block_correct"] = 0
-    ud["block_wrong"] = []
-    ud["block_mode"] = None
+    lang = PROGRESS["active_lang"]
+    context.user_data["block_lang"] = lang
+    await update.message.reply_text(
+        f"📚 *{LANG_LABELS[lang]}*\n\nВыбери тему:",
+        reply_markup=build_topic_keyboard(lang),
+        parse_mode="Markdown",
+    )
 
-    text = f"📖 *Блок — Запомни {len(indices)} слов:*\n\n{format_study_list(indices)}"
-    await update.message.reply_text(text, reply_markup=build_study_buttons(indices), parse_mode="Markdown")
+
+@auth
+async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start a block from the selected language and topic."""
+    query = update.callback_query
+    await query.answer()
+    _, lang, topic_id = query.data.split(":", 2)
+    if lang not in DICTS:
+        return
+    topic = None if topic_id == "all" else topic_id
+    if topic and topic not in TOPIC_LABELS:
+        return
+
+    PROGRESS["active_lang"] = lang
+    save_progress(PROGRESS)
+    indices = pick_block(topic=topic)
+    reset_block_state(context.user_data, indices, lang, topic)
+    if not indices:
+        await query.edit_message_text(
+            "В этой теме пока нет слов.",
+            reply_markup=build_topic_keyboard(lang),
+        )
+        return
+    await query.edit_message_text(
+        format_block_intro(indices, topic),
+        reply_markup=build_study_buttons(indices),
+        parse_mode="Markdown",
+    )
+
+
+@auth
+async def block_topics_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Return from a block to the topic picker."""
+    query = update.callback_query
+    await query.answer()
+    lang = context.user_data.get("block_lang", PROGRESS["active_lang"])
+    await query.edit_message_text(
+        f"📚 *{LANG_LABELS[lang]}*\n\nВыбери тему:",
+        reply_markup=build_topic_keyboard(lang),
+        parse_mode="Markdown",
+    )
 
 
 @auth
@@ -922,6 +1054,7 @@ async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Play pronunciation for a word from the study list."""
     query = update.callback_query
     await query.answer()
+    activate_block_language(context.user_data)
     idx = int(query.data.split(":")[1])
     await send_pronunciation(query.message.chat_id, idx, context)
 
@@ -932,6 +1065,7 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     mode = query.data.split(":")[1]
     ud = context.user_data
+    activate_block_language(ud)
     ud["block_mode"] = mode
     ud["block_pos"] = 0
     ud["block_correct"] = 0
@@ -941,6 +1075,7 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
     ud = context.user_data
+    activate_block_language(ud)
     indices = ud["block_indices"]
     pos = ud["block_pos"]
 
@@ -1002,6 +1137,7 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
 async def block_advance(query_or_msg, context: ContextTypes.DEFAULT_TYPE, idx: int, correct: bool):
     """Record answer and advance to next word."""
     ud = context.user_data
+    activate_block_language(ud)
     if correct:
         mark_correct(idx)
         ud["block_correct"] += 1
@@ -1029,6 +1165,7 @@ async def block_advance(query_or_msg, context: ContextTypes.DEFAULT_TYPE, idx: i
 async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
     """Send next block question as a new message (for type mode)."""
     ud = context.user_data
+    activate_block_language(ud)
     indices = ud["block_indices"]
     pos = ud["block_pos"]
 
@@ -1100,7 +1237,12 @@ def format_block_summary(ud) -> str:
         text += "\n\n❌ Ошибки:"
         for idx in wrong_indices:
             w = W()[idx]
-            text += f"\n  • *{w['en']}* — {w['ru']}"
+            lang = PROGRESS["active_lang"]
+            text += f"\n  • 🇷🇺 *{w['ru']}*"
+            text += f"\n    {LANG_FLAGS.get(lang, '')} *{w['en']}*"
+            transcription = transcription_for(w, lang)
+            if transcription:
+                text += f"\n    🔤 {transcription}"
     else:
         text += "\n\n🎉 Без ошибок!"
 
@@ -1115,30 +1257,38 @@ def format_block_summary(ud) -> str:
 
 async def block_summary(query, context: ContextTypes.DEFAULT_TYPE):
     ud = context.user_data
+    activate_block_language(ud)
     text = format_block_summary(ud)
-    buttons = []
+    rows = []
     if ud["block_wrong"]:
-        buttons.append(InlineKeyboardButton("Повторить ошибки 🔄", callback_data="bretry"))
-    buttons.append(InlineKeyboardButton("Следующий блок ➡️", callback_data="bnext"))
+        rows.append([InlineKeyboardButton("Повторить ошибки 🔄", callback_data="bretry")])
+    rows.append([
+        InlineKeyboardButton("Следующий блок ➡️", callback_data="bnext"),
+        InlineKeyboardButton("Темы 📚", callback_data="btopics"),
+    ])
     await query.edit_message_text(
         text,
-        reply_markup=InlineKeyboardMarkup([buttons]),
+        reply_markup=InlineKeyboardMarkup(rows),
         parse_mode="Markdown"
     )
 
 
 async def block_summary_msg(message, context: ContextTypes.DEFAULT_TYPE):
     ud = context.user_data
+    activate_block_language(ud)
     text = format_block_summary(ud)
-    buttons = []
+    rows = []
     if ud["block_wrong"]:
-        buttons.append(InlineKeyboardButton("Повторить ошибки 🔄", callback_data="bretry"))
-    buttons.append(InlineKeyboardButton("Следующий блок ➡️", callback_data="bnext"))
+        rows.append([InlineKeyboardButton("Повторить ошибки 🔄", callback_data="bretry")])
+    rows.append([
+        InlineKeyboardButton("Следующий блок ➡️", callback_data="bnext"),
+        InlineKeyboardButton("Темы 📚", callback_data="btopics"),
+    ])
     ud["block_typing"] = False
     ud["type_idx"] = None
     await message.reply_text(
         text,
-        reply_markup=InlineKeyboardMarkup([buttons]),
+        reply_markup=InlineKeyboardMarkup(rows),
         parse_mode="Markdown"
     )
 
@@ -1157,6 +1307,7 @@ async def block_quiz_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    activate_block_language(context.user_data)
     idx = int(query.data.split(":")[1])
     word = W()[idx]
     buttons = InlineKeyboardMarkup([
@@ -1167,7 +1318,7 @@ async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
         ]
     ])
     await query.edit_message_text(
-        f"{format_word_label(idx)}\n🇷🇺 {word['ru']}",
+        format_word_details(idx),
         reply_markup=buttons,
         parse_mode="Markdown"
     )
@@ -1189,6 +1340,7 @@ async def block_retry_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     ud = context.user_data
+    activate_block_language(ud)
     ud["block_indices"] = list(ud["block_wrong"])
     ud["block_pos"] = 0
     ud["block_correct"] = 0
@@ -1200,17 +1352,17 @@ async def block_retry_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    indices = pick_block()
     ud = context.user_data
-    ud["block_indices"] = indices
-    ud["block_pos"] = 0
-    ud["block_correct"] = 0
-    ud["block_wrong"] = []
-    ud["block_mode"] = None
-    ud["block_typing"] = False
-
-    text = f"📖 *Блок — Запомни {len(indices)} слов:*\n\n{format_study_list(indices)}"
-    await query.edit_message_text(text, reply_markup=build_study_buttons(indices), parse_mode="Markdown")
+    activate_block_language(ud)
+    topic = ud.get("block_topic")
+    previous_indices = set(ud.get("block_indices", []))
+    indices = pick_block(topic=topic, exclude_indices=previous_indices)
+    reset_block_state(ud, indices, PROGRESS["active_lang"], topic)
+    await query.edit_message_text(
+        format_block_intro(indices, topic),
+        reply_markup=build_study_buttons(indices),
+        parse_mode="Markdown",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1244,6 +1396,8 @@ async def manual_polling():
     app.add_handler(PollAnswerHandler(poll_answer_handler))
 
     # Block learning callbacks
+    app.add_handler(CallbackQueryHandler(learn_topic_cb, pattern=r"^ltopic:"))
+    app.add_handler(CallbackQueryHandler(block_topics_cb, pattern=r"^btopics$"))
     app.add_handler(CallbackQueryHandler(learn_play_cb, pattern=r"^lplay:"))
     app.add_handler(CallbackQueryHandler(block_mode_cb, pattern=r"^bmode:"))
     app.add_handler(CallbackQueryHandler(block_quiz_cb, pattern=r"^bquiz:"))
