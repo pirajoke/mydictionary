@@ -468,6 +468,7 @@ async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def quiz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
 
     parts = query.data.split(":", 3)
     idx = int(parts[1])
@@ -491,6 +492,7 @@ async def quiz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
 
     idx = pick_word()
     word = W()[idx]
@@ -620,6 +622,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def next_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
 
     idx = pick_word()
     context.user_data["type_idx"] = idx
@@ -650,6 +653,7 @@ async def cmd_flash(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def flash_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
     idx = int(query.data.split(":")[1])
     word = W()[idx]
 
@@ -671,6 +675,7 @@ async def flash_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def flash_knew(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
     idx = int(query.data.split(":")[1])
     xp, sb = mark_correct(idx)
 
@@ -689,6 +694,7 @@ async def flash_knew(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def flash_didnt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
     idx = int(query.data.split(":")[1])
     xp, sb = mark_wrong(idx)
 
@@ -781,6 +787,7 @@ async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def smart_quiz_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
     parts = query.data.split(":")
     idx = int(parts[1])
     is_correct = parts[2] == "1"
@@ -803,6 +810,7 @@ async def smart_quiz_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
 
     idx = pick_word()
     mode = adaptive_mode(idx)
@@ -862,6 +870,7 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     if poll_data is None:
         return
 
+    invalidate_block_session(context.user_data)
     idx, correct_pos = poll_data
 
     if answer.option_ids and answer.option_ids[0] == correct_pos:

@@ -155,6 +155,97 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class GlobalCallbackIsolationTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        bot.PROGRESS["active_lang"] = "ja"
+        self.indices = list(range(10))
+
+    def make_active_block(self):
+        user_data = {}
+        bot.reset_block_state(user_data, self.indices, "ja", "food")
+        bot.start_block_attempt(user_data, "type")
+        user_data["block_typing"] = True
+        user_data["type_idx"] = self.indices[0]
+        return user_data
+
+    def make_callback_update(self, data, user_data):
+        query = SimpleNamespace(
+            data=data,
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=SimpleNamespace(chat_id=123),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=1),
+        )
+        context = SimpleNamespace(user_data=user_data, bot=SimpleNamespace())
+        return update, context, query
+
+    async def test_global_callbacks_exit_active_block(self):
+        cases = [
+            ("quiz answer", bot.quiz_callback, "quiz:0:1:answer"),
+            ("next quiz", bot.next_quiz, "next_quiz"),
+            ("next type", bot.next_type, "next_type"),
+            ("show flashcard", bot.flash_show, "flash_show:0"),
+            ("known flashcard", bot.flash_knew, "flash_knew:0"),
+            ("missed flashcard", bot.flash_didnt, "flash_didnt:0"),
+            ("smart answer", bot.smart_quiz_cb, "smart:0:1"),
+            ("next smart", bot.next_smart_cb, "next_smart"),
+        ]
+
+        for label, handler, callback_data in cases:
+            with self.subTest(callback=label):
+                user_data = self.make_active_block()
+                update, context, query = self.make_callback_update(
+                    callback_data, user_data
+                )
+                with (
+                    patch.object(bot, "send_pronunciation", new=AsyncMock()),
+                    patch.object(bot, "mark_correct", return_value=(10, 0)),
+                    patch.object(bot, "mark_wrong", return_value=(2, 0)),
+                    patch.object(bot, "pick_word", return_value=1),
+                    patch.object(bot, "adaptive_mode", return_value="quiz"),
+                ):
+                    await handler(update, context)
+
+                query.answer.assert_awaited_once_with()
+                self.assertIsNone(user_data["block_session"])
+                self.assertIsNone(user_data["block_mode"])
+                self.assertFalse(user_data["block_typing"])
+
+                if handler is bot.next_type:
+                    self.assertEqual(user_data["type_idx"], 1)
+
+    async def test_poll_answer_exits_active_block(self):
+        user_data = self.make_active_block()
+        answer = SimpleNamespace(
+            user=SimpleNamespace(id=1),
+            poll_id="poll-1",
+            option_ids=[0],
+        )
+        update = SimpleNamespace(poll_answer=answer)
+        send_poll = AsyncMock(
+            return_value=SimpleNamespace(poll=SimpleNamespace(id="poll-2"))
+        )
+        context = SimpleNamespace(
+            user_data=user_data,
+            bot_data={"poll_map": {"poll-1": (0, 0)}},
+            bot=SimpleNamespace(send_poll=send_poll),
+        )
+
+        with (
+            patch.object(bot, "mark_correct"),
+            patch.object(bot, "pick_word", return_value=1),
+            patch.object(bot, "build_quiz_options", return_value=(["a", "b"], 0)),
+        ):
+            await bot.poll_answer_handler(update, context)
+
+        self.assertIsNone(user_data["block_session"])
+        self.assertIsNone(user_data["block_mode"])
+        self.assertFalse(user_data["block_typing"])
+
+
 class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         bot.PROGRESS["active_lang"] = "ja"
