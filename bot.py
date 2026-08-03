@@ -4,6 +4,7 @@
 import asyncio
 import json
 import random
+import secrets
 import logging
 import os
 import time
@@ -373,12 +374,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"📚 *MAX Context Bot*\n"
         f"Словарь: {LANG_LABELS[PROGRESS['active_lang']]}\n\n"
-        "/learn — Блок 10 слов\n"
-        "/smart — Адаптивный режим\n"
-        "/poll — Нативный квиз (таймер)\n"
-        "/quiz — Тест с вариантами\n"
-        "/type — Написать перевод\n"
-        "/flash — Карточки\n"
+        "/learn — Блок 10 слов и тест блока\n"
+        "/smart — Весь словарь: адаптивно\n"
+        "/poll — Весь словарь: квиз с таймером\n"
+        "/quiz — Весь словарь: варианты\n"
+        "/type — Весь словарь: написать перевод\n"
+        "/flash — Весь словарь: карточки\n"
         "/stats — Статистика\n"
         "/lang — Сменить язык",
         parse_mode="Markdown",
@@ -390,6 +391,7 @@ cmd_help = cmd_start
 @auth
 async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Switch active language."""
+    invalidate_block_session(context.user_data)
     current = PROGRESS["active_lang"]
     buttons = []
     for lang_code, label in LANG_LABELS.items():
@@ -410,6 +412,7 @@ async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    invalidate_block_session(context.user_data)
     lang = query.data.split(":")[1]
     PROGRESS["active_lang"] = lang
     save_progress(PROGRESS)
@@ -428,6 +431,7 @@ async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start a quiz question with 4 options."""
+    invalidate_block_session(context.user_data)
     idx = pick_word()
     word = W()[idx]
 
@@ -521,6 +525,7 @@ async def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def cmd_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start type-in mode."""
+    invalidate_block_session(context.user_data)
     idx = pick_word()
     context.user_data["type_idx"] = idx
     word = W()[idx]
@@ -537,6 +542,7 @@ async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE)
     lang = LANG_SWITCH_TEXTS.get(text)
     if lang is None:
         return
+    invalidate_block_session(context.user_data)
     PROGRESS["active_lang"] = lang
     save_progress(PROGRESS)
     total = len(DICTS[lang])
@@ -627,6 +633,7 @@ async def next_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def cmd_flash(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Flashcard mode."""
+    invalidate_block_session(context.user_data)
     idx = pick_word()
     word = W()[idx]
     btn = InlineKeyboardMarkup(
@@ -745,6 +752,7 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Adaptive mode: weak words → quiz, strong words → type."""
+    invalidate_block_session(context.user_data)
     idx = pick_word()
     mode = adaptive_mode(idx)
     word = W()[idx]
@@ -827,6 +835,7 @@ async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def cmd_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a native Telegram quiz poll with 15s timer."""
+    invalidate_block_session(context.user_data)
     idx = pick_word()
     word = W()[idx]
     options, correct_pos = build_quiz_options(idx)
@@ -950,15 +959,121 @@ def topic_title(topic: str | None) -> str:
     return TOPIC_LABELS.get(topic, "🌐 Все слова")
 
 
+BLOCK_STALE_TEXT = "Эта кнопка устарела. Используй последнее сообщение блока."
+BLOCK_MODES = {"quiz", "type", "flash"}
+
+
+def new_block_session_id() -> str:
+    """Return a short token that binds Telegram callbacks to one block state."""
+    return secrets.token_hex(4)
+
+
+def invalidate_block_session(user_data: dict):
+    """Leave block mode and make every previously rendered block button stale."""
+    user_data["block_session"] = None
+    user_data["block_mode"] = None
+    user_data["block_typing"] = False
+    user_data["type_idx"] = None
+    user_data["smart_mode"] = False
+
+
 def reset_block_state(user_data: dict, indices: list[int], lang: str, topic: str | None):
-    user_data["block_indices"] = indices
+    user_data["block_all_indices"] = list(indices)
+    user_data["block_indices"] = list(indices)
     user_data["block_pos"] = 0
     user_data["block_correct"] = 0
     user_data["block_wrong"] = []
     user_data["block_mode"] = None
     user_data["block_typing"] = False
+    user_data["smart_mode"] = False
     user_data["block_lang"] = lang
     user_data["block_topic"] = topic
+    user_data["block_session"] = new_block_session_id()
+
+
+def start_block_attempt(user_data: dict, mode: str, indices: list[int] | None = None):
+    """Start a fresh attempt and invalidate buttons from the previous block state."""
+    attempt_indices = indices if indices is not None else user_data["block_all_indices"]
+    user_data["block_indices"] = list(attempt_indices)
+    user_data["block_pos"] = 0
+    user_data["block_correct"] = 0
+    user_data["block_wrong"] = []
+    user_data["block_mode"] = mode
+    user_data["block_typing"] = False
+    user_data["type_idx"] = None
+    user_data["smart_mode"] = False
+    user_data["block_session"] = new_block_session_id()
+
+
+def current_block_index(user_data: dict) -> int | None:
+    indices = user_data.get("block_indices", [])
+    pos = user_data.get("block_pos", 0)
+    if not 0 <= pos < len(indices):
+        return None
+    return indices[pos]
+
+
+def block_is_complete(user_data: dict) -> bool:
+    indices = user_data.get("block_indices", [])
+    return bool(indices) and user_data.get("block_pos", 0) >= len(indices)
+
+
+async def reject_block_callback(query):
+    await query.answer(BLOCK_STALE_TEXT, show_alert=True)
+
+
+async def validate_block_callback(
+    query,
+    user_data: dict,
+    session_id: str,
+    *,
+    mode: str | None = None,
+    current_idx: int | None = None,
+    member_idx: int | None = None,
+    require_complete: bool = False,
+) -> bool:
+    """Answer a callback and reject buttons that no longer match active block state."""
+    valid = bool(session_id) and session_id == user_data.get("block_session")
+    if mode is not None:
+        valid = valid and user_data.get("block_mode") == mode
+    if current_idx is not None:
+        valid = valid and current_block_index(user_data) == current_idx
+    if member_idx is not None:
+        valid = valid and member_idx in user_data.get("block_all_indices", [])
+    if require_complete:
+        valid = valid and block_is_complete(user_data)
+
+    if not valid:
+        await reject_block_callback(query)
+        return False
+
+    await query.answer()
+    return True
+
+
+def build_block_quiz_options(indices: list[int], idx: int) -> list[str]:
+    """Build quiz options exclusively from the active block attempt."""
+    correct_ru = W()[idx]["ru"]
+    distractors = list({
+        W()[candidate]["ru"]
+        for candidate in indices
+        if candidate != idx and W()[candidate]["ru"] != correct_ru
+    })
+    random.shuffle(distractors)
+    options = distractors[:3] + [correct_ru]
+    random.shuffle(options)
+    return options
+
+
+def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup:
+    correct_ru = W()[idx]["ru"]
+    session_id = user_data["block_session"]
+    buttons = []
+    for option in build_block_quiz_options(user_data["block_indices"], idx):
+        is_right = "1" if option == correct_ru else "0"
+        callback_data = f"bquiz:{session_id}:{idx}:{is_right}"
+        buttons.append([InlineKeyboardButton(option, callback_data=callback_data)])
+    return InlineKeyboardMarkup(buttons)
 
 
 def format_block_intro(indices: list[int], topic: str | None) -> str:
@@ -968,28 +1083,29 @@ def format_block_intro(indices: list[int], topic: str | None) -> str:
     )
 
 
-def build_study_buttons(indices: list[int]) -> InlineKeyboardMarkup:
+def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMarkup:
     """Build inline keyboard with 🔊 buttons for each word + mode buttons."""
     # Audio buttons in rows of 5
-    audio_row1 = [InlineKeyboardButton(f"🔊 {n}", callback_data=f"lplay:{idx}")
+    audio_row1 = [InlineKeyboardButton(f"🔊 {n}", callback_data=f"lplay:{session_id}:{idx}")
                   for n, idx in enumerate(indices[:5], 1)]
-    audio_row2 = [InlineKeyboardButton(f"🔊 {n}", callback_data=f"lplay:{idx}")
+    audio_row2 = [InlineKeyboardButton(f"🔊 {n}", callback_data=f"lplay:{session_id}:{idx}")
                   for n, idx in enumerate(indices[5:], 6)]
     mode_row = [
-        InlineKeyboardButton("Quiz ❓", callback_data="bmode:quiz"),
-        InlineKeyboardButton("Type ✍️", callback_data="bmode:type"),
-        InlineKeyboardButton("Flash 👁", callback_data="bmode:flash"),
+        InlineKeyboardButton("Тест блока ❓", callback_data=f"bmode:{session_id}:quiz"),
+        InlineKeyboardButton("Ввод ✍️", callback_data=f"bmode:{session_id}:type"),
+        InlineKeyboardButton("Карточки 👁", callback_data=f"bmode:{session_id}:flash"),
     ]
     rows = [audio_row1]
     if audio_row2:
         rows.append(audio_row2)
     rows.append(mode_row)
-    rows.append([InlineKeyboardButton("Темы 📚", callback_data="btopics")])
+    rows.append([InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}")])
     return InlineKeyboardMarkup(rows)
 
 
 @auth
 async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    invalidate_block_session(context.user_data)
     lang = PROGRESS["active_lang"]
     context.user_data["block_lang"] = lang
     await update.message.reply_text(
@@ -1023,7 +1139,7 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     await query.edit_message_text(
         format_block_intro(indices, topic),
-        reply_markup=build_study_buttons(indices),
+        reply_markup=build_study_buttons(indices, context.user_data["block_session"]),
         parse_mode="Markdown",
     )
 
@@ -1032,8 +1148,14 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def block_topics_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Return from a block to the topic picker."""
     query = update.callback_query
-    await query.answer()
+    parts = query.data.split(":")
+    if len(parts) != 2:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(query, context.user_data, parts[1]):
+        return
     lang = context.user_data.get("block_lang", PROGRESS["active_lang"])
+    invalidate_block_session(context.user_data)
     await query.edit_message_text(
         f"📚 *{LANG_LABELS[lang]}*\n\nВыбери тему:",
         reply_markup=build_topic_keyboard(lang),
@@ -1045,9 +1167,17 @@ async def block_topics_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send the selected word card, then play its pronunciation."""
     query = update.callback_query
-    await query.answer()
+    try:
+        _, session_id, idx_text = query.data.split(":")
+        idx = int(idx_text)
+    except ValueError:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(
+        query, context.user_data, session_id, member_idx=idx
+    ):
+        return
     activate_block_language(context.user_data)
-    idx = int(query.data.split(":")[1])
     await context.bot.send_message(
         chat_id=query.message.chat_id,
         text=format_word_details(idx),
@@ -1059,14 +1189,19 @@ async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-    mode = query.data.split(":")[1]
+    try:
+        _, session_id, mode = query.data.split(":")
+    except ValueError:
+        await reject_block_callback(query)
+        return
     ud = context.user_data
+    if mode not in BLOCK_MODES:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(query, ud, session_id):
+        return
     activate_block_language(ud)
-    ud["block_mode"] = mode
-    ud["block_pos"] = 0
-    ud["block_correct"] = 0
-    ud["block_wrong"] = []
+    start_block_attempt(ud, mode)
     await block_send_question(query, context)
 
 
@@ -1081,31 +1216,13 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
         return
 
     idx = indices[pos]
-    word = W()[idx]
     mode = ud["block_mode"]
     progress_text = f"({pos + 1}/{len(indices)})"
 
     if mode == "quiz":
-        correct_ru = word["ru"]
-        distractors = set()
-        attempts = 0
-        while len(distractors) < 3 and attempts < 50:
-            r = random.choice(W())
-            if r["ru"] != correct_ru:
-                distractors.add(r["ru"])
-            attempts += 1
-        options = list(distractors) + [correct_ru]
-        random.shuffle(options)
-
-        buttons = []
-        for opt in options:
-            is_right = "1" if opt == correct_ru else "0"
-            cb = f"bquiz:{idx}:{is_right}"
-            buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
-
         await query.edit_message_text(
             f"{progress_text} {format_word_label(idx)}\n\nВыбери перевод:",
-            reply_markup=InlineKeyboardMarkup(buttons),
+            reply_markup=build_block_quiz_keyboard(ud, idx),
             parse_mode="Markdown"
         )
         await send_pronunciation(query.message.chat_id, idx, context)
@@ -1120,8 +1237,12 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
         await send_pronunciation(query.message.chat_id, idx, context)
 
     elif mode == "flash":
+        session_id = ud["block_session"]
         btn = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Показать 👁", callback_data=f"bflash_show:{idx}")]]
+            [[InlineKeyboardButton(
+                "Показать 👁",
+                callback_data=f"bflash_show:{session_id}:{idx}",
+            )]]
         )
         await query.edit_message_text(
             f"{progress_text} {format_word_label(idx)}",
@@ -1135,6 +1256,8 @@ async def block_advance(query_or_msg, context: ContextTypes.DEFAULT_TYPE, idx: i
     """Record answer and advance to next word."""
     ud = context.user_data
     activate_block_language(ud)
+    if current_block_index(ud) != idx:
+        return False
     if correct:
         mark_correct(idx)
         ud["block_correct"] += 1
@@ -1157,6 +1280,7 @@ async def block_advance(query_or_msg, context: ContextTypes.DEFAULT_TYPE, idx: i
         await block_send_question(query_or_msg, context)
     else:
         await block_send_question_msg(query_or_msg, context)
+    return True
 
 
 async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
@@ -1171,29 +1295,13 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
         return
 
     idx = indices[pos]
-    word = W()[idx]
     mode = ud["block_mode"]
     progress_text = f"({pos + 1}/{len(indices)})"
 
     if mode == "quiz":
-        correct_ru = word["ru"]
-        distractors = set()
-        attempts = 0
-        while len(distractors) < 3 and attempts < 50:
-            r = random.choice(W())
-            if r["ru"] != correct_ru:
-                distractors.add(r["ru"])
-            attempts += 1
-        options = list(distractors) + [correct_ru]
-        random.shuffle(options)
-        buttons = []
-        for opt in options:
-            is_right = "1" if opt == correct_ru else "0"
-            cb = f"bquiz:{idx}:{is_right}"
-            buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await message.reply_text(
             f"{progress_text} {format_word_label(idx)}\n\nВыбери перевод:",
-            reply_markup=InlineKeyboardMarkup(buttons),
+            reply_markup=build_block_quiz_keyboard(ud, idx),
             parse_mode="Markdown"
         )
         await send_pronunciation(message.chat_id, idx, context)
@@ -1208,8 +1316,12 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
         await send_pronunciation(message.chat_id, idx, context)
 
     elif mode == "flash":
+        session_id = ud["block_session"]
         btn = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Показать 👁", callback_data=f"bflash_show:{idx}")]]
+            [[InlineKeyboardButton(
+                "Показать 👁",
+                callback_data=f"bflash_show:{session_id}:{idx}",
+            )]]
         )
         await message.reply_text(
             f"{progress_text} {format_word_label(idx)}",
@@ -1257,11 +1369,14 @@ async def block_summary(query, context: ContextTypes.DEFAULT_TYPE):
     activate_block_language(ud)
     text = format_block_summary(ud)
     rows = []
+    session_id = ud["block_session"]
     if ud["block_wrong"]:
-        rows.append([InlineKeyboardButton("Повторить ошибки 🔄", callback_data="bretry")])
+        rows.append([InlineKeyboardButton(
+            "Повторить ошибки 🔄", callback_data=f"bretry:{session_id}"
+        )])
     rows.append([
-        InlineKeyboardButton("Следующий блок ➡️", callback_data="bnext"),
-        InlineKeyboardButton("Темы 📚", callback_data="btopics"),
+        InlineKeyboardButton("Следующий блок ➡️", callback_data=f"bnext:{session_id}"),
+        InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}"),
     ])
     await query.edit_message_text(
         text,
@@ -1275,11 +1390,14 @@ async def block_summary_msg(message, context: ContextTypes.DEFAULT_TYPE):
     activate_block_language(ud)
     text = format_block_summary(ud)
     rows = []
+    session_id = ud["block_session"]
     if ud["block_wrong"]:
-        rows.append([InlineKeyboardButton("Повторить ошибки 🔄", callback_data="bretry")])
+        rows.append([InlineKeyboardButton(
+            "Повторить ошибки 🔄", callback_data=f"bretry:{session_id}"
+        )])
     rows.append([
-        InlineKeyboardButton("Следующий блок ➡️", callback_data="bnext"),
-        InlineKeyboardButton("Темы 📚", callback_data="btopics"),
+        InlineKeyboardButton("Следующий блок ➡️", callback_data=f"bnext:{session_id}"),
+        InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}"),
     ])
     ud["block_typing"] = False
     ud["type_idx"] = None
@@ -1293,25 +1411,54 @@ async def block_summary_msg(message, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def block_quiz_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-    parts = query.data.split(":")
-    idx = int(parts[1])
-    correct = parts[2] == "1"
+    try:
+        _, session_id, idx_text, correct_text = query.data.split(":")
+        idx = int(idx_text)
+    except ValueError:
+        await reject_block_callback(query)
+        return
+    if correct_text not in {"0", "1"}:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(
+        query,
+        context.user_data,
+        session_id,
+        mode="quiz",
+        current_idx=idx,
+    ):
+        return
+    correct = correct_text == "1"
     await block_advance(query, context, idx, correct)
 
 
 @auth
 async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    try:
+        _, session_id, idx_text = query.data.split(":")
+        idx = int(idx_text)
+    except ValueError:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(
+        query,
+        context.user_data,
+        session_id,
+        mode="flash",
+        current_idx=idx,
+    ):
+        return
     activate_block_language(context.user_data)
-    idx = int(query.data.split(":")[1])
-    word = W()[idx]
     buttons = InlineKeyboardMarkup([
         [forvo_button(idx)],
         [
-            InlineKeyboardButton("Знал ✅", callback_data=f"bflash_knew:{idx}"),
-            InlineKeyboardButton("Не знал ❌", callback_data=f"bflash_didnt:{idx}"),
+            InlineKeyboardButton(
+                "Знал ✅", callback_data=f"bflash_knew:{session_id}:{idx}"
+            ),
+            InlineKeyboardButton(
+                "Не знал ❌", callback_data=f"bflash_didnt:{session_id}:{idx}"
+            ),
         ]
     ])
     await query.edit_message_text(
@@ -1325,39 +1472,65 @@ async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
 @auth
 async def block_flash_rate_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     data = query.data
-    idx = int(data.split(":")[1])
-    correct = data.startswith("bflash_knew")
+    try:
+        action, session_id, idx_text = data.split(":")
+        idx = int(idx_text)
+    except ValueError:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(
+        query,
+        context.user_data,
+        session_id,
+        mode="flash",
+        current_idx=idx,
+    ):
+        return
+    correct = action == "bflash_knew"
     await block_advance(query, context, idx, correct)
 
 
 @auth
 async def block_retry_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     ud = context.user_data
+    parts = query.data.split(":")
+    if len(parts) != 2:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(
+        query, ud, parts[1], require_complete=True
+    ):
+        return
     activate_block_language(ud)
-    ud["block_indices"] = list(ud["block_wrong"])
-    ud["block_pos"] = 0
-    ud["block_correct"] = 0
-    ud["block_wrong"] = []
+    wrong_indices = list(ud["block_wrong"])
+    if not wrong_indices:
+        return
+    start_block_attempt(ud, ud["block_mode"], wrong_indices)
     await block_send_question(query, context)
 
 
 @auth
 async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     ud = context.user_data
+    parts = query.data.split(":")
+    if len(parts) != 2:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(
+        query, ud, parts[1], require_complete=True
+    ):
+        return
     activate_block_language(ud)
     topic = ud.get("block_topic")
-    previous_indices = set(ud.get("block_indices", []))
+    previous_indices = set(ud.get("block_all_indices", []))
     indices = pick_block(topic=topic, exclude_indices=previous_indices)
     reset_block_state(ud, indices, PROGRESS["active_lang"], topic)
     await query.edit_message_text(
         format_block_intro(indices, topic),
-        reply_markup=build_study_buttons(indices),
+        reply_markup=build_study_buttons(indices, ud["block_session"]),
         parse_mode="Markdown",
     )
 
@@ -1394,15 +1567,15 @@ async def manual_polling():
 
     # Block learning callbacks
     app.add_handler(CallbackQueryHandler(learn_topic_cb, pattern=r"^ltopic:"))
-    app.add_handler(CallbackQueryHandler(block_topics_cb, pattern=r"^btopics$"))
+    app.add_handler(CallbackQueryHandler(block_topics_cb, pattern=r"^btopics(?::|$)"))
     app.add_handler(CallbackQueryHandler(learn_play_cb, pattern=r"^lplay:"))
     app.add_handler(CallbackQueryHandler(block_mode_cb, pattern=r"^bmode:"))
     app.add_handler(CallbackQueryHandler(block_quiz_cb, pattern=r"^bquiz:"))
     app.add_handler(CallbackQueryHandler(block_flash_show_cb, pattern=r"^bflash_show:"))
     app.add_handler(CallbackQueryHandler(block_flash_rate_cb, pattern=r"^bflash_knew:"))
     app.add_handler(CallbackQueryHandler(block_flash_rate_cb, pattern=r"^bflash_didnt:"))
-    app.add_handler(CallbackQueryHandler(block_retry_cb, pattern=r"^bretry$"))
-    app.add_handler(CallbackQueryHandler(block_next_cb, pattern=r"^bnext$"))
+    app.add_handler(CallbackQueryHandler(block_retry_cb, pattern=r"^bretry(?::|$)"))
+    app.add_handler(CallbackQueryHandler(block_next_cb, pattern=r"^bnext(?::|$)"))
 
     # Quiz callbacks
     app.add_handler(CallbackQueryHandler(quiz_callback, pattern=r"^quiz:"))
@@ -1431,12 +1604,12 @@ async def manual_polling():
     await app.bot.delete_webhook(drop_pending_updates=True)
     await app.bot.set_my_commands([
         BotCommand("start", "Главное меню"),
-        BotCommand("learn", "Блок 10 слов"),
-        BotCommand("smart", "Адаптивный режим"),
-        BotCommand("poll", "Нативный квиз (таймер)"),
-        BotCommand("quiz", "Тест с вариантами"),
-        BotCommand("type", "Написать перевод"),
-        BotCommand("flash", "Карточки"),
+        BotCommand("learn", "Блок 10 слов и тест блока"),
+        BotCommand("smart", "Весь словарь: адаптивно"),
+        BotCommand("poll", "Весь словарь: квиз с таймером"),
+        BotCommand("quiz", "Весь словарь: варианты"),
+        BotCommand("type", "Весь словарь: написать перевод"),
+        BotCommand("flash", "Весь словарь: карточки"),
         BotCommand("lang", "Сменить язык"),
         BotCommand("stats", "Статистика"),
         BotCommand("help", "Помощь"),
