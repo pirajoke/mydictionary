@@ -1,0 +1,41 @@
+[
+  {
+    "id": "ja-russian-first",
+    "language": "ja",
+    "term": "私",
+    "transcription": "watashi",
+    "meaning_ru": "я",
+    "summary_ru": "Разберём японское местоимение из активного блока.",
+    "explanation_ru": "Нейтральное местоимение первого лица.",
+    "examples": [
+      {"target": "私は学生です。", "russian": "Я студент."},
+      {"target": "私はマリアです。", "russian": "Я Мария."}
+    ]
+  },
+  {
+    "id": "vi-transcription",
+    "language": "vi",
+    "term": "thích",
+    "transcription": "/tʰik/",
+    "meaning_ru": "нравиться; любить",
+    "summary_ru": "Разберём вьетнамский глагол из активного блока.",
+    "explanation_ru": "Глагол выражает симпатию или предпочтение.",
+    "examples": [
+      {"target": "Tôi thích cà phê.", "russian": "Мне нравится кофе."},
+      {"target": "Bạn thích gì?", "russian": "Что тебе нравится?"}
+    ]
+  },
+  {
+    "id": "en-basic-word",
+    "language": "en",
+    "term": "hello",
+    "transcription": "/həˈloʊ/",
+    "meaning_ru": "привет",
+    "summary_ru": "Разберём английское приветствие из активного блока.",
+    "explanation_ru": "Нейтральное приветствие в разговорной речи.",
+    "examples": [
+      {"target": "Hello, Anna!", "russian": "Привет, Анна!"},
+      {"target": "Hello, how are you?", "russian": "Привет, как дела?"}
+    ]
+  }
+]

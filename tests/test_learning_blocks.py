@@ -67,6 +67,35 @@ class LearningBlocksTest(unittest.TestCase):
         self.assertIn("ltopic:ja:food", callback_ids)
         self.assertIn("ltopic:ja:time", callback_ids)
 
+    def test_ai_context_is_limited_to_current_valid_block(self):
+        user_data = {}
+        bot.reset_block_state(user_data, [10, 21], "ja", "people")
+
+        context = bot.active_tutor_context(user_data)
+
+        self.assertEqual(context.language, "ja")
+        self.assertEqual(context.topic, "people")
+        self.assertEqual([word.term for word in context.words], ["私", "先生"])
+        self.assertEqual(
+            [word.transcription for word in context.words],
+            ["watashi", "sensei"],
+        )
+        bot.invalidate_block_session(user_data)
+        self.assertIsNone(bot.active_tutor_context(user_data))
+
+    def test_ai_button_is_feature_flagged_and_session_bound(self):
+        with patch.object(
+            bot, "AI_SETTINGS", SimpleNamespace(enabled=True)
+        ):
+            keyboard = bot.build_study_buttons([10], "session1")
+
+        callbacks = [
+            button.callback_data
+            for row in keyboard.inline_keyboard
+            for button in row
+        ]
+        self.assertIn("bai:session1", callbacks)
+
     def test_quiz_options_only_use_words_from_active_block(self):
         indices = list(range(10))
         allowed_translations = {bot.W()[idx]["ru"] for idx in indices}
@@ -283,6 +312,19 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         }
         allowed_translations = {bot.W()[idx]["ru"] for idx in self.indices}
         self.assertTrue(option_texts.issubset(allowed_translations))
+
+    async def test_ai_callback_answers_once_and_uses_active_session(self):
+        session_id = self.user_data["block_session"]
+        update, context, query = self.make_update(f"bai:{session_id}")
+
+        with patch.object(
+            bot, "send_ai_tutor_answer", new=AsyncMock()
+        ) as send_answer:
+            await bot.block_ai_cb(update, context)
+
+        self.assertEqual(query.answer.await_count, 1)
+        send_answer.assert_awaited_once()
+        self.assertEqual(send_answer.await_args.kwargs["user_id"], 1)
 
     async def test_stale_session_callback_is_rejected(self):
         idx = self.indices[0]

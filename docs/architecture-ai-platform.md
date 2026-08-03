@@ -38,8 +38,10 @@ the bot transport; Telegram Stars do not require a public payment webhook.
 - `word_progress` owns spaced-repetition state per user, language, and word
   index.
 - `data_imports` makes one-time legacy imports idempotent.
-- Later stages add AI usage, wallets, append-only credit ledger, products,
-  orders, payments, subscriptions, events, and admin audit tables.
+- `ai_allowances` owns non-financial pilot quota reservations.
+- `ai_usage` owns privacy-minimized provider usage and request lifecycle data.
+- Later stages add wallets, append-only credit ledger, products, orders,
+  payments, subscriptions, events, and admin audit tables.
 
 Private conversation content, production exports, credentials, and personal
 learning history must never enter the public repository.
@@ -71,7 +73,8 @@ key so restarts cannot duplicate or overwrite the migrated state.
 
 ## Next Boundaries
 
-Stage 2 adds a provider-neutral AI gateway and usage records. Stage 3 adds the
-admin server. Stage 4 adds an append-only credit ledger and Telegram Stars. AI
-code must never write balances, payment status, roles, or computed learning
-scores directly.
+Stage 2 adds a provider-neutral AI gateway, active-block grounding, pilot quota
+reservations, and usage records. It remains feature-flagged off by default.
+Stage 3 adds the admin server. Stage 4 replaces pilot allowance semantics with
+an append-only financial credit ledger and Telegram Stars fulfillment. AI code
+must never write payment status, roles, or computed learning scores directly.
