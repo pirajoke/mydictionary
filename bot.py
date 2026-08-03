@@ -32,8 +32,20 @@ from vocabulary_topics import (
     topics_for_word,
     transcription_for,
 )
+from mydictionary.ai_tutor import (
+    AIConfigurationError,
+    AIProviderError,
+    AIUsageRecoveryError,
+    AITutorService,
+    AITutorSettings,
+    TutorContext,
+    TutorWord,
+    build_openai_tutor_service,
+    render_tutor_answer,
+)
 from mydictionary.legacy import import_legacy_user
 from mydictionary.storage import (
+    AIQuotaExceeded,
     DatabaseStore,
     WORD_PROGRESS_DEFAULTS,
     vocabulary_id_for,
@@ -80,6 +92,7 @@ def _configured_access_mode() -> str:
 
 
 BOT_ACCESS_MODE = _configured_access_mode()
+AI_SETTINGS = AITutorSettings.from_env()
 
 # ---------------------------------------------------------------------------
 # Data layer — multi-language
@@ -135,6 +148,7 @@ def load_progress() -> dict:
 DICTS: dict[str, list[dict]] = {lang: load_words(lang) for lang in LANG_FILES}
 _FALLBACK_PROGRESS: dict = load_progress()
 _STORE: DatabaseStore | None = None
+_AI_TUTOR: AITutorService | None = None
 
 
 def database_url() -> str:
@@ -162,6 +176,13 @@ def get_store() -> DatabaseStore:
     if _STORE is None:
         _STORE = DatabaseStore(database_url())
     return _STORE
+
+
+def get_ai_tutor_service() -> AITutorService:
+    global _AI_TUTOR
+    if _AI_TUTOR is None:
+        _AI_TUTOR = build_openai_tutor_service(get_store(), AI_SETTINGS)
+    return _AI_TUTOR
 
 
 @dataclass
@@ -545,6 +566,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/quiz — Весь словарь: варианты\n"
         "/type — Весь словарь: написать перевод\n"
         "/flash — Весь словарь: карточки\n"
+        "/ai — AI-репетитор по активному блоку\n"
+        "/ai_stats — AI-кредиты и использование\n"
         "/stats — Статистика\n"
         "/lang — Сменить язык",
         parse_mode="Markdown",
@@ -552,6 +575,120 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 cmd_help = cmd_start
+
+
+def active_tutor_context(user_data: dict) -> TutorContext | None:
+    """Build AI context only from the currently valid learning block."""
+    if not user_data.get("block_session"):
+        return None
+    indices = user_data.get("block_all_indices", [])
+    language = user_data.get("block_lang")
+    if not indices or language not in DICTS:
+        return None
+    source_words = W(language)
+    words = []
+    for index in indices:
+        if not isinstance(index, int) or not 0 <= index < len(source_words):
+            return None
+        word = source_words[index]
+        words.append(
+            TutorWord(
+                term=str(word["en"]),
+                transcription=transcription_for(word, language),
+                meaning_ru=str(word["ru"]),
+                example_target=word.get("example"),
+            )
+        )
+    return TutorContext(
+        language=language,
+        topic=user_data.get("block_topic"),
+        words=tuple(words),
+    )
+
+
+async def send_ai_tutor_answer(
+    message, context, question: str, *, user_id: int
+) -> None:
+    if not AI_SETTINGS.enabled:
+        await message.reply_text("AI-репетитор пока выключен.")
+        return
+    tutor_context = active_tutor_context(context.user_data)
+    if tutor_context is None:
+        await message.reply_text("Сначала выбери тему и создай блок через /learn.")
+        return
+    try:
+        result = await get_ai_tutor_service().ask(
+            user_id=int(user_id),
+            question=question,
+            context=tutor_context,
+        )
+    except AIQuotaExceeded:
+        await message.reply_text("Пилотные AI-кредиты закончились.")
+        return
+    except AIConfigurationError:
+        logger.exception("AI tutor configuration error")
+        await message.reply_text("AI-репетитор временно недоступен.")
+        return
+    except AIUsageRecoveryError:
+        logger.exception("AI tutor credit reservation recovery failed")
+        await message.reply_text(
+            "Не удалось подтвердить возврат AI-кредита. Проверь /ai_stats."
+        )
+        return
+    except (AIProviderError, ValueError) as exc:
+        logger.warning("AI tutor rejected response: %s", type(exc).__name__)
+        await message.reply_text(
+            "Не удалось подготовить безопасный ответ. AI-кредит не списан."
+        )
+        return
+    except Exception as exc:
+        logger.warning("AI tutor request failed: %s", type(exc).__name__)
+        await message.reply_text(
+            "AI-репетитор временно недоступен. AI-кредит не списан."
+        )
+        return
+    rendered = render_tutor_answer(result)
+    while rendered:
+        if len(rendered) <= 4000:
+            chunk, rendered = rendered, ""
+        else:
+            split_at = rendered.rfind("\n\n", 0, 4000)
+            if split_at < 1:
+                split_at = 4000
+            chunk, rendered = rendered[:split_at], rendered[split_at:].lstrip()
+        await message.reply_text(chunk)
+
+
+@auth
+async def cmd_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    question = " ".join(getattr(context, "args", [])).strip()
+    if not question:
+        question = "Объясни главные связи между словами этого блока."
+    await send_ai_tutor_answer(
+        update.message,
+        context,
+        question,
+        user_id=int(update.effective_user.id),
+    )
+
+
+@auth
+async def cmd_ai_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    summary = get_store().ai_usage_summary(
+        int(update.effective_user.id),
+        initial_credits=AI_SETTINGS.initial_credits,
+    )
+    cost_usd = summary["cost_micro_usd"] / 1_000_000
+    await update.message.reply_text(
+        "AI-использование\n\n"
+        f"Доступно кредитов: {summary['available_credits']}\n"
+        f"Зарезервировано: {summary['reserved_credits']}\n"
+        f"Использовано: {summary['spent_credits']}\n"
+        f"Запросы: {summary['completed_requests']} успешно, "
+        f"{summary['failed_requests']} с возвратом\n"
+        f"Токены провайдера: {summary['total_tokens']}\n"
+        f"Расчётная стоимость: ${cost_usd:.6f}"
+    )
 
 @auth
 async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1289,6 +1426,12 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
     if audio_row2:
         rows.append(audio_row2)
     rows.append(mode_row)
+    if AI_SETTINGS.enabled:
+        rows.append([
+            InlineKeyboardButton(
+                "AI-репетитор", callback_data=f"bai:{session_id}"
+            )
+        ])
     rows.append([InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}")])
     return InlineKeyboardMarkup(rows)
 
@@ -1374,6 +1517,24 @@ async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
     )
     await send_pronunciation(query.message.chat_id, idx, context)
+
+
+@auth
+async def block_ai_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    parts = query.data.split(":")
+    if len(parts) != 2:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(query, context.user_data, parts[1]):
+        return
+    activate_block_language(context.user_data)
+    await send_ai_tutor_answer(
+        query.message,
+        context,
+        "Объясни главные связи между словами этого блока.",
+        user_id=int(update.effective_user.id),
+    )
 
 
 @auth
@@ -1565,6 +1726,10 @@ async def block_summary(query, context: ContextTypes.DEFAULT_TYPE):
         rows.append([InlineKeyboardButton(
             "Повторить ошибки 🔄", callback_data=f"bretry:{session_id}"
         )])
+    if AI_SETTINGS.enabled:
+        rows.append([
+            InlineKeyboardButton("AI-репетитор", callback_data=f"bai:{session_id}")
+        ])
     rows.append([
         InlineKeyboardButton("Следующий блок ➡️", callback_data=f"bnext:{session_id}"),
         InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}"),
@@ -1586,6 +1751,10 @@ async def block_summary_msg(message, context: ContextTypes.DEFAULT_TYPE):
         rows.append([InlineKeyboardButton(
             "Повторить ошибки 🔄", callback_data=f"bretry:{session_id}"
         )])
+    if AI_SETTINGS.enabled:
+        rows.append([
+            InlineKeyboardButton("AI-репетитор", callback_data=f"bai:{session_id}")
+        ])
     rows.append([
         InlineKeyboardButton("Следующий блок ➡️", callback_data=f"bnext:{session_id}"),
         InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}"),
@@ -1733,6 +1902,14 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def manual_polling():
     """Manual polling loop that handles Conflict gracefully."""
     store = get_store()
+    recovered_reservations = store.recover_stale_ai_usage(
+        timeout_seconds=AI_SETTINGS.reservation_timeout_seconds
+    )
+    if recovered_reservations:
+        logger.warning(
+            "Recovered stale AI reservations: count=%s",
+            recovered_reservations,
+        )
     storage_mode = (
         "postgresql" if store.database_url.startswith("postgresql") else "sqlite"
     )
@@ -1754,6 +1931,8 @@ async def manual_polling():
     app.add_handler(CommandHandler("smart", cmd_smart))
     app.add_handler(CommandHandler("poll", cmd_poll))
     app.add_handler(CommandHandler("lang", cmd_lang))
+    app.add_handler(CommandHandler("ai", cmd_ai))
+    app.add_handler(CommandHandler("ai_stats", cmd_ai_stats))
 
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))
@@ -1769,6 +1948,7 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(learn_topic_cb, pattern=r"^ltopic:"))
     app.add_handler(CallbackQueryHandler(block_topics_cb, pattern=r"^btopics(?::|$)"))
     app.add_handler(CallbackQueryHandler(learn_play_cb, pattern=r"^lplay:"))
+    app.add_handler(CallbackQueryHandler(block_ai_cb, pattern=r"^bai:"))
     app.add_handler(CallbackQueryHandler(block_mode_cb, pattern=r"^bmode:"))
     app.add_handler(CallbackQueryHandler(block_quiz_cb, pattern=r"^bquiz:"))
     app.add_handler(CallbackQueryHandler(block_flash_show_cb, pattern=r"^bflash_show:"))
@@ -1810,6 +1990,8 @@ async def manual_polling():
         BotCommand("quiz", "Весь словарь: варианты"),
         BotCommand("type", "Весь словарь: написать перевод"),
         BotCommand("flash", "Весь словарь: карточки"),
+        BotCommand("ai", "AI-репетитор по активному блоку"),
+        BotCommand("ai_stats", "AI-кредиты и использование"),
         BotCommand("lang", "Сменить язык"),
         BotCommand("stats", "Статистика"),
         BotCommand("help", "Помощь"),

@@ -2,14 +2,23 @@ import json
 import os
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from threading import Barrier
 from types import SimpleNamespace
 from unittest.mock import patch
+from uuid import uuid4
 
 from sqlalchemy import inspect, text
 
 from mydictionary.legacy import import_legacy_user
-from mydictionary.storage import DatabaseStore, vocabulary_id_for
+from mydictionary.storage import (
+    AIQuotaExceeded,
+    AIUsage,
+    DatabaseStore,
+    vocabulary_id_for,
+)
 
 
 PROFILE_DEFAULTS = {
@@ -46,13 +55,15 @@ class DatabaseStoreTest(unittest.TestCase):
                 "user_progress",
                 "word_progress",
                 "data_imports",
+                "ai_allowances",
+                "ai_usage",
             }.issubset(tables)
         )
         with self.store.engine.connect() as connection:
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0001_multiuser_learning")
+        self.assertEqual(revision, "0002_ai_tutor_usage")
 
     def test_profiles_and_words_are_isolated_by_telegram_user(self):
         user_one = dict(PROFILE_DEFAULTS, active_lang="ja", xp=25, total_correct=1)
@@ -166,6 +177,25 @@ class DatabaseStoreTest(unittest.TestCase):
 
         self.assertNotEqual(vocabulary_id_for(first), vocabulary_id_for(second))
 
+    def test_stale_recovery_does_not_release_fresh_ai_reservation(self):
+        request_id = self.store.reserve_ai_usage(
+            305,
+            action="block_tutor",
+            provider="test",
+            model="test-model",
+            credits=1,
+            initial_credits=2,
+            context_fingerprint="d" * 64,
+        )
+
+        recovered = self.store.recover_stale_ai_usage(timeout_seconds=300)
+
+        self.assertEqual(recovered, 0)
+        self.assertEqual(self.store.get_ai_usage(request_id)["status"], "reserved")
+        summary = self.store.ai_usage_summary(305)
+        self.assertEqual(summary["available_credits"], 1)
+        self.assertEqual(summary["reserved_credits"], 1)
+
 
 class BotRuntimeIsolationTest(unittest.TestCase):
     @classmethod
@@ -278,6 +308,38 @@ class BotRuntimeIsolationTest(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get("TEST_POSTGRES_URL"), "PostgreSQL URL not set")
 class PostgresStoreTest(unittest.TestCase):
+    def test_concurrent_first_reservations_do_not_double_grant(self):
+        store = DatabaseStore(os.environ["TEST_POSTGRES_URL"])
+        user_id = 1_000_000 + (uuid4().int % 1_000_000_000)
+        store.ensure_user_id(user_id)
+        barrier = Barrier(2)
+
+        def reserve():
+            barrier.wait()
+            try:
+                return store.reserve_ai_usage(
+                    user_id,
+                    action="block_tutor",
+                    provider="test",
+                    model="test-model",
+                    credits=1,
+                    initial_credits=1,
+                    context_fingerprint="b" * 64,
+                )
+            except AIQuotaExceeded:
+                return None
+
+        try:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                request_ids = list(executor.map(lambda _: reserve(), range(2)))
+
+            self.assertEqual(sum(item is not None for item in request_ids), 1)
+            summary = store.ai_usage_summary(user_id)
+            self.assertEqual(summary["available_credits"], 0)
+            self.assertEqual(summary["reserved_credits"], 1)
+        finally:
+            store.close()
+
     def test_migrations_and_isolated_round_trip(self):
         store = DatabaseStore(os.environ["TEST_POSTGRES_URL"])
         try:
@@ -299,6 +361,52 @@ class PostgresStoreTest(unittest.TestCase):
                 ]["correct_count"],
                 2,
             )
+            request_id = store.reserve_ai_usage(
+                900001,
+                action="block_tutor",
+                provider="test",
+                model="test-model",
+                credits=1,
+                initial_credits=2,
+                context_fingerprint="a" * 64,
+            )
+            store.complete_ai_usage(
+                request_id,
+                billed_credits=1,
+                provider_response_id="response-1",
+                model="test-model",
+                usage={"input_tokens": 5, "output_tokens": 3, "total_tokens": 8},
+                cost_micro_usd=7,
+                latency_ms=10,
+            )
+            summary = store.ai_usage_summary(900001)
+            self.assertEqual(summary["available_credits"], 1)
+            self.assertEqual(summary["total_tokens"], 8)
+
+            stale_request_id = store.reserve_ai_usage(
+                900001,
+                action="block_tutor",
+                provider="test",
+                model="test-model",
+                credits=1,
+                initial_credits=2,
+                context_fingerprint="e" * 64,
+            )
+            with store.Session.begin() as session:
+                stale_row = session.get(AIUsage, stale_request_id)
+                stale_row.created_at = datetime.now(timezone.utc) - timedelta(
+                    seconds=600
+                )
+            self.assertEqual(
+                store.recover_stale_ai_usage(
+                    timeout_seconds=300, user_id=900001
+                ),
+                1,
+            )
+            recovered = store.ai_usage_summary(900001)
+            self.assertEqual(recovered["available_credits"], 1)
+            self.assertEqual(recovered["reserved_credits"], 0)
+            self.assertEqual(recovered["failed_requests"], 1)
         finally:
             store.close()
 

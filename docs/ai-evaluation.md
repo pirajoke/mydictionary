@@ -27,3 +27,8 @@ No model is enabled for users until it passes a deterministic evaluation set.
 The first benchmark compares an economical model and one stronger fallback on
 the same cases. Model names and prices remain admin configuration, not product
 logic.
+
+The deterministic stage 2 contract set lives in
+`tests/fixtures/ai_tutor_eval.json` and covers English, Vietnamese, and
+Japanese formatting without making provider requests. Live-provider quality is
+a separate rollout gate and must not run in normal CI.
