@@ -46,8 +46,9 @@ def upgrade() -> None:
         "word_progress",
         sa.Column("telegram_user_id", sa.BigInteger(), nullable=False),
         sa.Column("language", sa.String(length=16), nullable=False),
-        sa.Column("word_index", sa.Integer(), nullable=False),
+        sa.Column("vocabulary_id", sa.String(length=64), nullable=False),
         sa.Column("term", sa.String(length=512), nullable=False),
+        sa.Column("word_index", sa.Integer(), nullable=False),
         sa.Column("correct_count", sa.Integer(), nullable=False),
         sa.Column("wrong_count", sa.Integer(), nullable=False),
         sa.Column("last_seen", sa.String(length=64), nullable=True),
@@ -57,7 +58,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["telegram_user_id"], ["users.telegram_user_id"], ondelete="CASCADE"
         ),
-        sa.PrimaryKeyConstraint("telegram_user_id", "language", "word_index"),
+        sa.PrimaryKeyConstraint("telegram_user_id", "language", "vocabulary_id"),
     )
     op.create_index(
         "ix_word_progress_due",

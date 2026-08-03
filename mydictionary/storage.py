@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
+import json
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -51,6 +53,18 @@ WORD_PROGRESS_DEFAULTS = {
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def vocabulary_id_for(word: Mapping[str, Any]) -> str:
+    """Return position-independent identity for one bilingual entry."""
+    term = str(word.get("en", "")).strip()
+    meaning = str(word.get("ru", "")).strip()
+    if not term or not meaning:
+        raise ValueError("Vocabulary entries require target and Russian text")
+    identity = json.dumps(
+        [term, meaning], ensure_ascii=False, separators=(",", ":")
+    )
+    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
 class Base(DeclarativeBase):
@@ -104,8 +118,9 @@ class WordProgress(Base):
         primary_key=True,
     )
     language: Mapped[str] = mapped_column(String(16), primary_key=True)
-    word_index: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vocabulary_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     term: Mapped[str] = mapped_column(String(512))
+    word_index: Mapped[int] = mapped_column(Integer)
     correct_count: Mapped[int] = mapped_column(Integer, default=0)
     wrong_count: Mapped[int] = mapped_column(Integer, default=0)
     last_seen: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -211,7 +226,7 @@ class DatabaseStore:
 
     def load_word_progress(
         self, user_id: int, language: str
-    ) -> dict[int, dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         with self.Session() as session:
             rows = (
                 session.query(WordProgress)
@@ -219,7 +234,7 @@ class DatabaseStore:
                 .all()
             )
             return {
-                row.word_index: {
+                row.vocabulary_id: {
                     field: getattr(row, field) for field in WORD_PROGRESS_FIELDS
                 }
                 for row in rows
@@ -233,17 +248,19 @@ class DatabaseStore:
         word_index: int,
         word: Mapping[str, Any],
     ) -> None:
-        key = (int(user_id), language, int(word_index))
+        term = str(word.get("en", "")).strip()
+        vocabulary_id = vocabulary_id_for(word)
+        key = (int(user_id), language, vocabulary_id)
         row = session.get(WordProgress, key)
         if row is None:
             row = WordProgress(
                 telegram_user_id=int(user_id),
                 language=language,
-                word_index=int(word_index),
-                term=str(word.get("en", "")),
+                vocabulary_id=vocabulary_id,
+                term=term,
             )
             session.add(row)
-        row.term = str(word.get("en", row.term))
+        row.word_index = int(word_index)
         for field, value in _word_values(word).items():
             setattr(row, field, value)
         row.updated_at = utcnow()

@@ -35,8 +35,9 @@ the bot transport; Telegram Stars do not require a public payment webhook.
   transcriptions, examples, and topic classification.
 - `users` owns the Telegram identity snapshot required by the application.
 - `user_progress` owns aggregate learning state, XP, level, and streak.
-- `word_progress` owns spaced-repetition state per user, language, and word
-  index.
+- `word_progress` owns spaced-repetition state per user, language, and a
+  deterministic vocabulary ID derived from target text plus Russian meaning.
+  The current index is metadata and may change when content is reordered.
 - `data_imports` makes one-time legacy imports idempotent.
 - Later stages add AI usage, wallets, append-only credit ledger, products,
   orders, payments, subscriptions, events, and admin audit tables.
@@ -61,8 +62,8 @@ persistence.
 
 `DATABASE_URL` selects PostgreSQL. Old `postgres://` and `postgresql://` URLs
 are normalized to the Psycopg 3 SQLAlchemy driver. Without `DATABASE_URL`, the
-application uses a local SQLite database under `DATA_DIR`; this mode is for
-development and deterministic tests, not paid production.
+application fails closed. Local SQLite requires the explicit
+`ALLOW_SQLITE_DEV=true` opt-in and is not a production mode.
 
 Alembic migrations run before the first repository operation. When the legacy
 `ALLOWED_USER_ID` first uses the migrated bot, `progress.json` and per-language
