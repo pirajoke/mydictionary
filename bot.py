@@ -203,22 +203,21 @@ def get_example(idx: int) -> str:
     ex = W()[idx].get("example")
     return f"\n💡 _{ex}_" if ex else ""
 
-def get_pronunciation(idx: int) -> str:
-    """Return pronunciation for a prompt without revealing the translation."""
-    word = W()[idx]
-    transcription = transcription_for(word, PROGRESS["active_lang"])
-    if not transcription:
-        return ""
-    if PROGRESS["active_lang"] == "ja":
-        return f"\n🔤 {transcription}"
-    return f" {transcription}"
+def format_target_word(word: dict, lang: str) -> str:
+    """Format a readable target-language word with its transcription."""
+    transcription = transcription_for(word, lang)
+    if lang == "ja" and transcription:
+        return f"{transcription} ({word['en']})"
+    if transcription:
+        return f"{word['en']} {transcription}"
+    return word["en"]
 
 def format_word_label(idx: int) -> str:
     """Format a question prompt without exposing the Russian answer."""
     w = W()[idx]
-    flag = LANG_FLAGS.get(PROGRESS["active_lang"], "")
-    pronunciation = get_pronunciation(idx)
-    return f"{flag} *{w['en']}*{pronunciation}"
+    lang = PROGRESS["active_lang"]
+    flag = LANG_FLAGS.get(lang, "")
+    return f"{flag} *{format_target_word(w, lang)}*"
 
 
 def format_word_details(idx: int) -> str:
@@ -226,10 +225,10 @@ def format_word_details(idx: int) -> str:
     word = W()[idx]
     lang = PROGRESS["active_lang"]
     flag = LANG_FLAGS.get(lang, "")
-    lines = [f"🇷🇺 *{word['ru']}*", f"{flag} *{word['en']}*"]
-    transcription = transcription_for(word, lang)
-    if transcription:
-        lines.append(f"🔤 {transcription}")
+    lines = [
+        f"🇷🇺 *{word['ru']}*",
+        f"{flag} *{format_target_word(word, lang)}*",
+    ]
     return "\n".join(lines)
 
 
@@ -238,9 +237,7 @@ def format_plain_word_prompt(idx: int) -> str:
     word = W()[idx]
     lang = PROGRESS["active_lang"]
     flag = LANG_FLAGS.get(lang, "")
-    transcription = transcription_for(word, lang)
-    suffix = f" ({transcription})" if transcription else ""
-    return f"{flag} {word['en']}{suffix}"
+    return f"{flag} {format_target_word(word, lang)}"
 
 def get_lang_keyboard():
     """Return one-time ReplyKeyboardMarkup with language buttons."""
@@ -927,12 +924,7 @@ def format_study_list(indices: list[int]) -> str:
     for n, idx in enumerate(indices, 1):
         w = W()[idx]
         lang = PROGRESS["active_lang"]
-        flag = LANG_FLAGS.get(lang, "")
-        lines.append(f"{n}. 🇷🇺 *{w['ru']}*")
-        lines.append(f"   {flag} *{w['en']}*")
-        transcription = transcription_for(w, lang)
-        if transcription:
-            lines.append(f"   🔤 {transcription}")
+        lines.append(f"{n}. *{format_target_word(w, lang)}* — {w['ru']}")
     return "\n".join(lines)
 
 
@@ -1051,11 +1043,16 @@ async def block_topics_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Play pronunciation for a word from the study list."""
+    """Send the selected word card, then play its pronunciation."""
     query = update.callback_query
     await query.answer()
     activate_block_language(context.user_data)
     idx = int(query.data.split(":")[1])
+    await context.bot.send_message(
+        chat_id=query.message.chat_id,
+        text=format_word_details(idx),
+        parse_mode="Markdown",
+    )
     await send_pronunciation(query.message.chat_id, idx, context)
 
 
@@ -1239,10 +1236,10 @@ def format_block_summary(ud) -> str:
             w = W()[idx]
             lang = PROGRESS["active_lang"]
             text += f"\n  • 🇷🇺 *{w['ru']}*"
-            text += f"\n    {LANG_FLAGS.get(lang, '')} *{w['en']}*"
-            transcription = transcription_for(w, lang)
-            if transcription:
-                text += f"\n    🔤 {transcription}"
+            text += (
+                f"\n    {LANG_FLAGS.get(lang, '')} "
+                f"*{format_target_word(w, lang)}*"
+            )
     else:
         text += "\n\n🎉 Без ошибок!"
 
