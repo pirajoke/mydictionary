@@ -12,6 +12,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: mydictionary_test
+          POSTGRES_USER: mydictionary
+          POSTGRES_PASSWORD: mydictionary
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mydictionary -d mydictionary_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_POSTGRES_URL: postgresql+psycopg://mydictionary:mydictionary@localhost:5432/mydictionary_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

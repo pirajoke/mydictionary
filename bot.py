@@ -2,6 +2,11 @@
 """MAX Context Bot — multilingual word quiz Telegram bot."""
 
 import asyncio
+from collections.abc import Iterator, MutableMapping
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
+from functools import wraps
 import json
 import random
 import secrets
@@ -27,6 +32,8 @@ from vocabulary_topics import (
     topics_for_word,
     transcription_for,
 )
+from mydictionary.legacy import import_legacy_user
+from mydictionary.storage import DatabaseStore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -36,14 +43,39 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 
 # Config: env vars first, then config.yaml fallback
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-ALLOWED_USER = os.environ.get("ALLOWED_USER_ID")
+LEGACY_USER_ID_RAW = os.environ.get("ALLOWED_USER_ID")
 
-if not BOT_TOKEN:
+if not BOT_TOKEN and (BASE_DIR / "config.yaml").exists():
     CONFIG = yaml.safe_load((BASE_DIR / "config.yaml").read_text())
     BOT_TOKEN = CONFIG["telegram"]["bot_token"]
-    ALLOWED_USER = ALLOWED_USER or CONFIG["telegram"]["allowed_user_id"]
+    LEGACY_USER_ID_RAW = (
+        LEGACY_USER_ID_RAW or CONFIG["telegram"].get("allowed_user_id")
+    )
 
-ALLOWED_USER = int(ALLOWED_USER)
+LEGACY_USER_ID = int(LEGACY_USER_ID_RAW) if LEGACY_USER_ID_RAW else None
+# Compatibility alias for operational scripts that still inspect this value.
+ALLOWED_USER = LEGACY_USER_ID
+
+
+def _configured_user_ids() -> set[int]:
+    values = os.environ.get("ALLOWED_USER_IDS", "").split(",")
+    result = {int(value.strip()) for value in values if value.strip()}
+    if LEGACY_USER_ID is not None:
+        result.add(LEGACY_USER_ID)
+    return result
+
+
+ALLOWED_USER_IDS = _configured_user_ids()
+
+
+def _configured_access_mode() -> str:
+    mode = os.environ.get("BOT_ACCESS_MODE", "allowlist").strip().lower()
+    if mode not in {"allowlist", "public"}:
+        raise RuntimeError("BOT_ACCESS_MODE must be 'allowlist' or 'public'")
+    return mode
+
+
+BOT_ACCESS_MODE = _configured_access_mode()
 
 # ---------------------------------------------------------------------------
 # Data layer — multi-language
@@ -61,25 +93,10 @@ LANG_LABELS = {
 }
 LANG_FLAGS = {"en": "🇬🇧", "vi": "🇻🇳", "ja": "🇯🇵"}
 
-def _words_path(lang: str) -> Path:
-    """Return path to word file — DATA_DIR if exists there, else BASE_DIR (and copy on first write)."""
-    data_path = DATA_DIR / LANG_FILES[lang]
-    base_path = BASE_DIR / LANG_FILES[lang]
-    if not data_path.exists() and data_path != base_path:
-        import shutil
-        data_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(base_path, data_path)
-    return data_path
-
 def load_words(lang: str) -> list[dict]:
-    with open(_words_path(lang), "r", encoding="utf-8") as f:
+    """Load immutable vocabulary content from the checked-in dictionary."""
+    with open(BASE_DIR / LANG_FILES[lang], "r", encoding="utf-8") as f:
         return json.load(f)
-
-def save_words_lang(lang: str):
-    p = _words_path(lang)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(DICTS[lang], f, ensure_ascii=False, indent=2)
 
 PROGRESS_DEFAULTS = {
     "total_correct": 0, "total_wrong": 0, "sessions": 0,
@@ -106,22 +123,148 @@ def load_progress() -> dict:
         data.setdefault(k, v)
     return data
 
-def save_progress(prog: dict):
+DICTS: dict[str, list[dict]] = {lang: load_words(lang) for lang in LANG_FILES}
+_FALLBACK_PROGRESS: dict = load_progress()
+_STORE: DatabaseStore | None = None
+
+
+def database_url() -> str:
+    configured = os.environ.get("DATABASE_URL", "").strip()
+    if configured:
+        if configured.startswith("postgres://"):
+            return configured.replace("postgres://", "postgresql+psycopg://", 1)
+        if configured.startswith("postgresql://"):
+            return configured.replace(
+                "postgresql://", "postgresql+psycopg://", 1
+            )
+        return configured
+    sqlite_path = (DATA_DIR / "mydictionary.db").resolve()
+    sqlite_path.parent.mkdir(parents=True, exist_ok=True)
+    return f"sqlite:///{sqlite_path}"
+
+
+def get_store() -> DatabaseStore:
+    global _STORE
+    if _STORE is None:
+        _STORE = DatabaseStore(database_url())
+    return _STORE
+
+
+@dataclass
+class LearnerRuntime:
+    user_id: int
+    store: DatabaseStore
+    progress: dict
+    words_by_lang: dict[str, list[dict]] = field(default_factory=dict)
+
+    def words(self, language: str) -> list[dict]:
+        if language not in self.words_by_lang:
+            stored = self.store.load_word_progress(self.user_id, language)
+            words = [dict(word) for word in DICTS[language]]
+            for index, values in stored.items():
+                if 0 <= index < len(words):
+                    words[index].update(values)
+            self.words_by_lang[language] = words
+        return self.words_by_lang[language]
+
+
+_ACTIVE_RUNTIME: ContextVar[LearnerRuntime | None] = ContextVar(
+    "active_learner_runtime", default=None
+)
+
+
+class ProgressProxy(MutableMapping):
+    """Dict-compatible view of the learner bound to the current update."""
+
+    def __init__(self, fallback: dict):
+        self.fallback = fallback
+
+    def _data(self) -> dict:
+        runtime = _ACTIVE_RUNTIME.get()
+        return runtime.progress if runtime else self.fallback
+
+    def __getitem__(self, key):
+        return self._data()[key]
+
+    def __setitem__(self, key, value):
+        self._data()[key] = value
+
+    def __delitem__(self, key):
+        del self._data()[key]
+
+    def __iter__(self) -> Iterator:
+        return iter(self._data())
+
+    def __len__(self) -> int:
+        return len(self._data())
+
+
+PROGRESS = ProgressProxy(_FALLBACK_PROGRESS)
+
+
+def W(language: str | None = None) -> list[dict]:
+    """Return vocabulary content overlaid with the active user's progress."""
+    selected = language or PROGRESS["active_lang"]
+    runtime = _ACTIVE_RUNTIME.get()
+    return runtime.words(selected) if runtime else DICTS[selected]
+
+
+def save_progress(prog: MutableMapping):
+    runtime = _ACTIVE_RUNTIME.get()
+    if runtime:
+        runtime.store.save_profile(runtime.user_id, dict(prog))
+        return
     p = DATA_DIR / "progress.json"
     p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
-        json.dump(prog, f, ensure_ascii=False, indent=2)
+        json.dump(dict(prog), f, ensure_ascii=False, indent=2)
 
-DICTS: dict[str, list[dict]] = {lang: load_words(lang) for lang in LANG_FILES}
-PROGRESS: dict = load_progress()
 
-def W() -> list[dict]:
-    """Return the active word list."""
-    return DICTS[PROGRESS["active_lang"]]
+def save_answer_state(index: int) -> None:
+    runtime = _ACTIVE_RUNTIME.get()
+    if runtime:
+        language = PROGRESS["active_lang"]
+        runtime.store.save_learning_state(
+            runtime.user_id,
+            dict(PROGRESS),
+            language,
+            index,
+            W()[index],
+        )
+        return
 
-def save_words(words: list[dict]):
-    """Save the active word list."""
-    save_words_lang(PROGRESS["active_lang"])
+    # Compatibility fallback for direct, non-Telegram use during migration.
+    save_progress(PROGRESS)
+
+
+def _runtime_for_user(telegram_user) -> LearnerRuntime:
+    store = get_store()
+    store.ensure_user(telegram_user)
+    user_id = int(telegram_user.id)
+    if LEGACY_USER_ID is not None and user_id == LEGACY_USER_ID:
+        import_legacy_user(
+            store,
+            user_id,
+            DATA_DIR,
+            BASE_DIR,
+            LANG_FILES,
+            PROGRESS_DEFAULTS,
+        )
+    return LearnerRuntime(
+        user_id=user_id,
+        store=store,
+        progress=store.load_profile(user_id, PROGRESS_DEFAULTS),
+    )
+
+
+@contextmanager
+def learner_scope(telegram_user):
+    """Bind one learner to all legacy helper functions for one update."""
+    token = _ACTIVE_RUNTIME.set(_runtime_for_user(telegram_user))
+    try:
+        yield _ACTIVE_RUNTIME.get()
+    finally:
+        _ACTIVE_RUNTIME.reset(token)
 
 # ---------------------------------------------------------------------------
 # XP / Levels / Streaks
@@ -333,8 +476,7 @@ def mark_correct(idx: int) -> tuple[int, int]:
     PROGRESS["total_correct"] += 1
     streak_bonus = update_streak()
     award_xp(XP_CORRECT)
-    save_words(W())
-    save_progress(PROGRESS)
+    save_answer_state(idx)
     return XP_CORRECT, streak_bonus
 
 def mark_wrong(idx: int) -> tuple[int, int]:
@@ -348,8 +490,7 @@ def mark_wrong(idx: int) -> tuple[int, int]:
     PROGRESS["total_wrong"] += 1
     streak_bonus = update_streak()
     award_xp(XP_WRONG)
-    save_words(W())
-    save_progress(PROGRESS)
+    save_answer_state(idx)
     return XP_WRONG, streak_bonus
 
 # ---------------------------------------------------------------------------
@@ -357,12 +498,21 @@ def mark_wrong(idx: int) -> tuple[int, int]:
 # ---------------------------------------------------------------------------
 
 def auth(func):
+    @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user_id = update.effective_user.id
-        if user_id != ALLOWED_USER:
-            await update.effective_message.reply_text("Access denied.")
+        telegram_user = getattr(update, "effective_user", None)
+        if telegram_user is None and getattr(update, "poll_answer", None):
+            telegram_user = update.poll_answer.user
+        if telegram_user is None:
             return
-        return await func(update, context)
+        user_id = int(telegram_user.id)
+        if BOT_ACCESS_MODE != "public" and user_id not in ALLOWED_USER_IDS:
+            message = getattr(update, "effective_message", None)
+            if message is not None:
+                await message.reply_text("Access denied.")
+            return
+        with learner_scope(telegram_user):
+            return await func(update, context)
     return wrapper
 
 # ---------------------------------------------------------------------------
@@ -397,7 +547,7 @@ async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for lang_code, label in LANG_LABELS.items():
         marker = " ✓" if lang_code == current else ""
         total = len(DICTS[lang_code])
-        learned = sum(1 for w in DICTS[lang_code] if w["correct_count"] >= 3)
+        learned = sum(1 for w in W(lang_code) if w["correct_count"] >= 3)
         buttons.append([InlineKeyboardButton(
             f"{label} ({learned}/{total}){marker}",
             callback_data=f"lang:{lang_code}"
@@ -857,13 +1007,17 @@ async def cmd_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         open_period=15,
         is_anonymous=False,
     )
-    context.bot_data.setdefault("poll_map", {})[msg.poll.id] = (idx, correct_pos)
+    context.bot_data.setdefault("poll_map", {})[msg.poll.id] = (
+        int(update.effective_user.id),
+        PROGRESS["active_lang"],
+        idx,
+        correct_pos,
+    )
 
+@auth
 async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle native poll answers — track XP and SR."""
     answer = update.poll_answer
-    if answer.user.id != ALLOWED_USER:
-        return
 
     poll_map = context.bot_data.get("poll_map", {})
     poll_data = poll_map.get(answer.poll_id)
@@ -871,7 +1025,14 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     invalidate_block_session(context.user_data)
-    idx, correct_pos = poll_data
+    if len(poll_data) == 4:
+        poll_user_id, language, idx, correct_pos = poll_data
+        if int(poll_user_id) != int(answer.user.id):
+            return
+        PROGRESS["active_lang"] = language
+    else:
+        # Compatibility with poll state created before the multi-user migration.
+        idx, correct_pos = poll_data
 
     if answer.option_ids and answer.option_ids[0] == correct_pos:
         mark_correct(idx)
@@ -894,7 +1055,12 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         open_period=15,
         is_anonymous=False,
     )
-    poll_map[msg.poll.id] = (new_idx, new_correct)
+    poll_map[msg.poll.id] = (
+        int(answer.user.id),
+        PROGRESS["active_lang"],
+        new_idx,
+        new_correct,
+    )
 
 # ---------------------------------------------------------------------------
 # Block learning mode (/learn)
@@ -1345,6 +1511,7 @@ def format_block_summary(ud) -> str:
     correct = ud["block_correct"]
     wrong_indices = ud["block_wrong"]
     # Award session completion bonus
+    PROGRESS["sessions"] += 1
     award_xp(XP_SESSION)
     save_progress(PROGRESS)
     xp_earned = correct * XP_CORRECT + len(wrong_indices) * XP_WRONG + XP_SESSION
@@ -1550,6 +1717,15 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def manual_polling():
     """Manual polling loop that handles Conflict gracefully."""
+    store = get_store()
+    storage_mode = (
+        "postgresql" if store.database_url.startswith("postgresql") else "sqlite"
+    )
+    logger.info(
+        "Learner storage ready: mode=%s access=%s",
+        storage_mode,
+        BOT_ACCESS_MODE,
+    )
     app = Application.builder().token(BOT_TOKEN).build()
 
     # Commands
@@ -1650,6 +1826,7 @@ async def manual_polling():
     finally:
         await app.stop()
         await app.shutdown()
+        store.close()
 
 def main():
     langs = ", ".join(f"{l}: {len(DICTS[l])}" for l in DICTS)

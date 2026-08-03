@@ -4,3 +4,7 @@ audio_cache/
 config.yaml
 progress.json
 .env
+*.db
+*.db-shm
+*.db-wal
+.venv/
