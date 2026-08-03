@@ -1902,6 +1902,14 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def manual_polling():
     """Manual polling loop that handles Conflict gracefully."""
     store = get_store()
+    recovered_reservations = store.recover_stale_ai_usage(
+        timeout_seconds=AI_SETTINGS.reservation_timeout_seconds
+    )
+    if recovered_reservations:
+        logger.warning(
+            "Recovered stale AI reservations: count=%s",
+            recovered_reservations,
+        )
     storage_mode = (
         "postgresql" if store.database_url.startswith("postgresql") else "sqlite"
     )

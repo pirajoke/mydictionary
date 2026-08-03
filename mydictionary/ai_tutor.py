@@ -218,6 +218,7 @@ class AITutorSettings:
     openai_api_key: str | None
     safety_salt: str | None
     pricing: ModelPricing
+    reservation_timeout_seconds: int = 300
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "AITutorSettings":
@@ -233,6 +234,18 @@ class AITutorSettings:
             raise AIConfigurationError("AI credit settings must be integers") from exc
         if initial_credits < 0 or credits_per_request <= 0:
             raise AIConfigurationError("AI credit settings are outside valid bounds")
+        try:
+            reservation_timeout_seconds = int(
+                env.get("AI_RESERVATION_TIMEOUT_SECONDS", "300")
+            )
+        except ValueError as exc:
+            raise AIConfigurationError(
+                "AI_RESERVATION_TIMEOUT_SECONDS must be an integer"
+            ) from exc
+        if not 60 <= reservation_timeout_seconds <= 86400:
+            raise AIConfigurationError(
+                "AI_RESERVATION_TIMEOUT_SECONDS must be between 60 and 86400"
+            )
         model = env.get("AI_MODEL", "gpt-5.6-luna").strip()
         api_key = env.get("OPENAI_API_KEY")
         safety_salt = env.get("AI_SAFETY_SALT")
@@ -270,6 +283,7 @@ class AITutorSettings:
             openai_api_key=api_key,
             safety_salt=safety_salt,
             pricing=pricing,
+            reservation_timeout_seconds=reservation_timeout_seconds,
         )
 
 
@@ -496,6 +510,15 @@ class AITutorService:
             raise ValueError("AI question must contain 1-500 characters")
         if not 1 <= len(context.words) <= 10:
             raise ValueError("AI tutor context must contain 1-10 block words")
+        try:
+            self.store.recover_stale_ai_usage(
+                timeout_seconds=self.settings.reservation_timeout_seconds,
+                user_id=user_id,
+            )
+        except Exception as exc:
+            raise AIUsageRecoveryError(
+                "Stale AI reservation recovery failed before a new request"
+            ) from exc
         request_id = self.store.reserve_ai_usage(
             user_id,
             action="block_tutor",

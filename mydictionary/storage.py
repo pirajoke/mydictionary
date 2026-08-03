@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -539,6 +539,54 @@ class DatabaseStore:
             row.error_code = error_code[:128]
             row.completed_at = utcnow()
             return True
+
+    def recover_stale_ai_usage(
+        self, *, timeout_seconds: int, user_id: int | None = None
+    ) -> int:
+        """Release reservations left behind by a terminated worker."""
+        if timeout_seconds <= 0:
+            raise ValueError("AI reservation timeout must be positive")
+        cutoff = utcnow() - timedelta(seconds=int(timeout_seconds))
+        with self.Session.begin() as session:
+            conditions = [
+                AIUsage.status == "reserved",
+                AIUsage.created_at <= cutoff,
+            ]
+            if user_id is not None:
+                conditions.append(AIUsage.telegram_user_id == int(user_id))
+            statement = (
+                select(AIUsage)
+                .where(*conditions)
+                .order_by(AIUsage.created_at, AIUsage.request_id)
+            )
+            if self.engine.dialect.name == "postgresql":
+                statement = statement.with_for_update(skip_locked=True)
+            else:
+                statement = statement.with_for_update()
+            rows = session.execute(statement).scalars().all()
+            recovered_at = utcnow()
+            for row in rows:
+                allowance = session.execute(
+                    select(AIAllowance)
+                    .where(
+                        AIAllowance.telegram_user_id == row.telegram_user_id
+                    )
+                    .with_for_update()
+                ).scalar_one_or_none()
+                if (
+                    allowance is None
+                    or allowance.reserved_credits < row.reserved_credits
+                ):
+                    raise AIUsageStateError(
+                        "AI allowance cannot release stale reservation"
+                    )
+                allowance.reserved_credits -= row.reserved_credits
+                allowance.available_credits += row.reserved_credits
+                allowance.updated_at = recovered_at
+                row.status = "failed"
+                row.error_code = "stale_reservation_timeout"
+                row.completed_at = recovered_at
+            return len(rows)
 
     def ai_usage_summary(
         self, user_id: int, *, initial_credits: int = 0

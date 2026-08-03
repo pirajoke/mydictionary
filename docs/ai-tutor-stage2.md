@@ -26,6 +26,7 @@ OPENAI_API_KEY=...
 AI_SAFETY_SALT=...
 AI_INITIAL_CREDITS=0
 AI_CREDITS_PER_REQUEST=1
+AI_RESERVATION_TIMEOUT_SECONDS=300
 AI_INPUT_USD_PER_MILLION=0
 AI_CACHED_INPUT_USD_PER_MILLION=0
 AI_CACHE_WRITE_USD_PER_MILLION=0
@@ -39,6 +40,9 @@ the API key, model, or salt is missing.
 Provider prices are runtime configuration rather than product constants. The
 initial allowance is granted once when a user first reserves an AI request.
 Changing the environment value does not rewrite an existing allowance.
+Reservations older than `AI_RESERVATION_TIMEOUT_SECONDS` are refunded on bot
+startup and before that learner's next request. The allowed range is 60-86400
+seconds; it must remain longer than the provider's maximum request duration.
 
 The default model is the cost-sensitive GPT-5.6 Luna tier. Model choice and
 rates must be validated with the evaluation set before any rollout. See the

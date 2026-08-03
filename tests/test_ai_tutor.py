@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -98,6 +99,20 @@ class AITutorSettingsTest(unittest.TestCase):
         with self.assertRaises(AIConfigurationError):
             AITutorSettings.from_env({"AI_INPUT_USD_PER_MILLION": "NaN"})
 
+    def test_reservation_timeout_has_safe_bounds(self):
+        configured = AITutorSettings.from_env(
+            {"AI_RESERVATION_TIMEOUT_SECONDS": "60"}
+        )
+        self.assertEqual(configured.reservation_timeout_seconds, 60)
+
+        for invalid in ("59", "86401", "invalid"):
+            with self.subTest(value=invalid), self.assertRaises(
+                AIConfigurationError
+            ):
+                AITutorSettings.from_env(
+                    {"AI_RESERVATION_TIMEOUT_SECONDS": invalid}
+                )
+
 
 class StaticProvider:
     def __init__(self, answer=None):
@@ -178,6 +193,39 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(summary["available_credits"], 2)
         self.assertEqual(summary["reserved_credits"], 0)
         self.assertEqual(summary["failed_requests"], 1)
+
+    async def test_stale_reservation_is_recovered_before_next_request(self):
+        stale_request_id = self.store.reserve_ai_usage(
+            107,
+            action="block_tutor",
+            provider="test",
+            model="test-model",
+            credits=1,
+            initial_credits=2,
+            context_fingerprint="c" * 64,
+        )
+        with self.store.Session.begin() as session:
+            row = session.get(AIUsage, stale_request_id)
+            row.created_at = datetime.now(timezone.utc) - timedelta(seconds=600)
+
+        service = AITutorService(
+            store=self.store,
+            provider=StaticProvider(),
+            settings=settings(),
+        )
+        await service.ask(user_id=107, question="Объясни блок", context=CONTEXT)
+
+        summary = self.store.ai_usage_summary(107)
+        self.assertEqual(summary["available_credits"], 1)
+        self.assertEqual(summary["reserved_credits"], 0)
+        self.assertEqual(summary["spent_credits"], 1)
+        self.assertEqual(summary["completed_requests"], 1)
+        self.assertEqual(summary["failed_requests"], 1)
+        stale_usage = self.store.get_ai_usage(stale_request_id)
+        self.assertEqual(stale_usage["status"], "failed")
+        self.assertEqual(
+            stale_usage["error_code"], "stale_reservation_timeout"
+        )
 
     async def test_failed_refund_is_reported_as_unknown_usage_state(self):
         service = AITutorService(
