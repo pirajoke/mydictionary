@@ -16,7 +16,8 @@ requests.
 
 - Keep dictionary JSON as immutable, version-controlled content.
 - Store Telegram users, aggregate progress, and word progress in normalized
-  relational tables keyed by `telegram_user_id`.
+  relational tables keyed by `telegram_user_id`; identify vocabulary progress
+  by language and deterministic vocabulary ID rather than list position.
 - Use PostgreSQL in production through SQLAlchemy and Psycopg 3.
 - Use SQLite only as a compatible local/test backend.
 - Version schema changes with Alembic.
@@ -39,8 +40,9 @@ Costs:
 - Synchronous repository calls briefly occupy the bot event loop. This is
   acceptable for the current traffic; a worker or async repository can replace
   it if measured latency requires it.
-- Word identity currently follows the stable dictionary index. Reordering a
-  dictionary will require a content migration or explicit immutable word IDs.
+- Changing target text or Russian meaning requires an explicit content
+  migration. Pure dictionary reordering does not move progress to another
+  word, including duplicate target terms with different meanings.
 
 ## Rejected Options
 

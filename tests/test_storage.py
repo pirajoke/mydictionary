@@ -12,7 +12,7 @@ from uuid import uuid4
 from sqlalchemy import inspect, text
 
 from mydictionary.legacy import import_legacy_user
-from mydictionary.storage import AIQuotaExceeded, DatabaseStore
+from mydictionary.storage import AIQuotaExceeded, DatabaseStore, vocabulary_id_for
 
 
 PROFILE_DEFAULTS = {
@@ -63,6 +63,7 @@ class DatabaseStoreTest(unittest.TestCase):
         user_one = dict(PROFILE_DEFAULTS, active_lang="ja", xp=25, total_correct=1)
         word_one = {
             "en": "私",
+            "ru": "я",
             "correct_count": 1,
             "wrong_count": 0,
             "last_seen": "2026-08-03T12:00:00",
@@ -78,7 +79,10 @@ class DatabaseStoreTest(unittest.TestCase):
         self.assertEqual(loaded_one["active_lang"], "ja")
         self.assertEqual(loaded_two, PROFILE_DEFAULTS)
         self.assertEqual(
-            self.store.load_word_progress(101, "ja")[10]["correct_count"], 1
+            self.store.load_word_progress(101, "ja")[
+                vocabulary_id_for(word_one)
+            ]["correct_count"],
+            1,
         )
         self.assertEqual(self.store.load_word_progress(202, "ja"), {})
 
@@ -94,6 +98,7 @@ class DatabaseStoreTest(unittest.TestCase):
         legacy_words = [
             {
                 "en": "私",
+                "ru": "я",
                 "correct_count": 3,
                 "wrong_count": 1,
                 "last_seen": "2026-08-02T10:00:00",
@@ -129,7 +134,10 @@ class DatabaseStoreTest(unittest.TestCase):
         self.assertFalse(second)
         self.assertEqual(self.store.load_profile(303, PROFILE_DEFAULTS)["xp"], 140)
         self.assertEqual(
-            self.store.load_word_progress(303, "ja")[0]["correct_count"], 3
+            self.store.load_word_progress(303, "ja")[
+                vocabulary_id_for(legacy_words[0])
+            ]["correct_count"],
+            3,
         )
 
     def test_legacy_import_accepts_words_without_progress_fields(self):
@@ -156,6 +164,12 @@ class DatabaseStoreTest(unittest.TestCase):
         self.assertTrue(imported)
         self.assertEqual(self.store.load_profile(304, PROFILE_DEFAULTS)["xp"], 5)
         self.assertEqual(self.store.load_word_progress(304, "ja"), {})
+
+    def test_vocabulary_identity_distinguishes_duplicate_target_terms(self):
+        first = {"en": "Extend", "ru": "расширять"}
+        second = {"en": "Extend", "ru": "продлевать"}
+
+        self.assertNotEqual(vocabulary_id_for(first), vocabulary_id_for(second))
 
 
 class BotRuntimeIsolationTest(unittest.TestCase):
@@ -202,6 +216,45 @@ class BotRuntimeIsolationTest(unittest.TestCase):
 
         self.assertEqual(dictionary_path.read_bytes(), original_content)
 
+    def test_new_users_do_not_inherit_progress_from_dictionary_json(self):
+        with (
+            patch.object(self.bot, "_STORE", self.store),
+            patch.object(self.bot, "LEGACY_USER_ID", None),
+            self.bot.learner_scope(SimpleNamespace(id=1003)),
+        ):
+            for language in ("en", "vi", "ja"):
+                for word in self.bot.W(language):
+                    with self.subTest(language=language, term=word["en"]):
+                        self.assertEqual(word["correct_count"], 0)
+                        self.assertEqual(word["wrong_count"], 0)
+                        self.assertIsNone(word["last_seen"])
+                        self.assertEqual(word["interval"], 1)
+                        self.assertIsNone(word["next_review"])
+
+    def test_word_progress_follows_vocabulary_when_dictionary_is_reordered(self):
+        user = SimpleNamespace(id=1004)
+        original_words = self.bot.DICTS["ja"]
+        learned_term = original_words[0]["en"]
+
+        with (
+            patch.object(self.bot, "_STORE", self.store),
+            patch.object(self.bot, "LEGACY_USER_ID", None),
+            self.bot.learner_scope(user),
+        ):
+            self.bot.PROGRESS["active_lang"] = "ja"
+            self.bot.mark_correct(0)
+
+        reordered = [original_words[1], original_words[0], *original_words[2:]]
+        with (
+            patch.object(self.bot, "_STORE", self.store),
+            patch.object(self.bot, "LEGACY_USER_ID", None),
+            patch.dict(self.bot.DICTS, {"ja": reordered}),
+            self.bot.learner_scope(user),
+        ):
+            self.assertEqual(self.bot.W("ja")[1]["en"], learned_term)
+            self.assertEqual(self.bot.W("ja")[1]["correct_count"], 1)
+            self.assertEqual(self.bot.W("ja")[0]["correct_count"], 0)
+
     def test_access_mode_is_fail_closed_and_validated(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(self.bot._configured_access_mode(), "allowlist")
@@ -210,6 +263,22 @@ class BotRuntimeIsolationTest(unittest.TestCase):
         with patch.dict(os.environ, {"BOT_ACCESS_MODE": "typo"}, clear=True):
             with self.assertRaises(RuntimeError):
                 self.bot._configured_access_mode()
+
+    def test_database_url_requires_explicit_sqlite_development_opt_in(self):
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            patch.object(self.bot, "DATA_DIR", Path(self.temp_dir.name)),
+        ):
+            with self.assertRaises(RuntimeError):
+                self.bot.database_url()
+
+        with (
+            patch.dict(
+                os.environ, {"ALLOW_SQLITE_DEV": "true"}, clear=True
+            ),
+            patch.object(self.bot, "DATA_DIR", Path(self.temp_dir.name)),
+        ):
+            self.assertTrue(self.bot.database_url().startswith("sqlite:///"))
 
 
 @unittest.skipUnless(os.environ.get("TEST_POSTGRES_URL"), "PostgreSQL URL not set")
@@ -252,6 +321,7 @@ class PostgresStoreTest(unittest.TestCase):
             profile = dict(PROFILE_DEFAULTS, xp=55, active_lang="vi")
             word = {
                 "en": "xin chào",
+                "ru": "привет",
                 "correct_count": 2,
                 "wrong_count": 0,
                 "last_seen": "2026-08-03T12:00:00",
@@ -261,7 +331,10 @@ class PostgresStoreTest(unittest.TestCase):
             store.save_learning_state(900001, profile, "vi", 0, word)
             self.assertEqual(store.load_profile(900001, PROFILE_DEFAULTS)["xp"], 55)
             self.assertEqual(
-                store.load_word_progress(900001, "vi")[0]["correct_count"], 2
+                store.load_word_progress(900001, "vi")[
+                    vocabulary_id_for(word)
+                ]["correct_count"],
+                2,
             )
             request_id = store.reserve_ai_usage(
                 900001,

@@ -44,7 +44,12 @@ from mydictionary.ai_tutor import (
     render_tutor_answer,
 )
 from mydictionary.legacy import import_legacy_user
-from mydictionary.storage import AIQuotaExceeded, DatabaseStore
+from mydictionary.storage import (
+    AIQuotaExceeded,
+    DatabaseStore,
+    WORD_PROGRESS_DEFAULTS,
+    vocabulary_id_for,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -108,7 +113,12 @@ LANG_FLAGS = {"en": "🇬🇧", "vi": "🇻🇳", "ja": "🇯🇵"}
 def load_words(lang: str) -> list[dict]:
     """Load immutable vocabulary content from the checked-in dictionary."""
     with open(BASE_DIR / LANG_FILES[lang], "r", encoding="utf-8") as f:
-        return json.load(f)
+        raw_words = json.load(f)
+    words = [dict(word, **WORD_PROGRESS_DEFAULTS) for word in raw_words]
+    vocabulary_ids = [vocabulary_id_for(word) for word in words]
+    if len(vocabulary_ids) != len(set(vocabulary_ids)):
+        raise RuntimeError(f"Dictionary {lang} requires unique vocabulary entries")
+    return words
 
 PROGRESS_DEFAULTS = {
     "total_correct": 0, "total_wrong": 0, "sessions": 0,
@@ -151,6 +161,11 @@ def database_url() -> str:
                 "postgresql://", "postgresql+psycopg://", 1
             )
         return configured
+    allow_sqlite = os.environ.get("ALLOW_SQLITE_DEV", "false").strip().lower()
+    if allow_sqlite not in {"1", "true", "yes", "on"}:
+        raise RuntimeError(
+            "DATABASE_URL is required; set ALLOW_SQLITE_DEV=true only for local use"
+        )
     sqlite_path = (DATA_DIR / "mydictionary.db").resolve()
     sqlite_path.parent.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{sqlite_path}"
@@ -181,9 +196,10 @@ class LearnerRuntime:
         if language not in self.words_by_lang:
             stored = self.store.load_word_progress(self.user_id, language)
             words = [dict(word) for word in DICTS[language]]
-            for index, values in stored.items():
-                if 0 <= index < len(words):
-                    words[index].update(values)
+            for word in words:
+                values = stored.get(vocabulary_id_for(word))
+                if values is not None:
+                    word.update(values)
             self.words_by_lang[language] = words
         return self.words_by_lang[language]
 

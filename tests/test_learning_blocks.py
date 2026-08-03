@@ -9,6 +9,7 @@ TEST_DATA_DIR = tempfile.mkdtemp(prefix="mydictionary-tests-")
 os.environ["BOT_TOKEN"] = "123456:TESTTOKEN"
 os.environ["ALLOWED_USER_ID"] = "1"
 os.environ["DATA_DIR"] = TEST_DATA_DIR
+os.environ["ALLOW_SQLITE_DEV"] = "true"
 
 import bot
 from vocabulary_topics import topics_for_word
