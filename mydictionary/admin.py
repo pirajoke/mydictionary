@@ -9,7 +9,6 @@ from functools import wraps
 import getpass
 import hmac
 import io
-import json
 import os
 from pathlib import Path
 import secrets
@@ -34,16 +33,18 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
+from mydictionary.catalog import load_catalog
 from mydictionary.storage import DatabaseStore
 from vocabulary_topics import TOPIC_LABELS, topic_counts, transcription_for
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-LANG_FILES = {"en": "words.json", "vi": "words_vi.json", "ja": "words_ja.json"}
-LANG_LABELS = {"en": "English", "vi": "Tiếng Việt", "ja": "日本語"}
+CATALOG = load_catalog(BASE_DIR)
+LANG_LABELS = {pack.language: pack.label for pack in CATALOG.packs}
 ADMIN_TABS = {
     "dashboard",
     "users",
+    "funnel",
     "learning",
     "ai",
     "content",
@@ -99,19 +100,24 @@ class LoginLimiter:
 
 def _content_overview() -> list[dict[str, Any]]:
     result = []
-    for language, filename in LANG_FILES.items():
-        path = BASE_DIR / filename
-        words = json.loads(path.read_text(encoding="utf-8"))
+    for pack in CATALOG.packs:
+        words = CATALOG.words(pack)
         transcribed = sum(
-            1 for word in words if transcription_for(word, language)
+            1 for word in words if transcription_for(word, pack.language)
         )
         examples = sum(1 for word in words if str(word.get("example", "")).strip())
-        topics = topic_counts(words, language)
+        topics = topic_counts(words, pack.language)
         result.append(
             {
-                "language": language,
-                "label": LANG_LABELS[language],
-                "filename": filename,
+                "pack_id": pack.pack_id,
+                "language": pack.language,
+                "label": pack.label,
+                "title": pack.title,
+                "filename": pack.filename,
+                "visibility": pack.visibility,
+                "is_free": pack.is_free,
+                "status": pack.status,
+                "version": pack.version,
                 "words": len(words),
                 "transcribed": transcribed,
                 "examples": examples,
@@ -366,6 +372,9 @@ def create_app(
             context["audit"] = admin_store.audit_log(limit=8)
         elif tab == "users":
             context["users"] = admin_store.users(search=search, limit=250)
+        elif tab == "funnel":
+            context["funnel"] = admin_store.product_funnel(days=30)
+            context["events"] = admin_store.recent_product_events(limit=100)
         elif tab == "learning":
             context["learning"] = admin_store.learning_by_language()
             context["content"] = _content_overview()
@@ -463,6 +472,7 @@ def create_app(
             "learning": admin_store.word_progress_export,
             "ai-usage": admin_store.ai_usage_export,
             "credit-ledger": lambda: admin_store.credit_ledger(limit=10000),
+            "analytics-events": admin_store.product_events_export,
         }
         if kind not in exporters:
             abort(404)

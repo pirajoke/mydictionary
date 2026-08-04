@@ -16,7 +16,9 @@ from mydictionary.legacy import import_legacy_user
 from mydictionary.storage import (
     AIQuotaExceeded,
     AIUsage,
+    AnalyticsEvent,
     DatabaseStore,
+    UserPackEnrollment,
     vocabulary_id_for,
 )
 
@@ -33,6 +35,7 @@ PROFILE_DEFAULTS = {
     "today_xp": 0,
     "today_date": None,
     "active_lang": "en",
+    "active_pack_id": None,
 }
 
 
@@ -47,7 +50,8 @@ class DatabaseStoreTest(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_migration_creates_versioned_multiuser_schema(self):
-        tables = set(inspect(self.store.engine).get_table_names())
+        inspector = inspect(self.store.engine)
+        tables = set(inspector.get_table_names())
         self.assertTrue(
             {
                 "alembic_version",
@@ -61,13 +65,83 @@ class DatabaseStoreTest(unittest.TestCase):
                 "admin_credentials",
                 "admin_audit_log",
                 "ai_credit_ledger",
+                "user_pack_enrollments",
+                "analytics_events",
             }.issubset(tables)
         )
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        self.assertTrue(
+            {
+                "role",
+                "native_language",
+                "learning_goal",
+                "daily_word_goal",
+                "onboarding_completed_at",
+                "acquisition_source",
+            }.issubset(user_columns)
+        )
+        progress_columns = {
+            column["name"] for column in inspector.get_columns("user_progress")
+        }
+        self.assertIn("active_pack_id", progress_columns)
         with self.store.engine.connect() as connection:
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0003_admin_console")
+        self.assertEqual(revision, "0004_product_foundation")
+
+    def test_role_promotion_never_downgrades_owner(self):
+        user = SimpleNamespace(id=210, username="owner")
+        self.store.ensure_user(user)
+        self.assertEqual(self.store.product_profile(210)["role"], "learner")
+        self.store.ensure_user(user, role="admin")
+        self.store.ensure_user(user, role="learner")
+        self.assertEqual(self.store.product_profile(210)["role"], "admin")
+
+    def test_onboarding_pack_and_preferences_are_persisted(self):
+        self.store.ensure_user_id(211)
+        self.store.activate_pack(
+            211,
+            pack_id="ja-basics-100",
+            language="ja",
+            source="onboarding",
+        )
+        profile = self.store.update_product_profile(
+            211,
+            native_language="ru",
+            learning_goal="travel",
+            daily_word_goal=20,
+            acquisition_source="telegram-ad",
+            complete_onboarding=True,
+        )
+        self.assertEqual(profile["active_pack_id"], "ja-basics-100")
+        self.assertEqual(profile["active_lang"], "ja")
+        self.assertEqual(profile["daily_word_goal"], 20)
+        self.assertIsNotNone(profile["onboarding_completed_at"])
+        self.assertEqual(self.store.enrolled_pack_ids(211), {"ja-basics-100"})
+        with self.store.Session() as session:
+            enrollment = session.get(UserPackEnrollment, (211, "ja-basics-100"))
+            self.assertTrue(enrollment.active)
+
+    def test_analytics_accepts_dimensions_but_rejects_private_text(self):
+        event_id = self.store.record_event(
+            212,
+            "block_started",
+            properties={"pack_id": "ja-basics-100", "word_count": 10},
+            session_id="session-1",
+        )
+        with self.store.Session() as session:
+            event = session.get(AnalyticsEvent, event_id)
+            self.assertEqual(
+                event.properties_json,
+                '{"pack_id":"ja-basics-100","word_count":10}',
+            )
+        with self.assertRaisesRegex(ValueError, "forbidden"):
+            self.store.record_event(
+                212,
+                "ai_answered",
+                properties={"prompt_text": "private learner content"},
+            )
 
     def test_profiles_and_words_are_isolated_by_telegram_user(self):
         user_one = dict(PROFILE_DEFAULTS, active_lang="ja", xp=25, total_correct=1)
@@ -245,13 +319,34 @@ class BotRuntimeIsolationTest(unittest.TestCase):
 
         self.assertEqual(dictionary_path.read_bytes(), original_content)
 
+    def test_configured_admin_keeps_legacy_english_pack_and_progress(self):
+        user_id = 1000
+        self.store.save_profile(
+            user_id, dict(PROFILE_DEFAULTS, active_lang="en", xp=140)
+        )
+        with (
+            patch.object(self.bot, "_STORE", self.store),
+            patch.object(self.bot, "LEGACY_USER_ID", None),
+            patch.object(self.bot, "ADMIN_USER_IDS", {user_id}),
+            self.bot.learner_scope(SimpleNamespace(id=user_id)) as runtime,
+        ):
+            self.assertEqual(runtime.role, "admin")
+            self.assertTrue(runtime.onboarding_completed)
+            self.assertEqual(
+                self.bot.PROGRESS["active_pack_id"], "pirajoke-en-personal"
+            )
+            self.assertEqual(self.bot.PROGRESS["xp"], 140)
+            self.assertEqual(len(self.bot.W()), 661)
+
     def test_new_users_do_not_inherit_progress_from_dictionary_json(self):
         with (
             patch.object(self.bot, "_STORE", self.store),
             patch.object(self.bot, "LEGACY_USER_ID", None),
             self.bot.learner_scope(SimpleNamespace(id=1003)),
         ):
-            for language in ("en", "vi", "ja"):
+            with self.assertRaises(PermissionError):
+                self.bot.W("en")
+            for language in ("vi", "ja"):
                 for word in self.bot.W(language):
                     with self.subTest(language=language, term=word["en"]):
                         self.assertEqual(word["correct_count"], 0)
@@ -277,7 +372,7 @@ class BotRuntimeIsolationTest(unittest.TestCase):
         with (
             patch.object(self.bot, "_STORE", self.store),
             patch.object(self.bot, "LEGACY_USER_ID", None),
-            patch.dict(self.bot.DICTS, {"ja": reordered}),
+            patch.dict(self.bot.PACK_DICTS, {"ja-basics-100": reordered}),
             self.bot.learner_scope(user),
         ):
             self.assertEqual(self.bot.W("ja")[1]["en"], learned_term)

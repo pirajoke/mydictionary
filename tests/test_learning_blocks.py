@@ -64,9 +64,9 @@ class LearningBlocksTest(unittest.TestCase):
             for row in keyboard
             for button in row
         }
-        self.assertIn("ltopic:ja:all", callback_ids)
-        self.assertIn("ltopic:ja:food", callback_ids)
-        self.assertIn("ltopic:ja:time", callback_ids)
+        self.assertIn("ltopic:ja-basics-100:all", callback_ids)
+        self.assertIn("ltopic:ja-basics-100:food", callback_ids)
+        self.assertIn("ltopic:ja-basics-100:time", callback_ids)
 
     def test_ai_context_is_limited_to_current_valid_block(self):
         user_data = {}
