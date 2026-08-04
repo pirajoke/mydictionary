@@ -1,7 +1,8 @@
-"""TTS helper — generates audio pronunciation via edge-tts with file caching."""
+"""TTS helper that generates and caches pack-configured pronunciation."""
 
 import hashlib
 import os
+import secrets
 from io import BytesIO
 from pathlib import Path
 
@@ -11,27 +12,40 @@ DATA_DIR = Path(os.environ.get("DATA_DIR", str(Path(__file__).parent)))
 CACHE_DIR = DATA_DIR / "audio_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-VOICES = {
-    "vi": "vi-VN-HoaiMyNeural",
-    "en": "en-US-AriaNeural",
-    "ja": "ja-JP-NanamiNeural",
-}
 
-
-async def get_audio(text: str, lang: str) -> BytesIO:
-    """Return MP3 audio BytesIO for the given text+lang. Uses file cache.
+async def get_audio(
+    text: str,
+    *,
+    voice: str,
+    rate: str,
+    cache_namespace: str,
+) -> BytesIO:
+    """Return cached MP3 audio using an explicitly configured voice.
 
     Speaks the word twice with a pause, at a slower rate for clarity.
     """
-    voice = VOICES.get(lang, VOICES["en"])
-    key = hashlib.md5(f"{lang}:v2:{text}".encode()).hexdigest()
-    cached = CACHE_DIR / f"{lang}_{key}.mp3"
+    text = text.strip()
+    voice = voice.strip()
+    rate = rate.strip()
+    cache_namespace = cache_namespace.strip()
+    if not all((text, voice, rate, cache_namespace)):
+        raise ValueError("TTS text, voice, rate, and cache namespace are required")
+
+    key_source = "\0".join((cache_namespace, voice, rate, text))
+    key = hashlib.sha256(key_source.encode("utf-8")).hexdigest()
+    cached = CACHE_DIR / f"{key}.mp3"
 
     if not cached.exists():
-        # Say the word twice with a pause for better comprehension
         spoken = f"{text} ... {text}"
-        communicate = edge_tts.Communicate(spoken, voice, rate="-25%")
-        await communicate.save(str(cached))
+        communicate = edge_tts.Communicate(spoken, voice, rate=rate)
+        temporary = cached.with_suffix(
+            f".{os.getpid()}.{secrets.token_hex(4)}.tmp"
+        )
+        try:
+            await communicate.save(str(temporary))
+            os.replace(temporary, cached)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     buf = BytesIO(cached.read_bytes())
     buf.name = "pronunciation.mp3"

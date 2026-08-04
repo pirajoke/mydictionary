@@ -11,6 +11,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
+from mydictionary.content import target_text
+
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import inspect, text
@@ -400,10 +402,12 @@ class BotRuntimeIsolationTest(unittest.TestCase):
             self.bot.learner_scope(SimpleNamespace(id=1003)),
         ):
             with self.assertRaises(PermissionError):
-                self.bot.W("en")
-            for language in ("vi", "ja"):
-                for word in self.bot.W(language):
-                    with self.subTest(language=language, term=word["en"]):
+                self.bot.W("pirajoke-en-personal")
+            for pack in self.bot.CATALOG.visible_packs("learner"):
+                for word in self.bot.W(pack.pack_id):
+                    with self.subTest(
+                        pack=pack.pack_id, term=target_text(word)
+                    ):
                         self.assertEqual(word["correct_count"], 0)
                         self.assertEqual(word["wrong_count"], 0)
                         self.assertIsNone(word["last_seen"])
@@ -412,8 +416,8 @@ class BotRuntimeIsolationTest(unittest.TestCase):
 
     def test_word_progress_follows_vocabulary_when_dictionary_is_reordered(self):
         user = SimpleNamespace(id=1004)
-        original_words = self.bot.DICTS["ja"]
-        learned_term = original_words[0]["en"]
+        original_words = self.bot.PACK_DICTS["ja-basics-100"]
+        learned_term = target_text(original_words[0])
 
         with (
             patch.object(self.bot, "_STORE", self.store),
@@ -430,7 +434,9 @@ class BotRuntimeIsolationTest(unittest.TestCase):
             patch.dict(self.bot.PACK_DICTS, {"ja-basics-100": reordered}),
             self.bot.learner_scope(user),
         ):
-            self.assertEqual(self.bot.W("ja")[1]["en"], learned_term)
+            self.assertEqual(
+                target_text(self.bot.W("ja")[1]), learned_term
+            )
             self.assertEqual(self.bot.W("ja")[1]["correct_count"], 1)
             self.assertEqual(self.bot.W("ja")[0]["correct_count"], 0)
 

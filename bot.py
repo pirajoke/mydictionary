@@ -16,10 +16,12 @@ import time
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 import yaml
 from telegram import Bot, BotCommand, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.error import Conflict, TelegramError
+from telegram.helpers import escape_markdown
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, PollAnswerHandler, filters, ContextTypes
@@ -27,7 +29,6 @@ from telegram.ext import (
 
 from tts import get_audio
 from vocabulary_topics import (
-    TOPIC_LABELS,
     topic_counts,
     topics_for_word,
     transcription_for,
@@ -46,6 +47,13 @@ from mydictionary.ai_tutor import (
 from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import render_start_text
 from mydictionary.catalog import ContentPack, load_catalog
+from mydictionary.content import (
+    example_meaning_text,
+    example_target_text,
+    meaning_text,
+    speech_text,
+    target_text,
+)
 from mydictionary.legacy import import_legacy_user
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.storage import (
@@ -127,19 +135,11 @@ BOT_HEARTBEAT = BotHeartbeat(
 
 CATALOG = load_catalog(BASE_DIR)
 # Legacy JSON import namespaces stay fixed as new packs are added to the catalog.
-LANG_FILES = {"en": "words.json", "vi": "words_vi.json", "ja": "words_ja.json"}
-LANG_LABELS = {pack.language: pack.label for pack in CATALOG.packs}
-LANG_FLAGS = {"en": "🇬🇧", "vi": "🇻🇳", "ja": "🇯🇵"}
-
-def load_words(lang: str) -> list[dict]:
-    """Load immutable vocabulary content from the checked-in dictionary."""
-    with open(BASE_DIR / LANG_FILES[lang], "r", encoding="utf-8") as f:
-        raw_words = json.load(f)
-    words = [dict(word, **WORD_PROGRESS_DEFAULTS) for word in raw_words]
-    vocabulary_ids = [vocabulary_id_for(word) for word in words]
-    if len(vocabulary_ids) != len(set(vocabulary_ids)):
-        raise RuntimeError(f"Dictionary {lang} requires unique vocabulary entries")
-    return words
+LEGACY_LANG_FILES = {
+    "en": "words.json",
+    "vi": "words_vi.json",
+    "ja": "words_ja.json",
+}
 
 PROGRESS_DEFAULTS = {
     "total_correct": 0, "total_wrong": 0, "sessions": 0,
@@ -167,7 +167,6 @@ def load_progress() -> dict:
         data.setdefault(k, v)
     return data
 
-DICTS: dict[str, list[dict]] = {lang: load_words(lang) for lang in LANG_FILES}
 PACK_DICTS: dict[str, list[dict]] = {
     pack.pack_id: [dict(word, **WORD_PROGRESS_DEFAULTS) for word in CATALOG.words(pack)]
     for pack in CATALOG.packs
@@ -234,7 +233,10 @@ class LearnerRuntime:
                 and self.progress.get("active_pack_id")
             ):
                 active_pack = CATALOG.get(self.progress["active_pack_id"])
-                if active_pack and active_pack.language == language_or_pack:
+                if (
+                    active_pack
+                    and active_pack.target_language == language_or_pack
+                ):
                     pack = active_pack
             pack = pack or CATALOG.pack_for_language(language_or_pack, self.role)
         if pack is None or not pack.visible_to(self.role):
@@ -291,13 +293,19 @@ def W(language: str | None = None) -> list[dict]:
         active_pack = CATALOG.get(PROGRESS.get("active_pack_id"))
         selected = (
             active_pack.pack_id
-            if active_pack and active_pack.language == PROGRESS["active_lang"]
+            if (
+                active_pack
+                and active_pack.target_language == PROGRESS["active_lang"]
+            )
             else PROGRESS["active_lang"]
         )
     runtime = _ACTIVE_RUNTIME.get()
     if runtime:
         return runtime.words(selected)
-    return PACK_DICTS[selected] if selected in PACK_DICTS else DICTS[selected]
+    pack = CATALOG.get(selected) or CATALOG.pack_for_language(selected, "admin")
+    if pack is None:
+        raise KeyError(f"Unknown content pack or language: {selected}")
+    return PACK_DICTS[pack.pack_id]
 
 
 def visible_packs() -> tuple[ContentPack, ...]:
@@ -315,7 +323,7 @@ def active_content_pack() -> ContentPack:
     pack = CATALOG.get(PROGRESS.get("active_pack_id"))
     if (
         pack is None
-        or pack.language != PROGRESS["active_lang"]
+        or pack.target_language != PROGRESS["active_lang"]
         or pack not in visible_packs()
     ):
         pack = visible_pack_for_language(PROGRESS["active_lang"])
@@ -331,11 +339,11 @@ def activate_content_pack(pack: ContentPack, *, source: str) -> None:
     runtime.store.activate_pack(
         runtime.user_id,
         pack_id=pack.pack_id,
-        language=pack.language,
+        language=pack.target_language,
         source=source,
     )
     PROGRESS["active_pack_id"] = pack.pack_id
-    PROGRESS["active_lang"] = pack.language
+    PROGRESS["active_lang"] = pack.target_language
 
 
 def record_product_event(
@@ -376,7 +384,7 @@ def save_answer_state(index: int) -> None:
     runtime = _ACTIVE_RUNTIME.get()
     if runtime:
         pack = CATALOG.get(PROGRESS.get("active_pack_id"))
-        if pack is None or pack.language != PROGRESS["active_lang"]:
+        if pack is None or pack.target_language != PROGRESS["active_lang"]:
             pack = visible_pack_for_language(PROGRESS["active_lang"])
             if pack is None:
                 raise PermissionError("Content pack is not available to this user")
@@ -405,7 +413,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
             user_id,
             DATA_DIR,
             BASE_DIR,
-            LANG_FILES,
+            LEGACY_LANG_FILES,
             PROGRESS_DEFAULTS,
         )
     product = store.product_profile(user_id)
@@ -421,7 +429,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
         store.activate_pack(
             user_id,
             pack_id=pack.pack_id,
-            language=pack.language,
+            language=pack.target_language,
             source="admin_bootstrap",
         )
         store.update_product_profile(
@@ -529,34 +537,64 @@ def format_xp_line(xp_earned: int, streak_bonus: int = 0) -> str:
 
 def get_example(idx: int) -> str:
     """Return example sentence if available."""
-    ex = W()[idx].get("example")
-    return f"\n💡 _{ex}_" if ex else ""
+    word = W()[idx]
+    target_example = example_target_text(word)
+    meaning_example = example_meaning_text(word)
+    if not target_example:
+        return ""
+    example = target_example
+    if meaning_example:
+        example = f"{target_example} — {meaning_example}"
+    return f"\n💡 _{escape_markdown(example)}_"
 
-def format_target_word(word: dict, lang: str) -> str:
+
+def _content_pack(pack_or_language: ContentPack | str | None = None) -> ContentPack:
+    if isinstance(pack_or_language, ContentPack):
+        return pack_or_language
+    if pack_or_language:
+        pack = CATALOG.get(pack_or_language) or visible_pack_for_language(
+            pack_or_language
+        )
+        if pack is not None:
+            return pack
+    return active_content_pack()
+
+
+def _directional_text(value: str, direction: str) -> str:
+    """Keep RTL target text isolated inside mixed-direction Telegram messages."""
+    if direction == "rtl":
+        return f"\u2067{value}\u2069"
+    return value
+
+
+def format_target_word(
+    word: dict, pack_or_language: ContentPack | str | None = None
+) -> str:
     """Format a readable target-language word with its transcription."""
-    transcription = transcription_for(word, lang)
-    if lang == "ja" and transcription:
-        return f"{transcription} ({word['en']})"
-    if transcription:
-        return f"{word['en']} {transcription}"
-    return word["en"]
+    pack = _content_pack(pack_or_language)
+    transcription = transcription_for(word, pack.target_language)
+    target = _directional_text(target_text(word), pack.direction)
+    position = pack.pronunciation.transcription_position
+    if transcription and position == "before":
+        return f"{transcription} ({target})"
+    if transcription and position == "after":
+        return f"{target} {transcription}"
+    return target
 
 def format_word_label(idx: int) -> str:
     """Format a question prompt without exposing the Russian answer."""
     w = W()[idx]
-    lang = PROGRESS["active_lang"]
-    flag = LANG_FLAGS.get(lang, "")
-    return f"{flag} *{format_target_word(w, lang)}*"
+    pack = active_content_pack()
+    return f"{pack.flag} *{escape_markdown(format_target_word(w, pack))}*"
 
 
 def format_word_details(idx: int) -> str:
-    """Format a revealed card: Russian first, foreign word, transcription."""
+    """Format a revealed card: meaning first, then target and transcription."""
     word = W()[idx]
-    lang = PROGRESS["active_lang"]
-    flag = LANG_FLAGS.get(lang, "")
+    pack = active_content_pack()
     lines = [
-        f"🇷🇺 *{word['ru']}*",
-        f"{flag} *{format_target_word(word, lang)}*",
+        f"{pack.meaning_flag} *{escape_markdown(meaning_text(word))}*",
+        f"{pack.flag} *{escape_markdown(format_target_word(word, pack))}*",
     ]
     return "\n".join(lines)
 
@@ -564,9 +602,8 @@ def format_word_details(idx: int) -> str:
 def format_plain_word_prompt(idx: int) -> str:
     """Format a compact prompt for Telegram surfaces without Markdown."""
     word = W()[idx]
-    lang = PROGRESS["active_lang"]
-    flag = LANG_FLAGS.get(lang, "")
-    return f"{flag} {format_target_word(word, lang)}"
+    pack = active_content_pack()
+    return f"{pack.flag} {format_target_word(word, pack)}"
 
 def get_lang_keyboard():
     """Return one-time ReplyKeyboardMarkup with language buttons."""
@@ -589,7 +626,7 @@ def language_picker_keyboard() -> InlineKeyboardMarkup:
         )
         rows.append([
             InlineKeyboardButton(
-                f"{pack.label} ({learned}/{pack.word_count}){marker}",
+                f"{pack.label} ({learned}/{pack.entry_count}){marker}",
                 callback_data=f"lang:{pack.pack_id}",
             )
         ])
@@ -597,28 +634,38 @@ def language_picker_keyboard() -> InlineKeyboardMarkup:
 
 PACK_SWITCH_TEXTS = {pack.label: pack.pack_id for pack in CATALOG.packs}
 
-FORVO_LANG_CODES = {"en": "en", "vi": "vi", "ja": "ja"}
-
 def forvo_button(idx: int) -> InlineKeyboardButton:
     """Return an inline button linking to Forvo pronunciation page."""
     word = W()[idx]
-    lang = FORVO_LANG_CODES.get(PROGRESS["active_lang"], "en")
-    url = f"https://forvo.com/word/{word['en'].replace(' ', '_')}/#{lang}"
+    pack = active_content_pack()
+    encoded_word = quote(target_text(word).replace(" ", "_"), safe="")
+    url = f"https://forvo.com/word/{encoded_word}/#{pack.target_language}"
     return InlineKeyboardButton("🔊 Forvo", url=url)
 
 async def send_pronunciation(chat_id: int, idx: int, context: ContextTypes.DEFAULT_TYPE):
     """Generate and send voice pronunciation for the word at idx."""
     try:
         word = W()[idx]
-        lang = PROGRESS["active_lang"]
-        audio = await get_audio(word["en"], lang)
+        pack = active_content_pack()
+        audio = await get_audio(
+            speech_text(word),
+            voice=pack.pronunciation.tts_voice,
+            rate=pack.pronunciation.tts_rate,
+            cache_namespace=f"{pack.pack_id}:v{pack.content_version}",
+        )
         try:
             await context.bot.send_voice(chat_id=chat_id, voice=audio)
         except Exception:
             audio.seek(0)
-            await context.bot.send_audio(chat_id=chat_id, audio=audio, title=word["en"])
-    except Exception as e:
-        logger.warning(f"TTS failed for word {idx}: {e}")
+            await context.bot.send_audio(
+                chat_id=chat_id,
+                audio=audio,
+                title=target_text(word),
+            )
+    except Exception as exc:
+        logger.warning(
+            "TTS failed for word %s: error_type=%s", idx, type(exc).__name__
+        )
 
 def adaptive_mode(idx: int) -> str:
     """Pick quiz type based on word strength. Weak → quiz (recognition), strong → type (recall)."""
@@ -629,13 +676,14 @@ def adaptive_mode(idx: int) -> str:
 
 def build_quiz_options(idx: int) -> tuple[list[str], int]:
     """Build 4 options for a quiz question. Returns (options, correct_index)."""
-    correct_ru = W()[idx]["ru"]
+    correct_ru = meaning_text(W()[idx])
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        if r["ru"] != correct_ru:
-            distractors.add(r["ru"])
+        candidate = meaning_text(r)
+        if candidate != correct_ru:
+            distractors.add(candidate)
         attempts += 1
     options = list(distractors) + [correct_ru]
     random.shuffle(options)
@@ -904,7 +952,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton(
-                        f"{pack.label} · {pack.word_count} слов",
+                        f"{pack.label} · {pack.entry_count} слов",
                         callback_data=f"onboarding:pack:{pack.pack_id}",
                     )]
                     for pack in public_packs
@@ -921,7 +969,10 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["onboarding_pack_id"] = pack.pack_id
         record_product_event(
             "onboarding_pack_selected",
-            properties={"pack_id": pack.pack_id, "language": pack.language},
+            properties={
+                "pack_id": pack.pack_id,
+                "language": pack.target_language,
+            },
         )
         await query.edit_message_text(
             "Шаг 3 из 4. Для чего ты учишь язык?",
@@ -968,7 +1019,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "onboarding_completed",
             properties={
                 "pack_id": pack.pack_id,
-                "language": pack.language,
+                "language": pack.target_language,
                 "daily_word_goal": int(parts[2]),
             },
         )
@@ -1030,7 +1081,7 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if action == "learn":
         invalidate_block_session(context.user_data)
         pack = active_content_pack()
-        context.user_data["block_lang"] = pack.language
+        context.user_data["block_lang"] = pack.target_language
         context.user_data["block_pack_id"] = pack.pack_id
         await context.bot.send_message(
             chat_id=chat_id,
@@ -1078,10 +1129,16 @@ def active_tutor_context(user_data: dict) -> TutorContext | None:
     if not user_data.get("block_session"):
         return None
     indices = user_data.get("block_all_indices", [])
+    pack = CATALOG.get(user_data.get("block_pack_id", ""))
     language = user_data.get("block_lang")
-    if not indices or language not in DICTS:
+    if (
+        not indices
+        or pack is None
+        or pack.target_language != language
+        or pack not in visible_packs()
+    ):
         return None
-    source_words = W(language)
+    source_words = W(pack.pack_id)
     words = []
     for index in indices:
         if not isinstance(index, int) or not 0 <= index < len(source_words):
@@ -1089,10 +1146,10 @@ def active_tutor_context(user_data: dict) -> TutorContext | None:
         word = source_words[index]
         words.append(
             TutorWord(
-                term=str(word["en"]),
+                term=target_text(word),
                 transcription=transcription_for(word, language),
-                meaning_ru=str(word["ru"]),
-                example_target=word.get("example"),
+                meaning_ru=meaning_text(word),
+                example_target=example_target_text(word) or None,
             )
         )
     return TutorContext(
@@ -1210,10 +1267,13 @@ async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     activate_content_pack(pack, source="catalog")
     record_product_event(
         "language_switched",
-        properties={"pack_id": pack.pack_id, "language": pack.language},
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.target_language,
+        },
     )
     await query.edit_message_text(
-        f"Подключён набор *{pack.title}* ({pack.word_count} слов)",
+        f"Подключён набор *{pack.title}* ({pack.entry_count} слов)",
         parse_mode="Markdown"
     )
     # Send persistent keyboard
@@ -1231,13 +1291,14 @@ async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     word = W()[idx]
 
     # Build 4 options: 1 correct + 3 distractors
-    correct_ru = word["ru"]
+    correct_ru = meaning_text(word)
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        if r["ru"] != correct_ru:
-            distractors.add(r["ru"])
+        candidate = meaning_text(r)
+        if candidate != correct_ru:
+            distractors.add(candidate)
         attempts += 1
 
     options = list(distractors) + [correct_ru]
@@ -1292,13 +1353,14 @@ async def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     word = W()[idx]
 
-    correct_ru = word["ru"]
+    correct_ru = meaning_text(word)
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        if r["ru"] != correct_ru:
-            distractors.add(r["ru"])
+        candidate = meaning_text(r)
+        if candidate != correct_ru:
+            distractors.add(candidate)
         attempts += 1
 
     options = list(distractors) + [correct_ru]
@@ -1343,10 +1405,13 @@ async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE)
     activate_content_pack(pack, source="reply_keyboard")
     record_product_event(
         "language_switched",
-        properties={"pack_id": pack.pack_id, "language": pack.language},
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.target_language,
+        },
     )
     await update.message.reply_text(
-        f"Подключён набор *{pack.title}* ({pack.word_count} слов)",
+        f"Подключён набор *{pack.title}* ({pack.entry_count} слов)",
         parse_mode="Markdown",
         reply_markup=get_lang_keyboard(),
     )
@@ -1367,7 +1432,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     word = W()[idx]
     answer = update.message.text.strip().lower()
-    correct = word["ru"].strip().lower()
+    correct = meaning_text(word).lower()
     is_correct = clean(answer) == clean(correct)
 
     # Block type mode
@@ -1525,7 +1590,13 @@ def format_stats_text() -> str:
         key=lambda w: w["wrong_count"] - w["correct_count"],
         reverse=True
     )[:10]
-    weak_text = "\n".join(f"  • {w['ru']} — {w['en']}" for w in weak) if weak else "  Пока нет"
+    weak_text = (
+        "\n".join(
+            f"  • {meaning_text(word)} — {target_text(word)}" for word in weak
+        )
+        if weak
+        else "  Пока нет"
+    )
 
     # Overdue
     now = datetime.now().isoformat()
@@ -1574,7 +1645,7 @@ async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options, correct_pos = build_quiz_options(idx)
         buttons = []
         for opt in options:
-            is_right = "1" if opt == word["ru"] else "0"
+            is_right = "1" if opt == meaning_text(word) else "0"
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await update.message.reply_text(
@@ -1627,7 +1698,7 @@ async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options, _ = build_quiz_options(idx)
         buttons = []
         for opt in options:
-            is_right = "1" if opt == word["ru"] else "0"
+            is_right = "1" if opt == meaning_text(word) else "0"
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await query.edit_message_text(
@@ -1653,13 +1724,14 @@ async def cmd_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options=options,
         type="quiz",
         correct_option_id=correct_pos,
-        explanation=word.get("example", f"{word['ru']} — {word['en']}"),
+        explanation=example_target_text(word)
+        or f"{meaning_text(word)} — {target_text(word)}",
         open_period=15,
         is_anonymous=False,
     )
     context.bot_data.setdefault("poll_map", {})[msg.poll.id] = (
         int(update.effective_user.id),
-        PROGRESS["active_lang"],
+        active_content_pack().pack_id,
         idx,
         correct_pos,
     )
@@ -1676,10 +1748,24 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     invalidate_block_session(context.user_data)
     if len(poll_data) == 4:
-        poll_user_id, language, idx, correct_pos = poll_data
+        poll_user_id, pack_or_language, idx, correct_pos = poll_data
         if int(poll_user_id) != int(answer.user.id):
             return
-        PROGRESS["active_lang"] = language
+        pack = CATALOG.get(pack_or_language) or visible_pack_for_language(
+            pack_or_language
+        )
+        if pack is None or pack not in visible_packs():
+            poll_map.pop(answer.poll_id, None)
+            return
+        runtime = _ACTIVE_RUNTIME.get()
+        if runtime is not None and (
+            PROGRESS.get("active_pack_id") != pack.pack_id
+            or PROGRESS.get("active_lang") != pack.target_language
+        ):
+            activate_content_pack(pack, source="poll_restore")
+        elif runtime is None:
+            PROGRESS["active_pack_id"] = pack.pack_id
+            PROGRESS["active_lang"] = pack.target_language
     else:
         # Compatibility with poll state created before the multi-user migration.
         idx, correct_pos = poll_data
@@ -1701,13 +1787,14 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         options=opts,
         type="quiz",
         correct_option_id=new_correct,
-        explanation=new_word.get("example", f"{new_word['ru']} — {new_word['en']}"),
+        explanation=example_target_text(new_word)
+        or f"{meaning_text(new_word)} — {target_text(new_word)}",
         open_period=15,
         is_anonymous=False,
     )
     poll_map[msg.poll.id] = (
         int(answer.user.id),
-        PROGRESS["active_lang"],
+        active_content_pack().pack_id,
         new_idx,
         new_correct,
     )
@@ -1721,16 +1808,20 @@ def activate_block_language(user_data: dict):
     lang = user_data.get("block_lang")
     pack = CATALOG.get(user_data.get("block_pack_id", ""))
     runtime = _ACTIVE_RUNTIME.get()
-    if (
-        runtime is not None
-        and pack is not None
-        and pack.visible_to(runtime.role)
-        and PROGRESS.get("active_pack_id") != pack.pack_id
-    ):
+    if pack is None or pack.target_language != lang:
+        return
+    role = runtime.role if runtime is not None else "admin"
+    if not pack.visible_to(role):
+        return
+    if runtime is not None and PROGRESS.get("active_pack_id") != pack.pack_id:
         activate_content_pack(pack, source="block_restore")
         return
-    if lang in DICTS and PROGRESS["active_lang"] != lang:
-        PROGRESS["active_lang"] = lang
+    if (
+        PROGRESS.get("active_pack_id") != pack.pack_id
+        or PROGRESS["active_lang"] != pack.target_language
+    ):
+        PROGRESS["active_pack_id"] = pack.pack_id
+        PROGRESS["active_lang"] = pack.target_language
         save_progress(PROGRESS)
 
 
@@ -1765,10 +1856,12 @@ def pick_block(
 
 def format_study_list(indices: list[int]) -> str:
     lines = []
+    pack = active_content_pack()
     for n, idx in enumerate(indices, 1):
         w = W()[idx]
-        lang = PROGRESS["active_lang"]
-        lines.append(f"{n}. *{format_target_word(w, lang)}* — {w['ru']}")
+        target = escape_markdown(format_target_word(w, pack))
+        meaning = escape_markdown(meaning_text(w))
+        lines.append(f"{n}. *{target}* — {meaning}")
     return "\n".join(lines)
 
 
@@ -1783,14 +1876,18 @@ def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardM
     if pack is None or pack not in visible_packs():
         raise PermissionError("Content pack is not available to this user")
     words = PACK_DICTS[pack.pack_id]
-    counts = topic_counts(words, pack.language)
+    counts = topic_counts(
+        words,
+        pack.target_language,
+        topic_labels=CATALOG.topic_labels,
+    )
     rows = [[InlineKeyboardButton(
         f"🌐 Все слова ({len(words)})",
         callback_data=f"ltopic:{pack.pack_id}:all",
     )]]
     topic_buttons = [
         InlineKeyboardButton(
-            f"{TOPIC_LABELS[topic]} ({count})",
+            f"{CATALOG.topic_labels[topic]} ({count})",
             callback_data=f"ltopic:{pack.pack_id}:{topic}",
         )
         for topic, count in counts.items()
@@ -1800,7 +1897,7 @@ def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardM
 
 
 def topic_title(topic: str | None) -> str:
-    return TOPIC_LABELS.get(topic, "🌐 Все слова")
+    return CATALOG.topic_labels.get(topic, "🌐 Все слова")
 
 
 BLOCK_STALE_TEXT = "Эта кнопка устарела. Используй последнее сообщение блока."
@@ -1839,7 +1936,7 @@ def reset_block_state(
     user_data["block_lang"] = lang
     if pack_id is None:
         candidate = CATALOG.get(PROGRESS.get("active_pack_id"))
-        if candidate is None or candidate.language != lang:
+        if candidate is None or candidate.target_language != lang:
             candidate = visible_pack_for_language(lang)
         pack_id = candidate.pack_id if candidate else None
     user_data["block_pack_id"] = pack_id
@@ -1911,11 +2008,11 @@ async def validate_block_callback(
 
 def build_block_quiz_options(indices: list[int], idx: int) -> list[str]:
     """Build quiz options exclusively from the active block attempt."""
-    correct_ru = W()[idx]["ru"]
+    correct_ru = meaning_text(W()[idx])
     distractors = list({
-        W()[candidate]["ru"]
+        meaning_text(W()[candidate])
         for candidate in indices
-        if candidate != idx and W()[candidate]["ru"] != correct_ru
+        if candidate != idx and meaning_text(W()[candidate]) != correct_ru
     })
     random.shuffle(distractors)
     options = distractors[:3] + [correct_ru]
@@ -1924,7 +2021,7 @@ def build_block_quiz_options(indices: list[int], idx: int) -> list[str]:
 
 
 def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup:
-    correct_ru = W()[idx]["ru"]
+    correct_ru = meaning_text(W()[idx])
     session_id = user_data["block_session"]
     buttons = []
     for option in build_block_quiz_options(user_data["block_indices"], idx):
@@ -1971,7 +2068,7 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
 async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
     pack = active_content_pack()
-    context.user_data["block_lang"] = pack.language
+    context.user_data["block_lang"] = pack.target_language
     context.user_data["block_pack_id"] = pack.pack_id
     await update.message.reply_text(
         f"📚 *{pack.label}*\n\nВыбери тему:",
@@ -1995,13 +2092,13 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Этот набор недоступен.")
         return
     topic = None if topic_id == "all" else topic_id
-    if topic and topic not in TOPIC_LABELS:
+    if topic and topic not in CATALOG.topic_labels:
         return
 
     activate_content_pack(pack, source="learning")
     indices = pick_block(topic=topic)
     reset_block_state(
-        context.user_data, indices, pack.language, topic, pack.pack_id
+        context.user_data, indices, pack.target_language, topic, pack.pack_id
     )
     if not indices:
         await query.edit_message_text(
@@ -2018,7 +2115,7 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "block_started",
         properties={
             "pack_id": pack.pack_id,
-            "language": pack.language,
+            "language": pack.target_language,
             "topic": topic or "all",
             "word_count": len(indices),
         },
@@ -2266,13 +2363,16 @@ def format_block_summary(ud) -> str:
     text = f"📊 *Результат: {correct}/{total}*"
     if wrong_indices:
         text += "\n\n❌ Ошибки:"
+        pack = active_content_pack()
         for idx in wrong_indices:
             w = W()[idx]
-            lang = PROGRESS["active_lang"]
-            text += f"\n  • 🇷🇺 *{w['ru']}*"
             text += (
-                f"\n    {LANG_FLAGS.get(lang, '')} "
-                f"*{format_target_word(w, lang)}*"
+                f"\n  • {pack.meaning_flag} "
+                f"*{escape_markdown(meaning_text(w))}*"
+            )
+            text += (
+                f"\n    {pack.flag} "
+                f"*{escape_markdown(format_target_word(w, pack))}*"
             )
     else:
         text += "\n\n🎉 Без ошибок!"
@@ -2489,7 +2589,9 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     previous_indices = set(ud.get("block_all_indices", []))
     indices = pick_block(topic=topic, exclude_indices=previous_indices)
     pack = active_content_pack()
-    reset_block_state(ud, indices, pack.language, topic, pack.pack_id)
+    reset_block_state(
+        ud, indices, pack.target_language, topic, pack.pack_id
+    )
     await query.edit_message_text(
         format_block_intro(indices, topic),
         reply_markup=build_study_buttons(indices, ud["block_session"]),
@@ -2499,7 +2601,7 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "block_started",
         properties={
             "pack_id": pack.pack_id,
-            "language": pack.language,
+            "language": pack.target_language,
             "topic": topic or "all",
             "word_count": len(indices),
         },
@@ -2684,8 +2786,10 @@ async def manual_polling():
         store.close()
 
 def main():
-    langs = ", ".join(f"{l}: {len(DICTS[l])}" for l in DICTS)
-    logger.info(f"Bot starting — {langs}")
+    packs = ", ".join(
+        f"{pack.pack_id}: {pack.entry_count}" for pack in CATALOG.packs
+    )
+    logger.info("Bot starting — %s", packs)
     asyncio.run(manual_polling())
 
 if __name__ == "__main__":

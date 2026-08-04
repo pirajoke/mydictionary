@@ -1,26 +1,14 @@
 """Topic and transcription metadata independent from mutable learning progress."""
 
 from collections import Counter
+from typing import Mapping
 
-
-TOPIC_LABELS = {
-    "greetings": "👋 Приветствия",
-    "communication": "💬 Общение",
-    "people": "👥 Люди и семья",
-    "food": "🍽 Еда и напитки",
-    "home": "🏠 Дом и быт",
-    "travel": "🧭 Места и поездки",
-    "time": "🕒 Время и числа",
-    "work": "📚 Работа и учёба",
-    "business": "💼 Бизнес и финансы",
-    "health": "🩺 Здоровье и тело",
-    "nature": "🌿 Природа и наука",
-    "technology": "💻 Технологии",
-    "actions": "🏃 Действия",
-    "descriptions": "🎨 Описания и эмоции",
-    "general": "📦 Разное",
-}
-
+from mydictionary.content import (
+    entry_topics,
+    meaning_text,
+    target_text,
+    transcription_text,
+)
 
 JA_ROMAJI = {
     "こんにちは": "konnichiwa",
@@ -261,16 +249,20 @@ EN_TOPIC_KEYWORDS = {
 
 def transcription_for(word: dict, lang: str) -> str:
     """Return a learner-friendly pronunciation or transliteration."""
+    canonical = transcription_text(word)
+    if canonical:
+        return canonical
     if lang == "ja":
-        return JA_ROMAJI.get(word["en"], "")
-    if lang == "vi":
-        return word.get("ipa", "")
+        return JA_ROMAJI.get(target_text(word), "")
     return ""
 
 
 def topics_for_word(word: dict, lang: str) -> tuple[str, ...]:
     """Return one or more stable topic ids for a dictionary entry."""
-    term = word["en"]
+    canonical = entry_topics(word)
+    if canonical:
+        return canonical
+    term = target_text(word)
     topics = []
 
     for topic, terms in LANG_TOPIC_TERMS.get(lang, {}).items():
@@ -278,7 +270,7 @@ def topics_for_word(word: dict, lang: str) -> tuple[str, ...]:
             topics.append(topic)
 
     if lang == "en":
-        haystack = " ".join((term, word.get("ru", ""))).lower()
+        haystack = " ".join((term, meaning_text(word))).lower()
         for topic, keywords in EN_TOPIC_KEYWORDS.items():
             if any(keyword in haystack for keyword in keywords):
                 topics.append(topic)
@@ -289,7 +281,12 @@ def topics_for_word(word: dict, lang: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(topics))
 
 
-def topic_counts(words: list[dict], lang: str) -> dict[str, int]:
+def topic_counts(
+    words: list[dict],
+    lang: str,
+    *,
+    topic_labels: Mapping[str, str],
+) -> dict[str, int]:
     """Count entries for each topic in display order."""
     counts = Counter(
         topic
@@ -298,6 +295,6 @@ def topic_counts(words: list[dict], lang: str) -> dict[str, int]:
     )
     return {
         topic: counts[topic]
-        for topic in TOPIC_LABELS
+        for topic in topic_labels
         if counts[topic]
     }

@@ -3,9 +3,9 @@ import re
 import unittest
 from pathlib import Path
 
+from mydictionary.catalog import load_catalog
 from vocabulary_topics import (
     JA_ROMAJI,
-    TOPIC_LABELS,
     topic_counts,
     topics_for_word,
     transcription_for,
@@ -13,6 +13,7 @@ from vocabulary_topics import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+CATALOG = load_catalog(ROOT)
 LANG_FILES = {
     "en": "words.json",
     "vi": "words_vi.json",
@@ -42,19 +43,25 @@ class VocabularyTopicsTest(unittest.TestCase):
                 topics = topics_for_word(word, lang)
                 with self.subTest(lang=lang, term=word["en"]):
                     self.assertTrue(topics)
-                    self.assertTrue(set(topics).issubset(TOPIC_LABELS))
+                    self.assertTrue(
+                        set(topics).issubset(CATALOG.topic_labels)
+                    )
 
     def test_each_language_offers_multiple_topics(self):
         for lang, words in self.dictionaries.items():
-            counts = topic_counts(words, lang)
+            counts = topic_counts(
+                words,
+                lang,
+                topic_labels=CATALOG.topic_labels,
+            )
             with self.subTest(lang=lang):
                 self.assertGreaterEqual(len(counts), 8)
                 self.assertTrue(all(count > 0 for count in counts.values()))
 
     def test_topic_callback_ids_fit_telegram_limit(self):
-        for lang in LANG_FILES:
-            for topic in TOPIC_LABELS:
-                callback_data = f"ltopic:{lang}:{topic}"
+        for pack in CATALOG.packs:
+            for topic in CATALOG.topic_labels:
+                callback_data = f"ltopic:{pack.pack_id}:{topic}"
                 self.assertLessEqual(len(callback_data.encode()), 64)
 
 
