@@ -1,4 +1,5 @@
 import os
+from io import BytesIO
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -12,6 +13,8 @@ os.environ["DATA_DIR"] = TEST_DATA_DIR
 os.environ["ALLOW_SQLITE_DEV"] = "true"
 
 import bot
+from mydictionary.catalog import ContentPack, PronunciationConfig
+from mydictionary.content import meaning_text, target_text, transcription_text
 from vocabulary_topics import topics_for_word
 
 
@@ -36,11 +39,50 @@ class LearningBlocksTest(unittest.TestCase):
 
     def test_vietnamese_study_list_keeps_ipa_format(self):
         bot.PROGRESS["active_lang"] = "vi"
-        idx = next(i for i, word in enumerate(bot.W()) if word["en"] == "thích")
+        idx = next(
+            i
+            for i, word in enumerate(bot.W())
+            if target_text(word) == "thích"
+        )
         word = bot.W()[idx]
         self.assertEqual(
             bot.format_study_list([idx]),
-            f"1. *{word['en']} {word['ipa']}* — {word['ru']}",
+            f"1. *{target_text(word)} {transcription_text(word)}* — "
+            f"{meaning_text(word)}",
+        )
+
+    def test_rtl_pack_uses_configured_transcription_order_and_isolation(self):
+        pack = ContentPack(
+            pack_id="ar-basics-100",
+            target_language="ar",
+            meaning_language="ru",
+            direction="rtl",
+            flag="🇸🇦",
+            meaning_flag="🇷🇺",
+            label="Arabic",
+            title="Arabic basics",
+            description="Test pack",
+            filename="words_ar.json",
+            storage_key="ar",
+            visibility="public",
+            is_free=True,
+            status="published",
+            content_schema=2,
+            content_version=1,
+            entry_count=1,
+            pronunciation=PronunciationConfig(
+                transcription_system="learner-latin",
+                transcription_position="before",
+                tts_locale="ar-SA",
+                tts_voice="ar-SA-ZariyahNeural",
+                tts_rate="-20%",
+            ),
+        )
+        word = {"target": "مرحبا", "transcription": "marhaban"}
+
+        self.assertEqual(
+            bot.format_target_word(word, pack),
+            "marhaban (\u2067مرحبا\u2069)",
         )
 
     def test_pick_block_only_returns_selected_topic(self):
@@ -99,11 +141,11 @@ class LearningBlocksTest(unittest.TestCase):
 
     def test_quiz_options_only_use_words_from_active_block(self):
         indices = list(range(10))
-        allowed_translations = {bot.W()[idx]["ru"] for idx in indices}
+        allowed_translations = {meaning_text(bot.W()[idx]) for idx in indices}
 
         for idx in indices:
             options = bot.build_block_quiz_options(indices, idx)
-            self.assertIn(bot.W()[idx]["ru"], options)
+            self.assertIn(meaning_text(bot.W()[idx]), options)
             self.assertLessEqual(len(options), 4)
             self.assertEqual(len(options), len(set(options)))
             self.assertTrue(set(options).issubset(allowed_translations))
@@ -183,6 +225,28 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
             events[0][1]["text"],
             "🇷🇺 *я*\n🇯🇵 *watashi (私)*",
         )
+
+    async def test_pronunciation_uses_pack_speech_voice_rate_and_version(self):
+        pack = bot.CATALOG.require("ja-basics-100")
+        word = {"target": "今日", "speech": "きょう"}
+        audio = BytesIO(b"mp3")
+        send_voice = AsyncMock()
+        context = SimpleNamespace(bot=SimpleNamespace(send_voice=send_voice))
+
+        with (
+            patch.object(bot, "W", return_value=[word]),
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.object(bot, "get_audio", new=AsyncMock(return_value=audio)) as get,
+        ):
+            await bot.send_pronunciation(123, 0, context)
+
+        get.assert_awaited_once_with(
+            "きょう",
+            voice="ja-JP-NanamiNeural",
+            rate="-25%",
+            cache_namespace="ja-basics-100:v1",
+        )
+        send_voice.assert_awaited_once_with(chat_id=123, voice=audio)
 
 
 class GlobalCallbackIsolationTest(unittest.IsolatedAsyncioTestCase):
@@ -311,7 +375,9 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         option_texts = {
             row[0].text for row in kwargs["reply_markup"].inline_keyboard
         }
-        allowed_translations = {bot.W()[idx]["ru"] for idx in self.indices}
+        allowed_translations = {
+            meaning_text(bot.W()[idx]) for idx in self.indices
+        }
         self.assertTrue(option_texts.issubset(allowed_translations))
 
     async def test_ai_callback_answers_once_and_uses_active_session(self):

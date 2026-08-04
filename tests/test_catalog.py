@@ -30,9 +30,12 @@ class ContentCatalogTest(unittest.TestCase):
         for pack in self.catalog.visible_packs("learner"):
             words = self.catalog.words(pack)
             with self.subTest(pack=pack.pack_id):
-                self.assertEqual(len(words), pack.word_count)
+                self.assertEqual(len(words), pack.entry_count)
                 self.assertTrue(
-                    all(transcription_for(word, pack.language) for word in words)
+                    all(
+                        transcription_for(word, pack.target_language)
+                        for word in words
+                    )
                 )
 
     def test_storage_namespaces_are_unique_and_legacy_compatible(self):

@@ -1,9 +1,30 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "topics": [
+    {"topic_id": "greetings", "label": "👋 Приветствия"},
+    {"topic_id": "communication", "label": "💬 Общение"},
+    {"topic_id": "people", "label": "👥 Люди и семья"},
+    {"topic_id": "food", "label": "🍽 Еда и напитки"},
+    {"topic_id": "home", "label": "🏠 Дом и быт"},
+    {"topic_id": "travel", "label": "🧭 Места и поездки"},
+    {"topic_id": "time", "label": "🕒 Время и числа"},
+    {"topic_id": "work", "label": "📚 Работа и учёба"},
+    {"topic_id": "business", "label": "💼 Бизнес и финансы"},
+    {"topic_id": "health", "label": "🩺 Здоровье и тело"},
+    {"topic_id": "nature", "label": "🌿 Природа и наука"},
+    {"topic_id": "technology", "label": "💻 Технологии"},
+    {"topic_id": "actions", "label": "🏃 Действия"},
+    {"topic_id": "descriptions", "label": "🎨 Описания и эмоции"},
+    {"topic_id": "general", "label": "📦 Разное"}
+  ],
   "packs": [
     {
       "pack_id": "pirajoke-en-personal",
-      "language": "en",
+      "target_language": "en",
+      "meaning_language": "ru",
+      "direction": "ltr",
+      "flag": "🇬🇧",
+      "meaning_flag": "🇷🇺",
       "label": "🇬🇧 English",
       "title": "Личный английский словарь",
       "description": "Личный продвинутый словарь администратора.",
@@ -12,12 +33,24 @@
       "visibility": "admin",
       "is_free": false,
       "status": "published",
-      "version": 1,
-      "word_count": 661
+      "content_schema": 1,
+      "content_version": 1,
+      "entry_count": 661,
+      "pronunciation": {
+        "transcription_system": "none",
+        "transcription_position": "hidden",
+        "tts_locale": "en-US",
+        "tts_voice": "en-US-AriaNeural",
+        "tts_rate": "-25%"
+      }
     },
     {
       "pack_id": "vi-basics-101",
-      "language": "vi",
+      "target_language": "vi",
+      "meaning_language": "ru",
+      "direction": "ltr",
+      "flag": "🇻🇳",
+      "meaning_flag": "🇷🇺",
       "label": "🇻🇳 Tiếng Việt",
       "title": "Вьетнамский: базовые слова",
       "description": "Базовый набор с русским значением и транскрипцией.",
@@ -26,12 +59,24 @@
       "visibility": "public",
       "is_free": true,
       "status": "published",
-      "version": 1,
-      "word_count": 101
+      "content_schema": 1,
+      "content_version": 1,
+      "entry_count": 101,
+      "pronunciation": {
+        "transcription_system": "learner-latin",
+        "transcription_position": "after",
+        "tts_locale": "vi-VN",
+        "tts_voice": "vi-VN-HoaiMyNeural",
+        "tts_rate": "-25%"
+      }
     },
     {
       "pack_id": "ja-basics-100",
-      "language": "ja",
+      "target_language": "ja",
+      "meaning_language": "ru",
+      "direction": "ltr",
+      "flag": "🇯🇵",
+      "meaning_flag": "🇷🇺",
       "label": "🇯🇵 日本語",
       "title": "Японский: 100 базовых слов",
       "description": "Базовый набор: русский смысл, иероглифы, ромадзи и произношение.",
@@ -40,8 +85,16 @@
       "visibility": "public",
       "is_free": true,
       "status": "published",
-      "version": 1,
-      "word_count": 100
+      "content_schema": 1,
+      "content_version": 1,
+      "entry_count": 100,
+      "pronunciation": {
+        "transcription_system": "hepburn",
+        "transcription_position": "before",
+        "tts_locale": "ja-JP",
+        "tts_voice": "ja-JP-NanamiNeural",
+        "tts_rate": "-25%"
+      }
     }
   ]
 }
