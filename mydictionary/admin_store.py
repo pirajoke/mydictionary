@@ -13,6 +13,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS
 from mydictionary.storage import (
+    ACCESS_STATUSES,
     AIAllowance,
     AICreditLedger,
     AIUsage,
@@ -238,6 +239,45 @@ class AdminStore:
             )
             return balance_after
 
+    def set_user_access_status(
+        self,
+        user_id: int,
+        *,
+        status: str,
+        actor: str,
+    ) -> str:
+        status = str(status).strip().lower()
+        if status not in ACCESS_STATUSES:
+            raise ValueError("Unknown user access status")
+        with self.store.Session.begin() as session:
+            user = session.execute(
+                select(User)
+                .where(User.telegram_user_id == int(user_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if user is None:
+                raise ValueError("Telegram user does not exist")
+            if user.role == "admin" and status != "active":
+                raise ValueError("Administrator access cannot be restricted")
+            previous = user.access_status
+            if previous == status:
+                return status
+            user.access_status = status
+            user.access_status_updated_at = utcnow()
+            user.updated_at = utcnow()
+            session.add(
+                AdminAuditLog(
+                    actor=actor[:64],
+                    action="user_access_updated",
+                    target_type="user",
+                    target_id=str(user.telegram_user_id),
+                    details_json=_json(
+                        {"previous": previous, "current": status}
+                    ),
+                )
+            )
+        return status
+
     def dashboard(self) -> dict[str, Any]:
         now = datetime.now(timezone.utc)
         since = now - timedelta(days=7)
@@ -302,6 +342,10 @@ class AdminStore:
                 .group_by(UserProgress.active_lang)
                 .order_by(func.count(UserProgress.telegram_user_id).desc())
             ).all()
+            access_rows = session.execute(
+                select(User.access_status, func.count(User.telegram_user_id))
+                .group_by(User.access_status)
+            ).all()
         correct = int(learning[1] or 0)
         wrong = int(learning[2] or 0)
         attempts = correct + wrong
@@ -329,6 +373,7 @@ class AdminStore:
                 {"code": row[0], "users": int(row[1])}
                 for row in language_rows
             ],
+            "access": {row[0]: int(row[1]) for row in access_rows},
         }
 
     def users(self, *, search: str = "", limit: int = 100) -> list[dict[str, Any]]:
@@ -419,6 +464,8 @@ class AdminStore:
                     "username": user.username or "",
                     "language_code": user.language_code or "",
                     "role": user.role,
+                    "access_status": user.access_status,
+                    "access_status_updated_at": user.access_status_updated_at,
                     "native_language": user.native_language or "",
                     "learning_goal": user.learning_goal or "",
                     "daily_word_goal": user.daily_word_goal,
@@ -459,6 +506,7 @@ class AdminStore:
         since = datetime.now(timezone.utc) - timedelta(days=days)
         steps = [
             ("start_received", "Открыли /start"),
+            ("pilot_waitlist_joined", "Встали в очередь пилота"),
             ("onboarding_started", "Начали настройку"),
             ("onboarding_completed", "Завершили настройку"),
             ("block_started", "Открыли учебный блок"),

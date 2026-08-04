@@ -1,5 +1,7 @@
+import json
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -7,6 +9,7 @@ from sqlalchemy import select
 
 from mydictionary.admin import LoginLimiter, create_app
 from mydictionary.admin_store import AdminStore
+from mydictionary.readiness import BotHeartbeat
 from mydictionary.storage import (
     AIAllowance,
     AICreditLedger,
@@ -19,6 +22,12 @@ class AdminConsoleTest(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory(prefix="mydictionary-admin-")
         database_path = Path(self.temp_dir.name) / "admin.db"
+        self.heartbeat_path = Path(self.temp_dir.name) / "bot-heartbeat.json"
+        BotHeartbeat(
+            self.heartbeat_path,
+            release_sha="test-release",
+            access_mode="pilot",
+        ).mark_ready()
         self.store = DatabaseStore(f"sqlite:///{database_path}")
         self.app = create_app(
             {
@@ -26,6 +35,8 @@ class AdminConsoleTest(unittest.TestCase):
                 "SECRET_KEY": "test-session-secret-with-at-least-32-chars",
                 "ADMIN_USERNAME": "owner",
                 "ADMIN_PASSWORD": "test-password-123",
+                "BOT_HEARTBEAT_PATH": str(self.heartbeat_path),
+                "BOT_HEARTBEAT_MAX_AGE_SECONDS": 45,
             },
             database_store=self.store,
         )
@@ -74,6 +85,18 @@ class AdminConsoleTest(unittest.TestCase):
             data={"username": "owner", "password": "test-password-123"},
         )
         self.assertEqual(response.status_code, 400)
+
+        user_id = 5400
+        self.store.ensure_user_id(user_id)
+        self.login()
+        response = self.client.post(
+            f"/admin/users/{user_id}/access",
+            data={"status": "active"},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            self.store.product_profile(user_id)["access_status"], "pending"
+        )
 
     def test_short_session_secret_is_rejected(self):
         with self.assertRaisesRegex(RuntimeError, "at least 32"):
@@ -168,6 +191,75 @@ class AdminConsoleTest(unittest.TestCase):
                 actor="owner",
             )
 
+    def test_pilot_access_changes_are_transactional_and_audited(self):
+        user_id = 5502
+        self.store.ensure_user_id(user_id)
+        self.assertEqual(
+            self.store.product_profile(user_id)["access_status"], "pending"
+        )
+        self.login()
+        users_page = self.client.get("/admin?tab=users").get_data(as_text=True)
+        self.assertIn(f"/admin/users/{user_id}/access", users_page)
+        self.assertIn("Допустить", users_page)
+        self.assertIn("Блокировать", users_page)
+        approved = self.client.post(
+            f"/admin/users/{user_id}/access",
+            data={"csrf_token": self.csrf(), "status": "active"},
+        )
+        self.assertEqual(approved.status_code, 302)
+        self.assertEqual(
+            self.store.product_profile(user_id)["access_status"], "active"
+        )
+        with self.store.Session() as database_session:
+            audit = database_session.execute(
+                select(AdminAuditLog).where(
+                    AdminAuditLog.action == "user_access_updated"
+                )
+            ).scalar_one()
+        self.assertEqual(audit.target_id, str(user_id))
+        self.assertEqual(
+            json.loads(audit.details_json),
+            {"previous": "pending", "current": "active"},
+        )
+
+        blocked = self.client.post(
+            f"/admin/users/{user_id}/access",
+            data={"csrf_token": self.csrf(), "status": "blocked"},
+        )
+        self.assertEqual(blocked.status_code, 302)
+        self.assertEqual(
+            self.store.product_profile(user_id)["access_status"], "blocked"
+        )
+
+        rejected = self.client.post(
+            f"/admin/users/{user_id}/access",
+            data={"csrf_token": self.csrf(), "status": "unknown"},
+        )
+        self.assertEqual(rejected.status_code, 302)
+        self.assertEqual(
+            self.store.product_profile(user_id)["access_status"], "blocked"
+        )
+        with self.store.Session() as database_session:
+            audits = database_session.execute(
+                select(AdminAuditLog).where(
+                    AdminAuditLog.action == "user_access_updated"
+                )
+            ).scalars().all()
+        self.assertEqual(len(audits), 2)
+
+    def test_administrator_access_cannot_be_restricted(self):
+        user_id = 5503
+        self.store.ensure_user(SimpleNamespace(id=user_id), role="admin")
+        with self.assertRaisesRegex(ValueError, "Administrator"):
+            AdminStore(self.store).set_user_access_status(
+                user_id,
+                status="blocked",
+                actor="owner",
+            )
+        self.assertEqual(
+            self.store.product_profile(user_id)["access_status"], "active"
+        )
+
     def test_dashboard_and_user_table_aggregate_real_activity(self):
         self.store.ensure_user(
             SimpleNamespace(
@@ -228,6 +320,7 @@ class AdminConsoleTest(unittest.TestCase):
         self.assertEqual(dashboard["ai_requests"], 1)
         self.assertEqual(dashboard["ai_tokens"], 120)
         self.assertEqual(dashboard["credits_spent"], 1)
+        self.assertEqual(dashboard["access"]["pending"], 1)
 
         users = admin_store.users(search="aki")
         self.assertEqual(len(users), 1)
@@ -235,6 +328,7 @@ class AdminConsoleTest(unittest.TestCase):
         self.assertEqual(users[0]["learned_words"], 1)
         self.assertEqual(users[0]["ai_requests"], 1)
         self.assertEqual(users[0]["accuracy"], 70)
+        self.assertEqual(users[0]["access_status"], "pending")
 
         usage_columns = set(admin_store.ai_usage_export()[0])
         self.assertNotIn("prompt", usage_columns)
@@ -255,6 +349,7 @@ class AdminConsoleTest(unittest.TestCase):
 
     def test_product_funnel_renders_and_exports_privacy_safe_events(self):
         self.store.record_event(7001, "start_received", source="direct")
+        self.store.record_event(7001, "pilot_waitlist_joined", source="direct")
         self.store.record_event(7001, "onboarding_started")
         self.store.record_event(
             7001,
@@ -264,9 +359,11 @@ class AdminConsoleTest(unittest.TestCase):
         self.store.ensure_user(SimpleNamespace(id=7002), role="admin")
         self.store.record_event(7002, "start_received", source="direct")
         funnel = AdminStore(self.store).product_funnel(days=30)
-        self.assertEqual(funnel["steps"][0]["users"], 1)
-        self.assertEqual(funnel["steps"][0]["events"], 1)
-        self.assertEqual(funnel["steps"][2]["conversion"], 100)
+        steps = {step["event_name"]: step for step in funnel["steps"]}
+        self.assertEqual(steps["start_received"]["users"], 1)
+        self.assertEqual(steps["start_received"]["events"], 1)
+        self.assertEqual(steps["pilot_waitlist_joined"]["users"], 1)
+        self.assertEqual(steps["onboarding_completed"]["conversion"], 100)
 
         self.login()
         response = self.client.get("/admin?tab=funnel")
@@ -282,6 +379,17 @@ class AdminConsoleTest(unittest.TestCase):
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, {"status": "ok"})
+
+        stale_at = datetime.now(timezone.utc) - timedelta(minutes=2)
+        BotHeartbeat(
+            self.heartbeat_path,
+            release_sha="test-release",
+            access_mode="pilot",
+            now=lambda: stale_at,
+        ).mark_ready()
+        unavailable = self.client.get("/health")
+        self.assertEqual(unavailable.status_code, 503)
+        self.assertEqual(unavailable.json, {"status": "unavailable"})
 
 
 class LoginLimiterTest(unittest.TestCase):

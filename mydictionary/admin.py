@@ -34,6 +34,11 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
+from mydictionary.readiness import (
+    configured_max_age_seconds,
+    heartbeat_path,
+    inspect_bot_heartbeat,
+)
 from mydictionary.storage import DatabaseStore
 from vocabulary_topics import TOPIC_LABELS, topic_counts, transcription_for
 
@@ -159,6 +164,7 @@ def create_app(
     database_store: DatabaseStore | None = None,
 ) -> Flask:
     app = Flask(__name__)
+    data_dir = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("ADMIN_SESSION_SECRET", ""),
         ADMIN_USERNAME=os.environ.get("ADMIN_USERNAME", "").strip(),
@@ -166,6 +172,8 @@ def create_app(
         ADMIN_PASSWORD_HASH=os.environ.get("ADMIN_PASSWORD_HASH", ""),
         ADMIN_HOST=os.environ.get("ADMIN_HOST", "127.0.0.1").strip(),
         ADMIN_PORT=int(os.environ.get("ADMIN_PORT", "8787")),
+        BOT_HEARTBEAT_PATH=str(heartbeat_path(data_dir)),
+        BOT_HEARTBEAT_MAX_AGE_SECONDS=configured_max_age_seconds(),
         SESSION_COOKIE_NAME="mydictionary_admin_session",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict",
@@ -291,7 +299,15 @@ def create_app(
         try:
             with store.engine.connect() as connection:
                 connection.execute(text("select 1"))
-            return {"status": "ok"}
+            bot_readiness = inspect_bot_heartbeat(
+                Path(app.config["BOT_HEARTBEAT_PATH"]),
+                max_age_seconds=int(
+                    app.config["BOT_HEARTBEAT_MAX_AGE_SECONDS"]
+                ),
+            )
+            if bot_readiness.ready:
+                return {"status": "ok"}
+            return {"status": "unavailable"}, 503
         except Exception:
             return {"status": "unavailable"}, 503
 
@@ -389,6 +405,12 @@ def create_app(
                 revision = connection.execute(
                     text("select version_num from alembic_version")
                 ).scalar_one()
+            bot_readiness = inspect_bot_heartbeat(
+                Path(app.config["BOT_HEARTBEAT_PATH"]),
+                max_age_seconds=int(
+                    app.config["BOT_HEARTBEAT_MAX_AGE_SECONDS"]
+                ),
+            )
             context["diagnostics"] = {
                 "database": store.engine.dialect.name,
                 "migration": revision,
@@ -398,6 +420,12 @@ def create_app(
                 "admin_port": app.config["ADMIN_PORT"],
                 "release_sha": os.environ.get("RELEASE_SHA", "not set"),
                 "welcome_banner": (BASE_DIR / "assets/mydictionary-welcome.jpg").exists(),
+                "bot_ready": bot_readiness.ready,
+                "bot_state": bot_readiness.state,
+                "bot_reason": bot_readiness.reason,
+                "bot_heartbeat_age_seconds": bot_readiness.age_seconds,
+                "bot_release_sha": bot_readiness.release_sha,
+                "bot_access_mode": bot_readiness.access_mode,
             }
         elif tab == "audit":
             context["audit"] = admin_store.audit_log(limit=250)
@@ -434,6 +462,25 @@ def create_app(
         except (TypeError, ValueError) as exc:
             flash(str(exc), "error")
         return redirect(url_for("admin_index", tab="ai"))
+
+    @app.post("/admin/users/<int:user_id>/access")
+    @login_required
+    def update_user_access(user_id: int):
+        try:
+            status = admin_store.set_user_access_status(
+                user_id,
+                status=str(request.form.get("status") or ""),
+                actor=current_actor(),
+            )
+            labels = {
+                "pending": "ожидает решения",
+                "active": "допущен к пилоту",
+                "blocked": "заблокирован",
+            }
+            flash(f"Пользователь {user_id}: {labels[status]}.", "success")
+        except (TypeError, ValueError) as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("admin_index", tab="users"))
 
     @app.post("/admin/security")
     @login_required

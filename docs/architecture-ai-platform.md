@@ -56,9 +56,17 @@ users cannot share the active language or word counters. Telegram's
 active 10-word block and callback session token.
 
 `BOT_ACCESS_MODE=allowlist` is the fail-closed default. It accepts
-`ALLOWED_USER_ID` and comma-separated `ALLOWED_USER_IDS`. A future controlled
-rollout can set `BOT_ACCESS_MODE=public` explicitly without changing
-persistence.
+`ALLOWED_USER_ID` and comma-separated `ALLOWED_USER_IDS`. `pilot` registers a
+new learner as `pending` and allows learning only after an administrator changes
+the account to `active`. `blocked` users are denied in every mode, including
+`public`. Existing users are backfilled as active by migration `0005`, and
+configured administrators are always active. A future public rollout must set
+`BOT_ACCESS_MODE=public` explicitly.
+
+The bot publishes a privacy-safe heartbeat after every successful Telegram
+long-poll response. The admin health endpoint combines that
+freshness signal with a database probe, so an alive web process cannot hide a
+stalled or conflicting Telegram poller.
 
 ## Storage and Migration
 
@@ -76,6 +84,7 @@ key so restarts cannot duplicate or overwrite the migrated state.
 
 Stage 2 adds a provider-neutral AI gateway, active-block grounding, pilot quota
 reservations, and usage records. It remains feature-flagged off by default.
-Stage 3 adds the admin server. Stage 4 replaces pilot allowance semantics with
-an append-only financial credit ledger and Telegram Stars fulfillment. AI code
-must never write payment status, roles, or computed learning scores directly.
+Stage 3 adds the admin server and managed pilot admission. Stage 4 replaces
+pilot allowance semantics with an append-only financial credit ledger and
+Telegram Stars fulfillment. AI code must never write payment status, roles,
+access state, or computed learning scores directly.
