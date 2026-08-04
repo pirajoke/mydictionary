@@ -19,7 +19,7 @@ from pathlib import Path
 
 import yaml
 from telegram import Bot, BotCommand, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
-from telegram.error import Conflict
+from telegram.error import Conflict, TelegramError
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, PollAnswerHandler, filters, ContextTypes
@@ -2511,6 +2511,52 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Main
 # ---------------------------------------------------------------------------
 
+BOT_COMMANDS = [
+    BotCommand("start", "Главное меню"),
+    BotCommand("learn", "Блок 10 слов и тест блока"),
+    BotCommand("smart", "Весь словарь: адаптивно"),
+    BotCommand("poll", "Весь словарь: квиз с таймером"),
+    BotCommand("quiz", "Весь словарь: варианты"),
+    BotCommand("type", "Весь словарь: написать перевод"),
+    BotCommand("flash", "Весь словарь: карточки"),
+    BotCommand("ai", "AI-репетитор по активному блоку"),
+    BotCommand("ai_stats", "AI-кредиты и использование"),
+    BotCommand("lang", "Сменить язык"),
+    BotCommand("stats", "Статистика"),
+    BotCommand("help", "Помощь"),
+]
+
+
+async def sync_telegram_profile(telegram_bot) -> None:
+    """Update optional Bot API metadata without blocking polling startup."""
+    profile = get_bot_profile()
+    operations = (
+        ("commands", telegram_bot.set_my_commands, (BOT_COMMANDS,), {}),
+        ("name", telegram_bot.set_my_name, (profile["bot_name"],), {}),
+        (
+            "short_description",
+            telegram_bot.set_my_short_description,
+            (profile["bot_short_description"],),
+            {},
+        ),
+        (
+            "description",
+            telegram_bot.set_my_description,
+            (profile["bot_description"],),
+            {},
+        ),
+    )
+    for operation, method, args, kwargs in operations:
+        try:
+            await method(*args, **kwargs)
+        except TelegramError as exc:
+            logger.warning(
+                "Telegram profile sync skipped: operation=%s error_type=%s",
+                operation,
+                type(exc).__name__,
+            )
+
+
 async def manual_polling():
     """Manual polling loop that handles Conflict gracefully."""
     BOT_HEARTBEAT.mark_starting()
@@ -2599,25 +2645,8 @@ async def manual_polling():
     await app.initialize()
     await app.start()
     await app.bot.delete_webhook(drop_pending_updates=True)
-    await app.bot.set_my_commands([
-        BotCommand("start", "Главное меню"),
-        BotCommand("learn", "Блок 10 слов и тест блока"),
-        BotCommand("smart", "Весь словарь: адаптивно"),
-        BotCommand("poll", "Весь словарь: квиз с таймером"),
-        BotCommand("quiz", "Весь словарь: варианты"),
-        BotCommand("type", "Весь словарь: написать перевод"),
-        BotCommand("flash", "Весь словарь: карточки"),
-        BotCommand("ai", "AI-репетитор по активному блоку"),
-        BotCommand("ai_stats", "AI-кредиты и использование"),
-        BotCommand("lang", "Сменить язык"),
-        BotCommand("stats", "Статистика"),
-        BotCommand("help", "Помощь"),
-    ])
-    profile = get_bot_profile()
-    await app.bot.set_my_name(profile["bot_name"])
-    await app.bot.set_my_short_description(profile["bot_short_description"])
-    await app.bot.set_my_description(profile["bot_description"])
-    logger.info("Bot commands menu registered")
+    await sync_telegram_profile(app.bot)
+    logger.info("Bot command and profile sync completed")
 
     offset = None
     logger.info("Manual polling started")
