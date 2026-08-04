@@ -34,18 +34,21 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
+from mydictionary.content import example_target_text
 from mydictionary.readiness import (
     configured_max_age_seconds,
     heartbeat_path,
     inspect_bot_heartbeat,
 )
 from mydictionary.storage import DatabaseStore
-from vocabulary_topics import TOPIC_LABELS, topic_counts, transcription_for
+from vocabulary_topics import topic_counts, transcription_for
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CATALOG = load_catalog(BASE_DIR)
-LANG_LABELS = {pack.language: pack.label for pack in CATALOG.packs}
+LANG_LABELS = {
+    pack.target_language: pack.label for pack in CATALOG.packs
+}
 ADMIN_TABS = {
     "dashboard",
     "users",
@@ -108,21 +111,27 @@ def _content_overview() -> list[dict[str, Any]]:
     for pack in CATALOG.packs:
         words = CATALOG.words(pack)
         transcribed = sum(
-            1 for word in words if transcription_for(word, pack.language)
+            1
+            for word in words
+            if transcription_for(word, pack.target_language)
         )
-        examples = sum(1 for word in words if str(word.get("example", "")).strip())
-        topics = topic_counts(words, pack.language)
+        examples = sum(1 for word in words if example_target_text(word))
+        topics = topic_counts(
+            words,
+            pack.target_language,
+            topic_labels=CATALOG.topic_labels,
+        )
         result.append(
             {
                 "pack_id": pack.pack_id,
-                "language": pack.language,
+                "language": pack.target_language,
                 "label": pack.label,
                 "title": pack.title,
                 "filename": pack.filename,
                 "visibility": pack.visibility,
                 "is_free": pack.is_free,
                 "status": pack.status,
-                "version": pack.version,
+                "version": pack.content_version,
                 "words": len(words),
                 "transcribed": transcribed,
                 "examples": examples,
@@ -130,7 +139,7 @@ def _content_overview() -> list[dict[str, Any]]:
                 "topics": [
                     {
                         "id": topic,
-                        "label": TOPIC_LABELS.get(topic, topic),
+                        "label": CATALOG.topic_labels.get(topic, topic),
                         "words": count,
                     }
                     for topic, count in topics.items()

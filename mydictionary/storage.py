@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-import hashlib
 import json
 from pathlib import Path
 import re
@@ -30,6 +29,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from mydictionary.catalog import PACK_ID_RE
+from mydictionary.content import target_text, vocabulary_progress_id
 
 
 PROFILE_FIELDS = (
@@ -67,15 +67,8 @@ def utcnow() -> datetime:
 
 
 def vocabulary_id_for(word: Mapping[str, Any]) -> str:
-    """Return position-independent identity for one bilingual entry."""
-    term = str(word.get("en", "")).strip()
-    meaning = str(word.get("ru", "")).strip()
-    if not term or not meaning:
-        raise ValueError("Vocabulary entries require target and Russian text")
-    identity = json.dumps(
-        [term, meaning], ensure_ascii=False, separators=(",", ":")
-    )
-    return hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    """Return the stable content identity used by persisted learner progress."""
+    return vocabulary_progress_id(word)
 
 
 class Base(DeclarativeBase):
@@ -657,7 +650,7 @@ class DatabaseStore:
         word_index: int,
         word: Mapping[str, Any],
     ) -> None:
-        term = str(word.get("en", "")).strip()
+        term = target_text(word)
         vocabulary_id = vocabulary_id_for(word)
         key = (int(user_id), language, vocabulary_id)
         row = session.get(WordProgress, key)
