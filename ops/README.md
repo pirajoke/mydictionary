@@ -11,9 +11,11 @@ approved production change. Render is not part of this deployment model.
   readiness.
 - `mydictionary_admin.py` starts Gunicorn from the active release with a shared
   runtime directory and a release SHA derived from the `current` symlink.
+- `mydictionary_backup.py` creates and verifies private PostgreSQL
+  custom-format backups independently of a deployment.
 
-Both scripts are standalone entrypoints. The deployer uses only the standard
-library in its bootstrap environment; each candidate release installs its own
+All scripts are standalone entrypoints and use only the standard library in
+their bootstrap environment. Each candidate release installs its own
 application dependencies before tests run.
 
 ## Deployment modes
@@ -51,6 +53,36 @@ After the cause has been reviewed and corrected, clear exactly one failed SHA:
 python ops/mydictionary_autodeploy.py --clear-failed <40-character-sha>
 ```
 
+## Database backups
+
+Run the backup wrapper daily from a dedicated launchd service. The default
+action creates a private custom-format dump, validates it with `pg_restore
+--list`, and atomically records its SHA-256, size, timestamp, and Alembic
+revision in owner-only local metadata.
+
+```bash
+python ops/mydictionary_backup.py
+```
+
+The independent check is suitable for monitoring and pre-deploy gates. By
+default, a verified backup is stale after 26 hours.
+
+```bash
+python ops/mydictionary_backup.py --check
+```
+
+Creation and checking never delete a backup. Retention cleanup is an explicit
+operator action that first validates every deletion candidate, preserves at
+least 30 days and seven backups by default, and never deletes the latest backup.
+
+```bash
+python ops/mydictionary_backup.py --prune
+```
+
+This is a host-local recovery control. It does not protect against loss of the
+Mac mini or its storage; encrypted off-host replication requires a separate
+design and approval.
+
 ## Required environment
 
 ```text
@@ -76,6 +108,21 @@ Operator migration deploys also require:
 MYDICTIONARY_PGDUMP_DATABASE=<local libpq database target>
 MYDICTIONARY_BACKUP_DIR=<private local backup directory>
 ```
+
+The scheduled backup wrapper uses the same two settings plus:
+
+```text
+MYDICTIONARY_APP_ROOT=<local application root>
+MYDICTIONARY_BACKUP_RETENTION_DAYS=30
+MYDICTIONARY_BACKUP_MINIMUM_COUNT=7
+MYDICTIONARY_BACKUP_MAX_AGE_SECONDS=93600
+MYDICTIONARY_BACKUP_MIN_FREE_BYTES=1073741824
+MYDICTIONARY_BACKUP_COMMAND_TIMEOUT_SECONDS=1800
+```
+
+The retention settings are bounded in code. `MYDICTIONARY_PG_DUMP`,
+`MYDICTIONARY_PG_RESTORE`, and `MYDICTIONARY_PSQL` may identify trusted local
+executables when they are not available through `PATH`.
 
 The PostgreSQL target is passed to `pg_dump` through `PGDATABASE`, not the
 process argument list. Credentials, admin secrets, local paths, logs, backup

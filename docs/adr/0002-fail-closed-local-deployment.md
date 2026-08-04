@@ -43,6 +43,12 @@ The admin launcher is versioned with the deployer. It derives `RELEASE_SHA`
 from the active symlink, shares `DATA_DIR` with the bot, binds only to loopback,
 refuses to enable AI, and passes secrets only through the child environment.
 
+A separate version-controlled backup wrapper creates a verified local
+PostgreSQL custom archive every day. Operational preflight requires a recent
+backup with matching owner-only metadata, size, SHA-256, and archive format.
+Creation and checking are non-destructive; bounded retention cleanup is a
+distinct operator command and preserves both age and count floors.
+
 ## Options considered
 
 ### Restore old code after every failure
@@ -71,5 +77,9 @@ reversibility boundary. This option is selected.
 - A migration failure may leave services stopped or the candidate unhealthy.
   This is intentional fail-closed behavior; the recovery record and backup are
   used for an explicit fix-forward or restore decision.
+- Local recurring backups reduce migration and host-local recovery risk, but do
+  not protect against loss of the host. Encrypted off-host replication remains
+  a separate decision because it introduces storage, credential, privacy, and
+  restore-verification requirements.
 - Autodeploy remains disabled until the versioned wrappers are installed and a
   separately approved production acceptance test succeeds.

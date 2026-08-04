@@ -20,13 +20,16 @@ or payment. Each consequential action still requires its own approval.
 
 1. Confirm the draft PR tests and review are complete.
 2. Obtain separate approval to merge and deploy the named commit to production.
-3. Back up the current deploy and admin wrappers.
+3. Back up the current deploy, admin, and database-backup wrappers.
 4. Install `ops/mydictionary_autodeploy.py` and
    `ops/mydictionary_admin.py` from the merged commit with owner-only write and
-   execute permissions.
+   execute permissions. Install `ops/mydictionary_backup.py` for the dedicated
+   backup service using the same ownership policy.
 5. Configure launchd with the environment listed in `ops/README.md`. Do not put
    the bot token or admin credential in a plist committed to Git.
 6. Keep the autodeploy launch agent unloaded while validating the wrappers.
+7. Keep the new backup service unloaded until its destination, database target,
+   first dump, and monitoring command are explicitly approved for production.
 
 ## Pre-deploy checks
 
@@ -35,7 +38,8 @@ Record without exposing secrets:
 - `origin/main` commit SHA and fast-forward relationship to `.deployed-sha`
 - `current` release SHA
 - PostgreSQL `alembic_version`
-- free space and backup destination
+- free space, backup destination, and a successful
+  `mydictionary_backup.py --check`
 - bot/admin launchd state
 - heartbeat age, release SHA, and access mode
 - local and public health status
@@ -83,6 +87,13 @@ For a schema change the deployer performs this sequence:
 
 ### Backup policy
 
+- Run `mydictionary_backup.py` once per day from a dedicated launchd service.
+- The latest recurring backup must be no older than 26 hours. Monitoring and
+  every deploy preflight run `--check`, which revalidates metadata, file mode,
+  size, SHA-256, and custom archive format without modifying the backup.
+- Keep at least 30 days and at least seven recurring backups. Backup creation
+  and checks never prune. `--prune` is a separate operator action; it validates
+  every candidate before deleting any file and never deletes the latest copy.
 - Every schema migration requires a new uniquely named custom-format dump.
 - A dump is valid only after `pg_restore --list` succeeds and its SHA-256 is
   recorded in the private recovery state.
@@ -93,6 +104,9 @@ For a schema change the deployer performs this sequence:
   validated, whichever is longer.
 - Deletion, off-host transfer, or restore is a separate operator action. Before
   a restore, recompute the checksum and compare it with the recovery record.
+- Host-local backups do not cover loss or compromise of the Mac mini or its
+  storage. Until an encrypted off-host target is designed and approved, this
+  residual risk remains open and must be included in pilot readiness reviews.
 
 ## Recovery matrix
 
@@ -137,4 +151,5 @@ Operator holds for content or migrations cannot be cleared with
 - no polling conflicts, startup failures, or Telegram request URLs appear in
   new logs
 - PostgreSQL revision equals the candidate Alembic head
+- the recurring backup check remains green after the release
 - autodeploy remains unloaded until its enablement is separately approved
