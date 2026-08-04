@@ -258,7 +258,7 @@ class DeployPolicyTest(OpsTestCase):
             changed_paths=patch.object(
                 deployer,
                 "changed_paths",
-                return_value=("content/catalog.json", "words_fr.json"),
+                return_value=("content/basic_100.tsv", "words_ar_basic.json"),
             )
         )
         self.enter_all(patches)
@@ -270,6 +270,22 @@ class DeployPolicyTest(OpsTestCase):
         self.assertEqual(result, "held")
         self.assertEqual(record.call_args.kwargs["stage"], "content_review_required")
         automatic.assert_not_called()
+
+    def test_content_contract_v2_pack_files_are_protected(self):
+        paths = (
+            "content/basic_100.tsv",
+            "content/catalog.json",
+            "words_en_basic.json",
+            "words_fr_basic.json",
+            "words_de_basic.json",
+            "words_ja.json",
+            "words_ar_basic.json",
+            "words_zh_basic.json",
+            "words_ru_basic.json",
+            "words_es_basic.json",
+        )
+
+        self.assertEqual(deployer.protected_content_changes(paths), paths)
 
     def test_failed_sha_quarantine_skips_build_and_restart(self):
         self.config.lock_file.write_text("", encoding="utf-8")
