@@ -188,7 +188,9 @@ class ContentContractV2Test(unittest.TestCase):
 
     def test_checked_in_legacy_packs_keep_historical_progress_ids(self):
         catalog = load_catalog(ROOT)
-        for pack in catalog.packs:
+        for pack in (
+            candidate for candidate in catalog.packs if candidate.content_schema == 1
+        ):
             raw_words = json.loads((ROOT / pack.filename).read_text(encoding="utf-8"))
             normalized = catalog.words(pack)
             for raw, word in zip(raw_words, normalized, strict=True):
