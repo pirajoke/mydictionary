@@ -14,7 +14,7 @@
       </a>
       <nav aria-label="Разделы">
         {% for id, label in [
-          ('dashboard','Обзор'),('users','Пользователи'),('learning','Обучение'),
+          ('dashboard','Обзор'),('users','Пользователи'),('funnel','Воронка'),('learning','Обучение'),
           ('ai','AI и кредиты'),('content','Контент'),('profile','Профиль бота'),
           ('diagnostics','Диагностика'),('audit','Аудит')
         ] %}
@@ -30,7 +30,7 @@
     <main class="workspace">
       <header class="topbar">
         <div><p class="eyebrow">MY DICTIONARY</p><h1>{{ {
-          'dashboard':'Обзор продукта','users':'Пользователи','learning':'Обучение',
+          'dashboard':'Обзор продукта','users':'Пользователи','funnel':'Продуктовая воронка','learning':'Обучение',
           'ai':'AI и кредиты','content':'Словари и темы','profile':'Профиль бота',
           'diagnostics':'Диагностика','audit':'Журнал аудита'
         }[tab] }}</h1></div>
@@ -43,7 +43,7 @@
 
       {% if tab == 'dashboard' %}
         <section class="metric-grid" aria-label="Главные показатели">
-          <article><span>Пользователи</span><strong>{{ dashboard.users|number }}</strong><small>+{{ dashboard.new_users_7d }} за 7 дней</small></article>
+          <article><span>Пользователи</span><strong>{{ dashboard.users|number }}</strong><small>{{ dashboard.onboarded_users }} завершили настройку</small></article>
           <article><span>Активные, 7 дней</span><strong>{{ dashboard.active_users_7d|number }}</strong><small>обновляли состояние</small></article>
           <article><span>Завершённые блоки</span><strong>{{ dashboard.sessions|number }}</strong><small>{{ dashboard.accuracy|round(1) }}% точность</small></article>
           <article><span>Выученные слова</span><strong>{{ dashboard.learned_words|number }}</strong><small>из {{ dashboard.tracked_words|number }} отслеживаемых</small></article>
@@ -74,6 +74,22 @@
         <section class="panel">
           <div class="section-heading"><div><p class="eyebrow">Последние</p><h2>Пользователи</h2></div><a href="{{ url_for('admin_index', tab='users') }}">Открыть список</a></div>
           {% set compact = true %}{% include 'admin/users_table.html' %}
+        </section>
+      {% endif %}
+
+      {% if tab == 'funnel' %}
+        <section class="metric-grid" aria-label="Воронка за 30 дней">
+          {% for step in funnel.steps %}<article>
+            <span>{{ step.label }}</span><strong>{{ step.users|number }}</strong>
+            <small>{{ step.conversion|round(1) }}% от открывших /start · {{ step.events }} событий</small>
+          </article>{% endfor %}
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Последние 100</p><h2>События продукта</h2></div><a class="button-link" href="{{ url_for('export_csv', kind='analytics-events') }}">Экспорт CSV</a></div>
+          <div class="table-wrap"><table><thead><tr><th>Время</th><th>Событие</th><th>User ID</th><th>Сессия</th><th>Источник</th><th>Свойства</th></tr></thead><tbody>
+            {% for row in events %}<tr><td>{{ row.occurred_at|datetime }}</td><td class="mono">{{ row.event_name }}</td><td class="mono">{{ row.telegram_user_id }}</td><td class="mono">{{ row.session_id }}</td><td>{{ row.source }}</td><td class="details">{{ row.properties|tojson }}</td></tr>
+            {% else %}<tr><td colspan="6" class="empty">Событий пока нет.</td></tr>{% endfor %}
+          </tbody></table></div>
         </section>
       {% endif %}
 
@@ -144,7 +160,8 @@
 
       {% if tab == 'content' %}
         {% for lang in content %}<section class="panel">
-          <div class="section-heading"><div><p class="eyebrow">{{ lang.filename }}</p><h2>{{ lang.label }} · {{ lang.words }} слов</h2></div><span>{{ lang.transcribed }}/{{ lang.words }} с транскрипцией</span></div>
+          <div class="section-heading"><div><p class="eyebrow">{{ lang.pack_id }} · v{{ lang.version }}</p><h2>{{ lang.title }} · {{ lang.words }} слов</h2></div><span>{{ lang.visibility }} · {{ 'free' if lang.is_free else 'private' }} · {{ lang.status }}</span></div>
+          <p>{{ lang.label }} · {{ lang.filename }} · {{ lang.transcribed }}/{{ lang.words }} с транскрипцией</p>
           <div class="topic-list">{% for topic in lang.topics %}<div><span>{{ topic.label }}</span><strong>{{ topic.words }}</strong></div>{% endfor %}</div>
         </section>{% endfor %}
       {% endif %}
@@ -180,7 +197,7 @@
           <dl class="diagnostic-list">
             {% for label, value, ok in [
               ('База данных', diagnostics.database, true),
-              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0003_admin_console'),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0004_product_foundation'),
               ('AI tutor enabled', diagnostics.ai_enabled, diagnostics.ai_enabled|lower in ['1','true','yes','on']),
               ('AI provider configured', 'yes' if diagnostics.ai_provider_configured else 'no', diagnostics.ai_provider_configured),
               ('Admin binding', diagnostics.admin_host ~ ':' ~ diagnostics.admin_port, diagnostics.admin_host in ['127.0.0.1','localhost','::1']),

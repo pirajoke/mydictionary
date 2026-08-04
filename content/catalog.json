@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "packs": [
+    {
+      "pack_id": "pirajoke-en-personal",
+      "language": "en",
+      "label": "🇬🇧 English",
+      "title": "Личный английский словарь",
+      "description": "Личный продвинутый словарь администратора.",
+      "filename": "words.json",
+      "storage_key": "en",
+      "visibility": "admin",
+      "is_free": false,
+      "status": "published",
+      "version": 1,
+      "word_count": 661
+    },
+    {
+      "pack_id": "vi-basics-101",
+      "language": "vi",
+      "label": "🇻🇳 Tiếng Việt",
+      "title": "Вьетнамский: базовые слова",
+      "description": "Базовый набор с русским значением и транскрипцией.",
+      "filename": "words_vi.json",
+      "storage_key": "vi",
+      "visibility": "public",
+      "is_free": true,
+      "status": "published",
+      "version": 1,
+      "word_count": 101
+    },
+    {
+      "pack_id": "ja-basics-100",
+      "language": "ja",
+      "label": "🇯🇵 日本語",
+      "title": "Японский: 100 базовых слов",
+      "description": "Базовый набор: русский смысл, иероглифы, ромадзи и произношение.",
+      "filename": "words_ja.json",
+      "storage_key": "ja",
+      "visibility": "public",
+      "is_free": true,
+      "status": "published",
+      "version": 1,
+      "word_count": 100
+    }
+  ]
+}

@@ -45,6 +45,7 @@ from mydictionary.ai_tutor import (
 )
 from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import render_start_text
+from mydictionary.catalog import ContentPack, load_catalog
 from mydictionary.legacy import import_legacy_user
 from mydictionary.storage import (
     AIQuotaExceeded,
@@ -87,6 +88,17 @@ def _configured_user_ids() -> set[int]:
 ALLOWED_USER_IDS = _configured_user_ids()
 
 
+def _configured_admin_ids() -> set[int]:
+    values = os.environ.get("ADMIN_TELEGRAM_USER_IDS", "").split(",")
+    result = {int(value.strip()) for value in values if value.strip()}
+    if LEGACY_USER_ID is not None:
+        result.add(LEGACY_USER_ID)
+    return result
+
+
+ADMIN_USER_IDS = _configured_admin_ids()
+
+
 def _configured_access_mode() -> str:
     mode = os.environ.get("BOT_ACCESS_MODE", "allowlist").strip().lower()
     if mode not in {"allowlist", "public"}:
@@ -101,16 +113,10 @@ AI_SETTINGS = AITutorSettings.from_env()
 # Data layer — multi-language
 # ---------------------------------------------------------------------------
 
-LANG_FILES = {
-    "en": "words.json",
-    "vi": "words_vi.json",
-    "ja": "words_ja.json",
-}
-LANG_LABELS = {
-    "en": "🇬🇧 English",
-    "vi": "🇻🇳 Tiếng Việt",
-    "ja": "🇯🇵 日本語",
-}
+CATALOG = load_catalog(BASE_DIR)
+# Legacy JSON import namespaces stay fixed as new packs are added to the catalog.
+LANG_FILES = {"en": "words.json", "vi": "words_vi.json", "ja": "words_ja.json"}
+LANG_LABELS = {pack.language: pack.label for pack in CATALOG.packs}
 LANG_FLAGS = {"en": "🇬🇧", "vi": "🇻🇳", "ja": "🇯🇵"}
 
 def load_words(lang: str) -> list[dict]:
@@ -129,6 +135,7 @@ PROGRESS_DEFAULTS = {
     "streak": 0, "streak_best": 0, "last_activity_date": None,
     "today_xp": 0, "today_date": None,
     "active_lang": "en",
+    "active_pack_id": None,
 }
 
 def load_progress() -> dict:
@@ -149,6 +156,10 @@ def load_progress() -> dict:
     return data
 
 DICTS: dict[str, list[dict]] = {lang: load_words(lang) for lang in LANG_FILES}
+PACK_DICTS: dict[str, list[dict]] = {
+    pack.pack_id: [dict(word, **WORD_PROGRESS_DEFAULTS) for word in CATALOG.words(pack)]
+    for pack in CATALOG.packs
+}
 _FALLBACK_PROGRESS: dict = load_progress()
 _STORE: DatabaseStore | None = None
 _AI_TUTOR: AITutorService | None = None
@@ -198,18 +209,32 @@ class LearnerRuntime:
     user_id: int
     store: DatabaseStore
     progress: dict
+    role: str = "learner"
+    onboarding_completed: bool = False
     words_by_lang: dict[str, list[dict]] = field(default_factory=dict)
 
-    def words(self, language: str) -> list[dict]:
-        if language not in self.words_by_lang:
-            stored = self.store.load_word_progress(self.user_id, language)
-            words = [dict(word) for word in DICTS[language]]
+    def words(self, language_or_pack: str) -> list[dict]:
+        pack = CATALOG.get(language_or_pack)
+        if pack is None:
+            if (
+                language_or_pack == self.progress.get("active_lang")
+                and self.progress.get("active_pack_id")
+            ):
+                active_pack = CATALOG.get(self.progress["active_pack_id"])
+                if active_pack and active_pack.language == language_or_pack:
+                    pack = active_pack
+            pack = pack or CATALOG.pack_for_language(language_or_pack, self.role)
+        if pack is None or not pack.visible_to(self.role):
+            raise PermissionError("Content pack is not available to this user")
+        if pack.pack_id not in self.words_by_lang:
+            stored = self.store.load_word_progress(self.user_id, pack.storage_key)
+            words = [dict(word) for word in PACK_DICTS[pack.pack_id]]
             for word in words:
                 values = stored.get(vocabulary_id_for(word))
                 if values is not None:
                     word.update(values)
-            self.words_by_lang[language] = words
-        return self.words_by_lang[language]
+            self.words_by_lang[pack.pack_id] = words
+        return self.words_by_lang[pack.pack_id]
 
 
 _ACTIVE_RUNTIME: ContextVar[LearnerRuntime | None] = ContextVar(
@@ -248,9 +273,79 @@ PROGRESS = ProgressProxy(_FALLBACK_PROGRESS)
 
 def W(language: str | None = None) -> list[dict]:
     """Return vocabulary content overlaid with the active user's progress."""
-    selected = language or PROGRESS["active_lang"]
+    selected = language
+    if selected is None:
+        active_pack = CATALOG.get(PROGRESS.get("active_pack_id"))
+        selected = (
+            active_pack.pack_id
+            if active_pack and active_pack.language == PROGRESS["active_lang"]
+            else PROGRESS["active_lang"]
+        )
     runtime = _ACTIVE_RUNTIME.get()
-    return runtime.words(selected) if runtime else DICTS[selected]
+    if runtime:
+        return runtime.words(selected)
+    return PACK_DICTS[selected] if selected in PACK_DICTS else DICTS[selected]
+
+
+def visible_packs() -> tuple[ContentPack, ...]:
+    runtime = _ACTIVE_RUNTIME.get()
+    return CATALOG.visible_packs(runtime.role if runtime else "admin")
+
+
+def visible_pack_for_language(language: str) -> ContentPack | None:
+    runtime = _ACTIVE_RUNTIME.get()
+    role = runtime.role if runtime else "admin"
+    return CATALOG.pack_for_language(language, role)
+
+
+def active_content_pack() -> ContentPack:
+    pack = CATALOG.get(PROGRESS.get("active_pack_id"))
+    if (
+        pack is None
+        or pack.language != PROGRESS["active_lang"]
+        or pack not in visible_packs()
+    ):
+        pack = visible_pack_for_language(PROGRESS["active_lang"])
+    if pack is None:
+        raise PermissionError("No active content pack")
+    return pack
+
+
+def activate_content_pack(pack: ContentPack, *, source: str) -> None:
+    runtime = _ACTIVE_RUNTIME.get()
+    if runtime is None or not pack.visible_to(runtime.role):
+        raise PermissionError("Content pack is not available to this user")
+    runtime.store.activate_pack(
+        runtime.user_id,
+        pack_id=pack.pack_id,
+        language=pack.language,
+        source=source,
+    )
+    PROGRESS["active_pack_id"] = pack.pack_id
+    PROGRESS["active_lang"] = pack.language
+
+
+def record_product_event(
+    event_name: str,
+    *,
+    properties: dict | None = None,
+    session_id: str | None = None,
+    source: str | None = None,
+) -> None:
+    """Record analytics without allowing telemetry failures to break learning."""
+    runtime = _ACTIVE_RUNTIME.get()
+    if runtime is None:
+        return
+    try:
+        runtime.store.record_event(
+            runtime.user_id,
+            event_name,
+            properties=properties,
+            session_id=session_id,
+            source=source,
+        )
+    except Exception as exc:
+        logger.warning("Product analytics failed for %s: %s", event_name, exc)
 
 
 def save_progress(prog: MutableMapping):
@@ -267,11 +362,16 @@ def save_progress(prog: MutableMapping):
 def save_answer_state(index: int) -> None:
     runtime = _ACTIVE_RUNTIME.get()
     if runtime:
-        language = PROGRESS["active_lang"]
+        pack = CATALOG.get(PROGRESS.get("active_pack_id"))
+        if pack is None or pack.language != PROGRESS["active_lang"]:
+            pack = visible_pack_for_language(PROGRESS["active_lang"])
+            if pack is None:
+                raise PermissionError("Content pack is not available to this user")
+            PROGRESS["active_pack_id"] = pack.pack_id
         runtime.store.save_learning_state(
             runtime.user_id,
             dict(PROGRESS),
-            language,
+            pack.storage_key,
             index,
             W()[index],
         )
@@ -283,8 +383,9 @@ def save_answer_state(index: int) -> None:
 
 def _runtime_for_user(telegram_user) -> LearnerRuntime:
     store = get_store()
-    store.ensure_user(telegram_user)
     user_id = int(telegram_user.id)
+    configured_role = "admin" if user_id in ADMIN_USER_IDS else None
+    store.ensure_user(telegram_user, role=configured_role)
     if LEGACY_USER_ID is not None and user_id == LEGACY_USER_ID:
         import_legacy_user(
             store,
@@ -294,10 +395,36 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
             LANG_FILES,
             PROGRESS_DEFAULTS,
         )
+    product = store.product_profile(user_id)
+    role = product["role"]
+    if role == "admin" and (
+        product["onboarding_completed_at"] is None
+        or product["active_pack_id"] is None
+    ):
+        pack = (
+            CATALOG.pack_for_language(product["active_lang"], "admin")
+            or CATALOG.require("pirajoke-en-personal")
+        )
+        store.activate_pack(
+            user_id,
+            pack_id=pack.pack_id,
+            language=pack.language,
+            source="admin_bootstrap",
+        )
+        store.update_product_profile(
+            user_id,
+            native_language=product["native_language"] or "ru",
+            learning_goal=product["learning_goal"] or "personal",
+            daily_word_goal=product["daily_word_goal"] or 10,
+            complete_onboarding=True,
+        )
+        product = store.product_profile(user_id)
     return LearnerRuntime(
         user_id=user_id,
         store=store,
         progress=store.load_profile(user_id, PROGRESS_DEFAULTS),
+        role=product["role"],
+        onboarding_completed=product["onboarding_completed_at"] is not None,
     )
 
 
@@ -429,13 +556,32 @@ def format_plain_word_prompt(idx: int) -> str:
 
 def get_lang_keyboard():
     """Return one-time ReplyKeyboardMarkup with language buttons."""
+    buttons = [pack.label for pack in visible_packs()]
+    rows = [buttons[index:index + 2] for index in range(0, len(buttons), 2)]
     return ReplyKeyboardMarkup(
-        [[LANG_LABELS["en"], LANG_LABELS["vi"]], [LANG_LABELS["ja"]]],
+        rows,
         resize_keyboard=True,
         one_time_keyboard=True,
     )
 
-LANG_SWITCH_TEXTS = {label: code for code, label in LANG_LABELS.items()}
+
+def language_picker_keyboard() -> InlineKeyboardMarkup:
+    current_pack_id = PROGRESS.get("active_pack_id")
+    rows = []
+    for pack in visible_packs():
+        marker = " ✓" if pack.pack_id == current_pack_id else ""
+        learned = sum(
+            1 for word in W(pack.pack_id) if word["correct_count"] >= 3
+        )
+        rows.append([
+            InlineKeyboardButton(
+                f"{pack.label} ({learned}/{pack.word_count}){marker}",
+                callback_data=f"lang:{pack.pack_id}",
+            )
+        ])
+    return InlineKeyboardMarkup(rows)
+
+PACK_SWITCH_TEXTS = {pack.label: pack.pack_id for pack in CATALOG.packs}
 
 FORVO_LANG_CODES = {"en": "en", "vi": "vi", "ja": "ja"}
 
@@ -555,7 +701,19 @@ def auth(func):
             if message is not None:
                 await message.reply_text("Access denied.")
             return
-        with learner_scope(telegram_user):
+        with learner_scope(telegram_user) as runtime:
+            if (
+                runtime.role != "admin"
+                and not runtime.onboarding_completed
+                and func.__name__ not in {"cmd_start", "onboarding_cb"}
+            ):
+                query = getattr(update, "callback_query", None)
+                if query is not None:
+                    await query.answer()
+                message = getattr(update, "effective_message", None)
+                if message is not None:
+                    await send_onboarding_intro(message)
+                return
             return await func(update, context)
     return wrapper
 
@@ -565,11 +723,170 @@ def auth(func):
 
 @auth
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    runtime = _ACTIVE_RUNTIME.get()
+    source = start_source(getattr(context, "args", None))
+    runtime.store.update_product_profile(
+        runtime.user_id, acquisition_source=source
+    )
+    record_product_event("start_received", source=source)
+    if runtime.role != "admin" and not runtime.onboarding_completed:
+        await send_onboarding_intro(update.message)
+        return
     await send_start_message(
         update.message,
         context,
         first_name=getattr(update.effective_user, "first_name", None),
     )
+
+
+def start_source(args) -> str:
+    if not args:
+        return "direct"
+    candidate = str(args[0]).strip().lower()
+    if not candidate or len(candidate) > 32:
+        return "direct"
+    if not candidate.isascii() or not candidate[0].isalnum() or not all(
+        char.isalnum() or char in {"-", "_"} for char in candidate
+    ):
+        return "direct"
+    return candidate
+
+
+def onboarding_intro_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Начать бесплатно", callback_data="onboarding:begin")]]
+    )
+
+
+async def send_onboarding_intro(message) -> None:
+    await message.reply_text(
+        "MY DICTIONARY помогает учить связанные слова блоками: сначала русский "
+        "смысл, затем написание и латинская транскрипция, ниже — голосовое "
+        "произношение. Базовые наборы бесплатны.\n\n"
+        "Настрой обучение за четыре коротких шага.",
+        reply_markup=onboarding_intro_keyboard(),
+    )
+
+
+ONBOARDING_GOALS = {
+    "basics": "Базовая лексика",
+    "travel": "Путешествия",
+    "conversation": "Разговорная речь",
+    "work": "Работа и учёба",
+}
+
+
+@auth
+async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    parts = query.data.split(":")
+    runtime = _ACTIVE_RUNTIME.get()
+    if runtime.role == "admin" or runtime.onboarding_completed:
+        await query.answer("Настройка уже завершена.")
+        return
+    await query.answer()
+    if parts == ["onboarding", "begin"]:
+        record_product_event("onboarding_started")
+        await query.edit_message_text(
+            "Шаг 1 из 4. Значения и интерфейс пока будут на русском.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton(
+                    "Продолжить", callback_data="onboarding:native:ru"
+                )]]
+            ),
+        )
+        return
+    if len(parts) == 3 and parts[1] == "native" and parts[2] == "ru":
+        runtime.store.update_product_profile(
+            runtime.user_id, native_language=parts[2]
+        )
+        record_product_event(
+            "onboarding_native_selected", properties={"language": parts[2]}
+        )
+        public_packs = CATALOG.visible_packs("learner")
+        await query.edit_message_text(
+            "Шаг 2 из 4. Какой язык хочешь изучать?",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton(
+                        f"{pack.label} · {pack.word_count} слов",
+                        callback_data=f"onboarding:pack:{pack.pack_id}",
+                    )]
+                    for pack in public_packs
+                ]
+            ),
+        )
+        return
+    if len(parts) == 3 and parts[1] == "pack":
+        pack = CATALOG.get(parts[2])
+        if pack is None or not pack.visible_to("learner"):
+            await query.edit_message_text("Этот набор недоступен. Начни настройку заново.")
+            return
+        activate_content_pack(pack, source="onboarding")
+        context.user_data["onboarding_pack_id"] = pack.pack_id
+        record_product_event(
+            "onboarding_pack_selected",
+            properties={"pack_id": pack.pack_id, "language": pack.language},
+        )
+        await query.edit_message_text(
+            "Шаг 3 из 4. Для чего ты учишь язык?",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton(label, callback_data=f"onboarding:goal:{goal}")]
+                 for goal, label in ONBOARDING_GOALS.items()]
+            ),
+        )
+        return
+    if len(parts) == 3 and parts[1] == "goal" and parts[2] in ONBOARDING_GOALS:
+        runtime.store.update_product_profile(
+            runtime.user_id, learning_goal=parts[2]
+        )
+        record_product_event(
+            "onboarding_goal_selected", properties={"goal": parts[2]}
+        )
+        await query.edit_message_text(
+            "Шаг 4 из 4. Сколько новых слов учить в день?",
+            reply_markup=InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton("5", callback_data="onboarding:pace:5"),
+                    InlineKeyboardButton("10", callback_data="onboarding:pace:10"),
+                    InlineKeyboardButton("20", callback_data="onboarding:pace:20"),
+                ]]
+            ),
+        )
+        return
+    if len(parts) == 3 and parts[1] == "pace" and parts[2] in {"5", "10", "20"}:
+        product = runtime.store.product_profile(runtime.user_id)
+        pack = CATALOG.get(
+            context.user_data.get("onboarding_pack_id")
+            or product["active_pack_id"]
+        )
+        if pack is None or not pack.visible_to("learner"):
+            await query.edit_message_text("Выбери учебный набор заново через /start.")
+            return
+        runtime.store.update_product_profile(
+            runtime.user_id,
+            daily_word_goal=int(parts[2]),
+            complete_onboarding=True,
+        )
+        runtime.onboarding_completed = True
+        record_product_event(
+            "onboarding_completed",
+            properties={
+                "pack_id": pack.pack_id,
+                "language": pack.language,
+                "daily_word_goal": int(parts[2]),
+            },
+        )
+        await query.edit_message_text(
+            f"Готово. Подключён набор «{pack.title}». Начни с темы и первого блока."
+        )
+        await send_start_message(
+            query.message,
+            context,
+            first_name=getattr(update.effective_user, "first_name", None),
+        )
+        return
+    await query.edit_message_text("Шаг настройки устарел. Отправь /start.")
 
 
 def start_keyboard() -> InlineKeyboardMarkup:
@@ -617,36 +934,22 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.message.chat_id
     if action == "learn":
         invalidate_block_session(context.user_data)
-        lang = PROGRESS["active_lang"]
-        context.user_data["block_lang"] = lang
+        pack = active_content_pack()
+        context.user_data["block_lang"] = pack.language
+        context.user_data["block_pack_id"] = pack.pack_id
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"📚 *{LANG_LABELS[lang]}*\n\nВыбери тему:",
-            reply_markup=build_topic_keyboard(lang),
+            text=f"📚 *{pack.label}*\n\nВыбери тему:",
+            reply_markup=build_topic_keyboard(pack),
             parse_mode="Markdown",
         )
         return
     if action == "lang":
-        current = PROGRESS["active_lang"]
-        buttons = []
-        for lang_code, label in LANG_LABELS.items():
-            marker = " ✓" if lang_code == current else ""
-            total = len(DICTS[lang_code])
-            learned = sum(
-                1 for word in W(lang_code) if word["correct_count"] >= 3
-            )
-            buttons.append(
-                [
-                    InlineKeyboardButton(
-                        f"{label} ({learned}/{total}){marker}",
-                        callback_data=f"lang:{lang_code}",
-                    )
-                ]
-            )
+        current = active_content_pack()
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"Текущий словарь: *{LANG_LABELS[current]}*\n\nВыбери язык:",
-            reply_markup=InlineKeyboardMarkup(buttons),
+            text=f"Текущий набор: *{current.title}*\n\nВыбери язык:",
+            reply_markup=language_picker_keyboard(),
             parse_mode="Markdown",
         )
         return
@@ -792,19 +1095,10 @@ async def cmd_ai_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Switch active language."""
     invalidate_block_session(context.user_data)
-    current = PROGRESS["active_lang"]
-    buttons = []
-    for lang_code, label in LANG_LABELS.items():
-        marker = " ✓" if lang_code == current else ""
-        total = len(DICTS[lang_code])
-        learned = sum(1 for w in W(lang_code) if w["correct_count"] >= 3)
-        buttons.append([InlineKeyboardButton(
-            f"{label} ({learned}/{total}){marker}",
-            callback_data=f"lang:{lang_code}"
-        )])
+    current = active_content_pack()
     await update.message.reply_text(
-        f"Текущий словарь: *{LANG_LABELS[current]}*\n\nВыбери язык:",
-        reply_markup=InlineKeyboardMarkup(buttons),
+        f"Текущий набор: *{current.title}*\n\nВыбери язык:",
+        reply_markup=language_picker_keyboard(),
         parse_mode="Markdown"
     )
 
@@ -813,12 +1107,18 @@ async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     invalidate_block_session(context.user_data)
-    lang = query.data.split(":")[1]
-    PROGRESS["active_lang"] = lang
-    save_progress(PROGRESS)
-    total = len(DICTS[lang])
+    requested = query.data.split(":", 1)[1]
+    pack = CATALOG.get(requested) or visible_pack_for_language(requested)
+    if pack is None or pack not in visible_packs():
+        await query.edit_message_text("Этот набор недоступен.")
+        return
+    activate_content_pack(pack, source="catalog")
+    record_product_event(
+        "language_switched",
+        properties={"pack_id": pack.pack_id, "language": pack.language},
+    )
     await query.edit_message_text(
-        f"Словарь переключён на *{LANG_LABELS[lang]}* ({total} слов)",
+        f"Подключён набор *{pack.title}* ({pack.word_count} слов)",
         parse_mode="Markdown"
     )
     # Send persistent keyboard
@@ -941,15 +1241,17 @@ async def cmd_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle language switch via persistent keyboard buttons."""
     text = update.message.text
-    lang = LANG_SWITCH_TEXTS.get(text)
-    if lang is None:
+    pack = CATALOG.get(PACK_SWITCH_TEXTS.get(text, ""))
+    if pack is None or pack not in visible_packs():
         return
     invalidate_block_session(context.user_data)
-    PROGRESS["active_lang"] = lang
-    save_progress(PROGRESS)
-    total = len(DICTS[lang])
+    activate_content_pack(pack, source="reply_keyboard")
+    record_product_event(
+        "language_switched",
+        properties={"pack_id": pack.pack_id, "language": pack.language},
+    )
     await update.message.reply_text(
-        f"Словарь переключён на *{LANG_LABELS[lang]}* ({total} слов)",
+        f"Подключён набор *{pack.title}* ({pack.word_count} слов)",
         parse_mode="Markdown",
         reply_markup=get_lang_keyboard(),
     )
@@ -961,7 +1263,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     clean = lambda s: re.sub(r'[^\w\s]', '', s).strip()
 
     # Ignore language switch button presses
-    if update.message.text in LANG_SWITCH_TEXTS:
+    if update.message.text in PACK_SWITCH_TEXTS:
         return
 
     idx = context.user_data.get("type_idx")
@@ -1143,7 +1445,7 @@ def format_stats_text() -> str:
     today_xp = PROGRESS.get("today_xp", 0)
 
     return (
-        f"📊 *Статистика* ({LANG_LABELS[PROGRESS['active_lang']]})\n\n"
+        f"📊 *Статистика* ({active_content_pack().label})\n\n"
         f"📈 *Lv.{lvl} {title}* — {xp_line}\n"
         f"🔥 Streak: {streak} дн. (рекорд: {streak_best})\n"
         f"💰 Сегодня: +{today_xp} XP\n\n"
@@ -1322,6 +1624,16 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 def activate_block_language(user_data: dict):
     """Keep block indices bound to the language used to create the block."""
     lang = user_data.get("block_lang")
+    pack = CATALOG.get(user_data.get("block_pack_id", ""))
+    runtime = _ACTIVE_RUNTIME.get()
+    if (
+        runtime is not None
+        and pack is not None
+        and pack.visible_to(runtime.role)
+        and PROGRESS.get("active_pack_id") != pack.pack_id
+    ):
+        activate_content_pack(pack, source="block_restore")
+        return
     if lang in DICTS and PROGRESS["active_lang"] != lang:
         PROGRESS["active_lang"] = lang
         save_progress(PROGRESS)
@@ -1365,17 +1677,26 @@ def format_study_list(indices: list[int]) -> str:
     return "\n".join(lines)
 
 
-def build_topic_keyboard(lang: str) -> InlineKeyboardMarkup:
+def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardMarkup:
     """Build a topic picker for one language using actual dictionary counts."""
-    counts = topic_counts(DICTS[lang], lang)
+    if isinstance(pack_or_language, ContentPack):
+        pack = pack_or_language
+    else:
+        pack = CATALOG.get(pack_or_language) or visible_pack_for_language(
+            pack_or_language
+        )
+    if pack is None or pack not in visible_packs():
+        raise PermissionError("Content pack is not available to this user")
+    words = PACK_DICTS[pack.pack_id]
+    counts = topic_counts(words, pack.language)
     rows = [[InlineKeyboardButton(
-        f"🌐 Все слова ({len(DICTS[lang])})",
-        callback_data=f"ltopic:{lang}:all",
+        f"🌐 Все слова ({len(words)})",
+        callback_data=f"ltopic:{pack.pack_id}:all",
     )]]
     topic_buttons = [
         InlineKeyboardButton(
             f"{TOPIC_LABELS[topic]} ({count})",
-            callback_data=f"ltopic:{lang}:{topic}",
+            callback_data=f"ltopic:{pack.pack_id}:{topic}",
         )
         for topic, count in counts.items()
     ]
@@ -1405,7 +1726,13 @@ def invalidate_block_session(user_data: dict):
     user_data["smart_mode"] = False
 
 
-def reset_block_state(user_data: dict, indices: list[int], lang: str, topic: str | None):
+def reset_block_state(
+    user_data: dict,
+    indices: list[int],
+    lang: str,
+    topic: str | None,
+    pack_id: str | None = None,
+):
     user_data["block_all_indices"] = list(indices)
     user_data["block_indices"] = list(indices)
     user_data["block_pos"] = 0
@@ -1415,8 +1742,15 @@ def reset_block_state(user_data: dict, indices: list[int], lang: str, topic: str
     user_data["block_typing"] = False
     user_data["smart_mode"] = False
     user_data["block_lang"] = lang
+    if pack_id is None:
+        candidate = CATALOG.get(PROGRESS.get("active_pack_id"))
+        if candidate is None or candidate.language != lang:
+            candidate = visible_pack_for_language(lang)
+        pack_id = candidate.pack_id if candidate else None
+    user_data["block_pack_id"] = pack_id
     user_data["block_topic"] = topic
     user_data["block_session"] = new_block_session_id()
+    user_data["block_completion_tracked"] = False
 
 
 def start_block_attempt(user_data: dict, mode: str, indices: list[int] | None = None):
@@ -1431,6 +1765,7 @@ def start_block_attempt(user_data: dict, mode: str, indices: list[int] | None = 
     user_data["type_idx"] = None
     user_data["smart_mode"] = False
     user_data["block_session"] = new_block_session_id()
+    user_data["block_completion_tracked"] = False
 
 
 def current_block_index(user_data: dict) -> int | None:
@@ -1540,11 +1875,12 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
 @auth
 async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
-    lang = PROGRESS["active_lang"]
-    context.user_data["block_lang"] = lang
+    pack = active_content_pack()
+    context.user_data["block_lang"] = pack.language
+    context.user_data["block_pack_id"] = pack.pack_id
     await update.message.reply_text(
-        f"📚 *{LANG_LABELS[lang]}*\n\nВыбери тему:",
-        reply_markup=build_topic_keyboard(lang),
+        f"📚 *{pack.label}*\n\nВыбери тему:",
+        reply_markup=build_topic_keyboard(pack),
         parse_mode="Markdown",
     )
 
@@ -1554,27 +1890,44 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start a block from the selected language and topic."""
     query = update.callback_query
     await query.answer()
-    _, lang, topic_id = query.data.split(":", 2)
-    if lang not in DICTS:
+    try:
+        _, requested_pack, topic_id = query.data.split(":", 2)
+    except ValueError:
+        await query.edit_message_text("Выбор темы устарел. Отправь /learn.")
+        return
+    pack = CATALOG.get(requested_pack) or visible_pack_for_language(requested_pack)
+    if pack is None or pack not in visible_packs():
+        await query.edit_message_text("Этот набор недоступен.")
         return
     topic = None if topic_id == "all" else topic_id
     if topic and topic not in TOPIC_LABELS:
         return
 
-    PROGRESS["active_lang"] = lang
-    save_progress(PROGRESS)
+    activate_content_pack(pack, source="learning")
     indices = pick_block(topic=topic)
-    reset_block_state(context.user_data, indices, lang, topic)
+    reset_block_state(
+        context.user_data, indices, pack.language, topic, pack.pack_id
+    )
     if not indices:
         await query.edit_message_text(
             "В этой теме пока нет слов.",
-            reply_markup=build_topic_keyboard(lang),
+            reply_markup=build_topic_keyboard(pack),
         )
         return
     await query.edit_message_text(
         format_block_intro(indices, topic),
         reply_markup=build_study_buttons(indices, context.user_data["block_session"]),
         parse_mode="Markdown",
+    )
+    record_product_event(
+        "block_started",
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.language,
+            "topic": topic or "all",
+            "word_count": len(indices),
+        },
+        session_id=context.user_data["block_session"],
     )
 
 
@@ -1588,11 +1941,13 @@ async def block_topics_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if not await validate_block_callback(query, context.user_data, parts[1]):
         return
-    lang = context.user_data.get("block_lang", PROGRESS["active_lang"])
+    pack = CATALOG.get(context.user_data.get("block_pack_id", ""))
+    if pack is None or pack not in visible_packs():
+        pack = active_content_pack()
     invalidate_block_session(context.user_data)
     await query.edit_message_text(
-        f"📚 *{LANG_LABELS[lang]}*\n\nВыбери тему:",
-        reply_markup=build_topic_keyboard(lang),
+        f"📚 *{pack.label}*\n\nВыбери тему:",
+        reply_markup=build_topic_keyboard(pack),
         parse_mode="Markdown",
     )
 
@@ -1616,6 +1971,15 @@ async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=query.message.chat_id,
         text=format_word_details(idx),
         parse_mode="Markdown",
+    )
+    record_product_event(
+        "word_audio_played",
+        properties={
+            "pack_id": active_content_pack().pack_id,
+            "language": PROGRESS["active_lang"],
+            "word_index": idx,
+        },
+        session_id=context.user_data.get("block_session"),
     )
     await send_pronunciation(query.message.chat_id, idx, context)
 
@@ -1654,6 +2018,16 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     activate_block_language(ud)
     start_block_attempt(ud, mode)
+    record_product_event(
+        "block_mode_started",
+        properties={
+            "pack_id": active_content_pack().pack_id,
+            "language": PROGRESS["active_lang"],
+            "mode": mode,
+            "word_count": len(ud["block_indices"]),
+        },
+        session_id=ud["block_session"],
+    )
     await block_send_question(query, context)
 
 
@@ -1817,10 +2191,29 @@ def format_block_summary(ud) -> str:
     return text
 
 
+def track_block_completion(user_data: dict) -> None:
+    if user_data.get("block_completion_tracked"):
+        return
+    user_data["block_completion_tracked"] = True
+    record_product_event(
+        "block_completed",
+        properties={
+            "pack_id": active_content_pack().pack_id,
+            "language": PROGRESS["active_lang"],
+            "mode": user_data.get("block_mode") or "unknown",
+            "word_count": len(user_data.get("block_indices", [])),
+            "correct_count": user_data.get("block_correct", 0),
+            "wrong_count": len(user_data.get("block_wrong", [])),
+        },
+        session_id=user_data.get("block_session"),
+    )
+
+
 async def block_summary(query, context: ContextTypes.DEFAULT_TYPE):
     ud = context.user_data
     activate_block_language(ud)
     text = format_block_summary(ud)
+    track_block_completion(ud)
     rows = []
     session_id = ud["block_session"]
     if ud["block_wrong"]:
@@ -1846,6 +2239,7 @@ async def block_summary_msg(message, context: ContextTypes.DEFAULT_TYPE):
     ud = context.user_data
     activate_block_language(ud)
     text = format_block_summary(ud)
+    track_block_completion(ud)
     rows = []
     session_id = ud["block_session"]
     if ud["block_wrong"]:
@@ -1969,6 +2363,17 @@ async def block_retry_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not wrong_indices:
         return
     start_block_attempt(ud, ud["block_mode"], wrong_indices)
+    record_product_event(
+        "block_mode_started",
+        properties={
+            "pack_id": active_content_pack().pack_id,
+            "language": PROGRESS["active_lang"],
+            "mode": ud["block_mode"],
+            "word_count": len(wrong_indices),
+            "retry": True,
+        },
+        session_id=ud["block_session"],
+    )
     await block_send_question(query, context)
 
 
@@ -1988,11 +2393,22 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     topic = ud.get("block_topic")
     previous_indices = set(ud.get("block_all_indices", []))
     indices = pick_block(topic=topic, exclude_indices=previous_indices)
-    reset_block_state(ud, indices, PROGRESS["active_lang"], topic)
+    pack = active_content_pack()
+    reset_block_state(ud, indices, pack.language, topic, pack.pack_id)
     await query.edit_message_text(
         format_block_intro(indices, topic),
         reply_markup=build_study_buttons(indices, ud["block_session"]),
         parse_mode="Markdown",
+    )
+    record_product_event(
+        "block_started",
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.language,
+            "topic": topic or "all",
+            "word_count": len(indices),
+        },
+        session_id=ud["block_session"],
     )
 
 
@@ -2036,6 +2452,7 @@ async def manual_polling():
     app.add_handler(CommandHandler("ai_stats", cmd_ai_stats))
 
     # Welcome menu callbacks
+    app.add_handler(CallbackQueryHandler(onboarding_cb, pattern=r"^onboarding:"))
     app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
 
     # Language switch callback

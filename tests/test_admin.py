@@ -87,6 +87,7 @@ class AdminConsoleTest(unittest.TestCase):
         for tab in (
             "dashboard",
             "users",
+            "funnel",
             "learning",
             "ai",
             "content",
@@ -251,6 +252,31 @@ class AdminConsoleTest(unittest.TestCase):
                 select(AdminAuditLog.action)
             ).scalars().all()
         self.assertIn("csv_export_downloaded", actions)
+
+    def test_product_funnel_renders_and_exports_privacy_safe_events(self):
+        self.store.record_event(7001, "start_received", source="direct")
+        self.store.record_event(7001, "onboarding_started")
+        self.store.record_event(
+            7001,
+            "onboarding_completed",
+            properties={"pack_id": "ja-basics-100", "language": "ja"},
+        )
+        self.store.ensure_user(SimpleNamespace(id=7002), role="admin")
+        self.store.record_event(7002, "start_received", source="direct")
+        funnel = AdminStore(self.store).product_funnel(days=30)
+        self.assertEqual(funnel["steps"][0]["users"], 1)
+        self.assertEqual(funnel["steps"][0]["events"], 1)
+        self.assertEqual(funnel["steps"][2]["conversion"], 100)
+
+        self.login()
+        response = self.client.get("/admin?tab=funnel")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Продуктовая воронка", response.get_data(as_text=True))
+        exported = self.client.get("/admin/export/analytics-events.csv")
+        self.assertEqual(exported.status_code, 200)
+        body = exported.get_data(as_text=True)
+        self.assertIn("onboarding_completed", body)
+        self.assertNotIn("prompt", body)
 
     def test_health_exposes_no_internal_configuration(self):
         response = self.client.get("/health")

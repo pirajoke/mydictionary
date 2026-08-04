@@ -16,6 +16,7 @@ from mydictionary.storage import (
     AIAllowance,
     AICreditLedger,
     AIUsage,
+    AnalyticsEvent,
     AdminAuditLog,
     AdminCredential,
     AppSetting,
@@ -252,6 +253,11 @@ class AdminStore:
                     User.updated_at >= since
                 )
             ) or 0
+            onboarded_users = session.scalar(
+                select(func.count(User.telegram_user_id)).where(
+                    User.onboarding_completed_at.is_not(None)
+                )
+            ) or 0
             learning = session.execute(
                 select(
                     func.sum(UserProgress.sessions),
@@ -303,6 +309,7 @@ class AdminStore:
             "users": int(users),
             "new_users_7d": int(new_users),
             "active_users_7d": int(active_users),
+            "onboarded_users": int(onboarded_users),
             "sessions": int(learning[0] or 0),
             "correct": correct,
             "wrong": wrong,
@@ -411,7 +418,15 @@ class AdminStore:
                     "name": _name(user),
                     "username": user.username or "",
                     "language_code": user.language_code or "",
+                    "role": user.role,
+                    "native_language": user.native_language or "",
+                    "learning_goal": user.learning_goal or "",
+                    "daily_word_goal": user.daily_word_goal,
+                    "onboarding_completed_at": user.onboarding_completed_at,
                     "active_lang": progress.active_lang if progress else "en",
+                    "active_pack_id": (
+                        progress.active_pack_id if progress else ""
+                    ) or "",
                     "xp": progress.xp if progress else 0,
                     "level": progress.level if progress else 1,
                     "streak": progress.streak if progress else 0,
@@ -438,6 +453,84 @@ class AdminStore:
                 }
             )
         return result
+
+    def product_funnel(self, *, days: int = 30) -> dict[str, Any]:
+        days = max(1, min(int(days), 365))
+        since = datetime.now(timezone.utc) - timedelta(days=days)
+        steps = [
+            ("start_received", "Открыли /start"),
+            ("onboarding_started", "Начали настройку"),
+            ("onboarding_completed", "Завершили настройку"),
+            ("block_started", "Открыли учебный блок"),
+            ("block_completed", "Завершили блок"),
+        ]
+        event_names = [name for name, _ in steps]
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(
+                    AnalyticsEvent.event_name,
+                    func.count(AnalyticsEvent.event_id),
+                    func.count(func.distinct(AnalyticsEvent.telegram_user_id)),
+                )
+                .join(
+                    User,
+                    User.telegram_user_id == AnalyticsEvent.telegram_user_id,
+                )
+                .where(
+                    AnalyticsEvent.occurred_at >= since,
+                    AnalyticsEvent.event_name.in_(event_names),
+                    User.role == "learner",
+                )
+                .group_by(AnalyticsEvent.event_name)
+            ).all()
+        aggregates = {
+            row[0]: {"events": int(row[1]), "users": int(row[2])}
+            for row in rows
+        }
+        starts = aggregates.get("start_received", {}).get("users", 0)
+        return {
+            "days": days,
+            "steps": [
+                {
+                    "event_name": name,
+                    "label": label,
+                    "events": aggregates.get(name, {}).get("events", 0),
+                    "users": aggregates.get(name, {}).get("users", 0),
+                    "conversion": (
+                        aggregates.get(name, {}).get("users", 0) / starts * 100
+                        if starts
+                        else 0
+                    ),
+                }
+                for name, label in steps
+            ],
+        }
+
+    def recent_product_events(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(AnalyticsEvent)
+                .order_by(AnalyticsEvent.occurred_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).scalars().all()
+        return [
+            {
+                "event_id": row.event_id,
+                "telegram_user_id": row.telegram_user_id,
+                "event_name": row.event_name,
+                "session_id": row.session_id or "",
+                "source": row.source or "",
+                "properties": json.loads(row.properties_json or "{}"),
+                "occurred_at": row.occurred_at,
+            }
+            for row in rows
+        ]
+
+    def product_events_export(self) -> list[dict[str, Any]]:
+        return [
+            dict(row, properties=json.dumps(row["properties"], ensure_ascii=False))
+            for row in self.recent_product_events(limit=1000)
+        ]
 
     def learning_by_language(self) -> list[dict[str, Any]]:
         with self.store.Session() as session:

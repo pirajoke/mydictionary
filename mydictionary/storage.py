@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any, Mapping
 from uuid import uuid4
 
@@ -28,6 +29,8 @@ from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
+from mydictionary.catalog import PACK_ID_RE
+
 
 PROFILE_FIELDS = (
     "total_correct",
@@ -41,6 +44,7 @@ PROFILE_FIELDS = (
     "today_xp",
     "today_date",
     "active_lang",
+    "active_pack_id",
 )
 WORD_PROGRESS_FIELDS = (
     "correct_count",
@@ -86,6 +90,14 @@ class User(Base):
     first_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     language_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    role: Mapped[str] = mapped_column(String(16), default="learner")
+    native_language: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    learning_goal: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    daily_word_goal: Mapped[int] = mapped_column(Integer, default=10)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    acquisition_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -111,6 +123,7 @@ class UserProgress(Base):
     today_xp: Mapped[int] = mapped_column(Integer, default=0)
     today_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
     active_lang: Mapped[str] = mapped_column(String(16), default="en")
+    active_pack_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -135,6 +148,40 @@ class WordProgress(Base):
     next_review: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class UserPackEnrollment(Base):
+    __tablename__ = "user_pack_enrollments"
+
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    pack_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    active: Mapped[bool] = mapped_column(default=True)
+    enrolled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class AnalyticsEvent(Base):
+    __tablename__ = "analytics_events"
+
+    event_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    event_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    properties_json: Mapped[str] = mapped_column(Text, default="{}")
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
     )
 
 
@@ -275,6 +322,24 @@ class AIUsageStateError(RuntimeError):
     """Raised when an AI usage transition is invalid or duplicated."""
 
 
+USER_ROLES = {"learner", "admin"}
+EVENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
+EVENT_PROPERTY_KEYS = {
+    "correct_count",
+    "daily_word_goal",
+    "goal",
+    "language",
+    "mode",
+    "pack_id",
+    "retry",
+    "topic",
+    "word_count",
+    "word_index",
+    "wrong_count",
+}
+EVENT_DIMENSION_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
+
+
 def run_migrations(database_url: str) -> None:
     """Upgrade a database using the repository's versioned Alembic migrations."""
     root = Path(__file__).resolve().parents[1]
@@ -285,7 +350,7 @@ def run_migrations(database_url: str) -> None:
 
 
 def _profile_values(progress: Mapping[str, Any]) -> dict[str, Any]:
-    return {field: progress.get(field) for field in PROFILE_FIELDS}
+    return {field: progress[field] for field in PROFILE_FIELDS if field in progress}
 
 
 def _word_values(word: Mapping[str, Any]) -> dict[str, Any]:
@@ -317,17 +382,34 @@ class DatabaseStore:
     def close(self) -> None:
         self.engine.dispose()
 
-    def ensure_user(self, telegram_user: Any) -> None:
+    def ensure_user(
+        self,
+        telegram_user: Any,
+        *,
+        role: str | None = None,
+        acquisition_source: str | None = None,
+    ) -> None:
+        if role is not None and role not in USER_ROLES:
+            raise ValueError("Unknown user role")
+        if acquisition_source is not None and not EVENT_DIMENSION_RE.fullmatch(
+            str(acquisition_source)
+        ):
+            raise ValueError("Invalid acquisition source")
         user_id = int(telegram_user.id)
         with self.Session.begin() as session:
             user = session.get(User, user_id)
             if user is None:
-                user = User(telegram_user_id=user_id)
+                user = User(telegram_user_id=user_id, role=role or "learner")
                 session.add(user)
+            elif role == "admin":
+                # Runtime configuration may promote an owner but never downgrades one.
+                user.role = "admin"
             for field in ("username", "first_name", "last_name", "language_code"):
                 value = getattr(telegram_user, field, None)
                 if value is not None:
                     setattr(user, field, str(value))
+            if acquisition_source and not user.acquisition_source:
+                user.acquisition_source = str(acquisition_source)[:64]
             user.updated_at = utcnow()
             if session.get(UserProgress, user_id) is None:
                 session.add(UserProgress(telegram_user_id=user_id))
@@ -335,6 +417,156 @@ class DatabaseStore:
     def ensure_user_id(self, user_id: int) -> None:
         telegram_user = type("TelegramUser", (), {"id": int(user_id)})()
         self.ensure_user(telegram_user)
+
+    def product_profile(self, user_id: int) -> dict[str, Any]:
+        self.ensure_user_id(user_id)
+        with self.Session() as session:
+            user = session.get(User, int(user_id))
+            progress = session.get(UserProgress, int(user_id))
+            return {
+                "role": user.role,
+                "native_language": user.native_language,
+                "learning_goal": user.learning_goal,
+                "daily_word_goal": user.daily_word_goal,
+                "onboarding_completed_at": user.onboarding_completed_at,
+                "acquisition_source": user.acquisition_source,
+                "active_pack_id": progress.active_pack_id if progress else None,
+                "active_lang": progress.active_lang if progress else "en",
+            }
+
+    def update_product_profile(
+        self,
+        user_id: int,
+        *,
+        native_language: str | None = None,
+        learning_goal: str | None = None,
+        daily_word_goal: int | None = None,
+        acquisition_source: str | None = None,
+        complete_onboarding: bool = False,
+    ) -> dict[str, Any]:
+        self.ensure_user_id(user_id)
+        if native_language is not None and not 2 <= len(native_language) <= 16:
+            raise ValueError("Invalid native language")
+        if learning_goal is not None and not 2 <= len(learning_goal) <= 32:
+            raise ValueError("Invalid learning goal")
+        if daily_word_goal is not None and daily_word_goal not in {5, 10, 20}:
+            raise ValueError("Daily word goal must be 5, 10, or 20")
+        if acquisition_source is not None and not EVENT_DIMENSION_RE.fullmatch(
+            str(acquisition_source)
+        ):
+            raise ValueError("Invalid acquisition source")
+        with self.Session.begin() as session:
+            user = session.get(User, int(user_id))
+            if native_language is not None:
+                user.native_language = native_language
+            if learning_goal is not None:
+                user.learning_goal = learning_goal
+            if daily_word_goal is not None:
+                user.daily_word_goal = int(daily_word_goal)
+            if acquisition_source and not user.acquisition_source:
+                user.acquisition_source = str(acquisition_source)[:64]
+            if complete_onboarding and user.onboarding_completed_at is None:
+                user.onboarding_completed_at = utcnow()
+            user.updated_at = utcnow()
+        return self.product_profile(user_id)
+
+    def activate_pack(
+        self,
+        user_id: int,
+        *,
+        pack_id: str,
+        language: str,
+        source: str,
+    ) -> None:
+        self.ensure_user_id(user_id)
+        if not PACK_ID_RE.fullmatch(pack_id := str(pack_id)):
+            raise ValueError("Invalid pack id")
+        if not re.fullmatch(r"^[a-z]{2,3}$", language):
+            raise ValueError("Invalid pack language")
+        clean_source = str(source).strip()[:32]
+        if not clean_source:
+            raise ValueError("Pack enrollment source is required")
+        with self.Session.begin() as session:
+            rows = session.execute(
+                select(UserPackEnrollment).where(
+                    UserPackEnrollment.telegram_user_id == int(user_id)
+                )
+            ).scalars().all()
+            for row in rows:
+                row.active = row.pack_id == pack_id
+            enrollment = session.get(UserPackEnrollment, (int(user_id), pack_id))
+            if enrollment is None:
+                enrollment = UserPackEnrollment(
+                    telegram_user_id=int(user_id),
+                    pack_id=pack_id,
+                    source=clean_source,
+                    active=True,
+                )
+                session.add(enrollment)
+            else:
+                enrollment.active = True
+            progress = session.get(UserProgress, int(user_id))
+            progress.active_pack_id = pack_id
+            progress.active_lang = language
+            progress.updated_at = utcnow()
+
+    def enrolled_pack_ids(self, user_id: int) -> set[str]:
+        with self.Session() as session:
+            return set(
+                session.execute(
+                    select(UserPackEnrollment.pack_id).where(
+                        UserPackEnrollment.telegram_user_id == int(user_id)
+                    )
+                ).scalars()
+            )
+
+    def record_event(
+        self,
+        user_id: int,
+        event_name: str,
+        *,
+        properties: Mapping[str, Any] | None = None,
+        session_id: str | None = None,
+        source: str | None = None,
+    ) -> str:
+        """Store an allowlisted product event without message or prompt content."""
+        if not EVENT_NAME_RE.fullmatch(event_name):
+            raise ValueError("Invalid analytics event name")
+        clean_properties: dict[str, Any] = {}
+        for key, value in (properties or {}).items():
+            normalized_key = str(key).strip().lower()
+            if (
+                len(clean_properties) >= 20
+                or normalized_key not in EVENT_PROPERTY_KEYS
+            ):
+                raise ValueError("Analytics properties contain a forbidden key")
+            if value is not None and type(value) not in {str, int, bool}:
+                raise ValueError("Analytics properties must contain scalars")
+            clean_properties[normalized_key] = (
+                value[:128] if isinstance(value, str) else value
+            )
+        encoded = json.dumps(
+            clean_properties, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        if len(encoded.encode("utf-8")) > 2048:
+            raise ValueError("Analytics properties are too large")
+        for label, value in (("session_id", session_id), ("source", source)):
+            if value is not None and not EVENT_DIMENSION_RE.fullmatch(str(value)):
+                raise ValueError(f"Invalid analytics {label}")
+        self.ensure_user_id(user_id)
+        event_id = str(uuid4())
+        with self.Session.begin() as session:
+            session.add(
+                AnalyticsEvent(
+                    event_id=event_id,
+                    telegram_user_id=int(user_id),
+                    event_name=event_name,
+                    session_id=str(session_id) if session_id else None,
+                    source=str(source) if source else None,
+                    properties_json=encoded,
+                )
+            )
+        return event_id
 
     def load_profile(
         self, user_id: int, defaults: Mapping[str, Any]
