@@ -1,0 +1,1105 @@
+{
+  "schema_version": 2,
+  "entries": [
+    {
+      "entry_id": "hello",
+      "target": "hello",
+      "meaning": "привет",
+      "transcription": "/həˈloʊ/",
+      "speech": "hello",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "goodbye",
+      "target": "goodbye",
+      "meaning": "до свидания",
+      "transcription": "/ɡʊdˈbaɪ/",
+      "speech": "goodbye",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "please",
+      "target": "please",
+      "meaning": "пожалуйста",
+      "transcription": "/pliːz/",
+      "speech": "please",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thank-you",
+      "target": "thank you",
+      "meaning": "спасибо",
+      "transcription": "/θæŋk juː/",
+      "speech": "thank you",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yes",
+      "target": "yes",
+      "meaning": "да",
+      "transcription": "/jɛs/",
+      "speech": "yes",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "no",
+      "target": "no",
+      "meaning": "нет",
+      "transcription": "/noʊ/",
+      "speech": "no",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "excuse-me",
+      "target": "excuse me",
+      "meaning": "извините",
+      "transcription": "/ɪkˈskjuːz miː/",
+      "speech": "excuse me",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sorry",
+      "target": "sorry",
+      "meaning": "простите",
+      "transcription": "/ˈsɑːri/",
+      "speech": "sorry",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good-morning",
+      "target": "good morning",
+      "meaning": "доброе утро",
+      "transcription": "/ɡʊd ˈmɔːrnɪŋ/",
+      "speech": "good morning",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good-night",
+      "target": "good night",
+      "meaning": "спокойной ночи",
+      "transcription": "/ɡʊd naɪt/",
+      "speech": "good night",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "person",
+      "target": "person",
+      "meaning": "человек",
+      "transcription": "/ˈpɜːrsən/",
+      "speech": "person",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "friend",
+      "target": "friend",
+      "meaning": "друг",
+      "transcription": "/frɛnd/",
+      "speech": "friend",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "family",
+      "target": "family",
+      "meaning": "семья",
+      "transcription": "/ˈfæməli/",
+      "speech": "family",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mother",
+      "target": "mother",
+      "meaning": "мать",
+      "transcription": "/ˈmʌðər/",
+      "speech": "mother",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "father",
+      "target": "father",
+      "meaning": "отец",
+      "transcription": "/ˈfɑːðər/",
+      "speech": "father",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "child",
+      "target": "child",
+      "meaning": "ребёнок",
+      "transcription": "/tʃaɪld/",
+      "speech": "child",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "woman",
+      "target": "woman",
+      "meaning": "женщина",
+      "transcription": "/ˈwʊmən/",
+      "speech": "woman",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "man",
+      "target": "man",
+      "meaning": "мужчина",
+      "transcription": "/mæn/",
+      "speech": "man",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "name",
+      "target": "name",
+      "meaning": "имя",
+      "transcription": "/neɪm/",
+      "speech": "name",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "teacher",
+      "target": "teacher",
+      "meaning": "учитель",
+      "transcription": "/ˈtiːtʃər/",
+      "speech": "teacher",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "water",
+      "target": "water",
+      "meaning": "вода",
+      "transcription": "/ˈwɔːtər/",
+      "speech": "water",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "food",
+      "target": "food",
+      "meaning": "еда",
+      "transcription": "/fuːd/",
+      "speech": "food",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bread",
+      "target": "bread",
+      "meaning": "хлеб",
+      "transcription": "/brɛd/",
+      "speech": "bread",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "milk",
+      "target": "milk",
+      "meaning": "молоко",
+      "transcription": "/mɪlk/",
+      "speech": "milk",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "coffee",
+      "target": "coffee",
+      "meaning": "кофе",
+      "transcription": "/ˈkɔːfi/",
+      "speech": "coffee",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tea",
+      "target": "tea",
+      "meaning": "чай",
+      "transcription": "/tiː/",
+      "speech": "tea",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "apple",
+      "target": "apple",
+      "meaning": "яблоко",
+      "transcription": "/ˈæpəl/",
+      "speech": "apple",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "rice",
+      "target": "rice",
+      "meaning": "рис",
+      "transcription": "/raɪs/",
+      "speech": "rice",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "meat",
+      "target": "meat",
+      "meaning": "мясо",
+      "transcription": "/miːt/",
+      "speech": "meat",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fish",
+      "target": "fish",
+      "meaning": "рыба",
+      "transcription": "/fɪʃ/",
+      "speech": "fish",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "house",
+      "target": "house",
+      "meaning": "дом",
+      "transcription": "/haʊs/",
+      "speech": "house",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "room",
+      "target": "room",
+      "meaning": "комната",
+      "transcription": "/ruːm/",
+      "speech": "room",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "door",
+      "target": "door",
+      "meaning": "дверь",
+      "transcription": "/dɔːr/",
+      "speech": "door",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "window",
+      "target": "window",
+      "meaning": "окно",
+      "transcription": "/ˈwɪndoʊ/",
+      "speech": "window",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "table",
+      "target": "table",
+      "meaning": "стол",
+      "transcription": "/ˈteɪbəl/",
+      "speech": "table",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "chair",
+      "target": "chair",
+      "meaning": "стул",
+      "transcription": "/tʃɛr/",
+      "speech": "chair",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bed",
+      "target": "bed",
+      "meaning": "кровать",
+      "transcription": "/bɛd/",
+      "speech": "bed",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "kitchen",
+      "target": "kitchen",
+      "meaning": "кухня",
+      "transcription": "/ˈkɪtʃən/",
+      "speech": "kitchen",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bathroom",
+      "target": "bathroom",
+      "meaning": "ванная",
+      "transcription": "/ˈbæθruːm/",
+      "speech": "bathroom",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "key",
+      "target": "key",
+      "meaning": "ключ",
+      "transcription": "/kiː/",
+      "speech": "key",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "road",
+      "target": "road",
+      "meaning": "дорога",
+      "transcription": "/roʊd/",
+      "speech": "road",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "station",
+      "target": "station",
+      "meaning": "станция",
+      "transcription": "/ˈsteɪʃən/",
+      "speech": "station",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "airport",
+      "target": "airport",
+      "meaning": "аэропорт",
+      "transcription": "/ˈɛrˌpɔːrt/",
+      "speech": "airport",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hotel",
+      "target": "hotel",
+      "meaning": "отель",
+      "transcription": "/hoʊˈtɛl/",
+      "speech": "hotel",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ticket",
+      "target": "ticket",
+      "meaning": "билет",
+      "transcription": "/ˈtɪkɪt/",
+      "speech": "ticket",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "car",
+      "target": "car",
+      "meaning": "автомобиль",
+      "transcription": "/kɑːr/",
+      "speech": "car",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "train",
+      "target": "train",
+      "meaning": "поезд",
+      "transcription": "/treɪn/",
+      "speech": "train",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bus",
+      "target": "bus",
+      "meaning": "автобус",
+      "transcription": "/bʌs/",
+      "speech": "bus",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "city",
+      "target": "city",
+      "meaning": "город",
+      "transcription": "/ˈsɪti/",
+      "speech": "city",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "country",
+      "target": "country",
+      "meaning": "страна",
+      "transcription": "/ˈkʌntri/",
+      "speech": "country",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "today",
+      "target": "today",
+      "meaning": "сегодня",
+      "transcription": "/təˈdeɪ/",
+      "speech": "today",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tomorrow",
+      "target": "tomorrow",
+      "meaning": "завтра",
+      "transcription": "/təˈmɑːroʊ/",
+      "speech": "tomorrow",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yesterday",
+      "target": "yesterday",
+      "meaning": "вчера",
+      "transcription": "/ˈjɛstərdeɪ/",
+      "speech": "yesterday",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "now",
+      "target": "now",
+      "meaning": "сейчас",
+      "transcription": "/naʊ/",
+      "speech": "now",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "morning",
+      "target": "morning",
+      "meaning": "утро",
+      "transcription": "/ˈmɔːrnɪŋ/",
+      "speech": "morning",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "evening",
+      "target": "evening",
+      "meaning": "вечер",
+      "transcription": "/ˈiːvnɪŋ/",
+      "speech": "evening",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "day",
+      "target": "day",
+      "meaning": "день",
+      "transcription": "/deɪ/",
+      "speech": "day",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "week",
+      "target": "week",
+      "meaning": "неделя",
+      "transcription": "/wiːk/",
+      "speech": "week",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "month",
+      "target": "month",
+      "meaning": "месяц",
+      "transcription": "/mʌnθ/",
+      "speech": "month",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "year",
+      "target": "year",
+      "meaning": "год",
+      "transcription": "/jɪr/",
+      "speech": "year",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "work",
+      "target": "work",
+      "meaning": "работа",
+      "transcription": "/wɜːrk/",
+      "speech": "work",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "school",
+      "target": "school",
+      "meaning": "школа",
+      "transcription": "/skuːl/",
+      "speech": "school",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "student",
+      "target": "student",
+      "meaning": "студент",
+      "transcription": "/ˈstuːdənt/",
+      "speech": "student",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "book",
+      "target": "book",
+      "meaning": "книга",
+      "transcription": "/bʊk/",
+      "speech": "book",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "money",
+      "target": "money",
+      "meaning": "деньги",
+      "transcription": "/ˈmʌni/",
+      "speech": "money",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shop",
+      "target": "shop",
+      "meaning": "магазин",
+      "transcription": "/ʃɑːp/",
+      "speech": "shop",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "office",
+      "target": "office",
+      "meaning": "офис",
+      "transcription": "/ˈɔːfɪs/",
+      "speech": "office",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "computer",
+      "target": "computer",
+      "meaning": "компьютер",
+      "transcription": "/kəmˈpjuːtər/",
+      "speech": "computer",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "phone",
+      "target": "phone",
+      "meaning": "телефон",
+      "transcription": "/foʊn/",
+      "speech": "phone",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "question",
+      "target": "question",
+      "meaning": "вопрос",
+      "transcription": "/ˈkwɛstʃən/",
+      "speech": "question",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "doctor",
+      "target": "doctor",
+      "meaning": "врач",
+      "transcription": "/ˈdɑːktər/",
+      "speech": "doctor",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hospital",
+      "target": "hospital",
+      "meaning": "больница",
+      "transcription": "/ˈhɑːspɪtəl/",
+      "speech": "hospital",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "head",
+      "target": "head",
+      "meaning": "голова",
+      "transcription": "/hɛd/",
+      "speech": "head",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hand",
+      "target": "hand",
+      "meaning": "рука",
+      "transcription": "/hænd/",
+      "speech": "hand",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "eye",
+      "target": "eye",
+      "meaning": "глаз",
+      "transcription": "/aɪ/",
+      "speech": "eye",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "heart",
+      "target": "heart",
+      "meaning": "сердце",
+      "transcription": "/hɑːrt/",
+      "speech": "heart",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pain",
+      "target": "pain",
+      "meaning": "боль",
+      "transcription": "/peɪn/",
+      "speech": "pain",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "medicine",
+      "target": "medicine",
+      "meaning": "лекарство",
+      "transcription": "/ˈmɛdɪsɪn/",
+      "speech": "medicine",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tired",
+      "target": "tired",
+      "meaning": "уставший",
+      "transcription": "/ˈtaɪərd/",
+      "speech": "tired",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "healthy",
+      "target": "healthy",
+      "meaning": "здоровый",
+      "transcription": "/ˈhɛlθi/",
+      "speech": "healthy",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "go",
+      "target": "go",
+      "meaning": "идти",
+      "transcription": "/ɡoʊ/",
+      "speech": "go",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "come",
+      "target": "come",
+      "meaning": "приходить",
+      "transcription": "/kʌm/",
+      "speech": "come",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "eat",
+      "target": "eat",
+      "meaning": "есть",
+      "transcription": "/iːt/",
+      "speech": "eat",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "drink",
+      "target": "drink",
+      "meaning": "пить",
+      "transcription": "/drɪŋk/",
+      "speech": "drink",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sleep",
+      "target": "sleep",
+      "meaning": "спать",
+      "transcription": "/sliːp/",
+      "speech": "sleep",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "read",
+      "target": "read",
+      "meaning": "читать",
+      "transcription": "/riːd/",
+      "speech": "read",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "write",
+      "target": "write",
+      "meaning": "писать",
+      "transcription": "/raɪt/",
+      "speech": "write",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "speak",
+      "target": "speak",
+      "meaning": "говорить",
+      "transcription": "/spiːk/",
+      "speech": "speak",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "listen",
+      "target": "listen",
+      "meaning": "слушать",
+      "transcription": "/ˈlɪsən/",
+      "speech": "listen",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "help",
+      "target": "help",
+      "meaning": "помогать",
+      "transcription": "/hɛlp/",
+      "speech": "help",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "big",
+      "target": "big",
+      "meaning": "большой",
+      "transcription": "/bɪɡ/",
+      "speech": "big",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "small",
+      "target": "small",
+      "meaning": "маленький",
+      "transcription": "/smɔːl/",
+      "speech": "small",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good",
+      "target": "good",
+      "meaning": "хороший",
+      "transcription": "/ɡʊd/",
+      "speech": "good",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bad",
+      "target": "bad",
+      "meaning": "плохой",
+      "transcription": "/bæd/",
+      "speech": "bad",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "new",
+      "target": "new",
+      "meaning": "новый",
+      "transcription": "/nuː/",
+      "speech": "new",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "old",
+      "target": "old",
+      "meaning": "старый",
+      "transcription": "/oʊld/",
+      "speech": "old",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hot",
+      "target": "hot",
+      "meaning": "горячий",
+      "transcription": "/hɑːt/",
+      "speech": "hot",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cold",
+      "target": "cold",
+      "meaning": "холодный",
+      "transcription": "/koʊld/",
+      "speech": "cold",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "happy",
+      "target": "happy",
+      "meaning": "счастливый",
+      "transcription": "/ˈhæpi/",
+      "speech": "happy",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sad",
+      "target": "sad",
+      "meaning": "грустный",
+      "transcription": "/sæd/",
+      "speech": "sad",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    }
+  ]
+}

@@ -1,0 +1,1105 @@
+{
+  "schema_version": 2,
+  "entries": [
+    {
+      "entry_id": "hello",
+      "target": "مرحبا",
+      "meaning": "привет",
+      "transcription": "marḥaban",
+      "speech": "مرحبا",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "goodbye",
+      "target": "إلى اللقاء",
+      "meaning": "до свидания",
+      "transcription": "ilā al-liqāʾ",
+      "speech": "إلى اللقاء",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "please",
+      "target": "من فضلك",
+      "meaning": "пожалуйста",
+      "transcription": "min faḍlik",
+      "speech": "من فضلك",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thank-you",
+      "target": "شكرا",
+      "meaning": "спасибо",
+      "transcription": "shukran",
+      "speech": "شكرا",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yes",
+      "target": "نعم",
+      "meaning": "да",
+      "transcription": "naʿam",
+      "speech": "نعم",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "no",
+      "target": "لا",
+      "meaning": "нет",
+      "transcription": "lā",
+      "speech": "لا",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "excuse-me",
+      "target": "عفوا",
+      "meaning": "извините",
+      "transcription": "ʿafwan",
+      "speech": "عفوا",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sorry",
+      "target": "آسف",
+      "meaning": "простите",
+      "transcription": "āsif",
+      "speech": "آسف",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good-morning",
+      "target": "صباح الخير",
+      "meaning": "доброе утро",
+      "transcription": "ṣabāḥ al-khayr",
+      "speech": "صباح الخير",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good-night",
+      "target": "تصبح على خير",
+      "meaning": "спокойной ночи",
+      "transcription": "tuṣbiḥ ʿalā khayr",
+      "speech": "تصبح على خير",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "person",
+      "target": "شخص",
+      "meaning": "человек",
+      "transcription": "shakhs",
+      "speech": "شخص",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "friend",
+      "target": "صديق",
+      "meaning": "друг",
+      "transcription": "ṣadīq",
+      "speech": "صديق",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "family",
+      "target": "عائلة",
+      "meaning": "семья",
+      "transcription": "ʿāʾila",
+      "speech": "عائلة",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mother",
+      "target": "أم",
+      "meaning": "мать",
+      "transcription": "umm",
+      "speech": "أم",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "father",
+      "target": "أب",
+      "meaning": "отец",
+      "transcription": "ab",
+      "speech": "أب",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "child",
+      "target": "طفل",
+      "meaning": "ребёнок",
+      "transcription": "ṭifl",
+      "speech": "طفل",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "woman",
+      "target": "امرأة",
+      "meaning": "женщина",
+      "transcription": "imraʾa",
+      "speech": "امرأة",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "man",
+      "target": "رجل",
+      "meaning": "мужчина",
+      "transcription": "rajul",
+      "speech": "رجل",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "name",
+      "target": "اسم",
+      "meaning": "имя",
+      "transcription": "ism",
+      "speech": "اسم",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "teacher",
+      "target": "معلم",
+      "meaning": "учитель",
+      "transcription": "muʿallim",
+      "speech": "معلم",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "water",
+      "target": "ماء",
+      "meaning": "вода",
+      "transcription": "māʾ",
+      "speech": "ماء",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "food",
+      "target": "طعام",
+      "meaning": "еда",
+      "transcription": "ṭaʿām",
+      "speech": "طعام",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bread",
+      "target": "خبز",
+      "meaning": "хлеб",
+      "transcription": "khubz",
+      "speech": "خبز",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "milk",
+      "target": "حليب",
+      "meaning": "молоко",
+      "transcription": "ḥalīb",
+      "speech": "حليب",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "coffee",
+      "target": "قهوة",
+      "meaning": "кофе",
+      "transcription": "qahwa",
+      "speech": "قهوة",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tea",
+      "target": "شاي",
+      "meaning": "чай",
+      "transcription": "shāy",
+      "speech": "شاي",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "apple",
+      "target": "تفاحة",
+      "meaning": "яблоко",
+      "transcription": "tuffāḥa",
+      "speech": "تفاحة",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "rice",
+      "target": "أرز",
+      "meaning": "рис",
+      "transcription": "aruzz",
+      "speech": "أرز",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "meat",
+      "target": "لحم",
+      "meaning": "мясо",
+      "transcription": "laḥm",
+      "speech": "لحم",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fish",
+      "target": "سمك",
+      "meaning": "рыба",
+      "transcription": "samak",
+      "speech": "سمك",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "house",
+      "target": "بيت",
+      "meaning": "дом",
+      "transcription": "bayt",
+      "speech": "بيت",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "room",
+      "target": "غرفة",
+      "meaning": "комната",
+      "transcription": "ghurfa",
+      "speech": "غرفة",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "door",
+      "target": "باب",
+      "meaning": "дверь",
+      "transcription": "bāb",
+      "speech": "باب",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "window",
+      "target": "نافذة",
+      "meaning": "окно",
+      "transcription": "nāfidha",
+      "speech": "نافذة",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "table",
+      "target": "طاولة",
+      "meaning": "стол",
+      "transcription": "ṭāwila",
+      "speech": "طاولة",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "chair",
+      "target": "كرسي",
+      "meaning": "стул",
+      "transcription": "kursī",
+      "speech": "كرسي",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bed",
+      "target": "سرير",
+      "meaning": "кровать",
+      "transcription": "sarīr",
+      "speech": "سرير",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "kitchen",
+      "target": "مطبخ",
+      "meaning": "кухня",
+      "transcription": "maṭbakh",
+      "speech": "مطبخ",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bathroom",
+      "target": "حمام",
+      "meaning": "ванная",
+      "transcription": "ḥammām",
+      "speech": "حمام",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "key",
+      "target": "مفتاح",
+      "meaning": "ключ",
+      "transcription": "miftāḥ",
+      "speech": "مفتاح",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "road",
+      "target": "طريق",
+      "meaning": "дорога",
+      "transcription": "ṭarīq",
+      "speech": "طريق",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "station",
+      "target": "محطة",
+      "meaning": "станция",
+      "transcription": "maḥaṭṭa",
+      "speech": "محطة",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "airport",
+      "target": "مطار",
+      "meaning": "аэропорт",
+      "transcription": "maṭār",
+      "speech": "مطار",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hotel",
+      "target": "فندق",
+      "meaning": "отель",
+      "transcription": "funduq",
+      "speech": "فندق",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ticket",
+      "target": "تذكرة",
+      "meaning": "билет",
+      "transcription": "tadhkira",
+      "speech": "تذكرة",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "car",
+      "target": "سيارة",
+      "meaning": "автомобиль",
+      "transcription": "sayyāra",
+      "speech": "سيارة",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "train",
+      "target": "قطار",
+      "meaning": "поезд",
+      "transcription": "qiṭār",
+      "speech": "قطار",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bus",
+      "target": "حافلة",
+      "meaning": "автобус",
+      "transcription": "ḥāfila",
+      "speech": "حافلة",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "city",
+      "target": "مدينة",
+      "meaning": "город",
+      "transcription": "madīna",
+      "speech": "مدينة",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "country",
+      "target": "بلد",
+      "meaning": "страна",
+      "transcription": "balad",
+      "speech": "بلد",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "today",
+      "target": "اليوم",
+      "meaning": "сегодня",
+      "transcription": "al-yawm",
+      "speech": "اليوم",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tomorrow",
+      "target": "غدا",
+      "meaning": "завтра",
+      "transcription": "ghadan",
+      "speech": "غدا",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yesterday",
+      "target": "أمس",
+      "meaning": "вчера",
+      "transcription": "ams",
+      "speech": "أمس",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "now",
+      "target": "الآن",
+      "meaning": "сейчас",
+      "transcription": "al-ān",
+      "speech": "الآن",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "morning",
+      "target": "صباح",
+      "meaning": "утро",
+      "transcription": "ṣabāḥ",
+      "speech": "صباح",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "evening",
+      "target": "مساء",
+      "meaning": "вечер",
+      "transcription": "masāʾ",
+      "speech": "مساء",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "day",
+      "target": "يوم",
+      "meaning": "день",
+      "transcription": "yawm",
+      "speech": "يوم",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "week",
+      "target": "أسبوع",
+      "meaning": "неделя",
+      "transcription": "usbūʿ",
+      "speech": "أسبوع",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "month",
+      "target": "شهر",
+      "meaning": "месяц",
+      "transcription": "shahr",
+      "speech": "شهر",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "year",
+      "target": "سنة",
+      "meaning": "год",
+      "transcription": "sana",
+      "speech": "سنة",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "work",
+      "target": "عمل",
+      "meaning": "работа",
+      "transcription": "ʿamal",
+      "speech": "عمل",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "school",
+      "target": "مدرسة",
+      "meaning": "школа",
+      "transcription": "madrasa",
+      "speech": "مدرسة",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "student",
+      "target": "طالب",
+      "meaning": "студент",
+      "transcription": "ṭālib",
+      "speech": "طالب",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "book",
+      "target": "كتاب",
+      "meaning": "книга",
+      "transcription": "kitāb",
+      "speech": "كتاب",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "money",
+      "target": "مال",
+      "meaning": "деньги",
+      "transcription": "māl",
+      "speech": "مال",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shop",
+      "target": "متجر",
+      "meaning": "магазин",
+      "transcription": "matjar",
+      "speech": "متجر",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "office",
+      "target": "مكتب",
+      "meaning": "офис",
+      "transcription": "maktab",
+      "speech": "مكتب",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "computer",
+      "target": "حاسوب",
+      "meaning": "компьютер",
+      "transcription": "ḥāsūb",
+      "speech": "حاسوب",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "phone",
+      "target": "هاتف",
+      "meaning": "телефон",
+      "transcription": "hātif",
+      "speech": "هاتف",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "question",
+      "target": "سؤال",
+      "meaning": "вопрос",
+      "transcription": "suʾāl",
+      "speech": "سؤال",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "doctor",
+      "target": "طبيب",
+      "meaning": "врач",
+      "transcription": "ṭabīb",
+      "speech": "طبيب",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hospital",
+      "target": "مستشفى",
+      "meaning": "больница",
+      "transcription": "mustashfā",
+      "speech": "مستشفى",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "head",
+      "target": "رأس",
+      "meaning": "голова",
+      "transcription": "raʾs",
+      "speech": "رأس",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hand",
+      "target": "يد",
+      "meaning": "рука",
+      "transcription": "yad",
+      "speech": "يد",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "eye",
+      "target": "عين",
+      "meaning": "глаз",
+      "transcription": "ʿayn",
+      "speech": "عين",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "heart",
+      "target": "قلب",
+      "meaning": "сердце",
+      "transcription": "qalb",
+      "speech": "قلب",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pain",
+      "target": "ألم",
+      "meaning": "боль",
+      "transcription": "alam",
+      "speech": "ألم",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "medicine",
+      "target": "دواء",
+      "meaning": "лекарство",
+      "transcription": "dawāʾ",
+      "speech": "دواء",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tired",
+      "target": "متعب",
+      "meaning": "уставший",
+      "transcription": "mutʿab",
+      "speech": "متعب",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "healthy",
+      "target": "صحي",
+      "meaning": "здоровый",
+      "transcription": "ṣiḥḥī",
+      "speech": "صحي",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "go",
+      "target": "يذهب",
+      "meaning": "идти",
+      "transcription": "yadhhab",
+      "speech": "يذهب",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "come",
+      "target": "يأتي",
+      "meaning": "приходить",
+      "transcription": "yaʾtī",
+      "speech": "يأتي",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "eat",
+      "target": "يأكل",
+      "meaning": "есть",
+      "transcription": "yaʾkul",
+      "speech": "يأكل",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "drink",
+      "target": "يشرب",
+      "meaning": "пить",
+      "transcription": "yashrab",
+      "speech": "يشرب",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sleep",
+      "target": "ينام",
+      "meaning": "спать",
+      "transcription": "yanām",
+      "speech": "ينام",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "read",
+      "target": "يقرأ",
+      "meaning": "читать",
+      "transcription": "yaqraʾ",
+      "speech": "يقرأ",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "write",
+      "target": "يكتب",
+      "meaning": "писать",
+      "transcription": "yaktub",
+      "speech": "يكتب",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "speak",
+      "target": "يتكلم",
+      "meaning": "говорить",
+      "transcription": "yatakallam",
+      "speech": "يتكلم",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "listen",
+      "target": "يستمع",
+      "meaning": "слушать",
+      "transcription": "yastamiʿ",
+      "speech": "يستمع",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "help",
+      "target": "يساعد",
+      "meaning": "помогать",
+      "transcription": "yusāʿid",
+      "speech": "يساعد",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "big",
+      "target": "كبير",
+      "meaning": "большой",
+      "transcription": "kabīr",
+      "speech": "كبير",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "small",
+      "target": "صغير",
+      "meaning": "маленький",
+      "transcription": "ṣaghīr",
+      "speech": "صغير",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good",
+      "target": "جيد",
+      "meaning": "хороший",
+      "transcription": "jayyid",
+      "speech": "جيد",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bad",
+      "target": "سيئ",
+      "meaning": "плохой",
+      "transcription": "sayyiʾ",
+      "speech": "سيئ",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "new",
+      "target": "جديد",
+      "meaning": "новый",
+      "transcription": "jadīd",
+      "speech": "جديد",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "old",
+      "target": "قديم",
+      "meaning": "старый",
+      "transcription": "qadīm",
+      "speech": "قديم",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hot",
+      "target": "ساخن",
+      "meaning": "горячий",
+      "transcription": "sākhin",
+      "speech": "ساخن",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cold",
+      "target": "بارد",
+      "meaning": "холодный",
+      "transcription": "bārid",
+      "speech": "بارد",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "happy",
+      "target": "سعيد",
+      "meaning": "счастливый",
+      "transcription": "saʿīd",
+      "speech": "سعيد",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sad",
+      "target": "حزين",
+      "meaning": "грустный",
+      "transcription": "ḥazīn",
+      "speech": "حزين",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    }
+  ]
+}

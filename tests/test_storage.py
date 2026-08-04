@@ -402,11 +402,11 @@ class BotRuntimeIsolationTest(unittest.TestCase):
             self.bot.learner_scope(SimpleNamespace(id=1003)),
         ):
             with self.assertRaises(PermissionError):
-                self.bot.W("en")
-            for language in ("vi", "ja"):
-                for word in self.bot.W(language):
+                self.bot.W("pirajoke-en-personal")
+            for pack in self.bot.CATALOG.visible_packs("learner"):
+                for word in self.bot.W(pack.pack_id):
                     with self.subTest(
-                        language=language, term=target_text(word)
+                        pack=pack.pack_id, term=target_text(word)
                     ):
                         self.assertEqual(word["correct_count"], 0)
                         self.assertEqual(word["wrong_count"], 0)
