@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MY DICTIONARY Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="{{ url_for('admin_index') }}">
+        <img src="{{ url_for('static', filename='admin/brand-mark.png') }}" alt="" width="40" height="40">
+        <span>MY DICTIONARY<small>Admin</small></span>
+      </a>
+      <nav aria-label="Разделы">
+        {% for id, label in [
+          ('dashboard','Обзор'),('users','Пользователи'),('learning','Обучение'),
+          ('ai','AI и кредиты'),('content','Контент'),('profile','Профиль бота'),
+          ('diagnostics','Диагностика'),('audit','Аудит')
+        ] %}
+          <a href="{{ url_for('admin_index', tab=id) }}" class="{{ 'active' if tab == id else '' }}">{{ label }}</a>
+        {% endfor %}
+      </nav>
+      <form method="post" action="{{ url_for('admin_logout') }}" class="logout-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="text-button">Выйти</button>
+      </form>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div><p class="eyebrow">MY DICTIONARY</p><h1>{{ {
+          'dashboard':'Обзор продукта','users':'Пользователи','learning':'Обучение',
+          'ai':'AI и кредиты','content':'Словари и темы','profile':'Профиль бота',
+          'diagnostics':'Диагностика','audit':'Журнал аудита'
+        }[tab] }}</h1></div>
+        <span class="admin-name">{{ current_actor }}</span>
+      </header>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}<div class="notice {{ category }}">{{ message }}</div>{% endfor %}
+      {% endwith %}
+
+      {% if tab == 'dashboard' %}
+        <section class="metric-grid" aria-label="Главные показатели">
+          <article><span>Пользователи</span><strong>{{ dashboard.users|number }}</strong><small>+{{ dashboard.new_users_7d }} за 7 дней</small></article>
+          <article><span>Активные, 7 дней</span><strong>{{ dashboard.active_users_7d|number }}</strong><small>обновляли состояние</small></article>
+          <article><span>Завершённые блоки</span><strong>{{ dashboard.sessions|number }}</strong><small>{{ dashboard.accuracy|round(1) }}% точность</small></article>
+          <article><span>Выученные слова</span><strong>{{ dashboard.learned_words|number }}</strong><small>из {{ dashboard.tracked_words|number }} отслеживаемых</small></article>
+          <article class="accent-teal"><span>AI-запросы</span><strong>{{ dashboard.ai_requests|number }}</strong><small>{{ dashboard.ai_tokens|number }} токенов</small></article>
+          <article class="accent-coral"><span>AI-расход</span><strong>{{ dashboard.ai_cost_micro_usd|usd }}</strong><small>{{ dashboard.ai_failed }} ошибок</small></article>
+        </section>
+
+        <section class="split-layout">
+          <div class="panel">
+            <div class="section-heading"><div><p class="eyebrow">Языки</p><h2>Активные словари</h2></div></div>
+            <div class="bars">
+              {% for item in dashboard.languages %}
+                <div class="bar-row"><span>{{ language_labels.get(item.code, item.code) }}</span><div><i style="width: {{ (item.users / dashboard.users * 100) if dashboard.users else 0 }}%"></i></div><b>{{ item.users }}</b></div>
+              {% else %}<p class="empty">Пока нет данных.</p>{% endfor %}
+            </div>
+          </div>
+          <div class="panel">
+            <div class="section-heading"><div><p class="eyebrow">Кредиты</p><h2>Пилотный баланс</h2></div></div>
+            <dl class="key-values">
+              <div><dt>Доступно</dt><dd>{{ dashboard.credits_available|number }}</dd></div>
+              <div><dt>Зарезервировано</dt><dd>{{ dashboard.credits_reserved|number }}</dd></div>
+              <div><dt>Использовано</dt><dd>{{ dashboard.credits_spent|number }}</dd></div>
+              <div><dt>Средняя задержка AI</dt><dd>{{ dashboard.ai_avg_latency_ms|round|int }} ms</dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Последние</p><h2>Пользователи</h2></div><a href="{{ url_for('admin_index', tab='users') }}">Открыть список</a></div>
+          {% set compact = true %}{% include 'admin/users_table.html' %}
+        </section>
+      {% endif %}
+
+      {% if tab == 'users' %}
+        <section class="toolbar">
+          <form method="get" class="search-form">
+            <input type="hidden" name="tab" value="users">
+            <label class="sr-only" for="user-search">Поиск пользователей</label>
+            <input id="user-search" name="q" value="{{ search }}" placeholder="ID, имя или username">
+            <button type="submit">Найти</button>
+          </form>
+          <a class="button-link" href="{{ url_for('export_csv', kind='users') }}">Экспорт CSV</a>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">{{ users|length }} записей</p><h2>Ученики</h2></div></div>
+          {% set compact = false %}{% include 'admin/users_table.html' %}
+        </section>
+      {% endif %}
+
+      {% if tab == 'learning' %}
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Результаты</p><h2>Прогресс по языкам</h2></div><a class="button-link" href="{{ url_for('export_csv', kind='learning') }}">Экспорт прогресса</a></div>
+          <div class="table-wrap"><table><thead><tr><th>Язык</th><th>Ученики</th><th>Слова в работе</th><th>Выучено</th><th>Верно</th><th>Ошибки</th><th>Точность</th></tr></thead><tbody>
+            {% for row in learning %}<tr><td><strong>{{ language_labels.get(row.language, row.language) }}</strong></td><td>{{ row.users }}</td><td>{{ row.tracked_words }}</td><td>{{ row.learned_words }}</td><td>{{ row.correct }}</td><td>{{ row.wrong }}</td><td>{{ row.accuracy|round(1) }}%</td></tr>
+            {% else %}<tr><td colspan="7" class="empty">Пока нет данных обучения.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Покрытие</p><h2>Учебный контент</h2></div></div>
+          <div class="content-grid">{% for lang in content %}<article><h3>{{ lang.label }}</h3><strong>{{ lang.words }} слов</strong><p>{{ lang.transcribed }} с транскрипцией · {{ lang.examples }} с примерами · {{ lang.topic_count }} тем</p></article>{% endfor %}</div>
+        </section>
+      {% endif %}
+
+      {% if tab == 'ai' %}
+        <section class="metric-grid">
+          <article><span>Запросы</span><strong>{{ dashboard.ai_requests|number }}</strong><small>{{ ai.statuses.get('completed', 0) }} завершено</small></article>
+          <article><span>Токены</span><strong>{{ dashboard.ai_tokens|number }}</strong><small>технический metering</small></article>
+          <article class="accent-coral"><span>Расчётная стоимость</span><strong>{{ dashboard.ai_cost_micro_usd|usd }}</strong><small>без реальных списаний</small></article>
+          <article><span>Ошибки</span><strong>{{ ai.statuses.get('failed', 0) }}</strong><small>{{ ai.statuses.get('reserved', 0) }} в резерве</small></article>
+        </section>
+        <section class="split-layout wide-left">
+          <div class="panel">
+            <div class="section-heading"><div><p class="eyebrow">Последние 100</p><h2>AI-использование</h2></div><a class="button-link" href="{{ url_for('export_csv', kind='ai-usage') }}">CSV</a></div>
+            <div class="table-wrap"><table><thead><tr><th>Время</th><th>User ID</th><th>Модель</th><th>Статус</th><th>Токены</th><th>Стоимость</th><th>Latency</th></tr></thead><tbody>
+              {% for row in usage %}<tr><td>{{ row.created_at|datetime }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.provider }} / {{ row.model }}</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td><td>{{ row.total_tokens }}</td><td>{{ row.cost_micro_usd|usd }}</td><td>{{ row.latency_ms }} ms</td></tr>
+              {% else %}<tr><td colspan="7" class="empty">AI-вызовов пока не было.</td></tr>{% endfor %}
+            </tbody></table></div>
+          </div>
+          <div class="panel action-panel">
+            <div class="section-heading"><div><p class="eyebrow">Операция с аудитом</p><h2>Пилотные кредиты</h2></div></div>
+            <form method="post" action="{{ url_for('adjust_credits') }}" class="form-stack">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label>Telegram User ID<input name="user_id" inputmode="numeric" required></label>
+              <label>Изменение<input name="delta" type="number" placeholder="10 или -5" required></label>
+              <label>Причина<input name="reason" maxlength="255" required></label>
+              <button type="submit" class="primary">Применить</button>
+            </form>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">История</p><h2>Ledger кредитов</h2></div><a class="button-link" href="{{ url_for('export_csv', kind='credit-ledger') }}">CSV</a></div>
+          <div class="table-wrap"><table><thead><tr><th>Время</th><th>User ID</th><th>Изменение</th><th>Баланс</th><th>Причина</th><th>Администратор</th></tr></thead><tbody>
+            {% for row in ledger %}<tr><td>{{ row.created_at|datetime }}</td><td class="mono">{{ row.telegram_user_id }}</td><td class="{{ 'positive' if row.delta > 0 else 'negative' }}">{{ '+' if row.delta > 0 else '' }}{{ row.delta }}</td><td>{{ row.balance_after }}</td><td>{{ row.reason }}</td><td>{{ row.actor }}</td></tr>
+            {% else %}<tr><td colspan="6" class="empty">Операций пока не было.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+      {% endif %}
+
+      {% if tab == 'content' %}
+        {% for lang in content %}<section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">{{ lang.filename }}</p><h2>{{ lang.label }} · {{ lang.words }} слов</h2></div><span>{{ lang.transcribed }}/{{ lang.words }} с транскрипцией</span></div>
+          <div class="topic-list">{% for topic in lang.topics %}<div><span>{{ topic.label }}</span><strong>{{ topic.words }}</strong></div>{% endfor %}</div>
+        </section>{% endfor %}
+      {% endif %}
+
+      {% if tab == 'profile' %}
+        <section class="panel form-panel">
+          <div class="section-heading"><div><p class="eyebrow">Telegram</p><h2>Название, описание и /start</h2></div><span>Изменения применяются без перезапуска к /start и /help</span></div>
+          <form method="post" action="{{ url_for('update_profile') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>Название<input name="bot_name" maxlength="64" value="{{ profile.bot_name }}" required></label>
+            <label>Короткое описание<input name="bot_short_description" maxlength="120" value="{{ profile.bot_short_description }}" required></label>
+            <label class="span-2">Полное описание<textarea name="bot_description" maxlength="512" rows="3" required>{{ profile.bot_description }}</textarea></label>
+            <label class="span-2">Приветствие /start<textarea name="bot_start_text" maxlength="1024" rows="12" required>{{ profile.bot_start_text }}</textarea><small>Используйте {name} для имени ученика.</small></label>
+            <label class="span-2">Справка /help<textarea name="bot_help_text" maxlength="4096" rows="10" required>{{ profile.bot_help_text }}</textarea></label>
+            <div class="span-2"><button type="submit" class="primary">Сохранить профиль</button></div>
+          </form>
+        </section>
+        <section class="panel form-panel danger-zone">
+          <div class="section-heading"><div><p class="eyebrow">Безопасность</p><h2>Сменить доступ</h2></div></div>
+          <form method="post" action="{{ url_for('update_security') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>Новый логин<input name="username" value="{{ current_actor }}" minlength="3" maxlength="64" required></label>
+            <label>Текущий пароль<input type="password" name="current_password" autocomplete="current-password" required></label>
+            <label>Новый пароль<input type="password" name="password" minlength="12" autocomplete="new-password" required></label>
+            <div><button type="submit">Обновить доступ</button></div>
+          </form>
+        </section>
+      {% endif %}
+
+      {% if tab == 'diagnostics' %}
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Readiness</p><h2>Состояние компонентов</h2></div><a href="/health">Health endpoint</a></div>
+          <dl class="diagnostic-list">
+            {% for label, value, ok in [
+              ('База данных', diagnostics.database, true),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0003_admin_console'),
+              ('AI tutor enabled', diagnostics.ai_enabled, diagnostics.ai_enabled|lower in ['1','true','yes','on']),
+              ('AI provider configured', 'yes' if diagnostics.ai_provider_configured else 'no', diagnostics.ai_provider_configured),
+              ('Admin binding', diagnostics.admin_host ~ ':' ~ diagnostics.admin_port, diagnostics.admin_host in ['127.0.0.1','localhost','::1']),
+              ('Release SHA', diagnostics.release_sha, diagnostics.release_sha != 'not set'),
+              ('Welcome banner', 'ready' if diagnostics.welcome_banner else 'missing', diagnostics.welcome_banner)
+            ] %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd><span class="readiness {{ 'ok' if ok else 'off' }}">{{ 'ready' if ok else 'off' }}</span></div>{% endfor %}
+          </dl>
+        </section>
+      {% endif %}
+
+      {% if tab == 'audit' %}
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Последние 250</p><h2>Действия администраторов</h2></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Время</th><th>Администратор</th><th>Действие</th><th>Цель</th><th>Детали</th></tr></thead><tbody>
+            {% for row in audit %}<tr><td>{{ row.created_at|datetime }}</td><td>{{ row.actor }}</td><td class="mono">{{ row.action }}</td><td>{{ row.target_type }}{% if row.target_id %}: {{ row.target_id }}{% endif %}</td><td class="details">{{ row.details|tojson }}</td></tr>
+            {% else %}<tr><td colspan="5" class="empty">Журнал пуст.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+      {% endif %}
+    </main>
+  </body>
+</html>
