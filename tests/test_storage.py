@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import tempfile
 import unittest
@@ -10,6 +11,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import inspect, text
 
 from mydictionary.legacy import import_legacy_user
@@ -78,6 +81,8 @@ class DatabaseStoreTest(unittest.TestCase):
                 "daily_word_goal",
                 "onboarding_completed_at",
                 "acquisition_source",
+                "access_status",
+                "access_status_updated_at",
             }.issubset(user_columns)
         )
         progress_columns = {
@@ -88,7 +93,26 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0004_product_foundation")
+        self.assertEqual(revision, "0005_pilot_access")
+
+    def test_programmatic_migrations_preserve_application_logging(self):
+        root_logger = logging.getLogger()
+        previous_level = root_logger.level
+        sentinel = logging.NullHandler()
+        root_logger.addHandler(sentinel)
+        root_logger.setLevel(logging.INFO)
+        secondary_store = None
+        try:
+            secondary_store = DatabaseStore(
+                f"sqlite:///{Path(self.temp_dir.name) / 'logging.db'}"
+            )
+            self.assertIn(sentinel, root_logger.handlers)
+            self.assertEqual(root_logger.level, logging.INFO)
+        finally:
+            if secondary_store is not None:
+                secondary_store.close()
+            root_logger.removeHandler(sentinel)
+            root_logger.setLevel(previous_level)
 
     def test_role_promotion_never_downgrades_owner(self):
         user = SimpleNamespace(id=210, username="owner")
@@ -96,7 +120,38 @@ class DatabaseStoreTest(unittest.TestCase):
         self.assertEqual(self.store.product_profile(210)["role"], "learner")
         self.store.ensure_user(user, role="admin")
         self.store.ensure_user(user, role="learner")
-        self.assertEqual(self.store.product_profile(210)["role"], "admin")
+        profile = self.store.product_profile(210)
+        self.assertEqual(profile["role"], "admin")
+        self.assertEqual(profile["access_status"], "active")
+
+    def test_new_learners_are_pending_until_access_is_activated(self):
+        self.assertIsNone(self.store.access_profile(219))
+        self.store.ensure_user_id(219)
+        self.assertEqual(
+            self.store.access_profile(219)["access_status"], "pending"
+        )
+        self.store.activate_user_access(219)
+        self.assertEqual(
+            self.store.access_profile(219)["access_status"], "active"
+        )
+
+    def test_pilot_migration_preserves_every_existing_account(self):
+        user_id = 220
+        self.store.ensure_user_id(user_id)
+        self.store.close()
+        root = Path(__file__).resolve().parents[1]
+        config = Config(str(root / "alembic.ini"))
+        config.attributes["configure_logging"] = False
+        config.set_main_option("script_location", str(root / "migrations"))
+        config.set_main_option(
+            "sqlalchemy.url", f"sqlite:///{self.database_path}"
+        )
+        command.downgrade(config, "0004_product_foundation")
+        self.store = DatabaseStore(f"sqlite:///{self.database_path}")
+
+        self.assertEqual(
+            self.store.access_profile(user_id)["access_status"], "active"
+        )
 
     def test_onboarding_pack_and_preferences_are_persisted(self):
         self.store.ensure_user_id(211)
@@ -384,9 +439,54 @@ class BotRuntimeIsolationTest(unittest.TestCase):
             self.assertEqual(self.bot._configured_access_mode(), "allowlist")
         with patch.dict(os.environ, {"BOT_ACCESS_MODE": "public"}, clear=True):
             self.assertEqual(self.bot._configured_access_mode(), "public")
+        with patch.dict(os.environ, {"BOT_ACCESS_MODE": "pilot"}, clear=True):
+            self.assertEqual(self.bot._configured_access_mode(), "pilot")
         with patch.dict(os.environ, {"BOT_ACCESS_MODE": "typo"}, clear=True):
             with self.assertRaises(RuntimeError):
                 self.bot._configured_access_mode()
+
+    def test_access_decision_matrix_blocks_before_public_admission(self):
+        decide = self.bot.access_decision
+        self.assertEqual(
+            decide(
+                mode="pilot",
+                configured=False,
+                stored_role=None,
+                stored_status=None,
+                is_start=True,
+            ),
+            "waitlist",
+        )
+        self.assertEqual(
+            decide(
+                mode="pilot",
+                configured=False,
+                stored_role="learner",
+                stored_status="active",
+                is_start=False,
+            ),
+            "allow",
+        )
+        self.assertEqual(
+            decide(
+                mode="public",
+                configured=True,
+                stored_role="learner",
+                stored_status="blocked",
+                is_start=True,
+            ),
+            "blocked",
+        )
+        self.assertEqual(
+            decide(
+                mode="allowlist",
+                configured=False,
+                stored_role="admin",
+                stored_status="active",
+                is_start=False,
+            ),
+            "allow",
+        )
 
     def test_database_url_requires_explicit_sqlite_development_opt_in(self):
         with (

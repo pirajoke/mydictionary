@@ -1,7 +1,17 @@
-<div class="table-wrap"><table><thead><tr><th>Пользователь</th><th>Роль / onboarding</th><th>Набор</th><th>XP / уровень</th><th>Блоки</th><th>Слова</th><th>Точность</th><th>AI-кредиты</th><th>Активность</th></tr></thead><tbody>
+<div class="table-wrap"><table><thead><tr><th>Пользователь</th><th>Роль / onboarding</th><th>Доступ</th><th>Набор</th><th>XP / уровень</th><th>Блоки</th><th>Слова</th><th>Точность</th><th>AI-кредиты</th><th>Активность</th></tr></thead><tbody>
   {% for user in users %}<tr>
     <td><strong>{{ user.name }}</strong><small class="cell-sub">{% if user.username %}@{{ user.username }} · {% endif %}<span class="mono">{{ user.id }}</span></small></td>
     <td>{{ 'Администратор' if user.role == 'admin' else 'Ученик' }}<small class="cell-sub">{{ 'готов' if user.onboarding_completed_at else 'не завершён' }}</small></td>
+    <td><span class="status access-{{ user.access_status }}">{{ {'pending':'ожидает','active':'активен','blocked':'заблокирован'}.get(user.access_status, 'неизвестно') }}</span>
+      {% if not compact and user.role != 'admin' %}<div class="access-actions">
+        {% for status, label in [('active','Допустить'),('pending','В очередь'),('blocked','Блокировать')] %}
+          {% if status != user.access_status %}<form method="post" action="{{ url_for('update_user_access', user_id=user.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="{{ status }}">
+            <button type="submit" class="compact-button">{{ label }}</button>
+          </form>{% endif %}
+        {% endfor %}
+      </div>{% endif %}
+    </td>
     <td>{{ language_labels.get(user.active_lang, user.active_lang) }}<small class="cell-sub mono">{{ user.active_pack_id or 'не выбран' }}</small></td>
     <td>{{ user.xp|number }} / Lv.{{ user.level }}</td>
     <td>{{ user.sessions }}</td>
@@ -9,5 +19,5 @@
     <td>{{ user.accuracy|round(1) }}%</td>
     <td>{{ user.credits_available }} / {{ user.credits_spent }}</td>
     <td>{{ user.updated_at|datetime }}</td>
-  </tr>{% else %}<tr><td colspan="9" class="empty">Пользователи не найдены.</td></tr>{% endfor %}
+  </tr>{% else %}<tr><td colspan="10" class="empty">Пользователи не найдены.</td></tr>{% endfor %}
 </tbody></table></div>
