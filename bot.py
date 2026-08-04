@@ -19,7 +19,7 @@ from pathlib import Path
 
 import yaml
 from telegram import Bot, BotCommand, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
-from telegram.error import Conflict
+from telegram.error import Conflict, TelegramError
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
     MessageHandler, PollAnswerHandler, filters, ContextTypes
@@ -47,7 +47,9 @@ from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import render_start_text
 from mydictionary.catalog import ContentPack, load_catalog
 from mydictionary.legacy import import_legacy_user
+from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.storage import (
+    ACCESS_STATUSES,
     AIQuotaExceeded,
     DatabaseStore,
     WORD_PROGRESS_DEFAULTS,
@@ -56,6 +58,9 @@ from mydictionary.storage import (
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+# Telegram API URLs contain the bot token. Keep request-level HTTPX logging out
+# of production logs while retaining application lifecycle and error messages.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 BASE_DIR = Path(__file__).parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -101,13 +106,20 @@ ADMIN_USER_IDS = _configured_admin_ids()
 
 def _configured_access_mode() -> str:
     mode = os.environ.get("BOT_ACCESS_MODE", "allowlist").strip().lower()
-    if mode not in {"allowlist", "public"}:
-        raise RuntimeError("BOT_ACCESS_MODE must be 'allowlist' or 'public'")
+    if mode not in {"allowlist", "pilot", "public"}:
+        raise RuntimeError(
+            "BOT_ACCESS_MODE must be 'allowlist', 'pilot', or 'public'"
+        )
     return mode
 
 
 BOT_ACCESS_MODE = _configured_access_mode()
 AI_SETTINGS = AITutorSettings.from_env()
+BOT_HEARTBEAT = BotHeartbeat(
+    heartbeat_path(DATA_DIR),
+    release_sha=os.environ.get("RELEASE_SHA", BASE_DIR.resolve().name),
+    access_mode=BOT_ACCESS_MODE,
+)
 
 # ---------------------------------------------------------------------------
 # Data layer — multi-language
@@ -210,6 +222,7 @@ class LearnerRuntime:
     store: DatabaseStore
     progress: dict
     role: str = "learner"
+    access_status: str = "pending"
     onboarding_completed: bool = False
     words_by_lang: dict[str, list[dict]] = field(default_factory=dict)
 
@@ -424,6 +437,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
         store=store,
         progress=store.load_profile(user_id, PROGRESS_DEFAULTS),
         role=product["role"],
+        access_status=product["access_status"],
         onboarding_completed=product["onboarding_completed_at"] is not None,
     )
 
@@ -687,6 +701,44 @@ def mark_wrong(idx: int) -> tuple[int, int]:
 # Auth decorator
 # ---------------------------------------------------------------------------
 
+def access_decision(
+    *,
+    mode: str,
+    configured: bool,
+    stored_role: str | None,
+    stored_status: str | None,
+    is_start: bool,
+) -> str:
+    """Return a fail-closed action for one incoming Telegram update."""
+    if stored_role == "admin":
+        return "allow"
+    if stored_status is not None and stored_status not in ACCESS_STATUSES:
+        return "blocked"
+    if stored_status == "blocked":
+        return "blocked"
+    if configured:
+        return "allow"
+    if mode == "allowlist":
+        return "deny"
+    if mode == "public":
+        return "allow"
+    if mode == "pilot" and stored_status == "active":
+        return "allow"
+    if mode == "pilot" and is_start:
+        return "waitlist"
+    return "pending"
+
+
+async def reject_access(update: Update, text: str) -> None:
+    query = getattr(update, "callback_query", None)
+    if query is not None:
+        await query.answer(text[:200], show_alert=True)
+        return
+    message = getattr(update, "effective_message", None)
+    if message is not None:
+        await message.reply_text(text)
+
+
 def auth(func):
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -696,12 +748,55 @@ def auth(func):
         if telegram_user is None:
             return
         user_id = int(telegram_user.id)
-        if BOT_ACCESS_MODE != "public" and user_id not in ALLOWED_USER_IDS:
-            message = getattr(update, "effective_message", None)
-            if message is not None:
-                await message.reply_text("Access denied.")
+        configured = user_id in ALLOWED_USER_IDS or user_id in ADMIN_USER_IDS
+        store = get_store()
+        stored = store.access_profile(user_id)
+        decision = access_decision(
+            mode=BOT_ACCESS_MODE,
+            configured=configured,
+            stored_role=stored["role"] if stored else None,
+            stored_status=stored["access_status"] if stored else None,
+            is_start=func.__name__ == "cmd_start",
+        )
+        if decision == "waitlist":
+            source = start_source(getattr(context, "args", None))
+            first_request = stored is None
+            store.ensure_user(telegram_user, acquisition_source=source)
+            store.record_event(user_id, "start_received", source=source)
+            if first_request:
+                store.record_event(
+                    user_id,
+                    "pilot_waitlist_joined",
+                    source=source,
+                )
+            await reject_access(
+                update,
+                "Заявка на участие в бесплатном пилоте принята. "
+                "После одобрения администратора открой /start ещё раз.",
+            )
+            return
+        if decision == "blocked":
+            await reject_access(
+                update,
+                "Доступ к MY DICTIONARY заблокирован. Обратись в поддержку.",
+            )
+            return
+        if decision == "pending":
+            await reject_access(
+                update,
+                "Доступ к пилоту ещё не одобрен. Статус можно проверить через /start.",
+            )
+            return
+        if decision == "deny":
+            await reject_access(
+                update,
+                "MY DICTIONARY пока доступен только участникам закрытого тестирования.",
+            )
             return
         with learner_scope(telegram_user) as runtime:
+            if runtime.access_status != "active":
+                runtime.store.activate_user_access(runtime.user_id)
+                runtime.access_status = "active"
             if (
                 runtime.role != "admin"
                 and not runtime.onboarding_completed
@@ -2416,8 +2511,55 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Main
 # ---------------------------------------------------------------------------
 
+BOT_COMMANDS = [
+    BotCommand("start", "Главное меню"),
+    BotCommand("learn", "Блок 10 слов и тест блока"),
+    BotCommand("smart", "Весь словарь: адаптивно"),
+    BotCommand("poll", "Весь словарь: квиз с таймером"),
+    BotCommand("quiz", "Весь словарь: варианты"),
+    BotCommand("type", "Весь словарь: написать перевод"),
+    BotCommand("flash", "Весь словарь: карточки"),
+    BotCommand("ai", "AI-репетитор по активному блоку"),
+    BotCommand("ai_stats", "AI-кредиты и использование"),
+    BotCommand("lang", "Сменить язык"),
+    BotCommand("stats", "Статистика"),
+    BotCommand("help", "Помощь"),
+]
+
+
+async def sync_telegram_profile(telegram_bot) -> None:
+    """Update optional Bot API metadata without blocking polling startup."""
+    profile = get_bot_profile()
+    operations = (
+        ("commands", telegram_bot.set_my_commands, (BOT_COMMANDS,), {}),
+        ("name", telegram_bot.set_my_name, (profile["bot_name"],), {}),
+        (
+            "short_description",
+            telegram_bot.set_my_short_description,
+            (profile["bot_short_description"],),
+            {},
+        ),
+        (
+            "description",
+            telegram_bot.set_my_description,
+            (profile["bot_description"],),
+            {},
+        ),
+    )
+    for operation, method, args, kwargs in operations:
+        try:
+            await method(*args, **kwargs)
+        except TelegramError as exc:
+            logger.warning(
+                "Telegram profile sync skipped: operation=%s error_type=%s",
+                operation,
+                type(exc).__name__,
+            )
+
+
 async def manual_polling():
     """Manual polling loop that handles Conflict gracefully."""
+    BOT_HEARTBEAT.mark_starting()
     store = get_store()
     recovered_reservations = store.recover_stale_ai_usage(
         timeout_seconds=AI_SETTINGS.reservation_timeout_seconds
@@ -2503,25 +2645,8 @@ async def manual_polling():
     await app.initialize()
     await app.start()
     await app.bot.delete_webhook(drop_pending_updates=True)
-    await app.bot.set_my_commands([
-        BotCommand("start", "Главное меню"),
-        BotCommand("learn", "Блок 10 слов и тест блока"),
-        BotCommand("smart", "Весь словарь: адаптивно"),
-        BotCommand("poll", "Весь словарь: квиз с таймером"),
-        BotCommand("quiz", "Весь словарь: варианты"),
-        BotCommand("type", "Весь словарь: написать перевод"),
-        BotCommand("flash", "Весь словарь: карточки"),
-        BotCommand("ai", "AI-репетитор по активному блоку"),
-        BotCommand("ai_stats", "AI-кредиты и использование"),
-        BotCommand("lang", "Сменить язык"),
-        BotCommand("stats", "Статистика"),
-        BotCommand("help", "Помощь"),
-    ])
-    profile = get_bot_profile()
-    await app.bot.set_my_name(profile["bot_name"])
-    await app.bot.set_my_short_description(profile["bot_short_description"])
-    await app.bot.set_my_description(profile["bot_description"])
-    logger.info("Bot commands menu registered")
+    await sync_telegram_profile(app.bot)
+    logger.info("Bot command and profile sync completed")
 
     offset = None
     logger.info("Manual polling started")
@@ -2532,20 +2657,28 @@ async def manual_polling():
                 updates = await app.bot.get_updates(
                     offset=offset, timeout=10, allowed_updates=Update.ALL_TYPES
                 )
+                BOT_HEARTBEAT.mark_ready()
                 for update in updates:
                     offset = update.update_id + 1
                     await app.process_update(update)
             except Conflict:
+                BOT_HEARTBEAT.mark_starting()
                 logger.warning("Conflict — another instance polling. Waiting 30s...")
                 await asyncio.sleep(30)
             except Exception as e:
+                BOT_HEARTBEAT.mark_starting()
                 if "Conflict" in str(e):
                     logger.warning("Conflict — waiting 30s...")
                     await asyncio.sleep(30)
                 else:
-                    logger.error(f"Polling error: {e}")
+                    # Telegram exceptions can include the request URL and token.
+                    logger.error(
+                        "Telegram polling failed: error_type=%s",
+                        type(e).__name__,
+                    )
                     await asyncio.sleep(5)
     finally:
+        BOT_HEARTBEAT.mark_stopped()
         await app.stop()
         await app.shutdown()
         store.close()

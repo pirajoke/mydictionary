@@ -43,17 +43,19 @@ the learning workflow.
 The protected admin console exposes a 30-day unique-user funnel:
 
 1. `start_received`
-2. `onboarding_started`
-3. `onboarding_completed`
-4. `block_started`
-5. `block_completed`
+2. `pilot_waitlist_joined`
+3. `onboarding_started`
+4. `onboarding_completed`
+5. `block_started`
+6. `block_completed`
 
 Recent privacy-safe events can be exported as CSV. Acquisition source is
 accepted only from a short ASCII Telegram `/start` payload.
 
 ## Rollout boundary
 
-This change leaves `BOT_ACCESS_MODE` unchanged. A later, separately reviewed
-release should add the remaining public language packs, rehearse the migration
-against a production backup, deploy the code, and only then consider a gradual
-public-access rollout.
+The product foundation leaves `BOT_ACCESS_MODE` unchanged. Migration `0005` and
+the admin access controls prepare a later, separately approved rollout: deploy
+in allowlist mode, verify Telegram readiness, then switch to `pilot` and admit
+learners individually. `public` remains a separate product and operational
+decision.

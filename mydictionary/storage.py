@@ -98,6 +98,10 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
     acquisition_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    access_status: Mapped[str] = mapped_column(String(16), default="pending")
+    access_status_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -323,6 +327,7 @@ class AIUsageStateError(RuntimeError):
 
 
 USER_ROLES = {"learner", "admin"}
+ACCESS_STATUSES = {"pending", "active", "blocked"}
 EVENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 EVENT_PROPERTY_KEYS = {
     "correct_count",
@@ -344,6 +349,9 @@ def run_migrations(database_url: str) -> None:
     """Upgrade a database using the repository's versioned Alembic migrations."""
     root = Path(__file__).resolve().parents[1]
     config = Config(str(root / "alembic.ini"))
+    # The application already owns logging. Alembic's CLI configuration would
+    # otherwise replace the root logger and hide all subsequent bot INFO logs.
+    config.attributes["configure_logging"] = False
     config.set_main_option("script_location", str(root / "migrations"))
     config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
     command.upgrade(config, "head")
@@ -399,11 +407,18 @@ class DatabaseStore:
         with self.Session.begin() as session:
             user = session.get(User, user_id)
             if user is None:
-                user = User(telegram_user_id=user_id, role=role or "learner")
+                user = User(
+                    telegram_user_id=user_id,
+                    role=role or "learner",
+                    access_status="active" if role == "admin" else "pending",
+                    access_status_updated_at=utcnow() if role == "admin" else None,
+                )
                 session.add(user)
             elif role == "admin":
                 # Runtime configuration may promote an owner but never downgrades one.
                 user.role = "admin"
+                user.access_status = "active"
+                user.access_status_updated_at = utcnow()
             for field in ("username", "first_name", "last_name", "language_code"):
                 value = getattr(telegram_user, field, None)
                 if value is not None:
@@ -430,9 +445,36 @@ class DatabaseStore:
                 "daily_word_goal": user.daily_word_goal,
                 "onboarding_completed_at": user.onboarding_completed_at,
                 "acquisition_source": user.acquisition_source,
+                "access_status": user.access_status,
+                "access_status_updated_at": user.access_status_updated_at,
                 "active_pack_id": progress.active_pack_id if progress else None,
                 "active_lang": progress.active_lang if progress else "en",
             }
+
+    def access_profile(self, user_id: int) -> dict[str, Any] | None:
+        """Return access state without creating a record for denied traffic."""
+        with self.Session() as session:
+            user = session.get(User, int(user_id))
+            if user is None:
+                return None
+            return {
+                "role": user.role,
+                "access_status": user.access_status,
+                "access_status_updated_at": user.access_status_updated_at,
+            }
+
+    def activate_user_access(self, user_id: int) -> None:
+        """Activate users admitted by public or emergency configuration."""
+        with self.Session.begin() as session:
+            user = session.get(User, int(user_id))
+            if user is None:
+                raise ValueError("Telegram user does not exist")
+            if user.access_status == "blocked" and user.role != "admin":
+                raise PermissionError("Blocked user access cannot be activated")
+            if user.access_status != "active":
+                user.access_status = "active"
+                user.access_status_updated_at = utcnow()
+                user.updated_at = utcnow()
 
     def update_product_profile(
         self,

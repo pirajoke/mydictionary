@@ -12,6 +12,7 @@ os.environ.setdefault("BOT_TOKEN", "123456:TESTTOKEN")
 os.environ.setdefault("ALLOWED_USER_ID", "1")
 
 import bot
+from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, render_start_text
 from mydictionary.storage import AnalyticsEvent, DatabaseStore
 
@@ -120,6 +121,83 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             self.store.product_profile(9901)["acquisition_source"],
             "telegram-ad",
         )
+        self.assertEqual(
+            self.store.product_profile(9901)["access_status"], "active"
+        )
+
+    async def test_pilot_start_registers_one_pending_waitlist_entry(self):
+        message = SimpleNamespace(reply_text=AsyncMock())
+        user = SimpleNamespace(id=9910, first_name="Лена")
+        update = SimpleNamespace(
+            message=message,
+            effective_message=message,
+            effective_user=user,
+            callback_query=None,
+        )
+        context = SimpleNamespace(args=["pilot-campaign"], user_data={})
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "pilot"),
+            patch.object(bot, "ALLOWED_USER_IDS", set()),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+            patch.object(bot, "LEGACY_USER_ID", None),
+        ):
+            await bot.cmd_start(update, context)
+            await bot.cmd_start(update, context)
+
+        self.assertIn("Заявка", message.reply_text.await_args.args[0])
+        profile = self.store.product_profile(9910)
+        self.assertEqual(profile["access_status"], "pending")
+        self.assertIsNone(profile["onboarding_completed_at"])
+        self.assertEqual(profile["acquisition_source"], "pilot-campaign")
+        with self.store.Session() as session:
+            events = session.execute(
+                select(AnalyticsEvent.event_name).where(
+                    AnalyticsEvent.telegram_user_id == 9910
+                )
+            ).scalars().all()
+        self.assertEqual(events.count("start_received"), 2)
+        self.assertEqual(events.count("pilot_waitlist_joined"), 1)
+        self.assertEqual(len(events), 3)
+
+    async def test_pilot_approval_opens_onboarding_and_block_is_global(self):
+        user_id = 9911
+        user = SimpleNamespace(id=user_id, first_name="Маша")
+        message = SimpleNamespace(reply_text=AsyncMock())
+        update = SimpleNamespace(
+            message=message,
+            effective_message=message,
+            effective_user=user,
+            callback_query=None,
+        )
+        context = SimpleNamespace(args=[], user_data={})
+        self.store.ensure_user(user)
+        AdminStore(self.store).set_user_access_status(
+            user_id, status="active", actor="owner"
+        )
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "pilot"),
+            patch.object(bot, "ALLOWED_USER_IDS", set()),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+            patch.object(bot, "LEGACY_USER_ID", None),
+        ):
+            await bot.cmd_start(update, context)
+        self.assertIn("Настрой обучение", message.reply_text.await_args.args[0])
+
+        AdminStore(self.store).set_user_access_status(
+            user_id, status="blocked", actor="owner"
+        )
+        message.reply_text.reset_mock()
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "public"),
+            patch.object(bot, "ALLOWED_USER_IDS", set()),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+            patch.object(bot, "LEGACY_USER_ID", None),
+        ):
+            await bot.cmd_start(update, context)
+        self.assertIn("заблокирован", message.reply_text.await_args.args[0])
 
     async def test_forged_private_pack_callback_is_rejected_for_learner(self):
         user_id = 9902

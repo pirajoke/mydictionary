@@ -105,6 +105,12 @@ tbody tr:hover { background: #f7faf8; }
 .status.completed { color: var(--green); background: var(--green-soft); }
 .status.failed { color: var(--danger); background: #f8e4e1; }
 .status.reserved { color: #73500d; background: #fff0c9; }
+.status.access-active { color: var(--green); background: var(--green-soft); }
+.status.access-pending { color: #73500d; background: #fff0c9; }
+.status.access-blocked { color: var(--danger); background: #f8e4e1; }
+.access-actions { display: flex; align-items: center; gap: 5px; margin-top: 7px; }
+.access-actions form { margin: 0; }
+.compact-button { min-height: 30px; padding: 5px 8px; font-size: 11px; }
 .notice { margin-bottom: 18px; padding: 12px 14px; border-left: 4px solid var(--green); background: var(--green-soft); }
 .notice.error { border-color: var(--danger); background: #f9e5e2; }
 .login-page { display: grid; place-items: center; padding: 24px; background: #edf1ee; }

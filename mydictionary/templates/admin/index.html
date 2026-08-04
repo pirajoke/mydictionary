@@ -43,7 +43,7 @@
 
       {% if tab == 'dashboard' %}
         <section class="metric-grid" aria-label="Главные показатели">
-          <article><span>Пользователи</span><strong>{{ dashboard.users|number }}</strong><small>{{ dashboard.onboarded_users }} завершили настройку</small></article>
+          <article><span>Пользователи</span><strong>{{ dashboard.users|number }}</strong><small>{{ dashboard.access.get('pending', 0) }} ожидают допуска</small></article>
           <article><span>Активные, 7 дней</span><strong>{{ dashboard.active_users_7d|number }}</strong><small>обновляли состояние</small></article>
           <article><span>Завершённые блоки</span><strong>{{ dashboard.sessions|number }}</strong><small>{{ dashboard.accuracy|round(1) }}% точность</small></article>
           <article><span>Выученные слова</span><strong>{{ dashboard.learned_words|number }}</strong><small>из {{ dashboard.tracked_words|number }} отслеживаемых</small></article>
@@ -197,7 +197,11 @@
           <dl class="diagnostic-list">
             {% for label, value, ok in [
               ('База данных', diagnostics.database, true),
-              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0004_product_foundation'),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0005_pilot_access'),
+              ('Telegram polling', diagnostics.bot_state ~ ' · ' ~ diagnostics.bot_reason, diagnostics.bot_ready),
+              ('Heartbeat age', (diagnostics.bot_heartbeat_age_seconds|round(1)|string ~ ' s') if diagnostics.bot_heartbeat_age_seconds is not none else 'missing', diagnostics.bot_ready),
+              ('Bot release', diagnostics.bot_release_sha, diagnostics.bot_release_sha != 'unknown'),
+              ('Access mode', diagnostics.bot_access_mode, diagnostics.bot_access_mode in ['allowlist','pilot','public']),
               ('AI tutor enabled', diagnostics.ai_enabled, diagnostics.ai_enabled|lower in ['1','true','yes','on']),
               ('AI provider configured', 'yes' if diagnostics.ai_provider_configured else 'no', diagnostics.ai_provider_configured),
               ('Admin binding', diagnostics.admin_host ~ ':' ~ diagnostics.admin_port, diagnostics.admin_host in ['127.0.0.1','localhost','::1']),
