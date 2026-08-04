@@ -57,13 +57,17 @@ class DatabaseStoreTest(unittest.TestCase):
                 "data_imports",
                 "ai_allowances",
                 "ai_usage",
+                "app_settings",
+                "admin_credentials",
+                "admin_audit_log",
+                "ai_credit_ledger",
             }.issubset(tables)
         )
         with self.store.engine.connect() as connection:
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0002_ai_tutor_usage")
+        self.assertEqual(revision, "0003_admin_console")
 
     def test_profiles_and_words_are_isolated_by_telegram_user(self):
         user_one = dict(PROFILE_DEFAULTS, active_lang="ja", xp=25, total_correct=1)

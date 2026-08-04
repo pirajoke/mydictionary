@@ -1,0 +1,12 @@
+<div class="table-wrap"><table><thead><tr><th>Пользователь</th><th>Язык</th><th>XP / уровень</th><th>Блоки</th><th>Слова</th><th>Точность</th><th>AI-кредиты</th><th>Активность</th></tr></thead><tbody>
+  {% for user in users %}<tr>
+    <td><strong>{{ user.name }}</strong><small class="cell-sub">{% if user.username %}@{{ user.username }} · {% endif %}<span class="mono">{{ user.id }}</span></small></td>
+    <td>{{ language_labels.get(user.active_lang, user.active_lang) }}</td>
+    <td>{{ user.xp|number }} / Lv.{{ user.level }}</td>
+    <td>{{ user.sessions }}</td>
+    <td>{{ user.learned_words }}/{{ user.tracked_words }}</td>
+    <td>{{ user.accuracy|round(1) }}%</td>
+    <td>{{ user.credits_available }} / {{ user.credits_spent }}</td>
+    <td>{{ user.updated_at|datetime }}</td>
+  </tr>{% else %}<tr><td colspan="8" class="empty">Пользователи не найдены.</td></tr>{% endfor %}
+</tbody></table></div>

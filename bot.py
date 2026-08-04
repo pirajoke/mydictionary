@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MAX Context Bot — multilingual word quiz Telegram bot."""
+"""MY DICTIONARY multilingual word-learning Telegram bot."""
 
 import asyncio
 from collections.abc import Iterator, MutableMapping
@@ -43,6 +43,8 @@ from mydictionary.ai_tutor import (
     build_openai_tutor_service,
     render_tutor_answer,
 )
+from mydictionary.admin_store import AdminStore
+from mydictionary.bot_profile import render_start_text
 from mydictionary.legacy import import_legacy_user
 from mydictionary.storage import (
     AIQuotaExceeded,
@@ -56,6 +58,7 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+WELCOME_BANNER_PATH = BASE_DIR / "assets" / "mydictionary-welcome.jpg"
 
 # Config: env vars first, then config.yaml fallback
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -176,6 +179,11 @@ def get_store() -> DatabaseStore:
     if _STORE is None:
         _STORE = DatabaseStore(database_url())
     return _STORE
+
+
+def get_bot_profile() -> dict[str, str]:
+    """Load admin-editable bot text without caching runtime changes."""
+    return AdminStore(get_store()).get_settings()
 
 
 def get_ai_tutor_service() -> AITutorService:
@@ -557,24 +565,114 @@ def auth(func):
 
 @auth
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        f"📚 *MAX Context Bot*\n"
-        f"Словарь: {LANG_LABELS[PROGRESS['active_lang']]}\n\n"
-        "/learn — Блок 10 слов и тест блока\n"
-        "/smart — Весь словарь: адаптивно\n"
-        "/poll — Весь словарь: квиз с таймером\n"
-        "/quiz — Весь словарь: варианты\n"
-        "/type — Весь словарь: написать перевод\n"
-        "/flash — Весь словарь: карточки\n"
-        "/ai — AI-репетитор по активному блоку\n"
-        "/ai_stats — AI-кредиты и использование\n"
-        "/stats — Статистика\n"
-        "/lang — Сменить язык",
-        parse_mode="Markdown",
-        reply_markup=get_lang_keyboard(),
+    await send_start_message(
+        update.message,
+        context,
+        first_name=getattr(update.effective_user, "first_name", None),
     )
 
-cmd_help = cmd_start
+
+def start_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("Начать обучение", callback_data="start:learn"),
+                InlineKeyboardButton("Выбрать язык", callback_data="start:lang"),
+            ],
+            [
+                InlineKeyboardButton("Мой прогресс", callback_data="start:stats"),
+                InlineKeyboardButton("Как это работает", callback_data="start:about"),
+            ],
+        ]
+    )
+
+
+async def send_start_message(message, context, *, first_name: str | None) -> None:
+    profile = get_bot_profile()
+    text = render_start_text(profile, first_name)
+    if WELCOME_BANNER_PATH.exists():
+        try:
+            with WELCOME_BANNER_PATH.open("rb") as photo:
+                await message.reply_photo(
+                    photo=photo,
+                    caption=text,
+                    reply_markup=start_keyboard(),
+                )
+            return
+        except Exception as exc:
+            logger.warning("Welcome banner failed; using text fallback: %s", exc)
+    await message.reply_text(text, reply_markup=start_keyboard())
+
+
+@auth
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(get_bot_profile()["bot_help_text"])
+
+
+@auth
+async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    action = query.data.split(":", 1)[1]
+    chat_id = query.message.chat_id
+    if action == "learn":
+        invalidate_block_session(context.user_data)
+        lang = PROGRESS["active_lang"]
+        context.user_data["block_lang"] = lang
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"📚 *{LANG_LABELS[lang]}*\n\nВыбери тему:",
+            reply_markup=build_topic_keyboard(lang),
+            parse_mode="Markdown",
+        )
+        return
+    if action == "lang":
+        current = PROGRESS["active_lang"]
+        buttons = []
+        for lang_code, label in LANG_LABELS.items():
+            marker = " ✓" if lang_code == current else ""
+            total = len(DICTS[lang_code])
+            learned = sum(
+                1 for word in W(lang_code) if word["correct_count"] >= 3
+            )
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        f"{label} ({learned}/{total}){marker}",
+                        callback_data=f"lang:{lang_code}",
+                    )
+                ]
+            )
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"Текущий словарь: *{LANG_LABELS[current]}*\n\nВыбери язык:",
+            reply_markup=InlineKeyboardMarkup(buttons),
+            parse_mode="Markdown",
+        )
+        return
+    if action == "stats":
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=format_stats_text(),
+            parse_mode="Markdown",
+        )
+        return
+    if action == "about":
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                "Как проходит обучение\n\n"
+                "1. Выбери язык и тему.\n"
+                "2. Изучи связанный блок из 10 слов.\n"
+                "3. Открой каждое слово: сначала русский смысл, затем написание, "
+                "латинская транскрипция и голосовое произношение.\n"
+                "4. Закрепи именно этот блок тестом, вводом или карточками.\n"
+                "5. Возвращайся к словам, которые бот поставил на повторение."
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Начать обучение", callback_data="start:learn")]]
+            ),
+        )
 
 
 def active_tutor_context(user_data: dict) -> TutorContext | None:
@@ -1013,6 +1111,10 @@ async def flash_didnt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(format_stats_text(), parse_mode="Markdown")
+
+
+def format_stats_text() -> str:
     total = len(W())
     learned = sum(1 for w in W() if w["correct_count"] >= 3)
     seen = sum(1 for w in W() if w["last_seen"] is not None)
@@ -1040,7 +1142,7 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     streak_best = PROGRESS.get("streak_best", 0)
     today_xp = PROGRESS.get("today_xp", 0)
 
-    await update.message.reply_text(
+    return (
         f"📊 *Статистика* ({LANG_LABELS[PROGRESS['active_lang']]})\n\n"
         f"📈 *Lv.{lvl} {title}* — {xp_line}\n"
         f"🔥 Streak: {streak} дн. (рекорд: {streak_best})\n"
@@ -1049,8 +1151,7 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⏰ На повторение: {overdue}\n\n"
         f"✅ Правильных: {tc} | ❌ Ошибок: {tw}\n"
         f"🎯 Точность: {accuracy:.1f}%\n\n"
-        f"*Слабые слова:*\n{weak_text}",
-        parse_mode="Markdown"
+        f"*Слабые слова:*\n{weak_text}"
     )
 
 # ---------------------------------------------------------------------------
@@ -1934,6 +2035,9 @@ async def manual_polling():
     app.add_handler(CommandHandler("ai", cmd_ai))
     app.add_handler(CommandHandler("ai_stats", cmd_ai_stats))
 
+    # Welcome menu callbacks
+    app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
+
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))
 
@@ -1996,6 +2100,10 @@ async def manual_polling():
         BotCommand("stats", "Статистика"),
         BotCommand("help", "Помощь"),
     ])
+    profile = get_bot_profile()
+    await app.bot.set_my_name(profile["bot_name"])
+    await app.bot.set_my_short_description(profile["bot_short_description"])
+    await app.bot.set_my_description(profile["bot_description"])
     logger.info("Bot commands menu registered")
 
     offset = None
