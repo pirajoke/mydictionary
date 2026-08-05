@@ -7,7 +7,10 @@ enables it with complete pricing and credential settings.
 ## Learner flows
 
 `/voice` starts pronunciation practice for the words in the active ten-word
-block. Each turn is presented in this order:
+block. Before the first session for the current notice version, the learner must
+accept that Telegram audio will be sent to OpenAI for transcription. The bot
+checks that consent again before downloading each voice message. Each turn is
+presented in this order:
 
 1. Russian meaning;
 2. target-language word;
@@ -55,6 +58,8 @@ would require a separately evaluated provider and a new product contract.
 - Each STT request uses the existing AI wallet. Reservation, usage settlement,
   transcript creation, and session advancement commit atomically.
 - Provider failure or a stale session releases the reserved credit.
+- `/privacy` can revoke voice processing consent and stop the active session.
+- Changing `VOICE_CONSENT_VERSION` requires a new acceptance.
 
 ## Runtime settings
 
@@ -70,6 +75,8 @@ would require a separately evaluated provider and a new product contract.
 | `VOICE_MAX_DURATION_SECONDS` | `30` | 2-120 seconds |
 | `VOICE_SESSION_TTL_MINUTES` | `30` | 5-240 minutes |
 | `VOICE_TRANSCRIPT_RETENTION_DAYS` | `30` | 1-365 days |
+| `VOICE_CONSENT_VERSION` | unset | reviewed immutable version identifier |
+| `VOICE_PROCESSING_NOTICE` | unset | reviewed disclosure, 40-1000 characters |
 
 `VOICE_COST_MICRO_USD_PER_MINUTE` is an operational cost estimate in millionths
 of one US dollar. It must be reviewed against the current provider price before

@@ -107,8 +107,14 @@ def build_process(
         "BILLING_PAYLOAD_SECRET",
         "BILLING_SUPPORT_CONTACT",
         "BILLING_TERMS_TEXT",
+        "BILLING_TERMS_VERSION",
         "BILLING_ORDER_TTL_SECONDS",
         "BILLING_NET_MICRO_USD_PER_XTR",
+        "AI_INPUT_USD_PER_MILLION",
+        "AI_CACHED_INPUT_USD_PER_MILLION",
+        "AI_CACHE_WRITE_USD_PER_MILLION",
+        "AI_OUTPUT_USD_PER_MILLION",
+        "VOICE_CONSENT_VERSION",
     ):
         if source.get(name):
             environment[name] = str(source[name]).strip()

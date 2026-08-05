@@ -730,7 +730,13 @@ class ReleaseStateTest(OpsTestCase):
         test_runs = []
         archive = io.BytesIO()
         with tarfile.open(fileobj=archive, mode="w") as bundle:
-            for filename in ("bot.py", "tts.py", "requirements.txt", "alembic.ini"):
+            for filename in (
+                "bot.py",
+                "tts.py",
+                "requirements.txt",
+                "requirements.lock",
+                "alembic.ini",
+            ):
                 payload = b""
                 member = tarfile.TarInfo(filename)
                 member.size = len(payload)

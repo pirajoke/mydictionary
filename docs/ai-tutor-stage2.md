@@ -27,15 +27,15 @@ AI_SAFETY_SALT=...
 AI_INITIAL_CREDITS=0
 AI_CREDITS_PER_REQUEST=1
 AI_RESERVATION_TIMEOUT_SECONDS=300
-AI_INPUT_USD_PER_MILLION=0
-AI_CACHED_INPUT_USD_PER_MILLION=0
-AI_CACHE_WRITE_USD_PER_MILLION=0
-AI_OUTPUT_USD_PER_MILLION=0
+AI_INPUT_USD_PER_MILLION=<positive reviewed rate>
+AI_CACHED_INPUT_USD_PER_MILLION=<positive reviewed rate>
+AI_CACHE_WRITE_USD_PER_MILLION=<positive conservative rate>
+AI_OUTPUT_USD_PER_MILLION=<positive reviewed rate>
 ```
 
 `AI_SAFETY_SALT` is a secret random value of at least 16 characters and must
 not be committed. When the feature is enabled, the application fails fast if
-the API key, model, or salt is missing.
+the API key, model, salt, or any metered price category is missing or zero.
 
 Provider prices are runtime configuration rather than product constants. The
 initial allowance is granted once when a user first reserves an AI request.
@@ -62,7 +62,7 @@ operational quota, not a paid wallet.
 ## Rollout Gate
 
 - Keep the feature flag off in production.
-- Run deterministic contract tests for English, Vietnamese, and Japanese.
+- Run deterministic contract tests for all eight launch languages.
 - Run a separate live-provider evaluation with a non-production test account.
 - Compare quality, cost, latency, and grounding before granting pilot credits.
 - Production enablement requires a separate explicit deployment decision.

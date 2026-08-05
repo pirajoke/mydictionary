@@ -110,7 +110,7 @@ class SafetySettings:
 
     def for_handler(self, handler_name: str) -> tuple[str, RateLimitPolicy]:
         name = str(handler_name).lower()
-        if "buy" in name or "subscription" in name:
+        if "buy" in name or "subscription" in name or name == "billing_consent_cb":
             return "billing", self.billing
         if name in {
             "cmd_ai",

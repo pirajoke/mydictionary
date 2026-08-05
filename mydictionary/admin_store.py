@@ -7,7 +7,7 @@ import json
 from typing import Any, Mapping
 from uuid import uuid4
 
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, case, cast, func, or_, select
 
 from mydictionary.billing import (
     BILLING_MODES,
@@ -481,15 +481,14 @@ class AdminStore:
     def product_funnel(self, *, days: int = 30) -> dict[str, Any]:
         days = max(1, min(int(days), 365))
         since = datetime.now(timezone.utc) - timedelta(days=days)
-        steps = [
+        event_steps = [
             ("start_received", "Открыли /start"),
-            ("pilot_waitlist_joined", "Встали в очередь пилота"),
-            ("onboarding_started", "Начали настройку"),
             ("onboarding_completed", "Завершили настройку"),
             ("block_started", "Открыли учебный блок"),
-            ("block_completed", "Завершили блок"),
+            ("buy_opened", "Открыли покупку"),
+            ("billing_terms_accepted", "Приняли условия"),
         ]
-        event_names = [name for name, _ in steps]
+        event_names = [name for name, _ in event_steps]
         with self.store.Session() as session:
             rows = session.execute(
                 select(
@@ -508,27 +507,106 @@ class AdminStore:
                 )
                 .group_by(AnalyticsEvent.event_name)
             ).all()
+            order_events, order_users = session.execute(
+                select(
+                    func.count(PaymentOrder.order_id),
+                    func.count(func.distinct(PaymentOrder.telegram_user_id)),
+                ).where(PaymentOrder.created_at >= since)
+            ).one()
+            payment_events, payment_users, gross_xtr, refunded_xtr = session.execute(
+                select(
+                    func.count(StarsPayment.payment_id),
+                    func.count(func.distinct(StarsPayment.telegram_user_id)),
+                    func.coalesce(func.sum(StarsPayment.total_amount), 0),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (StarsPayment.status == "refunded", StarsPayment.total_amount),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ),
+                ).where(StarsPayment.received_at >= since)
+            ).one()
+            ai_events, ai_users = session.execute(
+                select(
+                    func.count(AIUsage.request_id),
+                    func.count(func.distinct(AIUsage.telegram_user_id)),
+                ).where(
+                    AIUsage.created_at >= since,
+                    AIUsage.status == "completed",
+                )
+            ).one()
+            payment_counts = (
+                select(
+                    StarsPayment.telegram_user_id.label("telegram_user_id"),
+                    func.count(StarsPayment.payment_id).label("payment_count"),
+                )
+                .where(StarsPayment.received_at >= since)
+                .group_by(StarsPayment.telegram_user_id)
+                .subquery()
+            )
+            repeat_users, repeat_events = session.execute(
+                select(
+                    func.count(payment_counts.c.telegram_user_id),
+                    func.coalesce(func.sum(payment_counts.c.payment_count), 0),
+                ).where(payment_counts.c.payment_count >= 2)
+            ).one()
         aggregates = {
             row[0]: {"events": int(row[1]), "users": int(row[2])}
             for row in rows
         }
+        durable_steps = {
+            "invoice_created": {
+                "label": "Создали счёт",
+                "events": int(order_events or 0),
+                "users": int(order_users or 0),
+            },
+            "stars_payment_completed": {
+                "label": "Успешно оплатили",
+                "events": int(payment_events or 0),
+                "users": int(payment_users or 0),
+            },
+            "ai_request_completed": {
+                "label": "Использовали AI",
+                "events": int(ai_events or 0),
+                "users": int(ai_users or 0),
+            },
+            "repeat_purchase": {
+                "label": "Купили повторно",
+                "events": int(repeat_events or 0),
+                "users": int(repeat_users or 0),
+            },
+        }
         starts = aggregates.get("start_received", {}).get("users", 0)
+        steps = [
+            {
+                "event_name": name,
+                "label": label,
+                "events": aggregates.get(name, {}).get("events", 0),
+                "users": aggregates.get(name, {}).get("users", 0),
+                "source": "analytics",
+            }
+            for name, label in event_steps
+        ]
+        steps.extend(
+            dict(event_name=name, source="ledger", **values)
+            for name, values in durable_steps.items()
+        )
+        for step in steps:
+            step["conversion"] = step["users"] / starts * 100 if starts else 0
         return {
             "days": days,
-            "steps": [
-                {
-                    "event_name": name,
-                    "label": label,
-                    "events": aggregates.get(name, {}).get("events", 0),
-                    "users": aggregates.get(name, {}).get("users", 0),
-                    "conversion": (
-                        aggregates.get(name, {}).get("users", 0) / starts * 100
-                        if starts
-                        else 0
-                    ),
-                }
-                for name, label in steps
-            ],
+            "steps": steps,
+            "commercial": {
+                "orders": int(order_events or 0),
+                "payments": int(payment_events or 0),
+                "payers": int(payment_users or 0),
+                "gross_xtr": int(gross_xtr or 0),
+                "refunded_xtr": int(refunded_xtr or 0),
+                "net_xtr": int(gross_xtr or 0) - int(refunded_xtr or 0),
+            },
         }
 
     def recent_product_events(self, limit: int = 100) -> list[dict[str, Any]]:

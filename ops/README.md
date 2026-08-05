@@ -118,16 +118,20 @@ connection string before stopping services or starting a backup.
 
 Telegram Stars settings are optional and default off. A reviewed billing rollout
 passes `TELEGRAM_STARS_ENABLED`, `BILLING_PAYLOAD_SECRET`,
-`BILLING_SUPPORT_CONTACT`, `BILLING_TERMS_TEXT`,
+`BILLING_SUPPORT_CONTACT`, `BILLING_TERMS_TEXT`, `BILLING_TERMS_VERSION`,
 `BILLING_ORDER_TTL_SECONDS`, and `BILLING_NET_MICRO_USD_PER_XTR` to both bot and
 admin processes. Keep the payload secret out of plist files readable by other
 users and retain it while an issued invoice may still be paid.
 
 Voice tutor settings remain optional and default off. The admin launcher passes
-only `VOICE_TUTOR_ENABLED` and `VOICE_TRANSCRIPTION_MODEL` for diagnostics; it
-does not receive `OPENAI_API_KEY` and cannot initiate transcription requests.
-The bot runtime settings and activation checklist are documented in
+the voice model and consent version for diagnostics, but it does not receive
+`OPENAI_API_KEY` or the processing payload and cannot initiate transcription
+requests. The bot runtime settings and activation checklist are documented in
 `docs/voice-tutor.md`.
+
+Candidate environments are installed from `requirements.lock`. Update the lock
+only as a reviewed dependency change and validate it on Linux CI and the Mac
+mini before activating a release.
 
 The scheduled backup wrapper uses the same two settings plus:
 

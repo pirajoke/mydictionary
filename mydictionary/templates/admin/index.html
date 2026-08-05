@@ -78,10 +78,16 @@
       {% endif %}
 
       {% if tab == 'funnel' %}
+        <section class="metric-grid" aria-label="Коммерческие показатели за 30 дней">
+          <article><span>Счета</span><strong>{{ funnel.commercial.orders|number }}</strong><small>{{ funnel.commercial.payments }} успешных платежей</small></article>
+          <article><span>Плательщики</span><strong>{{ funnel.commercial.payers|number }}</strong><small>уникальные пользователи</small></article>
+          <article><span>Stars получено</span><strong>{{ funnel.commercial.gross_xtr|number }}</strong><small>{{ funnel.commercial.refunded_xtr }} возвращено</small></article>
+          <article><span>Stars после возвратов</span><strong>{{ funnel.commercial.net_xtr|number }}</strong><small>до комиссии и пересчёта в валюту</small></article>
+        </section>
         <section class="metric-grid" aria-label="Воронка за 30 дней">
           {% for step in funnel.steps %}<article>
             <span>{{ step.label }}</span><strong>{{ step.users|number }}</strong>
-            <small>{{ step.conversion|round(1) }}% от открывших /start · {{ step.events }} событий</small>
+            <small>{{ step.conversion|round(1) }}% от /start · {{ step.events }} {{ 'записей' if step.source == 'ledger' else 'событий' }}</small>
           </article>{% endfor %}
         </section>
         <section class="panel">
@@ -318,15 +324,18 @@
           <dl class="diagnostic-list">
             {% for label, value, ok in [
               ('База данных', diagnostics.database, true),
-              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0009_voice_tutor'),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0010_launch_readiness'),
               ('Telegram polling', diagnostics.bot_state ~ ' · ' ~ diagnostics.bot_reason, diagnostics.bot_ready),
               ('Heartbeat age', (diagnostics.bot_heartbeat_age_seconds|round(1)|string ~ ' s') if diagnostics.bot_heartbeat_age_seconds is not none else 'missing', diagnostics.bot_ready),
               ('Bot release', diagnostics.bot_release_sha, diagnostics.bot_release_sha != 'unknown'),
               ('Access mode', diagnostics.bot_access_mode, diagnostics.bot_access_mode in ['allowlist','pilot','public']),
               ('AI tutor enabled', diagnostics.ai_enabled, diagnostics.ai_enabled|lower in ['1','true','yes','on']),
               ('AI provider configured', 'yes' if diagnostics.ai_provider_configured else 'no', diagnostics.ai_provider_configured),
+              ('AI pricing', 'configured' if diagnostics.ai_pricing_configured else 'missing', diagnostics.ai_pricing_configured),
               ('Voice tutor', diagnostics.voice_enabled ~ ' · ' ~ diagnostics.voice_model, diagnostics.voice_enabled|lower in ['1','true','yes','on']),
+              ('Voice consent', diagnostics.voice_consent_version, diagnostics.voice_consent_version != 'unversioned'),
               ('Telegram Stars', 'enabled' if diagnostics.stars_enabled else 'disabled', diagnostics.stars_enabled),
+              ('Billing terms', diagnostics.billing_terms_version, diagnostics.billing_terms_version != 'unversioned'),
               ('Stars unit economics', 'configured' if diagnostics.stars_unit_economics else 'missing', diagnostics.stars_unit_economics),
               ('Admin binding', diagnostics.admin_host ~ ':' ~ diagnostics.admin_port, diagnostics.admin_host in ['127.0.0.1','localhost','::1']),
               ('Release SHA', diagnostics.release_sha, diagnostics.release_sha != 'not set'),

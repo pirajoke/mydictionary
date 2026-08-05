@@ -69,3 +69,39 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(callback_values, ["privacy:confirm", "privacy:cancel"])
         with self.store.Session() as session:
             self.assertEqual(session.get(User, self.user.id).privacy_status, "active")
+
+    async def test_voice_consent_can_be_revoked_without_erasing_profile(self):
+        self.store.grant_consent(
+            self.user.id,
+            consent_type="voice_processing",
+            document_version=bot.VOICE_SETTINGS.consent_version,
+            source="telegram",
+        )
+        query = SimpleNamespace(
+            data="privacy:voice_revoke",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=self.user.id),
+        )
+        context = SimpleNamespace(user_data={"pending_voice_consent": {}})
+
+        with (
+            patch.object(bot, "get_store", return_value=self.store),
+            patch.object(bot, "record_product_event"),
+            bot.learner_scope(self.user),
+        ):
+            await bot.privacy_cb.__wrapped__(update, context)
+
+        self.assertFalse(
+            self.store.has_consent(
+                self.user.id,
+                consent_type="voice_processing",
+                document_version=bot.VOICE_SETTINGS.consent_version,
+            )
+        )
+        self.assertNotIn("pending_voice_consent", context.user_data)
+        with self.store.Session() as session:
+            self.assertEqual(session.get(User, self.user.id).privacy_status, "active")

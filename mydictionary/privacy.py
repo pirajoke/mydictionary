@@ -21,6 +21,7 @@ from mydictionary.storage import (
     DatabaseStore,
     RateLimitBucket,
     User,
+    UserConsent,
     UserPackEnrollment,
     UserProgress,
     VoiceSession,
@@ -298,6 +299,15 @@ def erase_user_learning_data(
                 ).rowcount
                 or 0
             )
+        deleted_rows += int(
+            session.execute(
+                delete(UserConsent).where(
+                    UserConsent.telegram_user_id == int(user_id),
+                    UserConsent.consent_type == "voice_processing",
+                )
+            ).rowcount
+            or 0
+        )
         deleted_rows += int(
             session.execute(
                 delete(DataImport).where(

@@ -19,6 +19,7 @@ from mydictionary.storage import (
     BillingCreditLedger,
     DatabaseStore,
     User,
+    UserConsent,
     UserProgress,
     VoiceSession,
     VoiceTurn,
@@ -129,6 +130,18 @@ class PrivacyTest(unittest.TestCase):
             self.assertIsNone(session.get(VoiceSession, "voice-old"))
 
     def test_erasure_removes_learning_data_and_preserves_financial_ledger(self):
+        self.store.grant_consent(
+            self.user_id,
+            consent_type="billing_terms",
+            document_version="terms-1",
+            source="telegram",
+        )
+        self.store.grant_consent(
+            self.user_id,
+            consent_type="voice_processing",
+            document_version="voice-1",
+            source="telegram",
+        )
         with self.store.Session.begin() as session:
             session.add(
                 BillingCreditLedger(
@@ -163,6 +176,15 @@ class PrivacyTest(unittest.TestCase):
                     select(func.count()).select_from(BillingCreditLedger)
                 ),
                 1,
+            )
+            consents = session.execute(
+                select(UserConsent).where(
+                    UserConsent.telegram_user_id == self.user_id
+                )
+            ).scalars().all()
+            self.assertEqual(
+                [(row.consent_type, row.document_version) for row in consents],
+                [("billing_terms", "terms-1")],
             )
 
     def test_admin_cannot_be_erased(self):

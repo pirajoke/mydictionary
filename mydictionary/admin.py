@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 import csv
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 import getpass
 import hmac
@@ -64,6 +65,14 @@ ADMIN_TABS = {
     "diagnostics",
     "audit",
 }
+
+
+def _positive_decimal_setting(name: str) -> bool:
+    try:
+        value = Decimal(os.environ.get(name, "0"))
+    except (InvalidOperation, ValueError):
+        return False
+    return value.is_finite() and value > 0
 
 
 def database_url_from_env() -> str:
@@ -452,6 +461,15 @@ def create_app(
                 "migration": revision,
                 "ai_enabled": os.environ.get("AI_TUTOR_ENABLED", "false"),
                 "ai_provider_configured": bool(os.environ.get("OPENAI_API_KEY")),
+                "ai_pricing_configured": all(
+                    _positive_decimal_setting(name)
+                    for name in (
+                        "AI_INPUT_USD_PER_MILLION",
+                        "AI_CACHED_INPUT_USD_PER_MILLION",
+                        "AI_CACHE_WRITE_USD_PER_MILLION",
+                        "AI_OUTPUT_USD_PER_MILLION",
+                    )
+                ),
                 "stars_enabled": admin_store.billing_settings.enabled,
                 "stars_unit_economics": (
                     admin_store.billing_settings.net_micro_usd_per_xtr > 0
@@ -459,6 +477,10 @@ def create_app(
                 "voice_enabled": os.environ.get("VOICE_TUTOR_ENABLED", "false"),
                 "voice_model": os.environ.get(
                     "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
+                ),
+                "billing_terms_version": admin_store.billing_settings.terms_version,
+                "voice_consent_version": os.environ.get(
+                    "VOICE_CONSENT_VERSION", "unversioned"
                 ),
                 "admin_host": app.config["ADMIN_HOST"],
                 "admin_port": app.config["ADMIN_PORT"],

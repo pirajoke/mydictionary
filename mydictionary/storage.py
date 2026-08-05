@@ -194,6 +194,38 @@ class AnalyticsEvent(Base):
     )
 
 
+class UserConsent(Base):
+    __tablename__ = "user_consents"
+    __table_args__ = (
+        CheckConstraint(
+            "consent_type IN ('billing_terms', 'voice_processing')",
+            name="ck_user_consent_type",
+        ),
+        UniqueConstraint(
+            "telegram_user_id",
+            "consent_type",
+            "document_version",
+            name="uq_user_consent_version",
+        ),
+    )
+
+    consent_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    consent_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    document_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 class RateLimitBucket(Base):
     __tablename__ = "rate_limit_buckets"
     __table_args__ = (
@@ -556,6 +588,7 @@ class PaymentOrder(Base):
     credits_snapshot: Mapped[int] = mapped_column(Integer, nullable=False)
     amount_xtr: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="XTR")
+    terms_version: Mapped[str] = mapped_column(String(64), default="unversioned")
     invoice_payload: Mapped[str] = mapped_column(String(128), nullable=False)
     billing_mode: Mapped[str] = mapped_column(String(16), default="one_time")
     subscription_period_seconds: Mapped[int | None] = mapped_column(
@@ -747,7 +780,9 @@ ACCESS_STATUSES = {"pending", "active", "blocked"}
 EVENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 EVENT_PROPERTY_KEYS = {
     "correct_count",
+    "consent_type",
     "daily_word_goal",
+    "document_version",
     "goal",
     "language",
     "mode",
@@ -759,6 +794,7 @@ EVENT_PROPERTY_KEYS = {
     "wrong_count",
 }
 EVENT_DIMENSION_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
+CONSENT_TYPES = {"billing_terms", "voice_processing"}
 
 
 def run_migrations(database_url: str) -> None:
@@ -1025,6 +1061,116 @@ class DatabaseStore:
                 )
             )
         return event_id
+
+    def grant_consent(
+        self,
+        user_id: int,
+        *,
+        consent_type: str,
+        document_version: str,
+        source: str,
+    ) -> bool:
+        """Grant one versioned consent and return whether its state changed."""
+        if consent_type not in CONSENT_TYPES:
+            raise ValueError("Unknown consent type")
+        if not EVENT_DIMENSION_RE.fullmatch(str(document_version)):
+            raise ValueError("Invalid consent document version")
+        if (
+            not EVENT_DIMENSION_RE.fullmatch(str(source))
+            or len(str(source)) > 32
+        ):
+            raise ValueError("Invalid consent source")
+        self.ensure_user_id(user_id)
+        with self.Session.begin() as session:
+            insert_for_dialect = (
+                postgresql_insert
+                if self.engine.dialect.name == "postgresql"
+                else sqlite_insert
+            )
+            observed_at = utcnow()
+            created = session.execute(
+                insert_for_dialect(UserConsent)
+                .values(
+                    consent_id=str(uuid4()),
+                    telegram_user_id=int(user_id),
+                    consent_type=consent_type,
+                    document_version=str(document_version),
+                    source=str(source),
+                    granted_at=observed_at,
+                    revoked_at=None,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[
+                        UserConsent.telegram_user_id,
+                        UserConsent.consent_type,
+                        UserConsent.document_version,
+                    ]
+                )
+                .returning(UserConsent.consent_id)
+            ).scalar_one_or_none()
+            if created is not None:
+                return True
+            row = session.execute(
+                select(UserConsent)
+                .where(
+                    UserConsent.telegram_user_id == int(user_id),
+                    UserConsent.consent_type == consent_type,
+                    UserConsent.document_version == str(document_version),
+                )
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row.revoked_at is None:
+                return False
+            row.source = str(source)
+            row.granted_at = observed_at
+            row.revoked_at = None
+        return True
+
+    def has_consent(
+        self,
+        user_id: int,
+        *,
+        consent_type: str,
+        document_version: str,
+    ) -> bool:
+        if consent_type not in CONSENT_TYPES:
+            raise ValueError("Unknown consent type")
+        if not EVENT_DIMENSION_RE.fullmatch(str(document_version)):
+            raise ValueError("Invalid consent document version")
+        with self.Session() as session:
+            return bool(
+                session.scalar(
+                    select(func.count())
+                    .select_from(UserConsent)
+                    .where(
+                        UserConsent.telegram_user_id == int(user_id),
+                        UserConsent.consent_type == consent_type,
+                        UserConsent.document_version == str(document_version),
+                        UserConsent.revoked_at.is_(None),
+                    )
+                )
+            )
+
+    def revoke_consent(self, user_id: int, *, consent_type: str) -> int:
+        """Revoke all active versions of one consent type."""
+        if consent_type not in CONSENT_TYPES:
+            raise ValueError("Unknown consent type")
+        changed = 0
+        with self.Session.begin() as session:
+            rows = session.execute(
+                select(UserConsent)
+                .where(
+                    UserConsent.telegram_user_id == int(user_id),
+                    UserConsent.consent_type == consent_type,
+                    UserConsent.revoked_at.is_(None),
+                )
+                .with_for_update()
+            ).scalars().all()
+            observed_at = utcnow()
+            for row in rows:
+                row.revoked_at = observed_at
+                changed += 1
+        return changed
 
     def load_profile(
         self, user_id: int, defaults: Mapping[str, Any]

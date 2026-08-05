@@ -9,6 +9,7 @@ from difflib import SequenceMatcher
 import hashlib
 import json
 import os
+import re
 from time import perf_counter
 from typing import Any, Mapping, Protocol, Sequence
 import unicodedata
@@ -93,6 +94,12 @@ class VoiceTutorSettings:
     session_ttl_minutes: int
     transcript_retention_days: int
     cost_micro_usd_per_minute: Decimal
+    consent_version: str = "unversioned"
+    processing_notice: str = (
+        "Голосовое сообщение будет передано OpenAI для распознавания. "
+        "Исходное аудио не сохраняется, а текстовая расшифровка хранится "
+        "ограниченное время."
+    )
 
     @classmethod
     def from_env(
@@ -164,7 +171,23 @@ class VoiceTutorSettings:
                 env.get("VOICE_COST_MICRO_USD_PER_MINUTE", "0"),
                 "VOICE_COST_MICRO_USD_PER_MINUTE",
             ),
+            consent_version=str(env.get("VOICE_CONSENT_VERSION", "")).strip()
+            or "unversioned",
+            processing_notice=str(
+                env.get("VOICE_PROCESSING_NOTICE", "")
+            ).strip()
+            or cls.processing_notice,
         )
+        if not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", settings.consent_version
+        ):
+            raise VoiceConfigurationError(
+                "VOICE_CONSENT_VERSION must be a safe 1 to 64 character identifier"
+            )
+        if not 40 <= len(settings.processing_notice) <= 1000:
+            raise VoiceConfigurationError(
+                "VOICE_PROCESSING_NOTICE must contain 40 to 1000 characters"
+            )
         if enabled:
             if not settings.openai_api_key:
                 raise VoiceConfigurationError(
@@ -173,6 +196,14 @@ class VoiceTutorSettings:
             if settings.cost_micro_usd_per_minute <= 0:
                 raise VoiceConfigurationError(
                     "Enabled voice tutor requires VOICE_COST_MICRO_USD_PER_MINUTE"
+                )
+            if not str(env.get("VOICE_CONSENT_VERSION", "")).strip():
+                raise VoiceConfigurationError(
+                    "Enabled voice tutor requires VOICE_CONSENT_VERSION"
+                )
+            if not str(env.get("VOICE_PROCESSING_NOTICE", "")).strip():
+                raise VoiceConfigurationError(
+                    "Enabled voice tutor requires VOICE_PROCESSING_NOTICE"
                 )
         return settings
 

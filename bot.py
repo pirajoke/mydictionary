@@ -1139,6 +1139,11 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    voice_consent = get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
+    )
     await update.message.reply_text(
         "Приватность MY DICTIONARY\n\n"
         "Учебная история, события продукта и AI-запросы удаляются по "
@@ -1146,12 +1151,28 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "сразу. Платёжные и аудиторские записи сохраняются для возвратов, "
         "сверки и защиты от мошенничества. После удаления доступ будет заблокирован.",
         reply_markup=InlineKeyboardMarkup(
-            [[
-                InlineKeyboardButton(
-                    "Удалить мои учебные данные",
-                    callback_data="privacy:request",
-                )
-            ]]
+            [
+                [
+                    InlineKeyboardButton(
+                        "Удалить мои учебные данные",
+                        callback_data="privacy:request",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        (
+                            "Отозвать согласие на обработку голоса"
+                            if voice_consent
+                            else "Согласие на обработку голоса не выдано"
+                        ),
+                        callback_data=(
+                            "privacy:voice_revoke"
+                            if voice_consent
+                            else "privacy:voice_status"
+                        ),
+                    )
+                ],
+            ]
         ),
     )
 
@@ -1160,6 +1181,28 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     action = query.data.split(":", 1)[1]
+    if action == "voice_status":
+        await query.answer(
+            "Согласие можно выдать при запуске /voice.", show_alert=True
+        )
+        return
+    if action == "voice_revoke":
+        changed = get_store().revoke_consent(
+            int(update.effective_user.id), consent_type="voice_processing"
+        )
+        context.user_data.pop("pending_voice_consent", None)
+        if VOICE_SETTINGS.enabled:
+            get_voice_tutor_service().stop_session(int(update.effective_user.id))
+        record_product_event(
+            "voice_consent_revoked",
+            properties={"consent_type": "voice_processing"},
+        )
+        await query.answer("Согласие отозвано.")
+        await query.edit_message_text(
+            "Согласие на обработку голоса отозвано. Активная голосовая "
+            f"сессия остановлена. Изменено записей: {changed}."
+        )
+        return
     if action == "request":
         await query.answer()
         await query.edit_message_text(
@@ -1501,13 +1544,58 @@ async def start_voice_mode(
     *,
     mode: str,
 ) -> None:
+    message = update.effective_message
     if not VOICE_SETTINGS.enabled:
-        await update.message.reply_text("Голосовой тренажёр пока выключен.")
+        await message.reply_text("Голосовой тренажёр пока выключен.")
         return
     block = active_voice_block(context.user_data, mode=mode)
     if block is None:
-        await update.message.reply_text(
+        await message.reply_text(
             "Сначала выбери тему и создай блок из 10 слов через /learn."
+        )
+        return
+    user_id = int(update.effective_user.id)
+    if not get_store().has_consent(
+        user_id,
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
+    ):
+        context.user_data["pending_voice_consent"] = {
+            "mode": mode,
+            "block_session": context.user_data.get("block_session"),
+            "expires_at": int(time.time()) + 600,
+        }
+        await message.reply_text(
+            "Согласие на обработку голоса\n\n"
+            f"{VOICE_SETTINGS.processing_notice}\n\n"
+            f"Версия: {VOICE_SETTINGS.consent_version}",
+            reply_markup=InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        "Согласен и начать",
+                        callback_data="voiceconsent:accept",
+                    ),
+                    InlineKeyboardButton(
+                        "Отмена", callback_data="voiceconsent:cancel"
+                    ),
+                ]]
+            ),
+        )
+        return
+    await launch_voice_mode(update, context, mode=mode)
+
+
+async def launch_voice_mode(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    mode: str,
+) -> None:
+    message = update.effective_message
+    block = active_voice_block(context.user_data, mode=mode)
+    if block is None:
+        await message.reply_text(
+            "Блок устарел. Выбери тему и создай новый блок через /learn."
         )
         return
     pack, indexed_words = block
@@ -1540,6 +1628,49 @@ async def start_voice_mode(
         total=len(indexed_words),
         mode=mode,
     )
+
+
+@auth
+async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not VOICE_SETTINGS.enabled:
+        context.user_data.pop("pending_voice_consent", None)
+        await query.answer("Голосовая практика пока выключена.", show_alert=True)
+        return
+    action = query.data.split(":", 1)[1]
+    if action == "cancel":
+        context.user_data.pop("pending_voice_consent", None)
+        await query.answer("Голосовая практика отменена.")
+        await query.edit_message_reply_markup(reply_markup=None)
+        return
+    pending = context.user_data.pop("pending_voice_consent", None)
+    if (
+        action != "accept"
+        or not isinstance(pending, dict)
+        or int(pending.get("expires_at", 0)) < int(time.time())
+        or pending.get("block_session") != context.user_data.get("block_session")
+        or pending.get("mode") not in {"pronunciation", "conversation"}
+    ):
+        await query.answer("Запрос устарел. Запусти /voice снова.", show_alert=True)
+        return
+    user_id = int(update.effective_user.id)
+    changed = get_store().grant_consent(
+        user_id,
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
+        source="telegram",
+    )
+    if changed:
+        record_product_event(
+            "voice_consent_accepted",
+            properties={
+                "consent_type": "voice_processing",
+                "document_version": VOICE_SETTINGS.consent_version,
+            },
+        )
+    await query.answer("Согласие сохранено.")
+    await query.edit_message_reply_markup(reply_markup=None)
+    await launch_voice_mode(update, context, mode=pending["mode"])
 
 
 @auth
@@ -1602,6 +1733,16 @@ async def voice_message_handler(
 ):
     if not VOICE_SETTINGS.enabled:
         await update.message.reply_text("Голосовой тренажёр пока выключен.")
+        return
+    if not get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
+    ):
+        await update.message.reply_text(
+            "Согласие на обработку голоса отсутствует или устарело. "
+            "Запусти /voice и подтверди актуальные условия."
+        )
         return
     voice = update.message.voice
     duration = int(getattr(voice, "duration", 0) or 0)
@@ -1787,9 +1928,47 @@ async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not BILLING_SETTINGS.enabled:
         await update.message.reply_text("Покупка AI-кредитов пока недоступна.")
         return
+    record_product_event("buy_opened", source="command")
+    if not get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="billing_terms",
+        document_version=BILLING_SETTINGS.terms_version,
+    ):
+        await send_billing_terms(update.message)
+        return
+    await send_billing_products(update.message)
+
+
+def billing_terms_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton(
+                "Принимаю условия",
+                callback_data="billing:accept_terms",
+            )
+        ]]
+    )
+
+
+async def send_billing_terms(message) -> None:
+    instruction = (
+        "Нажимая кнопку, ты подтверждаешь, что прочитал и принимаешь условия."
+        if BILLING_SETTINGS.enabled
+        else "Покупка AI-кредитов сейчас выключена."
+    )
+    await message.reply_text(
+        "Условия покупки AI-кредитов\n\n"
+        f"{BILLING_SETTINGS.terms_text}\n\n"
+        f"Версия: {BILLING_SETTINGS.terms_version}\n"
+        f"{instruction}",
+        reply_markup=(billing_terms_keyboard() if BILLING_SETTINGS.enabled else None),
+    )
+
+
+async def send_billing_products(message) -> None:
     products = await asyncio.to_thread(get_billing_service().active_products)
     if not products:
-        await update.message.reply_text("Пакеты AI-кредитов пока не опубликованы.")
+        await message.reply_text("Пакеты AI-кредитов пока не опубликованы.")
         return
     keyboard = InlineKeyboardMarkup(
         [
@@ -1802,15 +1981,48 @@ async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for product in products
         ]
     )
-    await update.message.reply_text(
-        "Выбери пакет AI-кредитов:", reply_markup=keyboard
+    await message.reply_text("Выбери пакет AI-кредитов:", reply_markup=keyboard)
+
+
+@auth
+async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not BILLING_SETTINGS.enabled:
+        await query.answer("Покупка AI-кредитов пока выключена.", show_alert=True)
+        return
+    if query.data != "billing:accept_terms":
+        await query.answer("Неизвестное действие.", show_alert=True)
+        return
+    changed = get_store().grant_consent(
+        int(update.effective_user.id),
+        consent_type="billing_terms",
+        document_version=BILLING_SETTINGS.terms_version,
+        source="telegram",
     )
+    if changed:
+        record_product_event(
+            "billing_terms_accepted",
+            properties={
+                "consent_type": "billing_terms",
+                "document_version": BILLING_SETTINGS.terms_version,
+            },
+        )
+    await query.answer("Условия приняты.")
+    await query.edit_message_reply_markup(reply_markup=None)
+    await send_billing_products(query.message)
 
 
 @auth
 async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    if not get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="billing_terms",
+        document_version=BILLING_SETTINGS.terms_version,
+    ):
+        await send_billing_terms(query.message)
+        return
     product_id = query.data.split(":", 1)[1]
     try:
         order = await asyncio.to_thread(
@@ -1910,7 +2122,7 @@ async def successful_payment_handler(
 
 
 async def cmd_terms(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(BILLING_SETTINGS.terms_text)
+    await send_billing_terms(update.message)
 
 
 async def cmd_paysupport(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2943,41 +3155,8 @@ async def block_voice_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     mode = "conversation" if parts[0] == "bconversation" else "pronunciation"
     activate_block_language(context.user_data)
-    block = active_voice_block(context.user_data, mode=mode)
-    if block is None:
-        await query.answer("Блок устарел. Создай новый через /learn.", show_alert=True)
-        return
-    pack, indexed_words = block
-    state = get_voice_tutor_service().start_session(
-        user_id=int(update.effective_user.id),
-        pack_id=pack.pack_id,
-        language=pack.target_language,
-        topic=context.user_data.get("block_topic"),
-        block_session_id=context.user_data.get("block_session"),
-        mode=mode,
-        words=[word for _, word in indexed_words],
-    )
-    record_product_event(
-        "voice_session_started",
-        properties={
-            "pack_id": pack.pack_id,
-            "language": pack.target_language,
-            "topic": state.topic or "all",
-            "word_count": len(indexed_words),
-            "mode": mode,
-        },
-        session_id=context.user_data.get("block_session"),
-    )
-    await query.answer("Голосовая практика запущена.")
-    await send_voice_prompt(
-        chat_id=query.message.chat_id,
-        context=context,
-        pack=pack,
-        indexed_word=indexed_words[0],
-        position=1,
-        total=len(indexed_words),
-        mode=mode,
-    )
+    await query.answer()
+    await start_voice_mode(update, context, mode=mode)
 
 
 @auth
@@ -3516,6 +3695,10 @@ async def manual_polling():
     # Welcome menu callbacks
     app.add_handler(CallbackQueryHandler(onboarding_cb, pattern=r"^onboarding:"))
     app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
+    app.add_handler(CallbackQueryHandler(billing_consent_cb, pattern=r"^billing:"))
+    app.add_handler(
+        CallbackQueryHandler(voice_consent_cb, pattern=r"^voiceconsent:")
+    )
     app.add_handler(CallbackQueryHandler(buy_product_cb, pattern=r"^buy:"))
     app.add_handler(CallbackQueryHandler(subscription_cb, pattern=r"^sub:"))
     app.add_handler(CallbackQueryHandler(privacy_cb, pattern=r"^privacy:"))

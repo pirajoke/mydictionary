@@ -95,6 +95,24 @@ class AITutorSettingsTest(unittest.TestCase):
         with self.assertRaises(AIConfigurationError):
             AITutorSettings.from_env({"AI_TUTOR_ENABLED": "true"})
 
+        common = {
+            "AI_TUTOR_ENABLED": "true",
+            "OPENAI_API_KEY": "test-key",
+            "AI_SAFETY_SALT": "s" * 32,
+        }
+        with self.assertRaisesRegex(AIConfigurationError, "pricing"):
+            AITutorSettings.from_env(common)
+        configured = AITutorSettings.from_env(
+            {
+                **common,
+                "AI_INPUT_USD_PER_MILLION": "1",
+                "AI_CACHED_INPUT_USD_PER_MILLION": "0.1",
+                "AI_CACHE_WRITE_USD_PER_MILLION": "1",
+                "AI_OUTPUT_USD_PER_MILLION": "6",
+            }
+        )
+        self.assertTrue(configured.enabled)
+
     def test_non_finite_pricing_is_rejected(self):
         with self.assertRaises(AIConfigurationError):
             AITutorSettings.from_env({"AI_INPUT_USD_PER_MILLION": "NaN"})

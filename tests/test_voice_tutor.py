@@ -254,3 +254,18 @@ class VoiceSettingsTest(unittest.TestCase):
                     "OPENAI_API_KEY": "key",
                 }
             )
+
+        configured = VoiceTutorSettings.from_env(
+            {
+                "VOICE_TUTOR_ENABLED": "true",
+                "OPENAI_API_KEY": "key",
+                "VOICE_COST_MICRO_USD_PER_MINUTE": "6000",
+                "VOICE_CONSENT_VERSION": "voice-2026-08",
+                "VOICE_PROCESSING_NOTICE": (
+                    "Аудио передаётся OpenAI только для распознавания речи; "
+                    "исходный файл не сохраняется, текст хранится ограниченно."
+                ),
+            }
+        )
+        self.assertTrue(configured.enabled)
+        self.assertEqual(configured.consent_version, "voice-2026-08")

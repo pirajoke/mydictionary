@@ -25,6 +25,7 @@ from mydictionary.storage import (
     RefundRequest,
     StarsPayment,
     StarsSubscription,
+    UserConsent,
     utcnow,
 )
 
@@ -68,6 +69,7 @@ class BillingSettings:
     payload_secret: str | None
     support_contact: str
     terms_text: str
+    terms_version: str = "unversioned"
     order_ttl_seconds: int = 1800
     net_micro_usd_per_xtr: int = 0
 
@@ -78,6 +80,7 @@ class BillingSettings:
         payload_secret = env.get("BILLING_PAYLOAD_SECRET") or None
         support_contact = env.get("BILLING_SUPPORT_CONTACT", "").strip()
         configured_terms = env.get("BILLING_TERMS_TEXT", "").strip()
+        configured_terms_version = env.get("BILLING_TERMS_VERSION", "").strip()
         terms_text = configured_terms or (
             "AI-кредиты используются только для функций AI-репетитора. "
             "Базовые словари и обычные режимы обучения остаются бесплатными."
@@ -103,6 +106,11 @@ class BillingSettings:
             raise BillingConfigurationError(
                 "BILLING_TERMS_TEXT must contain 1 to 3500 characters"
             )
+        terms_version = configured_terms_version or "unversioned"
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", terms_version):
+            raise BillingConfigurationError(
+                "BILLING_TERMS_VERSION must be a safe 1 to 64 character identifier"
+            )
         if enabled:
             if not payload_secret or len(payload_secret) < 32:
                 raise BillingConfigurationError(
@@ -117,6 +125,10 @@ class BillingSettings:
                 raise BillingConfigurationError(
                     "Enabled Stars billing requires explicit BILLING_TERMS_TEXT"
                 )
+            if not configured_terms_version:
+                raise BillingConfigurationError(
+                    "Enabled Stars billing requires BILLING_TERMS_VERSION"
+                )
             if net_micro_usd_per_xtr <= 0:
                 raise BillingConfigurationError(
                     "Enabled Stars billing requires BILLING_NET_MICRO_USD_PER_XTR"
@@ -126,6 +138,7 @@ class BillingSettings:
             payload_secret=payload_secret,
             support_contact=support_contact,
             terms_text=terms_text,
+            terms_version=terms_version,
             order_ttl_seconds=order_ttl_seconds,
             net_micro_usd_per_xtr=net_micro_usd_per_xtr,
         )
@@ -296,6 +309,20 @@ class BillingService:
             raise BillingConfigurationError("Billing payload secret is not configured")
         return secret.encode("utf-8")
 
+    def _lock_current_terms_consent(self, session: Any, user_id: int) -> None:
+        consent = session.execute(
+            select(UserConsent)
+            .where(
+                UserConsent.telegram_user_id == int(user_id),
+                UserConsent.consent_type == "billing_terms",
+                UserConsent.document_version == self.settings.terms_version,
+                UserConsent.revoked_at.is_(None),
+            )
+            .with_for_update()
+        ).scalar_one_or_none()
+        if consent is None:
+            raise BillingValidationError("Current billing terms are not accepted")
+
     def _signature(
         self, *, order_id: str, user_id: int, amount_xtr: int, credits: int
     ) -> str:
@@ -346,6 +373,7 @@ class BillingService:
             raise BillingConfigurationError("Telegram Stars billing is disabled")
         self.store.ensure_user_id(user_id)
         with self.store.Session.begin() as session:
+            self._lock_current_terms_consent(session, user_id)
             product = session.get(BillingProduct, str(product_id))
             if product is None or product.status != "active":
                 raise BillingValidationError("Billing product is not available")
@@ -371,6 +399,7 @@ class BillingService:
                     credits_snapshot=product.credits,
                     amount_xtr=product.price_xtr,
                     currency="XTR",
+                    terms_version=self.settings.terms_version,
                     invoice_payload=payload,
                     billing_mode=product.billing_mode,
                     subscription_period_seconds=(
@@ -410,6 +439,7 @@ class BillingService:
             raise BillingConfigurationError("Telegram Stars billing is disabled")
         order_id = self._order_id_from_payload(payload)
         with self.store.Session.begin() as session:
+            self._lock_current_terms_consent(session, user_id)
             order = session.execute(
                 select(PaymentOrder)
                 .where(PaymentOrder.order_id == order_id)
@@ -424,6 +454,8 @@ class BillingService:
                 raise BillingValidationError("Payment currency mismatch")
             if int(total_amount) != order.amount_xtr:
                 raise BillingValidationError("Payment amount mismatch")
+            if order.terms_version != self.settings.terms_version:
+                raise BillingValidationError("Payment order uses outdated terms")
             if order.status not in {"created", "prechecked"}:
                 raise BillingStateError("Payment order is not payable")
             if _aware_utc(order.expires_at) < utcnow():
@@ -845,16 +877,28 @@ class BillingService:
         maximum_transactions = max(page_size, min(int(maximum_transactions), 10000))
         transactions: list[Mapping[str, Any]] = []
         offset = 0
+        history_complete = False
         while offset < maximum_transactions:
+            request_limit = min(page_size, maximum_transactions - offset)
             page = await gateway.get_star_transactions(
                 offset=offset,
-                limit=min(page_size, maximum_transactions - offset),
+                limit=request_limit,
             )
             transactions.extend(page.rows)
-            if page.fetched_count < page_size:
+            if page.fetched_count < request_limit:
+                history_complete = True
                 break
             offset += page.fetched_count
         issues = self.reconcile_transactions(transactions)
+        if not history_complete:
+            issues.append(
+                ReconciliationIssue(
+                    "remote_history_truncated",
+                    "history",
+                    "Telegram history reached the configured reconciliation limit",
+                )
+            )
+            return issues
         remote_ids = {
             str(row.get("telegram_payment_charge_id") or "")
             for row in transactions
@@ -884,18 +928,21 @@ class BillingService:
     ) -> list[ReconciliationIssue]:
         """Compare an explicitly supplied Telegram transaction page to local rows."""
         issues: list[ReconciliationIssue] = []
-        with self.store.Session() as session:
-            for transaction in transactions:
-                charge_id = str(
-                    transaction.get("telegram_payment_charge_id") or ""
-                ).strip()
-                if not charge_id:
-                    issues.append(
-                        ReconciliationIssue(
-                            "remote_charge_missing", "", "Remote row has no charge ID"
-                        )
+        grouped: dict[str, list[Mapping[str, Any]]] = {}
+        for transaction in transactions:
+            charge_id = str(
+                transaction.get("telegram_payment_charge_id") or ""
+            ).strip()
+            if not charge_id:
+                issues.append(
+                    ReconciliationIssue(
+                        "remote_charge_missing", "", "Remote row has no charge ID"
                     )
-                    continue
+                )
+                continue
+            grouped.setdefault(charge_id, []).append(transaction)
+        with self.store.Session() as session:
+            for charge_id, charge_rows in grouped.items():
                 payment = session.execute(
                     select(StarsPayment).where(
                         StarsPayment.telegram_payment_charge_id == charge_id
@@ -910,18 +957,52 @@ class BillingService:
                         )
                     )
                     continue
-                if (
-                    int(transaction.get("user_id") or 0)
-                    != payment.telegram_user_id
-                    or str(transaction.get("currency") or "") != payment.currency
-                    or int(transaction.get("total_amount") or 0)
-                    != payment.total_amount
+                if any(
+                    int(row.get("user_id") or 0) != payment.telegram_user_id
+                    or str(row.get("currency") or "") != payment.currency
+                    or int(row.get("total_amount") or 0) != payment.total_amount
+                    for row in charge_rows
                 ):
                     issues.append(
                         ReconciliationIssue(
                             "remote_payment_mismatch",
                             charge_id,
                             "User, currency, or amount differs from the local payment",
+                        )
+                    )
+                remote_refunded = any(
+                    bool(row.get("is_refund")) for row in charge_rows
+                )
+                if remote_refunded and payment.status == "paid":
+                    issues.append(
+                        ReconciliationIssue(
+                            "remote_refund_missing_locally",
+                            charge_id,
+                            "Telegram reports a refund while the local payment is paid",
+                        )
+                    )
+                elif remote_refunded and payment.status == "refund_pending":
+                    issues.append(
+                        ReconciliationIssue(
+                            "remote_refund_pending_locally",
+                            charge_id,
+                            "Telegram reports a refund while local finalization is pending",
+                        )
+                    )
+                elif not remote_refunded and payment.status == "refunded":
+                    issues.append(
+                        ReconciliationIssue(
+                            "local_refund_missing_remotely",
+                            charge_id,
+                            "Local payment is refunded without a Telegram refund row",
+                        )
+                    )
+                elif not remote_refunded and payment.status == "refund_pending":
+                    issues.append(
+                        ReconciliationIssue(
+                            "local_refund_pending_remotely",
+                            charge_id,
+                            "Local refund remains pending without a Telegram refund row",
                         )
                     )
         return issues

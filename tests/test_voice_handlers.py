@@ -52,6 +52,67 @@ STATE = VoiceSessionState(
 
 
 class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
+    async def test_voice_mode_requests_versioned_consent_before_session(self):
+        message = SimpleNamespace(reply_text=AsyncMock())
+        update = SimpleNamespace(
+            effective_message=message,
+            effective_user=SimpleNamespace(id=55),
+            effective_chat=SimpleNamespace(id=55),
+        )
+        context = SimpleNamespace(
+            user_data={"block_session": "block-1"},
+            bot=SimpleNamespace(),
+        )
+        store = MagicMock()
+        store.has_consent.return_value = False
+        pack = SimpleNamespace(pack_id="basic-ja-100", target_language="ja")
+        with (
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "active_voice_block", return_value=(pack, [(1, WORD)])),
+            patch.object(bot, "get_voice_tutor_service") as service,
+        ):
+            await bot.start_voice_mode(update, context, mode="pronunciation")
+
+        service.assert_not_called()
+        self.assertEqual(
+            context.user_data["pending_voice_consent"]["mode"], "pronunciation"
+        )
+        self.assertIn("Согласие", message.reply_text.await_args.args[0])
+
+    async def test_voice_consent_callback_grants_and_resumes_pending_mode(self):
+        query = SimpleNamespace(
+            data="voiceconsent:accept",
+            answer=AsyncMock(),
+            edit_message_reply_markup=AsyncMock(),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=55),
+        )
+        context = SimpleNamespace(
+            user_data={
+                "block_session": "block-1",
+                "pending_voice_consent": {
+                    "mode": "pronunciation",
+                    "block_session": "block-1",
+                    "expires_at": 9999999999,
+                },
+            }
+        )
+        store = MagicMock()
+        store.grant_consent.return_value = True
+        with (
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(bot, "record_product_event"),
+            patch.object(bot, "launch_voice_mode", new=AsyncMock()) as launch,
+        ):
+            await bot.voice_consent_cb.__wrapped__(update, context)
+
+        store.grant_consent.assert_called_once()
+        launch.assert_awaited_once_with(update, context, mode="pronunciation")
+
     async def test_prompt_sends_russian_text_before_reference_audio(self):
         context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock()))
         pack = SimpleNamespace(direction="ltr", flag="🇯🇵")
@@ -81,12 +142,36 @@ class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
         )
         context = SimpleNamespace(bot=SimpleNamespace(get_file=AsyncMock()))
         update = SimpleNamespace(message=message, effective_user=SimpleNamespace(id=55))
+        store = MagicMock()
+        store.has_consent.return_value = True
 
-        with patch.object(bot, "VOICE_SETTINGS", enabled_settings()):
+        with (
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(bot, "get_store", return_value=store),
+        ):
             await bot.voice_message_handler.__wrapped__(update, context)
 
         context.bot.get_file.assert_not_awaited()
         self.assertIn("не принято", message.reply_text.await_args.args[0])
+
+    async def test_missing_voice_consent_rejects_before_telegram_download(self):
+        message = SimpleNamespace(
+            voice=SimpleNamespace(duration=3, file_size=100, file_id="voice"),
+            reply_text=AsyncMock(),
+        )
+        context = SimpleNamespace(bot=SimpleNamespace(get_file=AsyncMock()))
+        update = SimpleNamespace(message=message, effective_user=SimpleNamespace(id=55))
+        store = MagicMock()
+        store.has_consent.return_value = False
+
+        with (
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(bot, "get_store", return_value=store),
+        ):
+            await bot.voice_message_handler.__wrapped__(update, context)
+
+        context.bot.get_file.assert_not_awaited()
+        self.assertIn("Согласие", message.reply_text.await_args.args[0])
 
     async def test_conversation_mode_uses_block_phrase_and_phrase_tts(self):
         practice = bot._voice_word(
@@ -165,9 +250,12 @@ class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
         pack = SimpleNamespace(
             pack_id="basic-ja-100", target_language="ja", flag="🇯🇵"
         )
+        store = MagicMock()
+        store.has_consent.return_value = True
 
         with (
             patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(bot, "get_store", return_value=store),
             patch.object(bot, "get_voice_tutor_service", return_value=service),
             patch.object(bot, "restore_voice_block", return_value=(pack, [(7, WORD)])),
             patch.object(bot, "send_pronunciation", new=AsyncMock()) as pronunciation,
