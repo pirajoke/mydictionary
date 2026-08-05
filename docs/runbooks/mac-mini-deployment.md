@@ -40,6 +40,8 @@ Record without exposing secrets:
 - PostgreSQL `alembic_version`
 - free space, backup destination, and a successful
   `mydictionary_backup.py --check`
+- `MYDICTIONARY_PGDUMP_DATABASE` is a plain database name; socket or host and
+  role are set separately through `PGHOST`, `PGPORT`, and `PGUSER`
 - bot/admin launchd state
 - heartbeat age, release SHA, and access mode
 - local and public health status

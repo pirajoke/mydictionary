@@ -34,6 +34,7 @@ from urllib.request import Request, urlopen
 LOGGER = logging.getLogger("mydictionary-autodeploy")
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 LABEL_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,127}$")
+DATABASE_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,63}$")
 ACCESS_MODES = {"allowlist", "pilot", "public"}
 ALLOWED_REPOSITORY_URLS = {
     "https://github.com/pirajoke/mydictionary.git",
@@ -183,6 +184,14 @@ class Config:
             ("postgres://", "postgresql://", "postgresql+psycopg://")
         ):
             raise DeploymentError("Production deployer requires PostgreSQL")
+        pg_dump_database = env.get("MYDICTIONARY_PGDUMP_DATABASE", "").strip()
+        if pg_dump_database and not DATABASE_NAME_PATTERN.fullmatch(
+            pg_dump_database
+        ):
+            raise DeploymentError(
+                "MYDICTIONARY_PGDUMP_DATABASE must be a plain database name; "
+                "use PGHOST, PGPORT, and PGUSER for connection settings"
+            )
         return cls(
             app_root=app_root,
             repository_url=repository_url,
@@ -192,8 +201,7 @@ class Config:
                 _required(env, "MYDICTIONARY_BOOTSTRAP_PYTHON")
             ).expanduser().resolve(),
             database_url=database_url,
-            pg_dump_database=env.get("MYDICTIONARY_PGDUMP_DATABASE", "").strip()
-            or None,
+            pg_dump_database=pg_dump_database or None,
             pg_dump_binary=env.get("MYDICTIONARY_PG_DUMP", "pg_dump").strip(),
             pg_restore_binary=env.get(
                 "MYDICTIONARY_PG_RESTORE", "pg_restore"
@@ -518,16 +526,17 @@ def build_release(config: Config, sha: str) -> Path:
             ],
             env=build_env,
         )
+        test_data_dir = temporary / ".test-data"
+        test_data_dir.mkdir(mode=0o700)
+        os.chmod(test_data_dir, 0o700)
         test_env = _selected_environment(SAFE_ENVIRONMENT_NAMES)
         test_env.update(
             {
                 "ALLOWED_USER_ID": "1",
                 "ALLOW_SQLITE_DEV": "true",
                 "BOT_TOKEN": "123456:AUTODEPLOYTEST",
-                "DATA_DIR": str(temporary / ".test-data"),
-                "DATABASE_URL": (
-                    f"sqlite:///{temporary / '.test-data' / 'candidate-tests.db'}"
-                ),
+                "DATA_DIR": str(test_data_dir),
+                "DATABASE_URL": f"sqlite:///{test_data_dir / 'candidate-tests.db'}",
                 "PYTHONDONTWRITEBYTECODE": "1",
             }
         )
@@ -554,7 +563,7 @@ def build_release(config: Config, sha: str) -> Path:
             raise CandidateValidationError(
                 "Candidate tests or compilation failed"
             ) from exc
-        shutil.rmtree(temporary / ".test-data", ignore_errors=True)
+        shutil.rmtree(test_data_dir, ignore_errors=True)
         (temporary / "config.yaml").symlink_to(config.config_file)
         temporary.rename(release)
         return release
