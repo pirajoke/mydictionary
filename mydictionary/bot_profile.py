@@ -44,7 +44,8 @@ BOT_PROFILE_DEFAULTS = {
         "/buy — пакеты AI-кредитов за Telegram Stars\n"
         "/subscriptions — управление Stars-подписками\n"
         "/terms — условия AI-кредитов\n"
-        "/paysupport — поддержка по платежам"
+        "/paysupport — поддержка по платежам\n"
+        "/privacy — хранение и удаление данных"
     ),
 }
 

@@ -40,6 +40,7 @@ from mydictionary.readiness import (
     heartbeat_path,
     inspect_bot_heartbeat,
 )
+from mydictionary.privacy import RetentionPolicy
 from mydictionary.storage import DatabaseStore
 from vocabulary_topics import topic_counts, transcription_for
 
@@ -56,6 +57,7 @@ ADMIN_TABS = {
     "learning",
     "ai",
     "billing",
+    "safety",
     "content",
     "profile",
     "diagnostics",
@@ -417,6 +419,16 @@ def create_app(
             context["subscriptions"] = admin_store.stars_subscriptions(limit=100)
             context["refunds"] = admin_store.refund_requests(limit=100)
             context["reconciliation"] = admin_store.billing_reconciliation()
+        elif tab == "safety":
+            context["safety"] = admin_store.safety_overview()
+            context["abuse_events"] = admin_store.recent_abuse_events(limit=100)
+            retention = RetentionPolicy.from_env()
+            context["retention"] = {
+                "analytics_days": retention.analytics_days,
+                "ai_usage_days": retention.ai_usage_days,
+                "abuse_days": retention.abuse_days,
+                "rate_limit_days": retention.rate_limit_days,
+            }
         elif tab == "content":
             context["content"] = _content_overview()
         elif tab == "diagnostics":

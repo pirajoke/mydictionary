@@ -15,7 +15,7 @@
       <nav aria-label="Разделы">
         {% for id, label in [
           ('dashboard','Обзор'),('users','Пользователи'),('funnel','Воронка'),('learning','Обучение'),
-          ('ai','AI и кредиты'),('billing','Stars и платежи'),('content','Контент'),('profile','Профиль бота'),
+          ('ai','AI и кредиты'),('billing','Stars и платежи'),('safety','Безопасность'),('content','Контент'),('profile','Профиль бота'),
           ('diagnostics','Диагностика'),('audit','Аудит')
         ] %}
           <a href="{{ url_for('admin_index', tab=id) }}" class="{{ 'active' if tab == id else '' }}">{{ label }}</a>
@@ -31,7 +31,7 @@
       <header class="topbar">
         <div><p class="eyebrow">MY DICTIONARY</p><h1>{{ {
           'dashboard':'Обзор продукта','users':'Пользователи','funnel':'Продуктовая воронка','learning':'Обучение',
-          'ai':'AI и кредиты','billing':'Stars и платежи','content':'Словари и темы','profile':'Профиль бота',
+          'ai':'AI и кредиты','billing':'Stars и платежи','safety':'Безопасность продукта','content':'Словари и темы','profile':'Профиль бота',
           'diagnostics':'Диагностика','audit':'Журнал аудита'
         }[tab] }}</h1></div>
         <span class="admin-name">{{ current_actor }}</span>
@@ -270,13 +270,38 @@
         </section>
       {% endif %}
 
+      {% if tab == 'safety' %}
+        <section class="metric-grid" aria-label="Показатели безопасности">
+          <article><span>События, 24 часа</span><strong>{{ safety.events_24h }}</strong><small>без текста сообщений</small></article>
+          <article><span>Пользователи, 24 часа</span><strong>{{ safety.affected_users_24h }}</strong><small>сработали защитные правила</small></article>
+          <article><span>Активные блокировки</span><strong>{{ safety.active_blocks }}</strong><small>временные rate limits</small></article>
+          <article><span>Удалённые профили</span><strong>{{ safety.erased_users }}</strong><small>учебные данные стёрты</small></article>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Последние 100</p><h2>Срабатывания защиты</h2></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Время</th><th>User ID</th><th>Контур</th><th>Правило</th><th>Лимит</th><th>Зафиксировано</th></tr></thead><tbody>
+            {% for row in abuse_events %}<tr><td>{{ row.occurred_at|datetime }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.scope }}</td><td class="mono">{{ row.rule }}</td><td>{{ row.limit_value }}</td><td>{{ row.observed_count }}</td></tr>
+            {% else %}<tr><td colspan="6" class="empty">Срабатываний пока нет.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Политика</p><h2>Хранение и удаление</h2></div></div>
+          <dl class="key-values">
+            <div><dt>Analytics events</dt><dd>{{ retention.analytics_days }} дней</dd></div>
+            <div><dt>AI usage details</dt><dd>{{ retention.ai_usage_days }} дней</dd></div>
+            <div><dt>Abuse events</dt><dd>{{ retention.abuse_days }} дней</dd></div>
+            <div><dt>Rate-limit buckets</dt><dd>{{ retention.rate_limit_days }} дней</dd></div>
+          </dl>
+        </section>
+      {% endif %}
+
       {% if tab == 'diagnostics' %}
         <section class="panel">
           <div class="section-heading"><div><p class="eyebrow">Readiness</p><h2>Состояние компонентов</h2></div><a href="/health">Health endpoint</a></div>
           <dl class="diagnostic-list">
             {% for label, value, ok in [
               ('База данных', diagnostics.database, true),
-              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0006_telegram_stars_billing'),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0008_product_safety'),
               ('Telegram polling', diagnostics.bot_state ~ ' · ' ~ diagnostics.bot_reason, diagnostics.bot_ready),
               ('Heartbeat age', (diagnostics.bot_heartbeat_age_seconds|round(1)|string ~ ' s') if diagnostics.bot_heartbeat_age_seconds is not none else 'missing', diagnostics.bot_ready),
               ('Bot release', diagnostics.bot_release_sha, diagnostics.bot_release_sha != 'unknown'),

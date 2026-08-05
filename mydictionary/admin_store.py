@@ -22,6 +22,7 @@ from mydictionary.storage import (
     ACCESS_STATUSES,
     AIWallet,
     AIUsage,
+    AbuseEvent,
     AnalyticsEvent,
     AdminAuditLog,
     AdminCredential,
@@ -31,6 +32,7 @@ from mydictionary.storage import (
     DatabaseStore,
     PaymentOrder,
     RefundRequest,
+    RateLimitBucket,
     StarsPayment,
     StarsSubscription,
     User,
@@ -230,6 +232,9 @@ class AdminStore:
                 return status
             user.access_status = status
             user.access_status_updated_at = utcnow()
+            if status == "active" and user.privacy_status == "erased":
+                user.privacy_status = "active"
+                user.privacy_deleted_at = None
             user.updated_at = utcnow()
             session.add(
                 AdminAuditLog(
@@ -432,6 +437,8 @@ class AdminStore:
                     "role": user.role,
                     "access_status": user.access_status,
                     "access_status_updated_at": user.access_status_updated_at,
+                    "privacy_status": user.privacy_status,
+                    "privacy_deleted_at": user.privacy_deleted_at,
                     "native_language": user.native_language or "",
                     "learning_goal": user.learning_goal or "",
                     "daily_word_goal": user.daily_word_goal,
@@ -988,6 +995,52 @@ class AdminStore:
 
     def payment_orders_export(self) -> list[dict[str, Any]]:
         return self.recent_payment_orders(limit=10000)
+
+    def safety_overview(self) -> dict[str, int]:
+        now = utcnow()
+        since = now - timedelta(hours=24)
+        with self.store.Session() as session:
+            events = session.scalar(
+                select(func.count()).select_from(AbuseEvent).where(
+                    AbuseEvent.occurred_at >= since
+                )
+            ) or 0
+            affected_users = session.scalar(
+                select(func.count(func.distinct(AbuseEvent.telegram_user_id))).where(
+                    AbuseEvent.occurred_at >= since
+                )
+            ) or 0
+            active_blocks = session.scalar(
+                select(func.count()).select_from(RateLimitBucket).where(
+                    RateLimitBucket.blocked_until > now
+                )
+            ) or 0
+            erased_users = session.scalar(
+                select(func.count()).select_from(User).where(
+                    User.privacy_status == "erased"
+                )
+            ) or 0
+        return {
+            "events_24h": int(events),
+            "affected_users_24h": int(affected_users),
+            "active_blocks": int(active_blocks),
+            "erased_users": int(erased_users),
+        }
+
+    def recent_abuse_events(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(AbuseEvent)
+                .order_by(AbuseEvent.occurred_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).scalars().all()
+        return [
+            {
+                column.name: getattr(row, column.name)
+                for column in AbuseEvent.__table__.columns
+            }
+            for row in rows
+        ]
 
     def stars_payments_export(self) -> list[dict[str, Any]]:
         return self.stars_payments(limit=10000)

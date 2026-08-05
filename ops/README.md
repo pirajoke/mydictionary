@@ -79,9 +79,8 @@ least 30 days and seven backups by default, and never deletes the latest backup.
 python ops/mydictionary_backup.py --prune
 ```
 
-This is a host-local recovery control. It does not protect against loss of the
-Mac mini or its storage; encrypted off-host replication requires a separate
-design and approval.
+This host-local recovery control can be followed by the separately gated,
+encrypted off-site replication described in `docs/product-safety.md`.
 
 ## Required environment
 
@@ -154,3 +153,22 @@ require the exact local UUID plus `--execute`; the wrapper never prints tokens,
 invoice payloads, Telegram charge IDs, or learner identities. Keep it on the
 loopback production host and run it only after the corresponding admin record
 and support decision have been reviewed.
+
+## Product safety operations
+
+The safety wrappers are preview-only unless `--execute` is supplied:
+
+```bash
+python ops/mydictionary_retention.py retention
+python ops/mydictionary_retention.py retention --execute
+python ops/mydictionary_monitor.py
+python ops/mydictionary_monitor.py --execute
+python ops/mydictionary_offsite_backup.py
+python ops/mydictionary_offsite_backup.py --execute
+```
+
+Retention previews candidate row counts. Monitoring sends no alert and writes
+no state in preview mode. Off-site backup verifies the local dump in preview
+mode and invokes `age` and `rclone` only with `--execute`. See
+`docs/product-safety.md` for required settings, retention boundaries, and the
+restore contract.

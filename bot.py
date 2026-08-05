@@ -71,6 +71,8 @@ from mydictionary.content import (
 )
 from mydictionary.legacy import import_legacy_user
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
+from mydictionary.privacy import erase_user_learning_data
+from mydictionary.safety import PersistentRateLimiter, SafetySettings
 from mydictionary.storage import (
     ACCESS_STATUSES,
     AIQuotaExceeded,
@@ -139,6 +141,7 @@ def _configured_access_mode() -> str:
 BOT_ACCESS_MODE = _configured_access_mode()
 AI_SETTINGS = AITutorSettings.from_env()
 BILLING_SETTINGS = BillingSettings.from_env()
+SAFETY_SETTINGS = SafetySettings.from_env()
 if BILLING_SETTINGS.enabled and not AI_SETTINGS.enabled:
     raise BillingConfigurationError(
         "Telegram Stars checkout requires AI_TUTOR_ENABLED=true"
@@ -873,6 +876,20 @@ def auth(func):
             if runtime.access_status != "active":
                 runtime.store.activate_user_access(runtime.user_id)
                 runtime.access_status = "active"
+            if SAFETY_SETTINGS.enabled and runtime.role != "admin":
+                scope, policy = SAFETY_SETTINGS.for_handler(func.__name__)
+                rate_decision = PersistentRateLimiter(runtime.store).consume(
+                    user_id=runtime.user_id,
+                    scope=scope,
+                    policy=policy,
+                )
+                if not rate_decision.allowed:
+                    await reject_access(
+                        update,
+                        "Слишком много действий подряд. "
+                        f"Попробуй снова через {rate_decision.retry_after_seconds} сек.",
+                    )
+                    return
             if (
                 runtime.role != "admin"
                 and not runtime.onboarding_completed
@@ -1098,6 +1115,66 @@ async def send_start_message(message, context, *, first_name: str | None) -> Non
 @auth
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(get_bot_profile()["bot_help_text"])
+
+
+@auth
+async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Приватность MY DICTIONARY\n\n"
+        "Учебная история, события продукта и AI-запросы удаляются по "
+        "ограниченным срокам хранения. Ты можешь стереть свои учебные данные "
+        "сразу. Платёжные и аудиторские записи сохраняются для возвратов, "
+        "сверки и защиты от мошенничества. После удаления доступ будет заблокирован.",
+        reply_markup=InlineKeyboardMarkup(
+            [[
+                InlineKeyboardButton(
+                    "Удалить мои учебные данные",
+                    callback_data="privacy:request",
+                )
+            ]]
+        ),
+    )
+
+
+@auth
+async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    action = query.data.split(":", 1)[1]
+    if action == "request":
+        await query.answer()
+        await query.edit_message_text(
+            "Удалить учебный профиль, прогресс, аналитику и историю AI? "
+            "Восстановить эти данные будет нельзя.",
+            reply_markup=InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        "Подтвердить удаление",
+                        callback_data="privacy:confirm",
+                    ),
+                    InlineKeyboardButton("Отмена", callback_data="privacy:cancel"),
+                ]]
+            ),
+        )
+        return
+    if action == "cancel":
+        await query.answer("Удаление отменено.")
+        await query.edit_message_text("Учебные данные не изменены.")
+        return
+    if action != "confirm":
+        await query.answer("Неизвестное действие.", show_alert=True)
+        return
+    runtime = _ACTIVE_RUNTIME.get()
+    result = erase_user_learning_data(
+        runtime.store,
+        user_id=runtime.user_id,
+        actor="telegram-self-service",
+    )
+    context.user_data.clear()
+    await query.answer("Данные удалены.")
+    await query.edit_message_text(
+        "Учебные данные удалены. Сохранён только обязательный платёжный и "
+        f"аудиторский след. Номер операции: {result.user_reference}."
+    )
 
 
 @auth
@@ -2852,6 +2929,7 @@ BOT_COMMANDS = [
     BotCommand("subscriptions", "Управление Stars-подписками"),
     BotCommand("terms", "Условия AI-кредитов"),
     BotCommand("paysupport", "Поддержка по платежам"),
+    BotCommand("privacy", "Хранение и удаление данных"),
     BotCommand("lang", "Сменить язык"),
     BotCommand("stats", "Статистика"),
     BotCommand("help", "Помощь"),
@@ -2927,6 +3005,7 @@ async def manual_polling():
     app.add_handler(CommandHandler("subscriptions", cmd_subscriptions))
     app.add_handler(CommandHandler("terms", cmd_terms))
     app.add_handler(CommandHandler("paysupport", cmd_paysupport))
+    app.add_handler(CommandHandler("privacy", cmd_privacy))
     app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
     app.add_handler(
         MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler)
@@ -2937,6 +3016,7 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
     app.add_handler(CallbackQueryHandler(buy_product_cb, pattern=r"^buy:"))
     app.add_handler(CallbackQueryHandler(subscription_cb, pattern=r"^sub:"))
+    app.add_handler(CallbackQueryHandler(privacy_cb, pattern=r"^privacy:"))
 
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))
