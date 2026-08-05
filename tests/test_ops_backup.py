@@ -242,6 +242,15 @@ class BackupPolicyTest(unittest.TestCase):
         with self.assertRaisesRegex(backup.BackupError, "outside"):
             backup.Config.from_env(invalid)
 
+        invalid = dict(
+            environment,
+            MYDICTIONARY_PGDUMP_DATABASE=(
+                "dbname=mydictionary user=operator host=/tmp"
+            ),
+        )
+        with self.assertRaisesRegex(backup.BackupError, "plain database name"):
+            backup.Config.from_env(invalid)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -128,6 +128,23 @@ class ConfigurationTest(OpsTestCase):
         with self.assertRaisesRegex(deployer.DeploymentError, "PostgreSQL"):
             deployer.Config.from_env(environment)
 
+    def test_configuration_accepts_plain_backup_database_name(self):
+        environment = self.base_environment()
+        environment["MYDICTIONARY_PGDUMP_DATABASE"] = "mydictionary"
+
+        config = deployer.Config.from_env(environment)
+
+        self.assertEqual(config.pg_dump_database, "mydictionary")
+
+    def test_configuration_rejects_libpq_conninfo_as_database_name(self):
+        environment = self.base_environment()
+        environment["MYDICTIONARY_PGDUMP_DATABASE"] = (
+            "dbname=mydictionary user=operator host=/tmp"
+        )
+
+        with self.assertRaisesRegex(deployer.DeploymentError, "plain database name"):
+            deployer.Config.from_env(environment)
+
 
 class AdminLauncherTest(OpsTestCase):
     def launcher_environment(self, *, ai_enabled="false"):
@@ -704,6 +721,47 @@ class OperatorMigrationTest(OpsTestCase):
 
 
 class ReleaseStateTest(OpsTestCase):
+    def test_build_release_creates_private_test_data_directory(self):
+        target_sha = "c" * 40
+        test_runs = []
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode="w") as bundle:
+            for filename in ("bot.py", "tts.py", "requirements.txt", "alembic.ini"):
+                payload = b""
+                member = tarfile.TarInfo(filename)
+                member.size = len(payload)
+                bundle.addfile(member, io.BytesIO(payload))
+
+        def fake_run(command, *, cwd=None, env=None, text=True, **_kwargs):
+            if command[0] == "git":
+                return MagicMock(stdout=archive.getvalue())
+            if command[1:3] == ["-m", "venv"]:
+                release_python = Path(command[-1]) / "bin" / "python3"
+                release_python.parent.mkdir(parents=True)
+                release_python.write_text("", encoding="utf-8")
+                return MagicMock(stdout="")
+            if command[1:3] == ["-m", "unittest"]:
+                test_data_dir = Path(env["DATA_DIR"])
+                test_runs.append(test_data_dir)
+                self.assertTrue(test_data_dir.is_dir())
+                self.assertEqual(test_data_dir.stat().st_mode & 0o777, 0o700)
+                self.assertEqual(
+                    env["DATABASE_URL"],
+                    f"sqlite:///{test_data_dir / 'candidate-tests.db'}",
+                )
+                self.assertEqual(cwd, test_data_dir.parent)
+            return MagicMock(stdout="")
+
+        with patch.object(deployer, "run", side_effect=fake_run):
+            release = deployer.build_release(self.config, target_sha)
+
+        self.assertEqual(release, self.config.releases_dir / target_sha)
+        self.assertEqual(len(test_runs), 1)
+        self.assertFalse((release / ".test-data").exists())
+        self.assertEqual(
+            (release / "config.yaml").resolve(), self.config.config_file.resolve()
+        )
+
     def test_release_archive_rejects_path_traversal(self):
         archive = io.BytesIO()
         with tarfile.open(fileobj=archive, mode="w") as bundle:

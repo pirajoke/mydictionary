@@ -25,6 +25,7 @@ BACKUP_NAME_RE = re.compile(
     r"^mydictionary-[0-9]{8}T[0-9]{6}\.[0-9]{6}Z-[0-9a-f]{12}\.dump$"
 )
 REVISION_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+DATABASE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,63}$")
 SAFE_ENVIRONMENT_NAMES = (
     "HOME",
     "PATH",
@@ -68,11 +69,11 @@ class Config:
         env = values if values is not None else os.environ
         app_root = Path(_required(env, "MYDICTIONARY_APP_ROOT")).expanduser().resolve()
         database_target = _required(env, "MYDICTIONARY_PGDUMP_DATABASE")
-        if len(database_target) > 2048 or any(
-            ord(character) < 32 or ord(character) == 127
-            for character in database_target
-        ):
-            raise BackupError("Invalid PostgreSQL backup target")
+        if not DATABASE_NAME_RE.fullmatch(database_target):
+            raise BackupError(
+                "MYDICTIONARY_PGDUMP_DATABASE must be a plain database name; "
+                "use PGHOST, PGPORT, and PGUSER for connection settings"
+            )
         return cls(
             app_root=app_root,
             backup_dir=Path(

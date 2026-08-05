@@ -105,9 +105,17 @@ the service itself still binds only to loopback.
 Operator migration deploys also require:
 
 ```text
-MYDICTIONARY_PGDUMP_DATABASE=<local libpq database target>
+MYDICTIONARY_PGDUMP_DATABASE=mydictionary
 MYDICTIONARY_BACKUP_DIR=<private local backup directory>
+PGHOST=/tmp
+PGUSER=<local PostgreSQL role>
 ```
+
+`MYDICTIONARY_PGDUMP_DATABASE` must be a plain database name, not a PostgreSQL
+URI or libpq keyword connection string. Configure the socket or host, optional
+port, user, and authentication through `PGHOST`, `PGPORT`, `PGUSER`, and the
+other standard libpq environment variables. Both wrappers reject a combined
+connection string before stopping services or starting a backup.
 
 Telegram Stars settings are optional and default off. A reviewed billing rollout
 passes `TELEGRAM_STARS_ENABLED`, `BILLING_PAYLOAD_SECRET`,
@@ -131,9 +139,9 @@ The retention settings are bounded in code. `MYDICTIONARY_PG_DUMP`,
 `MYDICTIONARY_PG_RESTORE`, and `MYDICTIONARY_PSQL` may identify trusted local
 executables when they are not available through `PATH`.
 
-The PostgreSQL target is passed to `pg_dump` through `PGDATABASE`, not the
-process argument list. Credentials, admin secrets, local paths, logs, backup
-files, heartbeat files, and release state never belong in the repository.
+The plain PostgreSQL database name is passed to `pg_dump` through `PGDATABASE`,
+not the process argument list. Credentials, admin secrets, local paths, logs,
+backup files, heartbeat files, and release state never belong in the repository.
 
 See [the production runbook](../docs/runbooks/mac-mini-deployment.md) before
 installing, enabling, clearing quarantine, or recovering a failed release.
