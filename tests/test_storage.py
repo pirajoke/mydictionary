@@ -15,13 +15,14 @@ from mydictionary.content import target_text
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, select, text
 
 from mydictionary.legacy import import_legacy_user
 from mydictionary.storage import (
     AIQuotaExceeded,
     AIUsage,
     AnalyticsEvent,
+    BillingCreditLedger,
     DatabaseStore,
     UserPackEnrollment,
     vocabulary_id_for,
@@ -618,6 +619,14 @@ class PostgresStoreTest(unittest.TestCase):
             self.assertEqual(recovered["available_credits"], 1)
             self.assertEqual(recovered["reserved_credits"], 0)
             self.assertEqual(recovered["failed_requests"], 1)
+            with store.Session() as session:
+                initial_grants = session.execute(
+                    select(BillingCreditLedger).where(
+                        BillingCreditLedger.telegram_user_id == 900001,
+                        BillingCreditLedger.entry_type == "initial_grant",
+                    )
+                ).scalars().all()
+            self.assertEqual(len(initial_grants), 1)
         finally:
             store.close()
 

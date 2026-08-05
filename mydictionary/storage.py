@@ -950,7 +950,8 @@ class DatabaseStore:
                 updated_at=utcnow(),
             )
             .on_conflict_do_nothing(index_elements=[AIWallet.telegram_user_id])
-        ).rowcount
+            .returning(AIWallet.telegram_user_id)
+        ).scalar_one_or_none() is not None
         wallet = session.execute(
             select(AIWallet)
             .where(AIWallet.telegram_user_id == int(user_id))
