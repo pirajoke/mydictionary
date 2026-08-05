@@ -41,6 +41,8 @@ ALLOWED_REPOSITORY_URLS = {
     "git@github.com:pirajoke/mydictionary.git",
 }
 STATE_SCHEMA_VERSION = 1
+SERVICE_TRANSITION_TIMEOUT_SECONDS = 15
+SERVICE_TRANSITION_POLL_SECONDS = 0.1
 PROTECTED_CONTENT_PREFIXES = ("content/",)
 PROTECTED_CONTENT_NAMES = {
     "words.json",
@@ -686,16 +688,53 @@ def service_is_loaded(label: str) -> bool:
     return result.returncode == 0
 
 
-def stop_services(config: Config) -> None:
+def wait_for_service_registration(
+    label: str,
+    *,
+    loaded: bool,
+    timeout_seconds: float | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> None:
+    timeout = (
+        SERVICE_TRANSITION_TIMEOUT_SECONDS
+        if timeout_seconds is None
+        else timeout_seconds
+    )
+    deadline = time.monotonic() + timeout
+    while True:
+        if service_is_loaded(label) is loaded:
+            return
+        if time.monotonic() >= deadline:
+            expected = "loaded" if loaded else "unloaded"
+            raise DeploymentError(
+                f"Service registration did not become {expected}: {label}"
+            )
+        sleep(SERVICE_TRANSITION_POLL_SECONDS)
+
+
+def _unload_service(label: str) -> None:
     domain = f"gui/{os.getuid()}"
-    failed: list[str] = []
-    for label in reversed(config.service_labels):
+    try:
         result = subprocess.run(
             ["launchctl", "bootout", f"{domain}/{label}"],
             capture_output=True,
             text=True,
         )
-        if result.returncode != 0 and service_is_loaded(label):
+    except OSError as exc:
+        raise DeploymentError(f"Unable to stop service: {label}") from exc
+    if result.returncode != 0:
+        if not service_is_loaded(label):
+            return
+        raise DeploymentError(f"Unable to stop service: {label}")
+    wait_for_service_registration(label, loaded=False)
+
+
+def stop_services(config: Config) -> None:
+    failed: list[str] = []
+    for label in reversed(config.service_labels):
+        try:
+            _unload_service(label)
+        except DeploymentError:
             failed.append(label)
     if failed:
         raise DeploymentError("Unable to stop services: " + ", ".join(failed))
@@ -705,9 +744,9 @@ def bootstrap_services(config: Config) -> None:
     domain = f"gui/{os.getuid()}"
     for label, plist in zip(config.service_labels, config.service_plists):
         if service_is_loaded(label):
-            run(["launchctl", "kickstart", "-k", f"{domain}/{label}"])
-        else:
-            run(["launchctl", "bootstrap", domain, str(plist)])
+            _unload_service(label)
+        run(["launchctl", "bootstrap", domain, str(plist)])
+        wait_for_service_registration(label, loaded=True)
 
 
 def service_is_running(label: str) -> bool:
@@ -953,6 +992,72 @@ def _recovery_payload(
         "backup_sha256": backup.digest_sha256 if backup else None,
         "stage": stage,
     }
+
+
+def _manual_recovery_completion(
+    config: Config,
+    *,
+    target_sha: str,
+    target_revision: str,
+) -> dict[str, Any] | None:
+    if not config.recovery_file.exists():
+        return None
+    state = _read_json(config.recovery_file, {})
+    if state.get("schema_version") != STATE_SCHEMA_VERSION:
+        raise DeploymentError("Invalid deployment recovery state")
+    if state.get("status") != "manual_recovery_required":
+        return None
+    if state.get("target_sha") != target_sha:
+        raise DeploymentError("Recovery target does not match current release")
+    if state.get("target_revision") != target_revision:
+        raise DeploymentError("Recovery revision does not match current database")
+
+    previous_sha = state.get("previous_sha")
+    if previous_sha is not None and (
+        not isinstance(previous_sha, str)
+        or not SHA_PATTERN.fullmatch(previous_sha)
+    ):
+        raise DeploymentError("Invalid deployment recovery state")
+    previous_revision = state.get("previous_revision")
+    if not isinstance(previous_revision, str) or not previous_revision:
+        raise DeploymentError("Invalid deployment recovery state")
+
+    backup_file = state.get("backup_file")
+    backup_sha256 = state.get("backup_sha256")
+    backup: BackupRecord | None = None
+    if backup_file is None and backup_sha256 is None:
+        pass
+    elif (
+        isinstance(backup_file, str)
+        and backup_file
+        and Path(backup_file).name == backup_file
+        and isinstance(backup_sha256, str)
+        and re.fullmatch(r"[0-9a-f]{64}", backup_sha256)
+    ):
+        backup_path = config.backup_dir / backup_file
+        if backup_path.is_symlink() or not backup_path.is_file():
+            raise DeploymentError("Recovery backup is unavailable")
+        if _sha256_file(backup_path) != backup_sha256:
+            raise DeploymentError("Recovery backup digest does not match")
+        run([config.pg_restore_binary, "--list", str(backup_path)])
+        backup = BackupRecord(
+            path=backup_path,
+            digest_sha256=backup_sha256,
+            database_revision=previous_revision,
+            target_revision=target_revision,
+        )
+    else:
+        raise DeploymentError("Invalid deployment recovery state")
+
+    return _recovery_payload(
+        status="completed",
+        target_sha=target_sha,
+        previous_sha=previous_sha,
+        previous_revision=previous_revision,
+        target_revision=target_revision,
+        backup=backup,
+        stage="ready_after_manual_adopt",
+    )
 
 
 def _automatic_deploy(
@@ -1346,10 +1451,18 @@ def adopt_current_release(config: Config) -> str:
         release = config.releases_dir / target_sha
         if current_target(config) != release:
             raise DeploymentError("Current release does not match origin/main")
-        if database_revision(config, release) != migration_head(release):
+        observed_revision = database_revision(config, release)
+        if observed_revision != migration_head(release):
             raise DeploymentError("Database revision does not match current release")
         wait_for_readiness(config, target_sha)
+        recovery = _manual_recovery_completion(
+            config,
+            target_sha=target_sha,
+            target_revision=observed_revision,
+        )
         write_deployed_state(config, target_sha)
+        if recovery is not None:
+            write_recovery_state(config, recovery)
         clear_hold(config, target_sha)
         LOGGER.info("Adopted running release: %s", target_sha)
         return target_sha
