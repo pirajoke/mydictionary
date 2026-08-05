@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 import csv
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 import getpass
 import hmac
@@ -40,6 +41,7 @@ from mydictionary.readiness import (
     heartbeat_path,
     inspect_bot_heartbeat,
 )
+from mydictionary.privacy import RetentionPolicy
 from mydictionary.storage import DatabaseStore
 from vocabulary_topics import topic_counts, transcription_for
 
@@ -56,11 +58,21 @@ ADMIN_TABS = {
     "learning",
     "ai",
     "billing",
+    "voice",
+    "safety",
     "content",
     "profile",
     "diagnostics",
     "audit",
 }
+
+
+def _positive_decimal_setting(name: str) -> bool:
+    try:
+        value = Decimal(os.environ.get(name, "0"))
+    except (InvalidOperation, ValueError):
+        return False
+    return value.is_finite() and value > 0
 
 
 def database_url_from_env() -> str:
@@ -414,8 +426,23 @@ def create_app(
             context["products"] = admin_store.billing_products()
             context["orders"] = admin_store.recent_payment_orders(limit=100)
             context["payments"] = admin_store.stars_payments(limit=100)
+            context["subscriptions"] = admin_store.stars_subscriptions(limit=100)
             context["refunds"] = admin_store.refund_requests(limit=100)
             context["reconciliation"] = admin_store.billing_reconciliation()
+        elif tab == "safety":
+            context["safety"] = admin_store.safety_overview()
+            context["abuse_events"] = admin_store.recent_abuse_events(limit=100)
+            retention = RetentionPolicy.from_env()
+            context["retention"] = {
+                "analytics_days": retention.analytics_days,
+                "ai_usage_days": retention.ai_usage_days,
+                "abuse_days": retention.abuse_days,
+                "rate_limit_days": retention.rate_limit_days,
+                "voice_transcript_days": retention.voice_transcript_days,
+            }
+        elif tab == "voice":
+            context["voice"] = admin_store.voice_overview()
+            context["voice_turns"] = admin_store.recent_voice_turns(limit=100)
         elif tab == "content":
             context["content"] = _content_overview()
         elif tab == "diagnostics":
@@ -434,9 +461,26 @@ def create_app(
                 "migration": revision,
                 "ai_enabled": os.environ.get("AI_TUTOR_ENABLED", "false"),
                 "ai_provider_configured": bool(os.environ.get("OPENAI_API_KEY")),
+                "ai_pricing_configured": all(
+                    _positive_decimal_setting(name)
+                    for name in (
+                        "AI_INPUT_USD_PER_MILLION",
+                        "AI_CACHED_INPUT_USD_PER_MILLION",
+                        "AI_CACHE_WRITE_USD_PER_MILLION",
+                        "AI_OUTPUT_USD_PER_MILLION",
+                    )
+                ),
                 "stars_enabled": admin_store.billing_settings.enabled,
                 "stars_unit_economics": (
                     admin_store.billing_settings.net_micro_usd_per_xtr > 0
+                ),
+                "voice_enabled": os.environ.get("VOICE_TUTOR_ENABLED", "false"),
+                "voice_model": os.environ.get(
+                    "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
+                ),
+                "billing_terms_version": admin_store.billing_settings.terms_version,
+                "voice_consent_version": os.environ.get(
+                    "VOICE_CONSENT_VERSION", "unversioned"
                 ),
                 "admin_host": app.config["ADMIN_HOST"],
                 "admin_port": app.config["ADMIN_PORT"],
@@ -509,6 +553,13 @@ def create_app(
                 ),
                 display_order=int(str(request.form.get("display_order") or "0")),
                 actor=current_actor(),
+                billing_mode=str(
+                    request.form.get("billing_mode") or "one_time"
+                ),
+                subscription_period_seconds=(
+                    int(str(request.form.get("subscription_period_seconds") or "0"))
+                    or None
+                ),
             )
             flash(f"Продукт {product['product_id']} сохранён.", "success")
         except (TypeError, ValueError) as exc:

@@ -100,6 +100,12 @@ Stars is a later production action requiring reviewed unit economics, monitored
 `/paysupport`, configured terms, a retained HMAC secret, and a separately
 approved real low-value payment/refund smoke test.
 
+Migration `0010_launch_readiness` adds versioned billing and voice consent plus
+the terms version snapshot on each order. Deploy it with AI, voice, and Stars
+disabled. After migration, the diagnostics tab must show revision
+`0010_launch_readiness`. Do not enable a feature until the corresponding
+versioned document and every required positive cost setting are configured.
+
 If checkout must be contained, set `TELEGRAM_STARS_ENABLED=false` and restart
 bot and admin. Keep `BILLING_PAYLOAD_SECRET` unchanged so a successful payment
 for an already-issued order can still be validated and fulfilled. Do not roll

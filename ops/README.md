@@ -79,9 +79,8 @@ least 30 days and seven backups by default, and never deletes the latest backup.
 python ops/mydictionary_backup.py --prune
 ```
 
-This is a host-local recovery control. It does not protect against loss of the
-Mac mini or its storage; encrypted off-host replication requires a separate
-design and approval.
+This host-local recovery control can be followed by the separately gated,
+encrypted off-site replication described in `docs/product-safety.md`.
 
 ## Required environment
 
@@ -119,10 +118,20 @@ connection string before stopping services or starting a backup.
 
 Telegram Stars settings are optional and default off. A reviewed billing rollout
 passes `TELEGRAM_STARS_ENABLED`, `BILLING_PAYLOAD_SECRET`,
-`BILLING_SUPPORT_CONTACT`, `BILLING_TERMS_TEXT`,
+`BILLING_SUPPORT_CONTACT`, `BILLING_TERMS_TEXT`, `BILLING_TERMS_VERSION`,
 `BILLING_ORDER_TTL_SECONDS`, and `BILLING_NET_MICRO_USD_PER_XTR` to both bot and
 admin processes. Keep the payload secret out of plist files readable by other
 users and retain it while an issued invoice may still be paid.
+
+Voice tutor settings remain optional and default off. The admin launcher passes
+the voice model and consent version for diagnostics, but it does not receive
+`OPENAI_API_KEY` or the processing payload and cannot initiate transcription
+requests. The bot runtime settings and activation checklist are documented in
+`docs/voice-tutor.md`.
+
+Candidate environments are installed from `requirements.lock`. Update the lock
+only as a reviewed dependency change and validate it on Linux CI and the Mac
+mini before activating a release.
 
 The scheduled backup wrapper uses the same two settings plus:
 
@@ -145,3 +154,31 @@ backup files, heartbeat files, and release state never belong in the repository.
 
 See [the production runbook](../docs/runbooks/mac-mini-deployment.md) before
 installing, enabling, clearing quarantine, or recovering a failed release.
+
+## Billing operations
+
+`mydictionary_billing.py reconcile` is read-only and compares bounded Bot API
+transaction pages with the local Stars ledger. Refund and subscription changes
+require the exact local UUID plus `--execute`; the wrapper never prints tokens,
+invoice payloads, Telegram charge IDs, or learner identities. Keep it on the
+loopback production host and run it only after the corresponding admin record
+and support decision have been reviewed.
+
+## Product safety operations
+
+The safety wrappers are preview-only unless `--execute` is supplied:
+
+```bash
+python ops/mydictionary_retention.py retention
+python ops/mydictionary_retention.py retention --execute
+python ops/mydictionary_monitor.py
+python ops/mydictionary_monitor.py --execute
+python ops/mydictionary_offsite_backup.py
+python ops/mydictionary_offsite_backup.py --execute
+```
+
+Retention previews candidate row counts. Monitoring sends no alert and writes
+no state in preview mode. Off-site backup verifies the local dump in preview
+mode and invokes `age` and `rclone` only with `--execute`. See
+`docs/product-safety.md` for required settings, retention boundaries, and the
+restore contract.

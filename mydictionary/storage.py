@@ -13,6 +13,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -78,6 +79,12 @@ class Base(DeclarativeBase):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "privacy_status IN ('active', 'erased')",
+            name="ck_user_privacy_status",
+        ),
+    )
 
     telegram_user_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     username: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -94,6 +101,10 @@ class User(Base):
     acquisition_source: Mapped[str | None] = mapped_column(String(64), nullable=True)
     access_status: Mapped[str] = mapped_column(String(16), default="pending")
     access_status_updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    privacy_status: Mapped[str] = mapped_column(String(16), default="active")
+    privacy_deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -181,6 +192,159 @@ class AnalyticsEvent(Base):
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
     )
+
+
+class UserConsent(Base):
+    __tablename__ = "user_consents"
+    __table_args__ = (
+        CheckConstraint(
+            "consent_type IN ('billing_terms', 'voice_processing')",
+            name="ck_user_consent_type",
+        ),
+        UniqueConstraint(
+            "telegram_user_id",
+            "consent_type",
+            "document_version",
+            name="uq_user_consent_version",
+        ),
+    )
+
+    consent_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    consent_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    document_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    granted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class RateLimitBucket(Base):
+    __tablename__ = "rate_limit_buckets"
+    __table_args__ = (
+        CheckConstraint("attempts >= 0", name="ck_rate_limit_attempts"),
+    )
+
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    scope: Mapped[str] = mapped_column(String(32), primary_key=True)
+    window_started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    blocked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class AbuseEvent(Base):
+    __tablename__ = "abuse_events"
+
+    event_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    scope: Mapped[str] = mapped_column(String(32), nullable=False)
+    rule: Mapped[str] = mapped_column(String(64), nullable=False)
+    limit_value: Mapped[int] = mapped_column(Integer, nullable=False)
+    observed_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+
+class VoiceSession(Base):
+    __tablename__ = "voice_sessions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'completed', 'cancelled', 'expired')",
+            name="ck_voice_session_status",
+        ),
+        CheckConstraint(
+            "mode IN ('pronunciation', 'conversation')",
+            name="ck_voice_session_mode",
+        ),
+        CheckConstraint("turn_count >= 0", name="ck_voice_session_turn_count"),
+        CheckConstraint("next_position >= 0", name="ck_voice_session_position"),
+    )
+
+    session_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    pack_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    language: Mapped[str] = mapped_column(String(16), nullable=False)
+    topic: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    block_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    vocabulary_ids_json: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    turn_count: Mapped[int] = mapped_column(Integer, default=0)
+    next_position: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class VoiceTurn(Base):
+    __tablename__ = "voice_turns"
+    __table_args__ = (
+        CheckConstraint(
+            "feedback_code IN ('exact', 'close', 'retry')",
+            name="ck_voice_turn_feedback",
+        ),
+        CheckConstraint(
+            "similarity_bps >= 0 AND similarity_bps <= 10000",
+            name="ck_voice_turn_similarity",
+        ),
+        UniqueConstraint("request_id", name="uq_voice_turn_request"),
+    )
+
+    turn_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("voice_sessions.session_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    request_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("ai_usage.request_id", ondelete="SET NULL"), nullable=True
+    )
+    expected_vocabulary_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matched_vocabulary_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    transcript: Mapped[str] = mapped_column(Text, nullable=False)
+    feedback_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    similarity_bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class DataImport(Base):
@@ -354,6 +518,16 @@ class BillingProduct(Base):
             "target_margin_bps >= 0 AND target_margin_bps <= 10000",
             name="ck_billing_product_margin",
         ),
+        CheckConstraint(
+            "billing_mode IN ('one_time', 'subscription')",
+            name="ck_billing_product_mode",
+        ),
+        CheckConstraint(
+            "(billing_mode = 'one_time' AND subscription_period_seconds IS NULL) "
+            "OR (billing_mode = 'subscription' AND "
+            "subscription_period_seconds = 2592000)",
+            name="ck_billing_product_subscription_period",
+        ),
     )
 
     product_id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -365,6 +539,10 @@ class BillingProduct(Base):
     estimated_cost_micro_usd: Mapped[int] = mapped_column(BigInteger, default=0)
     target_margin_bps: Mapped[int] = mapped_column(Integer, default=0)
     display_order: Mapped[int] = mapped_column(Integer, default=0)
+    billing_mode: Mapped[str] = mapped_column(String(16), default="one_time")
+    subscription_period_seconds: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -379,8 +557,19 @@ class PaymentOrder(Base):
         CheckConstraint("currency = 'XTR'", name="ck_payment_order_currency"),
         CheckConstraint(
             "status IN ('created', 'prechecked', 'paid', 'expired', "
-            "'cancelled', 'refund_pending', 'refunded')",
+            "'cancelled', 'refund_pending', 'refunded', "
+            "'subscription_active', 'subscription_cancelled')",
             name="ck_payment_order_status",
+        ),
+        CheckConstraint(
+            "billing_mode IN ('one_time', 'subscription')",
+            name="ck_payment_order_mode",
+        ),
+        CheckConstraint(
+            "(billing_mode = 'one_time' AND subscription_period_seconds IS NULL) "
+            "OR (billing_mode = 'subscription' AND "
+            "subscription_period_seconds = 2592000)",
+            name="ck_payment_order_subscription_period",
         ),
         UniqueConstraint("invoice_payload", name="uq_payment_order_payload"),
     )
@@ -399,7 +588,12 @@ class PaymentOrder(Base):
     credits_snapshot: Mapped[int] = mapped_column(Integer, nullable=False)
     amount_xtr: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="XTR")
+    terms_version: Mapped[str] = mapped_column(String(64), default="unversioned")
     invoice_payload: Mapped[str] = mapped_column(String(128), nullable=False)
+    billing_mode: Mapped[str] = mapped_column(String(16), default="one_time")
+    subscription_period_seconds: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     status: Mapped[str] = mapped_column(String(24), default="created")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     prechecked_at: Mapped[datetime | None] = mapped_column(
@@ -424,7 +618,6 @@ class StarsPayment(Base):
             "status IN ('paid', 'refund_pending', 'refunded')",
             name="ck_stars_payment_status",
         ),
-        UniqueConstraint("order_id", name="uq_stars_payment_order"),
         UniqueConstraint(
             "telegram_payment_charge_id", name="uq_stars_payment_charge"
         ),
@@ -447,10 +640,66 @@ class StarsPayment(Base):
     provider_payment_charge_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
+    subscription_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("stars_subscriptions.subscription_id"), nullable=True
+    )
+    is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_first_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
+    subscription_expiration_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(24), default="paid")
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     refunded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+
+class StarsSubscription(Base):
+    __tablename__ = "stars_subscriptions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'cancelled', 'expired')",
+            name="ck_stars_subscription_status",
+        ),
+        CheckConstraint(
+            "period_seconds = 2592000",
+            name="ck_stars_subscription_period",
+        ),
+        UniqueConstraint("order_id", name="uq_stars_subscription_order"),
+        UniqueConstraint(
+            "telegram_payment_charge_id", name="uq_stars_subscription_charge"
+        ),
+    )
+
+    subscription_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    order_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("payment_orders.order_id"), nullable=False
+    )
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    product_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("billing_products.product_id"), nullable=False
+    )
+    telegram_payment_charge_id: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    period_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    current_period_end: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
 
 
@@ -531,7 +780,9 @@ ACCESS_STATUSES = {"pending", "active", "blocked"}
 EVENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 EVENT_PROPERTY_KEYS = {
     "correct_count",
+    "consent_type",
     "daily_word_goal",
+    "document_version",
     "goal",
     "language",
     "mode",
@@ -543,6 +794,7 @@ EVENT_PROPERTY_KEYS = {
     "wrong_count",
 }
 EVENT_DIMENSION_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
+CONSENT_TYPES = {"billing_terms", "voice_processing"}
 
 
 def run_migrations(database_url: str) -> None:
@@ -809,6 +1061,116 @@ class DatabaseStore:
                 )
             )
         return event_id
+
+    def grant_consent(
+        self,
+        user_id: int,
+        *,
+        consent_type: str,
+        document_version: str,
+        source: str,
+    ) -> bool:
+        """Grant one versioned consent and return whether its state changed."""
+        if consent_type not in CONSENT_TYPES:
+            raise ValueError("Unknown consent type")
+        if not EVENT_DIMENSION_RE.fullmatch(str(document_version)):
+            raise ValueError("Invalid consent document version")
+        if (
+            not EVENT_DIMENSION_RE.fullmatch(str(source))
+            or len(str(source)) > 32
+        ):
+            raise ValueError("Invalid consent source")
+        self.ensure_user_id(user_id)
+        with self.Session.begin() as session:
+            insert_for_dialect = (
+                postgresql_insert
+                if self.engine.dialect.name == "postgresql"
+                else sqlite_insert
+            )
+            observed_at = utcnow()
+            created = session.execute(
+                insert_for_dialect(UserConsent)
+                .values(
+                    consent_id=str(uuid4()),
+                    telegram_user_id=int(user_id),
+                    consent_type=consent_type,
+                    document_version=str(document_version),
+                    source=str(source),
+                    granted_at=observed_at,
+                    revoked_at=None,
+                )
+                .on_conflict_do_nothing(
+                    index_elements=[
+                        UserConsent.telegram_user_id,
+                        UserConsent.consent_type,
+                        UserConsent.document_version,
+                    ]
+                )
+                .returning(UserConsent.consent_id)
+            ).scalar_one_or_none()
+            if created is not None:
+                return True
+            row = session.execute(
+                select(UserConsent)
+                .where(
+                    UserConsent.telegram_user_id == int(user_id),
+                    UserConsent.consent_type == consent_type,
+                    UserConsent.document_version == str(document_version),
+                )
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row.revoked_at is None:
+                return False
+            row.source = str(source)
+            row.granted_at = observed_at
+            row.revoked_at = None
+        return True
+
+    def has_consent(
+        self,
+        user_id: int,
+        *,
+        consent_type: str,
+        document_version: str,
+    ) -> bool:
+        if consent_type not in CONSENT_TYPES:
+            raise ValueError("Unknown consent type")
+        if not EVENT_DIMENSION_RE.fullmatch(str(document_version)):
+            raise ValueError("Invalid consent document version")
+        with self.Session() as session:
+            return bool(
+                session.scalar(
+                    select(func.count())
+                    .select_from(UserConsent)
+                    .where(
+                        UserConsent.telegram_user_id == int(user_id),
+                        UserConsent.consent_type == consent_type,
+                        UserConsent.document_version == str(document_version),
+                        UserConsent.revoked_at.is_(None),
+                    )
+                )
+            )
+
+    def revoke_consent(self, user_id: int, *, consent_type: str) -> int:
+        """Revoke all active versions of one consent type."""
+        if consent_type not in CONSENT_TYPES:
+            raise ValueError("Unknown consent type")
+        changed = 0
+        with self.Session.begin() as session:
+            rows = session.execute(
+                select(UserConsent)
+                .where(
+                    UserConsent.telegram_user_id == int(user_id),
+                    UserConsent.consent_type == consent_type,
+                    UserConsent.revoked_at.is_(None),
+                )
+                .with_for_update()
+            ).scalars().all()
+            observed_at = utcnow()
+            for row in rows:
+                row.revoked_at = observed_at
+                changed += 1
+        return changed
 
     def load_profile(
         self, user_id: int, defaults: Mapping[str, Any]
@@ -1113,55 +1475,188 @@ class DatabaseStore:
                 .where(AIUsage.request_id == request_id)
                 .with_for_update()
             ).scalar_one_or_none()
-            if row is None or row.status != "reserved":
-                raise AIUsageStateError("AI request is not reserved")
-            if not 0 <= billed_credits <= row.reserved_credits:
-                raise ValueError("Billed credits must fit the reservation")
-            wallet = session.execute(
-                select(AIWallet)
-                .where(AIWallet.telegram_user_id == row.telegram_user_id)
-                .with_for_update()
-            ).scalar_one()
-            if wallet.reserved_credits < row.reserved_credits:
-                raise AIUsageStateError("AI wallet cannot settle reservation")
-            wallet.reserved_credits -= row.reserved_credits
-            wallet.balance_credits -= billed_credits
-            wallet.spent_credits += billed_credits
-            wallet.updated_at = utcnow()
-            if billed_credits:
-                session.add(
-                    BillingCreditLedger(
-                        entry_id=str(uuid4()),
-                        telegram_user_id=row.telegram_user_id,
-                        delta=-billed_credits,
-                        balance_after=wallet.balance_credits,
-                        entry_type="ai_usage",
-                        idempotency_key=f"ai-usage:{request_id}",
-                        reference_type="ai_usage",
-                        reference_id=request_id,
-                        reason=f"AI action: {row.action}"[:255],
-                        actor="system",
-                    )
-                )
+            return self._settle_ai_usage_locked(
+                session,
+                row,
+                request_id=request_id,
+                billed_credits=billed_credits,
+                provider_response_id=provider_response_id,
+                model=model,
+                usage=usage,
+                cost_micro_usd=cost_micro_usd,
+                latency_ms=latency_ms,
+            )
 
-            row.status = "completed"
-            row.billed_credits = billed_credits
-            row.provider_response_id = provider_response_id
-            row.model = model
-            for field in (
-                "input_tokens",
-                "cached_input_tokens",
-                "cache_write_tokens",
-                "output_tokens",
-                "reasoning_tokens",
-                "total_tokens",
+    def _settle_ai_usage_locked(
+        self,
+        session: Any,
+        row: AIUsage | None,
+        *,
+        request_id: str,
+        billed_credits: int,
+        provider_response_id: str | None,
+        model: str,
+        usage: Mapping[str, int],
+        cost_micro_usd: int,
+        latency_ms: int,
+    ) -> dict[str, int]:
+        if row is None or row.status != "reserved":
+            raise AIUsageStateError("AI request is not reserved")
+        if not 0 <= billed_credits <= row.reserved_credits:
+            raise ValueError("Billed credits must fit the reservation")
+        wallet = session.execute(
+            select(AIWallet)
+            .where(AIWallet.telegram_user_id == row.telegram_user_id)
+            .with_for_update()
+        ).scalar_one()
+        if wallet.reserved_credits < row.reserved_credits:
+            raise AIUsageStateError("AI wallet cannot settle reservation")
+        wallet.reserved_credits -= row.reserved_credits
+        wallet.balance_credits -= billed_credits
+        wallet.spent_credits += billed_credits
+        wallet.updated_at = utcnow()
+        if billed_credits:
+            session.add(
+                BillingCreditLedger(
+                    entry_id=str(uuid4()),
+                    telegram_user_id=row.telegram_user_id,
+                    delta=-billed_credits,
+                    balance_after=wallet.balance_credits,
+                    entry_type="ai_usage",
+                    idempotency_key=f"ai-usage:{request_id}",
+                    reference_type="ai_usage",
+                    reference_id=request_id,
+                    reason=f"AI action: {row.action}"[:255],
+                    actor="system",
+                )
+            )
+        row.status = "completed"
+        row.billed_credits = billed_credits
+        row.provider_response_id = provider_response_id
+        row.model = model
+        for field in (
+            "input_tokens",
+            "cached_input_tokens",
+            "cache_write_tokens",
+            "output_tokens",
+            "reasoning_tokens",
+            "total_tokens",
+        ):
+            setattr(row, field, max(0, int(usage.get(field, 0))))
+        row.cost_micro_usd = max(0, int(cost_micro_usd))
+        row.latency_ms = max(0, int(latency_ms))
+        row.completed_at = utcnow()
+        return self._wallet_summary(wallet)
+
+    def complete_voice_usage(
+        self,
+        *,
+        request_id: str,
+        session_id: str,
+        user_id: int,
+        turn_id: str,
+        expected_vocabulary_id: str,
+        matched_vocabulary_id: str | None,
+        transcript: str,
+        feedback_code: str,
+        similarity_bps: int,
+        transcript_expires_at: datetime,
+        billed_credits: int,
+        provider_response_id: str | None,
+        model: str,
+        usage: Mapping[str, int],
+        cost_micro_usd: int,
+        latency_ms: int,
+    ) -> dict[str, Any]:
+        """Atomically settle STT credits, persist a turn, and advance its session."""
+        if feedback_code not in {"exact", "close", "retry"}:
+            raise ValueError("Unknown voice feedback code")
+        transcript = str(transcript).strip()
+        if not 1 <= len(transcript) <= 1000:
+            raise ValueError("Voice transcript must contain 1-1000 characters")
+        if not 0 <= int(similarity_bps) <= 10000:
+            raise ValueError("Voice similarity is outside valid bounds")
+        with self.Session.begin() as session:
+            usage_row = session.execute(
+                select(AIUsage)
+                .where(AIUsage.request_id == str(request_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if (
+                usage_row is None
+                or usage_row.telegram_user_id != int(user_id)
+                or usage_row.action != "voice_transcription"
             ):
-                setattr(row, field, max(0, int(usage.get(field, 0))))
-            row.cost_micro_usd = max(0, int(cost_micro_usd))
-            row.latency_ms = max(0, int(latency_ms))
-            row.completed_at = utcnow()
-            result = self._wallet_summary(wallet)
-        return result
+                raise AIUsageStateError("Voice AI reservation does not match the user")
+            voice_session = session.execute(
+                select(VoiceSession)
+                .where(VoiceSession.session_id == str(session_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if (
+                voice_session is None
+                or voice_session.telegram_user_id != int(user_id)
+                or voice_session.status != "active"
+            ):
+                raise AIUsageStateError("Voice session is not active")
+            session_expiry = voice_session.expires_at
+            if session_expiry.tzinfo is None:
+                session_expiry = session_expiry.replace(tzinfo=timezone.utc)
+            if session_expiry <= utcnow():
+                raise AIUsageStateError("Voice session expired before completion")
+            transcript_expiry = transcript_expires_at
+            if transcript_expiry.tzinfo is None:
+                transcript_expiry = transcript_expiry.replace(tzinfo=timezone.utc)
+            if transcript_expiry <= utcnow():
+                raise ValueError("Voice transcript expiry must be in the future")
+            expected_ids = json.loads(voice_session.vocabulary_ids_json)
+            if (
+                not isinstance(expected_ids, list)
+                or voice_session.next_position >= len(expected_ids)
+                or expected_ids[voice_session.next_position]
+                != str(expected_vocabulary_id)
+            ):
+                raise AIUsageStateError("Voice session position changed")
+            allowance = self._settle_ai_usage_locked(
+                session,
+                usage_row,
+                request_id=request_id,
+                billed_credits=billed_credits,
+                provider_response_id=provider_response_id,
+                model=model,
+                usage=usage,
+                cost_micro_usd=cost_micro_usd,
+                latency_ms=latency_ms,
+            )
+            session.add(
+                VoiceTurn(
+                    turn_id=str(turn_id),
+                    session_id=voice_session.session_id,
+                    telegram_user_id=int(user_id),
+                    request_id=str(request_id),
+                    expected_vocabulary_id=str(expected_vocabulary_id),
+                    matched_vocabulary_id=(
+                        str(matched_vocabulary_id)
+                        if matched_vocabulary_id
+                        else None
+                    ),
+                    transcript=transcript,
+                    feedback_code=feedback_code,
+                    similarity_bps=int(similarity_bps),
+                    expires_at=transcript_expiry,
+                )
+            )
+            voice_session.turn_count += 1
+            voice_session.next_position += 1
+            voice_session.updated_at = utcnow()
+            if voice_session.next_position >= len(expected_ids):
+                voice_session.status = "completed"
+                voice_session.ended_at = utcnow()
+            return {
+                **allowance,
+                "session_status": voice_session.status,
+                "next_position": voice_session.next_position,
+            }
 
     def fail_ai_usage(self, request_id: str, *, error_code: str) -> bool:
         """Release a reservation after provider, validation, or storage failure."""

@@ -1,6 +1,8 @@
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from alembic import command
@@ -14,6 +16,9 @@ from mydictionary.billing import (
     BillingSettings,
     BillingStateError,
     BillingValidationError,
+    SUBSCRIPTION_PERIOD_SECONDS,
+    StarTransactionPage,
+    TelegramStarsGateway,
 )
 from mydictionary.storage import (
     AIWallet,
@@ -21,6 +26,7 @@ from mydictionary.storage import (
     DatabaseStore,
     RefundRequest,
     StarsPayment,
+    StarsSubscription,
 )
 
 
@@ -41,6 +47,12 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
         database_path = Path(self.temp_dir.name) / "billing.db"
         self.store = DatabaseStore(f"sqlite:///{database_path}")
         self.store.ensure_user_id(7001)
+        self.store.grant_consent(
+            7001,
+            consent_type="billing_terms",
+            document_version="unversioned",
+            source="test",
+        )
         self.settings = enabled_settings()
         self.service = BillingService(self.store, self.settings)
         self.admin = AdminStore(self.store, self.settings)
@@ -55,6 +67,20 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
             target_margin_bps=5000,
             display_order=10,
             actor="test",
+        )
+        self.admin.upsert_billing_product(
+            product_id="ai-monthly",
+            title="AI Monthly",
+            description="25 AI credits every month",
+            credits=25,
+            price_xtr=60,
+            status="active",
+            estimated_cost_micro_usd=10_000,
+            target_margin_bps=5000,
+            display_order=20,
+            actor="test",
+            billing_mode="subscription",
+            subscription_period_seconds=SUBSCRIPTION_PERIOD_SECONDS,
         )
 
     def tearDown(self):
@@ -73,10 +99,32 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
                 "BILLING_PAYLOAD_SECRET": "s" * 40,
                 "BILLING_SUPPORT_CONTACT": "@support",
                 "BILLING_TERMS_TEXT": "Explicit test terms",
+                "BILLING_TERMS_VERSION": "test-1",
                 "BILLING_NET_MICRO_USD_PER_XTR": "1000",
             }
         )
         self.assertTrue(enabled.enabled)
+
+    def test_order_and_precheckout_require_current_terms_version(self):
+        self.store.revoke_consent(7001, consent_type="billing_terms")
+        with self.assertRaisesRegex(BillingValidationError, "not accepted"):
+            self.service.create_order(user_id=7001, product_id="ai-starter")
+
+        self.store.grant_consent(
+            7001,
+            consent_type="billing_terms",
+            document_version="unversioned",
+            source="test",
+        )
+        order = self.service.create_order(user_id=7001, product_id="ai-starter")
+        self.store.revoke_consent(7001, consent_type="billing_terms")
+        with self.assertRaisesRegex(BillingValidationError, "not accepted"):
+            self.service.validate_pre_checkout(
+                user_id=7001,
+                payload=order.payload,
+                currency="XTR",
+                total_amount=100,
+            )
 
     def test_migration_preserves_legacy_allowance_and_admin_ledger(self):
         legacy_path = Path(self.temp_dir.name) / "legacy.db"
@@ -231,6 +279,183 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.created)
         self.assertEqual(result.available_credits, 50)
 
+    def test_subscription_first_payment_and_renewal_are_each_idempotent(self):
+        order = self.service.create_order(user_id=7001, product_id="ai-monthly")
+        self.assertEqual(
+            order.subscription_period_seconds, SUBSCRIPTION_PERIOD_SECONDS
+        )
+        first_expiration = datetime.now(timezone.utc) + timedelta(days=30)
+        first = self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=60,
+            telegram_payment_charge_id="subscription-charge-1",
+            is_recurring=True,
+            is_first_recurring=True,
+            subscription_expiration_date=first_expiration,
+        )
+        second_expiration = first_expiration + timedelta(days=30)
+        renewal = self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=60,
+            telegram_payment_charge_id="subscription-charge-2",
+            is_recurring=True,
+            subscription_expiration_date=second_expiration,
+        )
+        duplicate = self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=60,
+            telegram_payment_charge_id="subscription-charge-2",
+            is_recurring=True,
+            subscription_expiration_date=second_expiration,
+        )
+
+        self.assertTrue(first.created)
+        self.assertTrue(renewal.created)
+        self.assertFalse(duplicate.created)
+        self.assertEqual(first.subscription_id, renewal.subscription_id)
+        with self.store.Session() as session:
+            wallet = session.get(AIWallet, 7001)
+            subscription = session.get(StarsSubscription, first.subscription_id)
+            payments = session.execute(select(StarsPayment)).scalars().all()
+            grants = session.execute(
+                select(BillingCreditLedger).where(
+                    BillingCreditLedger.entry_type
+                    == "stars_subscription_renewal"
+                )
+            ).scalars().all()
+            self.assertEqual(wallet.balance_credits, 50)
+            self.assertEqual(len(payments), 2)
+            self.assertEqual(len(grants), 2)
+            self.assertEqual(subscription.status, "active")
+            self.assertEqual(
+                subscription.current_period_end.replace(tzinfo=timezone.utc),
+                second_expiration,
+            )
+
+    def test_subscription_requires_recurring_metadata(self):
+        order = self.service.create_order(user_id=7001, product_id="ai-monthly")
+        with self.assertRaisesRegex(BillingValidationError, "metadata"):
+            self.service.fulfill_successful_payment(
+                user_id=7001,
+                payload=order.payload,
+                currency="XTR",
+                total_amount=60,
+                telegram_payment_charge_id="subscription-without-metadata",
+            )
+
+    async def test_subscription_autorenew_uses_gateway_and_updates_local_state(self):
+        order = self.service.create_order(user_id=7001, product_id="ai-monthly")
+        payment = self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=60,
+            telegram_payment_charge_id="subscription-autorenew",
+            is_recurring=True,
+            is_first_recurring=True,
+            subscription_expiration_date=(
+                datetime.now(timezone.utc) + timedelta(days=30)
+            ),
+        )
+        gateway = AsyncMock()
+        gateway.edit_user_star_subscription.return_value = True
+
+        self.assertTrue(
+            await self.service.set_subscription_autorenew(
+                subscription_id=payment.subscription_id,
+                user_id=7001,
+                is_canceled=True,
+                gateway=gateway,
+            )
+        )
+        gateway.edit_user_star_subscription.assert_awaited_once_with(
+            user_id=7001,
+            telegram_payment_charge_id="subscription-autorenew",
+            is_canceled=True,
+        )
+        subscriptions = self.service.subscriptions_for_user(7001)
+        self.assertEqual(subscriptions[0]["status"], "cancelled")
+        self.assertNotIn("telegram_payment_charge_id", subscriptions[0])
+
+    async def test_telegram_gateway_normalizes_invoice_transactions(self):
+        bot = AsyncMock()
+        bot.get_star_transactions.return_value = SimpleNamespace(
+            transactions=[
+                SimpleNamespace(
+                    id="remote-charge",
+                    amount=60,
+                    source=SimpleNamespace(
+                        transaction_type="invoice_payment",
+                        user=SimpleNamespace(id=7001),
+                        subscription_period=SUBSCRIPTION_PERIOD_SECONDS,
+                    ),
+                ),
+                SimpleNamespace(
+                    id="unrelated",
+                    amount=5,
+                    source=SimpleNamespace(transaction_type="gift_purchase"),
+                ),
+            ]
+        )
+        page = await TelegramStarsGateway(bot).get_star_transactions(
+            offset=0, limit=100
+        )
+        self.assertEqual(page.fetched_count, 2)
+        self.assertEqual(len(page.rows), 1)
+        self.assertEqual(page.rows[0]["telegram_payment_charge_id"], "remote-charge")
+
+    async def test_gateway_reconciliation_checks_both_remote_and_local_rows(self):
+        order = self.service.create_order(user_id=7001, product_id="ai-starter")
+        self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=100,
+            telegram_payment_charge_id="local-only-charge",
+        )
+        gateway = AsyncMock()
+        gateway.get_star_transactions.return_value = StarTransactionPage((), 0)
+        issues = await self.service.reconcile_gateway(gateway)
+        self.assertEqual(
+            {issue.code for issue in issues}, {"local_payment_missing_remotely"}
+        )
+
+    async def test_gateway_reconciliation_does_not_flag_old_local_rows_when_capped(self):
+        order = self.service.create_order(user_id=7001, product_id="ai-starter")
+        self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=100,
+            telegram_payment_charge_id="older-local-charge",
+        )
+        gateway = AsyncMock()
+        gateway.get_star_transactions.return_value = StarTransactionPage(
+            tuple(
+                {
+                    "telegram_payment_charge_id": f"remote-{index}",
+                    "user_id": 7001,
+                    "currency": "XTR",
+                    "total_amount": 100,
+                    "is_refund": False,
+                }
+                for index in range(100)
+            ),
+            100,
+        )
+        issues = await self.service.reconcile_gateway(
+            gateway, page_size=100, maximum_transactions=100
+        )
+        codes = [issue.code for issue in issues]
+        self.assertIn("remote_history_truncated", codes)
+        self.assertNotIn("local_payment_missing_remotely", codes)
+
     async def test_refund_holds_credits_and_uses_only_injected_gateway(self):
         order = self.service.create_order(user_id=7001, product_id="ai-starter")
         payment = self.service.fulfill_successful_payment(
@@ -343,6 +568,30 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             {issue.code for issue in issues},
             {"remote_payment_mismatch", "remote_payment_missing_locally"},
+        )
+
+    def test_reconciliation_compares_remote_refund_state(self):
+        order = self.service.create_order(user_id=7001, product_id="ai-starter")
+        self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=100,
+            telegram_payment_charge_id="charge-refund-drift",
+        )
+        issues = self.service.reconcile_transactions(
+            [
+                {
+                    "telegram_payment_charge_id": "charge-refund-drift",
+                    "user_id": 7001,
+                    "currency": "XTR",
+                    "total_amount": 100,
+                    "is_refund": True,
+                }
+            ]
+        )
+        self.assertEqual(
+            [issue.code for issue in issues], ["remote_refund_missing_locally"]
         )
 
 

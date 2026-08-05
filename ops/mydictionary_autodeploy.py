@@ -497,7 +497,13 @@ def build_release(config: Config, sha: str) -> Path:
             text=False,
         ).stdout
         safe_extract(archive, temporary)
-        for filename in ("bot.py", "tts.py", "requirements.txt", "alembic.ini"):
+        for filename in (
+            "bot.py",
+            "tts.py",
+            "requirements.txt",
+            "requirements.lock",
+            "alembic.ini",
+        ):
             if not (temporary / filename).is_file():
                 raise CandidateValidationError(
                     f"Release is missing required file: {filename}"
@@ -522,7 +528,7 @@ def build_release(config: Config, sha: str) -> Path:
                 "install",
                 "--disable-pip-version-check",
                 "--requirement",
-                str(temporary / "requirements.txt"),
+                str(temporary / "requirements.lock"),
             ],
             env=build_env,
         )

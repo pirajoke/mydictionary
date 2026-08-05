@@ -7,19 +7,22 @@ import json
 from typing import Any, Mapping
 from uuid import uuid4
 
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, case, cast, func, or_, select
 
 from mydictionary.billing import (
+    BILLING_MODES,
     BillingService,
     BillingSettings,
     PRODUCT_ID_RE,
     PRODUCT_STATUSES,
+    SUBSCRIPTION_PERIOD_SECONDS,
 )
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS
 from mydictionary.storage import (
     ACCESS_STATUSES,
     AIWallet,
     AIUsage,
+    AbuseEvent,
     AnalyticsEvent,
     AdminAuditLog,
     AdminCredential,
@@ -29,9 +32,13 @@ from mydictionary.storage import (
     DatabaseStore,
     PaymentOrder,
     RefundRequest,
+    RateLimitBucket,
     StarsPayment,
+    StarsSubscription,
     User,
     UserProgress,
+    VoiceSession,
+    VoiceTurn,
     WordProgress,
     utcnow,
 )
@@ -227,6 +234,9 @@ class AdminStore:
                 return status
             user.access_status = status
             user.access_status_updated_at = utcnow()
+            if status == "active" and user.privacy_status == "erased":
+                user.privacy_status = "active"
+                user.privacy_deleted_at = None
             user.updated_at = utcnow()
             session.add(
                 AdminAuditLog(
@@ -429,6 +439,8 @@ class AdminStore:
                     "role": user.role,
                     "access_status": user.access_status,
                     "access_status_updated_at": user.access_status_updated_at,
+                    "privacy_status": user.privacy_status,
+                    "privacy_deleted_at": user.privacy_deleted_at,
                     "native_language": user.native_language or "",
                     "learning_goal": user.learning_goal or "",
                     "daily_word_goal": user.daily_word_goal,
@@ -469,15 +481,14 @@ class AdminStore:
     def product_funnel(self, *, days: int = 30) -> dict[str, Any]:
         days = max(1, min(int(days), 365))
         since = datetime.now(timezone.utc) - timedelta(days=days)
-        steps = [
+        event_steps = [
             ("start_received", "Открыли /start"),
-            ("pilot_waitlist_joined", "Встали в очередь пилота"),
-            ("onboarding_started", "Начали настройку"),
             ("onboarding_completed", "Завершили настройку"),
             ("block_started", "Открыли учебный блок"),
-            ("block_completed", "Завершили блок"),
+            ("buy_opened", "Открыли покупку"),
+            ("billing_terms_accepted", "Приняли условия"),
         ]
-        event_names = [name for name, _ in steps]
+        event_names = [name for name, _ in event_steps]
         with self.store.Session() as session:
             rows = session.execute(
                 select(
@@ -496,27 +507,106 @@ class AdminStore:
                 )
                 .group_by(AnalyticsEvent.event_name)
             ).all()
+            order_events, order_users = session.execute(
+                select(
+                    func.count(PaymentOrder.order_id),
+                    func.count(func.distinct(PaymentOrder.telegram_user_id)),
+                ).where(PaymentOrder.created_at >= since)
+            ).one()
+            payment_events, payment_users, gross_xtr, refunded_xtr = session.execute(
+                select(
+                    func.count(StarsPayment.payment_id),
+                    func.count(func.distinct(StarsPayment.telegram_user_id)),
+                    func.coalesce(func.sum(StarsPayment.total_amount), 0),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (StarsPayment.status == "refunded", StarsPayment.total_amount),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ),
+                ).where(StarsPayment.received_at >= since)
+            ).one()
+            ai_events, ai_users = session.execute(
+                select(
+                    func.count(AIUsage.request_id),
+                    func.count(func.distinct(AIUsage.telegram_user_id)),
+                ).where(
+                    AIUsage.created_at >= since,
+                    AIUsage.status == "completed",
+                )
+            ).one()
+            payment_counts = (
+                select(
+                    StarsPayment.telegram_user_id.label("telegram_user_id"),
+                    func.count(StarsPayment.payment_id).label("payment_count"),
+                )
+                .where(StarsPayment.received_at >= since)
+                .group_by(StarsPayment.telegram_user_id)
+                .subquery()
+            )
+            repeat_users, repeat_events = session.execute(
+                select(
+                    func.count(payment_counts.c.telegram_user_id),
+                    func.coalesce(func.sum(payment_counts.c.payment_count), 0),
+                ).where(payment_counts.c.payment_count >= 2)
+            ).one()
         aggregates = {
             row[0]: {"events": int(row[1]), "users": int(row[2])}
             for row in rows
         }
+        durable_steps = {
+            "invoice_created": {
+                "label": "Создали счёт",
+                "events": int(order_events or 0),
+                "users": int(order_users or 0),
+            },
+            "stars_payment_completed": {
+                "label": "Успешно оплатили",
+                "events": int(payment_events or 0),
+                "users": int(payment_users or 0),
+            },
+            "ai_request_completed": {
+                "label": "Использовали AI",
+                "events": int(ai_events or 0),
+                "users": int(ai_users or 0),
+            },
+            "repeat_purchase": {
+                "label": "Купили повторно",
+                "events": int(repeat_events or 0),
+                "users": int(repeat_users or 0),
+            },
+        }
         starts = aggregates.get("start_received", {}).get("users", 0)
+        steps = [
+            {
+                "event_name": name,
+                "label": label,
+                "events": aggregates.get(name, {}).get("events", 0),
+                "users": aggregates.get(name, {}).get("users", 0),
+                "source": "analytics",
+            }
+            for name, label in event_steps
+        ]
+        steps.extend(
+            dict(event_name=name, source="ledger", **values)
+            for name, values in durable_steps.items()
+        )
+        for step in steps:
+            step["conversion"] = step["users"] / starts * 100 if starts else 0
         return {
             "days": days,
-            "steps": [
-                {
-                    "event_name": name,
-                    "label": label,
-                    "events": aggregates.get(name, {}).get("events", 0),
-                    "users": aggregates.get(name, {}).get("users", 0),
-                    "conversion": (
-                        aggregates.get(name, {}).get("users", 0) / starts * 100
-                        if starts
-                        else 0
-                    ),
-                }
-                for name, label in steps
-            ],
+            "steps": steps,
+            "commercial": {
+                "orders": int(order_events or 0),
+                "payments": int(payment_events or 0),
+                "payers": int(payment_users or 0),
+                "gross_xtr": int(gross_xtr or 0),
+                "refunded_xtr": int(refunded_xtr or 0),
+                "net_xtr": int(gross_xtr or 0) - int(refunded_xtr or 0),
+            },
         }
 
     def recent_product_events(self, limit: int = 100) -> list[dict[str, Any]]:
@@ -658,21 +748,36 @@ class AdminStore:
         target_margin_bps: int,
         display_order: int,
         actor: str,
+        billing_mode: str = "one_time",
+        subscription_period_seconds: int | None = None,
     ) -> dict[str, Any]:
         product_id = str(product_id).strip().lower()
         title = str(title).strip()
         description = str(description).strip()
         status = str(status).strip().lower()
+        billing_mode = str(billing_mode).strip().lower()
         if not PRODUCT_ID_RE.fullmatch(product_id):
             raise ValueError("Product ID must use lowercase letters, digits, and hyphens")
         if not 1 <= len(title) <= 32 or not 1 <= len(description) <= 255:
             raise ValueError("Product title or description is outside Telegram limits")
         if status not in PRODUCT_STATUSES:
             raise ValueError("Unknown billing product status")
+        if billing_mode not in BILLING_MODES:
+            raise ValueError("Unknown billing product mode")
+        if billing_mode == "subscription":
+            if int(subscription_period_seconds or 0) != SUBSCRIPTION_PERIOD_SECONDS:
+                raise ValueError("Stars subscriptions must use a 30-day period")
+            subscription_period_seconds = SUBSCRIPTION_PERIOD_SECONDS
+        elif subscription_period_seconds not in {None, 0}:
+            raise ValueError("One-time products cannot have a subscription period")
+        else:
+            subscription_period_seconds = None
         if not 1 <= int(credits) <= 1_000_000:
             raise ValueError("Product credits must be between 1 and 1000000")
         if not 1 <= int(price_xtr) <= 1_000_000:
             raise ValueError("Product price must be between 1 and 1000000 XTR")
+        if billing_mode == "subscription" and int(price_xtr) > 10_000:
+            raise ValueError("Stars subscription price cannot exceed 10000 XTR")
         if int(estimated_cost_micro_usd) < 0:
             raise ValueError("Estimated product cost cannot be negative")
         if not 0 <= int(target_margin_bps) <= 10000:
@@ -709,6 +814,8 @@ class AdminStore:
             row.estimated_cost_micro_usd = int(estimated_cost_micro_usd)
             row.target_margin_bps = int(target_margin_bps)
             row.display_order = int(display_order)
+            row.billing_mode = billing_mode
+            row.subscription_period_seconds = subscription_period_seconds
             row.updated_at = utcnow()
             session.add(
                 AdminAuditLog(
@@ -726,6 +833,10 @@ class AdminStore:
                             ),
                             "target_margin_bps": int(target_margin_bps),
                             "estimated_margin_bps": estimated_margin,
+                            "billing_mode": billing_mode,
+                            "subscription_period_seconds": (
+                                subscription_period_seconds
+                            ),
                         }
                     ),
                 )
@@ -770,8 +881,13 @@ class AdminStore:
                 ).group_by(StarsPayment.status)
             ).all()
             credits_sold = session.scalar(
-                select(func.sum(PaymentOrder.credits_snapshot)).where(
-                    PaymentOrder.status.in_({"paid", "refund_pending"})
+                select(func.sum(PaymentOrder.credits_snapshot))
+                .join(StarsPayment, StarsPayment.order_id == PaymentOrder.order_id)
+                .where(StarsPayment.status.in_({"paid", "refund_pending"}))
+            ) or 0
+            active_subscriptions = session.scalar(
+                select(func.count(StarsSubscription.subscription_id)).where(
+                    StarsSubscription.status == "active"
                 )
             ) or 0
             credits_refunded = session.scalar(
@@ -804,6 +920,7 @@ class AdminStore:
             "credits_sold": int(credits_sold),
             "credits_refunded": int(credits_refunded),
             "pending_refunds": int(pending_refunds),
+            "active_subscriptions": int(active_subscriptions),
         }
 
     def recent_payment_orders(self, limit: int = 100) -> list[dict[str, Any]]:
@@ -841,11 +958,43 @@ class AdminStore:
                 "currency": payment.currency,
                 "total_amount": payment.total_amount,
                 "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+                "subscription_id": payment.subscription_id,
+                "is_recurring": payment.is_recurring,
+                "is_first_recurring": payment.is_first_recurring,
+                "subscription_expiration_date": (
+                    payment.subscription_expiration_date
+                ),
                 "status": payment.status,
                 "received_at": payment.received_at,
                 "refunded_at": payment.refunded_at,
             }
             for payment, order in rows
+        ]
+
+    def stars_subscriptions(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(StarsSubscription, PaymentOrder)
+                .join(PaymentOrder, PaymentOrder.order_id == StarsSubscription.order_id)
+                .order_by(StarsSubscription.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).all()
+        return [
+            {
+                "subscription_id": subscription.subscription_id,
+                "order_id": subscription.order_id,
+                "telegram_user_id": subscription.telegram_user_id,
+                "product_id": subscription.product_id,
+                "product_title": order.product_title,
+                "credits": order.credits_snapshot,
+                "amount_xtr": order.amount_xtr,
+                "status": subscription.status,
+                "period_seconds": subscription.period_seconds,
+                "current_period_end": subscription.current_period_end,
+                "cancelled_at": subscription.cancelled_at,
+                "created_at": subscription.created_at,
+            }
+            for subscription, order in rows
         ]
 
     def refund_requests(self, limit: int = 100) -> list[dict[str, Any]]:
@@ -873,28 +1022,8 @@ class AdminStore:
     def billing_reconciliation(self) -> list[dict[str, str]]:
         issues: list[dict[str, str]] = []
         with self.store.Session() as session:
-            orders = session.execute(
-                select(PaymentOrder).where(
-                    PaymentOrder.status.in_(
-                        {"paid", "refund_pending", "refunded"}
-                    )
-                )
-            ).scalars().all()
-            for order in orders:
-                payment = session.execute(
-                    select(StarsPayment).where(
-                        StarsPayment.order_id == order.order_id
-                    )
-                ).scalar_one_or_none()
-                if payment is None:
-                    issues.append(
-                        {
-                            "code": "paid_order_missing_payment",
-                            "reference": order.order_id,
-                            "details": "Order state requires a Stars payment row",
-                        }
-                    )
-                    continue
+            payments = session.execute(select(StarsPayment)).scalars().all()
+            for payment in payments:
                 ledger = session.execute(
                     select(BillingCreditLedger).where(
                         BillingCreditLedger.idempotency_key
@@ -946,6 +1075,109 @@ class AdminStore:
 
     def payment_orders_export(self) -> list[dict[str, Any]]:
         return self.recent_payment_orders(limit=10000)
+
+    def safety_overview(self) -> dict[str, int]:
+        now = utcnow()
+        since = now - timedelta(hours=24)
+        with self.store.Session() as session:
+            events = session.scalar(
+                select(func.count()).select_from(AbuseEvent).where(
+                    AbuseEvent.occurred_at >= since
+                )
+            ) or 0
+            affected_users = session.scalar(
+                select(func.count(func.distinct(AbuseEvent.telegram_user_id))).where(
+                    AbuseEvent.occurred_at >= since
+                )
+            ) or 0
+            active_blocks = session.scalar(
+                select(func.count()).select_from(RateLimitBucket).where(
+                    RateLimitBucket.blocked_until > now
+                )
+            ) or 0
+            erased_users = session.scalar(
+                select(func.count()).select_from(User).where(
+                    User.privacy_status == "erased"
+                )
+            ) or 0
+        return {
+            "events_24h": int(events),
+            "affected_users_24h": int(affected_users),
+            "active_blocks": int(active_blocks),
+            "erased_users": int(erased_users),
+        }
+
+    def recent_abuse_events(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(AbuseEvent)
+                .order_by(AbuseEvent.occurred_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).scalars().all()
+        return [
+            {
+                column.name: getattr(row, column.name)
+                for column in AbuseEvent.__table__.columns
+            }
+            for row in rows
+        ]
+
+    def voice_overview(self) -> dict[str, Any]:
+        with self.store.Session() as session:
+            sessions = session.scalar(
+                select(func.count()).select_from(VoiceSession)
+            ) or 0
+            active = session.scalar(
+                select(func.count()).select_from(VoiceSession).where(
+                    VoiceSession.status == "active"
+                )
+            ) or 0
+            turns = session.scalar(
+                select(func.count()).select_from(VoiceTurn)
+            ) or 0
+            average = session.scalar(select(func.avg(VoiceTurn.similarity_bps))) or 0
+            feedback_rows = session.execute(
+                select(VoiceTurn.feedback_code, func.count(VoiceTurn.turn_id)).group_by(
+                    VoiceTurn.feedback_code
+                )
+            ).all()
+        return {
+            "sessions": int(sessions),
+            "active_sessions": int(active),
+            "turns": int(turns),
+            "average_similarity_percent": float(average) / 100,
+            "feedback": {row[0]: int(row[1]) for row in feedback_rows},
+        }
+
+    def recent_voice_turns(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(
+                    VoiceTurn,
+                    VoiceSession.pack_id,
+                    VoiceSession.language,
+                    VoiceSession.mode,
+                )
+                .join(VoiceSession, VoiceSession.session_id == VoiceTurn.session_id)
+                .order_by(VoiceTurn.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).all()
+        return [
+            {
+                "turn_id": turn.turn_id,
+                "telegram_user_id": turn.telegram_user_id,
+                "pack_id": pack_id,
+                "language": language,
+                "mode": mode,
+                "expected_vocabulary_id": turn.expected_vocabulary_id,
+                "matched_vocabulary_id": turn.matched_vocabulary_id or "",
+                "feedback_code": turn.feedback_code,
+                "similarity_percent": turn.similarity_bps / 100,
+                "created_at": turn.created_at,
+                "expires_at": turn.expires_at,
+            }
+            for turn, pack_id, language, mode in rows
+        ]
 
     def stars_payments_export(self) -> list[dict[str, Any]]:
         return self.stars_payments(limit=10000)

@@ -9,9 +9,11 @@ from sqlalchemy import select
 
 from mydictionary.admin import LoginLimiter, create_app
 from mydictionary.admin_store import AdminStore
+from mydictionary.billing import BillingService, BillingSettings
 from mydictionary.readiness import BotHeartbeat
 from mydictionary.storage import (
     AIWallet,
+    AIUsage,
     BillingCreditLedger,
     AdminAuditLog,
     DatabaseStore,
@@ -386,21 +388,22 @@ class AdminConsoleTest(unittest.TestCase):
 
     def test_product_funnel_renders_and_exports_privacy_safe_events(self):
         self.store.record_event(7001, "start_received", source="direct")
-        self.store.record_event(7001, "pilot_waitlist_joined", source="direct")
-        self.store.record_event(7001, "onboarding_started")
         self.store.record_event(
             7001,
             "onboarding_completed",
             properties={"pack_id": "ja-basics-100", "language": "ja"},
         )
+        self.store.record_event(7001, "buy_opened", source="command")
         self.store.ensure_user(SimpleNamespace(id=7002), role="admin")
         self.store.record_event(7002, "start_received", source="direct")
         funnel = AdminStore(self.store).product_funnel(days=30)
         steps = {step["event_name"]: step for step in funnel["steps"]}
         self.assertEqual(steps["start_received"]["users"], 1)
         self.assertEqual(steps["start_received"]["events"], 1)
-        self.assertEqual(steps["pilot_waitlist_joined"]["users"], 1)
+        self.assertEqual(steps["buy_opened"]["users"], 1)
         self.assertEqual(steps["onboarding_completed"]["conversion"], 100)
+        self.assertEqual(steps["invoice_created"]["source"], "ledger")
+        self.assertEqual(funnel["commercial"]["net_xtr"], 0)
 
         self.login()
         response = self.client.get("/admin?tab=funnel")
@@ -411,6 +414,72 @@ class AdminConsoleTest(unittest.TestCase):
         body = exported.get_data(as_text=True)
         self.assertIn("onboarding_completed", body)
         self.assertNotIn("prompt", body)
+
+    def test_commercial_funnel_uses_durable_orders_payments_and_ai_usage(self):
+        user_id = 7010
+        self.store.ensure_user_id(user_id)
+        self.store.grant_consent(
+            user_id,
+            consent_type="billing_terms",
+            document_version="funnel-1",
+            source="test",
+        )
+        settings = BillingSettings(
+            enabled=True,
+            payload_secret="s" * 40,
+            support_contact="@support",
+            terms_text="Funnel terms",
+            terms_version="funnel-1",
+            net_micro_usd_per_xtr=1000,
+        )
+        admin = AdminStore(self.store, settings)
+        admin.upsert_billing_product(
+            product_id="funnel-pack",
+            title="Funnel pack",
+            description="Test credits",
+            credits=5,
+            price_xtr=10,
+            status="active",
+            estimated_cost_micro_usd=100,
+            target_margin_bps=100,
+            display_order=1,
+            actor="test",
+        )
+        billing = BillingService(self.store, settings)
+        for index in range(2):
+            order = billing.create_order(
+                user_id=user_id, product_id="funnel-pack"
+            )
+            billing.fulfill_successful_payment(
+                user_id=user_id,
+                payload=order.payload,
+                currency="XTR",
+                total_amount=10,
+                telegram_payment_charge_id=f"funnel-charge-{index}",
+            )
+        with self.store.Session.begin() as session:
+            session.add(
+                AIUsage(
+                    request_id="funnel-ai-request",
+                    telegram_user_id=user_id,
+                    action="block_tutor",
+                    provider="test",
+                    model="test",
+                    status="completed",
+                    context_fingerprint="f" * 64,
+                    reserved_credits=1,
+                    billed_credits=1,
+                )
+            )
+
+        funnel = admin.product_funnel(days=30)
+        steps = {step["event_name"]: step for step in funnel["steps"]}
+        self.assertEqual(steps["invoice_created"]["events"], 2)
+        self.assertEqual(steps["stars_payment_completed"]["users"], 1)
+        self.assertEqual(steps["ai_request_completed"]["users"], 1)
+        self.assertEqual(steps["repeat_purchase"]["users"], 1)
+        self.assertEqual(funnel["commercial"]["gross_xtr"], 20)
+        self.assertEqual(funnel["commercial"]["net_xtr"], 20)
 
     def test_health_exposes_no_internal_configuration(self):
         response = self.client.get("/health")

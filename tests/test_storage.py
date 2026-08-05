@@ -24,6 +24,7 @@ from mydictionary.storage import (
     AnalyticsEvent,
     BillingCreditLedger,
     DatabaseStore,
+    UserConsent,
     UserPackEnrollment,
     vocabulary_id_for,
 )
@@ -79,6 +80,7 @@ class DatabaseStoreTest(unittest.TestCase):
                 "stars_payments",
                 "billing_credit_ledger",
                 "refund_requests",
+                "user_consents",
             }.issubset(tables)
         )
         user_columns = {column["name"] for column in inspector.get_columns("users")}
@@ -102,7 +104,7 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0006_telegram_stars_billing")
+            self.assertEqual(revision, "0010_launch_readiness")
 
     def test_programmatic_migrations_preserve_application_logging(self):
         root_logger = logging.getLogger()
@@ -206,6 +208,52 @@ class DatabaseStoreTest(unittest.TestCase):
                 "ai_answered",
                 properties={"prompt_text": "private learner content"},
             )
+
+    def test_versioned_consent_can_be_replaced_and_revoked(self):
+        self.assertTrue(
+            self.store.grant_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-08",
+                source="telegram",
+            )
+        )
+        self.assertFalse(
+            self.store.grant_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-08",
+                source="telegram",
+            )
+        )
+        self.assertTrue(
+            self.store.has_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-08",
+            )
+        )
+        self.assertFalse(
+            self.store.has_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-09",
+            )
+        )
+        self.assertEqual(
+            self.store.revoke_consent(213, consent_type="voice_processing"), 1
+        )
+        self.assertFalse(
+            self.store.has_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-08",
+            )
+        )
+        with self.store.Session() as session:
+            rows = session.execute(select(UserConsent)).scalars().all()
+            self.assertEqual(len(rows), 1)
+            self.assertIsNotNone(rows[0].revoked_at)
 
     def test_profiles_and_words_are_isolated_by_telegram_user(self):
         user_one = dict(PROFILE_DEFAULTS, active_lang="ja", xp=25, total_correct=1)

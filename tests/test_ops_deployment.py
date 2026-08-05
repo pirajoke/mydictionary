@@ -181,6 +181,10 @@ class AdminLauncherTest(OpsTestCase):
         self.assertEqual(environment["DATA_DIR"], str(self.root.resolve()))
         self.assertEqual(environment["RELEASE_SHA"], NEW_SHA)
         self.assertEqual(environment["AI_TUTOR_ENABLED"], "false")
+        self.assertEqual(environment["VOICE_TUTOR_ENABLED"], "false")
+        self.assertEqual(
+            environment["VOICE_TRANSCRIPTION_MODEL"], "gpt-4o-transcribe"
+        )
         self.assertEqual(environment["TELEGRAM_STARS_ENABLED"], "false")
         self.assertEqual(environment["ADMIN_COOKIE_SECURE"], "true")
         rendered_arguments = " ".join(arguments)
@@ -726,7 +730,13 @@ class ReleaseStateTest(OpsTestCase):
         test_runs = []
         archive = io.BytesIO()
         with tarfile.open(fileobj=archive, mode="w") as bundle:
-            for filename in ("bot.py", "tts.py", "requirements.txt", "alembic.ini"):
+            for filename in (
+                "bot.py",
+                "tts.py",
+                "requirements.txt",
+                "requirements.lock",
+                "alembic.ini",
+            ):
                 payload = b""
                 member = tarfile.TarInfo(filename)
                 member.size = len(payload)

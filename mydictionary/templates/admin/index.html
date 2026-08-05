@@ -15,7 +15,7 @@
       <nav aria-label="Разделы">
         {% for id, label in [
           ('dashboard','Обзор'),('users','Пользователи'),('funnel','Воронка'),('learning','Обучение'),
-          ('ai','AI и кредиты'),('billing','Stars и платежи'),('content','Контент'),('profile','Профиль бота'),
+          ('ai','AI и кредиты'),('billing','Stars и платежи'),('voice','Голос'),('safety','Безопасность'),('content','Контент'),('profile','Профиль бота'),
           ('diagnostics','Диагностика'),('audit','Аудит')
         ] %}
           <a href="{{ url_for('admin_index', tab=id) }}" class="{{ 'active' if tab == id else '' }}">{{ label }}</a>
@@ -31,7 +31,7 @@
       <header class="topbar">
         <div><p class="eyebrow">MY DICTIONARY</p><h1>{{ {
           'dashboard':'Обзор продукта','users':'Пользователи','funnel':'Продуктовая воронка','learning':'Обучение',
-          'ai':'AI и кредиты','billing':'Stars и платежи','content':'Словари и темы','profile':'Профиль бота',
+          'ai':'AI и кредиты','billing':'Stars и платежи','voice':'Голосовая практика','safety':'Безопасность продукта','content':'Словари и темы','profile':'Профиль бота',
           'diagnostics':'Диагностика','audit':'Журнал аудита'
         }[tab] }}</h1></div>
         <span class="admin-name">{{ current_actor }}</span>
@@ -78,10 +78,16 @@
       {% endif %}
 
       {% if tab == 'funnel' %}
+        <section class="metric-grid" aria-label="Коммерческие показатели за 30 дней">
+          <article><span>Счета</span><strong>{{ funnel.commercial.orders|number }}</strong><small>{{ funnel.commercial.payments }} успешных платежей</small></article>
+          <article><span>Плательщики</span><strong>{{ funnel.commercial.payers|number }}</strong><small>уникальные пользователи</small></article>
+          <article><span>Stars получено</span><strong>{{ funnel.commercial.gross_xtr|number }}</strong><small>{{ funnel.commercial.refunded_xtr }} возвращено</small></article>
+          <article><span>Stars после возвратов</span><strong>{{ funnel.commercial.net_xtr|number }}</strong><small>до комиссии и пересчёта в валюту</small></article>
+        </section>
         <section class="metric-grid" aria-label="Воронка за 30 дней">
           {% for step in funnel.steps %}<article>
             <span>{{ step.label }}</span><strong>{{ step.users|number }}</strong>
-            <small>{{ step.conversion|round(1) }}% от открывших /start · {{ step.events }} событий</small>
+            <small>{{ step.conversion|round(1) }}% от /start · {{ step.events }} {{ 'записей' if step.source == 'ledger' else 'событий' }}</small>
           </article>{% endfor %}
         </section>
         <section class="panel">
@@ -163,16 +169,16 @@
         <section class="metric-grid" aria-label="Платёжные показатели">
           <article><span>Stars получено</span><strong>{{ billing.xtr_collected|number }}</strong><small>{{ billing.payments.get('paid', {}).get('count', 0) }} платежей</small></article>
           <article><span>Кредитов продано</span><strong>{{ billing.credits_sold|number }}</strong><small>{{ billing.credits_refunded|number }} возвращено</small></article>
-          <article><span>Refund-заявки</span><strong>{{ billing.pending_refunds|number }}</strong><small>{{ billing.xtr_refunded|number }} XTR возвращено</small></article>
+          <article><span>Подписки</span><strong>{{ billing.active_subscriptions|number }}</strong><small>{{ billing.pending_refunds|number }} refund-заявок</small></article>
           <article class="{{ 'accent-teal' if billing.enabled else 'accent-coral' }}"><span>Stars checkout</span><strong>{{ 'ON' if billing.enabled else 'OFF' }}</strong><small>{{ 'экономика настроена' if billing.unit_economics_configured else 'экономика не настроена' }}</small></article>
         </section>
 
         <section class="split-layout wide-left">
           <div class="panel">
             <div class="section-heading"><div><p class="eyebrow">Каталог</p><h2>Пакеты AI-кредитов</h2></div></div>
-            <div class="table-wrap"><table><thead><tr><th>ID</th><th>Название</th><th>Кредиты</th><th>Цена</th><th>Cost</th><th>Маржа</th><th>Статус</th></tr></thead><tbody>
-              {% for row in products %}<tr><td class="mono">{{ row.product_id }}</td><td><strong>{{ row.title }}</strong><span class="cell-sub">{{ row.description }}</span></td><td>{{ row.credits }}</td><td>{{ row.price_xtr }} XTR</td><td>{{ row.estimated_cost_micro_usd|usd }}</td><td>{{ (row.estimated_margin_bps / 100)|round(1) if row.estimated_margin_bps is not none else '—' }}%</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td></tr>
-              {% else %}<tr><td colspan="7" class="empty">Платёжных продуктов пока нет.</td></tr>{% endfor %}
+            <div class="table-wrap"><table><thead><tr><th>ID</th><th>Название</th><th>Режим</th><th>Кредиты</th><th>Цена</th><th>Cost</th><th>Маржа</th><th>Статус</th></tr></thead><tbody>
+              {% for row in products %}<tr><td class="mono">{{ row.product_id }}</td><td><strong>{{ row.title }}</strong><span class="cell-sub">{{ row.description }}</span></td><td>{{ row.billing_mode }}</td><td>{{ row.credits }}</td><td>{{ row.price_xtr }} XTR</td><td>{{ row.estimated_cost_micro_usd|usd }}</td><td>{{ (row.estimated_margin_bps / 100)|round(1) if row.estimated_margin_bps is not none else '—' }}%</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td></tr>
+              {% else %}<tr><td colspan="8" class="empty">Платёжных продуктов пока нет.</td></tr>{% endfor %}
             </tbody></table></div>
           </div>
           <div class="panel action-panel">
@@ -184,6 +190,8 @@
               <label>Описание<input name="description" maxlength="255" required></label>
               <label>AI-кредиты<input name="credits" type="number" min="1" required></label>
               <label>Цена, XTR<input name="price_xtr" type="number" min="1" required></label>
+              <label>Режим<select name="billing_mode"><option value="one_time">one_time</option><option value="subscription">subscription</option></select></label>
+              <label>Период подписки, сек.<input name="subscription_period_seconds" type="number" value="0" min="0"><small>Для subscription: 2592000</small></label>
               <label>Себестоимость, micro USD<input name="estimated_cost_micro_usd" type="number" min="0" value="0" required></label>
               <label>Минимальная маржа, bps<input name="target_margin_bps" type="number" min="0" max="10000" value="0" required></label>
               <label>Порядок<input name="display_order" type="number" value="0" required></label>
@@ -198,6 +206,14 @@
           <div class="table-wrap"><table><thead><tr><th>Время</th><th>Payment ID</th><th>User ID</th><th>Продукт</th><th>Кредиты</th><th>Stars</th><th>Статус</th><th>Refund</th></tr></thead><tbody>
             {% for row in payments %}<tr><td>{{ row.received_at|datetime }}</td><td class="mono">{{ row.payment_id }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.product_title }}</td><td>{{ row.credits }}</td><td>{{ row.total_amount }} XTR</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td><td>{% if row.status == 'paid' %}<form method="post" action="{{ url_for('request_billing_refund') }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="payment_id" value="{{ row.payment_id }}"><input name="reason" minlength="3" maxlength="255" placeholder="Причина" required><button type="submit" class="compact-button">Запросить</button></form>{% else %}—{% endif %}</td></tr>
             {% else %}<tr><td colspan="8" class="empty">Stars-платежей пока нет.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Recurring Stars</p><h2>Подписки</h2></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Создана</th><th>ID</th><th>User ID</th><th>Продукт</th><th>Кредиты</th><th>Цена</th><th>Оплачено до</th><th>Статус</th></tr></thead><tbody>
+            {% for row in subscriptions %}<tr><td>{{ row.created_at|datetime }}</td><td class="mono">{{ row.subscription_id }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.product_title }}</td><td>{{ row.credits }}</td><td>{{ row.amount_xtr }} XTR</td><td>{{ row.current_period_end|datetime }}</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td></tr>
+            {% else %}<tr><td colspan="8" class="empty">Stars-подписок пока нет.</td></tr>{% endfor %}
           </tbody></table></div>
         </section>
 
@@ -260,20 +276,66 @@
         </section>
       {% endif %}
 
+      {% if tab == 'voice' %}
+        <section class="metric-grid" aria-label="Голосовая практика">
+          <article><span>Сессии</span><strong>{{ voice.sessions }}</strong><small>{{ voice.active_sessions }} активных</small></article>
+          <article><span>Реплики</span><strong>{{ voice.turns }}</strong><small>аудио не хранится</small></article>
+          <article><span>Точное распознавание</span><strong>{{ voice.feedback.get('exact', 0) }}</strong><small>{{ voice.feedback.get('close', 0) }} близких</small></article>
+          <article><span>Среднее совпадение</span><strong>{{ voice.average_similarity_percent|round(1) }}%</strong><small>текст STT, не оценка акцента</small></article>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Последние 100</p><h2>Результаты распознавания</h2></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Время</th><th>User ID</th><th>Режим</th><th>Набор</th><th>Ожидалось</th><th>Совпало</th><th>Результат</th><th>Совпадение</th><th>Удаление</th></tr></thead><tbody>
+            {% for row in voice_turns %}<tr><td>{{ row.created_at|datetime }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.mode }}</td><td>{{ row.pack_id }}</td><td class="mono">{{ row.expected_vocabulary_id[:12] }}</td><td class="mono">{{ row.matched_vocabulary_id[:12] }}</td><td><span class="status {{ row.feedback_code }}">{{ row.feedback_code }}</span></td><td>{{ row.similarity_percent|round(1) }}%</td><td>{{ row.expires_at|datetime }}</td></tr>
+            {% else %}<tr><td colspan="9" class="empty">Голосовых реплик пока нет.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+      {% endif %}
+
+      {% if tab == 'safety' %}
+        <section class="metric-grid" aria-label="Показатели безопасности">
+          <article><span>События, 24 часа</span><strong>{{ safety.events_24h }}</strong><small>без текста сообщений</small></article>
+          <article><span>Пользователи, 24 часа</span><strong>{{ safety.affected_users_24h }}</strong><small>сработали защитные правила</small></article>
+          <article><span>Активные блокировки</span><strong>{{ safety.active_blocks }}</strong><small>временные rate limits</small></article>
+          <article><span>Удалённые профили</span><strong>{{ safety.erased_users }}</strong><small>учебные данные стёрты</small></article>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Последние 100</p><h2>Срабатывания защиты</h2></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Время</th><th>User ID</th><th>Контур</th><th>Правило</th><th>Лимит</th><th>Зафиксировано</th></tr></thead><tbody>
+            {% for row in abuse_events %}<tr><td>{{ row.occurred_at|datetime }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.scope }}</td><td class="mono">{{ row.rule }}</td><td>{{ row.limit_value }}</td><td>{{ row.observed_count }}</td></tr>
+            {% else %}<tr><td colspan="6" class="empty">Срабатываний пока нет.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Политика</p><h2>Хранение и удаление</h2></div></div>
+          <dl class="key-values">
+            <div><dt>Analytics events</dt><dd>{{ retention.analytics_days }} дней</dd></div>
+            <div><dt>AI usage details</dt><dd>{{ retention.ai_usage_days }} дней</dd></div>
+            <div><dt>Abuse events</dt><dd>{{ retention.abuse_days }} дней</dd></div>
+            <div><dt>Rate-limit buckets</dt><dd>{{ retention.rate_limit_days }} дней</dd></div>
+            <div><dt>Voice transcripts</dt><dd>{{ retention.voice_transcript_days }} дней</dd></div>
+          </dl>
+        </section>
+      {% endif %}
+
       {% if tab == 'diagnostics' %}
         <section class="panel">
           <div class="section-heading"><div><p class="eyebrow">Readiness</p><h2>Состояние компонентов</h2></div><a href="/health">Health endpoint</a></div>
           <dl class="diagnostic-list">
             {% for label, value, ok in [
               ('База данных', diagnostics.database, true),
-              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0006_telegram_stars_billing'),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0010_launch_readiness'),
               ('Telegram polling', diagnostics.bot_state ~ ' · ' ~ diagnostics.bot_reason, diagnostics.bot_ready),
               ('Heartbeat age', (diagnostics.bot_heartbeat_age_seconds|round(1)|string ~ ' s') if diagnostics.bot_heartbeat_age_seconds is not none else 'missing', diagnostics.bot_ready),
               ('Bot release', diagnostics.bot_release_sha, diagnostics.bot_release_sha != 'unknown'),
               ('Access mode', diagnostics.bot_access_mode, diagnostics.bot_access_mode in ['allowlist','pilot','public']),
               ('AI tutor enabled', diagnostics.ai_enabled, diagnostics.ai_enabled|lower in ['1','true','yes','on']),
               ('AI provider configured', 'yes' if diagnostics.ai_provider_configured else 'no', diagnostics.ai_provider_configured),
+              ('AI pricing', 'configured' if diagnostics.ai_pricing_configured else 'missing', diagnostics.ai_pricing_configured),
+              ('Voice tutor', diagnostics.voice_enabled ~ ' · ' ~ diagnostics.voice_model, diagnostics.voice_enabled|lower in ['1','true','yes','on']),
+              ('Voice consent', diagnostics.voice_consent_version, diagnostics.voice_consent_version != 'unversioned'),
               ('Telegram Stars', 'enabled' if diagnostics.stars_enabled else 'disabled', diagnostics.stars_enabled),
+              ('Billing terms', diagnostics.billing_terms_version, diagnostics.billing_terms_version != 'unversioned'),
               ('Stars unit economics', 'configured' if diagnostics.stars_unit_economics else 'missing', diagnostics.stars_unit_economics),
               ('Admin binding', diagnostics.admin_host ~ ':' ~ diagnostics.admin_port, diagnostics.admin_host in ['127.0.0.1','localhost','::1']),
               ('Release SHA', diagnostics.release_sha, diagnostics.release_sha != 'not set'),

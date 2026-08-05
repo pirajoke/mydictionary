@@ -1,0 +1,80 @@
+# Launch Readiness Gate
+
+Stage 7 converts the existing AI, voice, and Telegram Stars stack into a
+fail-closed launch candidate. It does not enable a feature flag, call a paid
+provider, issue an invoice, refund a payment, merge a pull request, or deploy a
+release.
+
+## Enforced gates
+
+| Surface | Gate |
+|---|---|
+| Stars checkout | The learner must accept the current `BILLING_TERMS_VERSION` before products, order creation, and pre-checkout. Each order snapshots that version. |
+| Voice processing | The learner must accept the current `VOICE_CONSENT_VERSION` before a session and again before Telegram audio is downloaded. The consent can be revoked in `/privacy`. |
+| AI cost accounting | Enabling text AI requires positive input, cached-input, cache-write, and output prices. Zero-cost accounting cannot start. |
+| Voice cost accounting | Enabling voice requires a positive per-minute estimate, consent version, and processing notice. |
+| Stars reconciliation | Refund direction is compared with local state. A bounded, incomplete remote history is reported as truncated and cannot mark old local payments missing. |
+| Product analytics | Intent remains a privacy-safe event; orders, payments, completed AI use, repeat purchases, and Stars totals are derived from durable ledgers. |
+| Language quality | Deterministic AI and voice contracts run for English, French, German, Japanese, Arabic, Chinese, Russian, and Spanish. |
+| Dependencies | CI and the Mac mini release builder install the exact `requirements.lock` resolution. |
+
+Billing acceptance is retained with the mandatory financial record after a
+learning-data erasure. Voice consent is learning-product data and is deleted.
+Changing a consent version makes the previous acceptance insufficient for new
+processing.
+
+## Required runtime review
+
+Keep all feature flags off while deploying migration `0010_launch_readiness`.
+Before any later activation, an operator must review and set:
+
+```text
+AI_INPUT_USD_PER_MILLION=<positive reviewed rate>
+AI_CACHED_INPUT_USD_PER_MILLION=<positive reviewed rate>
+AI_CACHE_WRITE_USD_PER_MILLION=<positive conservative rate>
+AI_OUTPUT_USD_PER_MILLION=<positive reviewed rate>
+
+VOICE_COST_MICRO_USD_PER_MINUTE=<positive conservative estimate>
+VOICE_CONSENT_VERSION=<immutable version identifier>
+VOICE_PROCESSING_NOTICE=<reviewed learner disclosure>
+
+BILLING_TERMS_VERSION=<immutable version identifier>
+BILLING_TERMS_TEXT=<reviewed learner terms>
+BILLING_SUPPORT_CONTACT=<monitored contact>
+BILLING_NET_MICRO_USD_PER_XTR=<conservative net value>
+```
+
+Use a conservative positive cache-write rate even when the selected provider
+does not currently report that token category. This prevents a future provider
+response shape from creating an unpriced cost path.
+
+## Release sequence
+
+1. Confirm the stacked PR order and green CI.
+2. Build from an exact reviewed merge SHA using `requirements.lock`.
+3. Create and validate a PostgreSQL custom-format backup.
+4. Stop bot and admin, activate the candidate, and apply migration `0010`.
+5. Restart with AI, voice, and Stars still disabled; prove local/public health,
+   Telegram heartbeat, admin diagnostics, content checks, and privacy erasure.
+6. Admit a bounded pilot through the existing access control.
+7. Under separate approval, run one consented test account through all eight
+   languages without enabling public access.
+8. Under separate approval, run a low-value Stars purchase, reconciliation,
+   refund, and subscription-cancel test.
+9. Enable paid access only after measured provider cost, support load, refund
+   rate, and package margin satisfy the configured product floor.
+
+## Stop conditions
+
+Do not enable paid AI when any of these is true:
+
+- the admin diagnostics show missing pricing or unversioned consent documents;
+- a reconciliation issue is unresolved, including remote history truncation;
+- a product has no positive measured cost or misses its margin floor;
+- any launch-language deterministic evaluation fails;
+- backup verification, migration, heartbeat, local health, or public health fails;
+- payment support is unmonitored or the approved terms text is unavailable.
+
+Turning checkout off prevents new invoices but does not disable fulfillment of
+an already accepted successful payment. Never remove the payload secret or roll
+the database back after payments without completing reconciliation.

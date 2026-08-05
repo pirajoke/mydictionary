@@ -91,6 +91,12 @@ def build_process(
             ).strip(),
             "AI_TUTOR_ENABLED": source.get("AI_TUTOR_ENABLED", "false").strip(),
             "AI_INITIAL_CREDITS": source.get("AI_INITIAL_CREDITS", "0").strip(),
+            "VOICE_TUTOR_ENABLED": source.get(
+                "VOICE_TUTOR_ENABLED", "false"
+            ).strip(),
+            "VOICE_TRANSCRIPTION_MODEL": source.get(
+                "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
+            ).strip(),
             "TELEGRAM_STARS_ENABLED": source.get(
                 "TELEGRAM_STARS_ENABLED", "false"
             ).strip(),
@@ -101,8 +107,14 @@ def build_process(
         "BILLING_PAYLOAD_SECRET",
         "BILLING_SUPPORT_CONTACT",
         "BILLING_TERMS_TEXT",
+        "BILLING_TERMS_VERSION",
         "BILLING_ORDER_TTL_SECONDS",
         "BILLING_NET_MICRO_USD_PER_XTR",
+        "AI_INPUT_USD_PER_MILLION",
+        "AI_CACHED_INPUT_USD_PER_MILLION",
+        "AI_CACHE_WRITE_USD_PER_MILLION",
+        "AI_OUTPUT_USD_PER_MILLION",
+        "VOICE_CONSENT_VERSION",
     ):
         if source.get(name):
             environment[name] = str(source[name]).strip()
@@ -112,6 +124,17 @@ def build_process(
         raise RuntimeError("Admin host must remain loopback")
     if environment["AI_TUTOR_ENABLED"].lower() not in {"0", "false", "no", "off"}:
         raise RuntimeError("Versioned admin launcher refuses to enable AI")
+    if environment["VOICE_TUTOR_ENABLED"].lower() not in {
+        "0",
+        "1",
+        "false",
+        "true",
+        "no",
+        "yes",
+        "off",
+        "on",
+    }:
+        raise RuntimeError("VOICE_TUTOR_ENABLED must be a boolean")
     if environment["TELEGRAM_STARS_ENABLED"].lower() not in {
         "0",
         "1",
