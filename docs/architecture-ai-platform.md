@@ -39,10 +39,11 @@ the bot transport; Telegram Stars do not require a public payment webhook.
   deterministic vocabulary ID derived from target text plus Russian meaning.
   The current index is metadata and may change when content is reordered.
 - `data_imports` makes one-time legacy imports idempotent.
-- `ai_allowances` owns non-financial pilot quota reservations.
+- `ai_allowances` retains pre-Stage-4 pilot history.
+- `ai_wallets` owns current paid or granted AI credit balances and reservations.
 - `ai_usage` owns privacy-minimized provider usage and request lifecycle data.
-- Later stages add wallets, append-only credit ledger, products, orders,
-  payments, subscriptions, events, and admin audit tables.
+- `billing_products`, `payment_orders`, `stars_payments`,
+  `billing_credit_ledger`, and `refund_requests` own Stage-4 commerce state.
 
 Private conversation content, production exports, credentials, and personal
 learning history must never enter the public repository.
@@ -85,6 +86,6 @@ key so restarts cannot duplicate or overwrite the migrated state.
 Stage 2 adds a provider-neutral AI gateway, active-block grounding, pilot quota
 reservations, and usage records. It remains feature-flagged off by default.
 Stage 3 adds the admin server and managed pilot admission. Stage 4 replaces
-pilot allowance semantics with an append-only financial credit ledger and
-Telegram Stars fulfillment. AI code must never write payment status, roles,
-access state, or computed learning scores directly.
+pilot allowance consumption with a wallet, append-only financial credit ledger,
+and idempotent Telegram Stars fulfillment. AI code never writes payment status,
+roles, access state, or computed learning scores directly.

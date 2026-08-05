@@ -85,6 +85,25 @@ For a schema change the deployer performs this sequence:
 7. bootstrap bot and admin
 8. prove candidate readiness before updating `.deployed-sha`
 
+### Telegram Stars migration
+
+Migration `0006_telegram_stars_billing` is a protected operator deployment.
+Before applying it, back up PostgreSQL and verify that the current bot and admin
+remain healthy. Deploy with `TELEGRAM_STARS_ENABLED=false`; this creates no
+invoice, charge, refund, or AI request.
+
+After migration, verify the billing admin tab, local reconciliation, and wallet
+backfill. Product rows start as draft and no launch price is seeded. Enabling
+Stars is a later production action requiring reviewed unit economics, monitored
+`/paysupport`, configured terms, a retained HMAC secret, and a separately
+approved real low-value payment/refund smoke test.
+
+If checkout must be contained, set `TELEGRAM_STARS_ENABLED=false` and restart
+bot and admin. Keep `BILLING_PAYLOAD_SECRET` unchanged so a successful payment
+for an already-issued order can still be validated and fulfilled. Do not roll
+the database back after accepted payments; reconcile orders, charges, ledger,
+and refund holds first.
+
 ### Backup policy
 
 - Run `mydictionary_backup.py` once per day from a dedicated launchd service.

@@ -91,15 +91,38 @@ def build_process(
             ).strip(),
             "AI_TUTOR_ENABLED": source.get("AI_TUTOR_ENABLED", "false").strip(),
             "AI_INITIAL_CREDITS": source.get("AI_INITIAL_CREDITS", "0").strip(),
+            "TELEGRAM_STARS_ENABLED": source.get(
+                "TELEGRAM_STARS_ENABLED", "false"
+            ).strip(),
             "RELEASE_SHA": release_sha,
         }
     )
+    for name in (
+        "BILLING_PAYLOAD_SECRET",
+        "BILLING_SUPPORT_CONTACT",
+        "BILLING_TERMS_TEXT",
+        "BILLING_ORDER_TTL_SECONDS",
+        "BILLING_NET_MICRO_USD_PER_XTR",
+    ):
+        if source.get(name):
+            environment[name] = str(source[name]).strip()
     if len(environment["ADMIN_SESSION_SECRET"]) < 32:
         raise RuntimeError("Admin session secret must contain at least 32 characters")
     if environment["ADMIN_HOST"] not in {"127.0.0.1", "localhost", "::1"}:
         raise RuntimeError("Admin host must remain loopback")
     if environment["AI_TUTOR_ENABLED"].lower() not in {"0", "false", "no", "off"}:
         raise RuntimeError("Versioned admin launcher refuses to enable AI")
+    if environment["TELEGRAM_STARS_ENABLED"].lower() not in {
+        "0",
+        "1",
+        "false",
+        "true",
+        "no",
+        "yes",
+        "off",
+        "on",
+    }:
+        raise RuntimeError("TELEGRAM_STARS_ENABLED must be a boolean")
     if environment["ADMIN_COOKIE_SECURE"].lower() not in {
         "0",
         "1",

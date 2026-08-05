@@ -19,12 +19,20 @@ from pathlib import Path
 from urllib.parse import quote
 
 import yaml
-from telegram import Bot, BotCommand, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram import (
+    Bot,
+    BotCommand,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    LabeledPrice,
+    ReplyKeyboardMarkup,
+    Update,
+)
 from telegram.error import Conflict, TelegramError
 from telegram.helpers import escape_markdown
 from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, PollAnswerHandler, filters, ContextTypes
+    Application, CommandHandler, CallbackQueryHandler, ContextTypes,
+    MessageHandler, PollAnswerHandler, PreCheckoutQueryHandler, filters
 )
 
 from tts import get_audio
@@ -45,6 +53,12 @@ from mydictionary.ai_tutor import (
     render_tutor_answer,
 )
 from mydictionary.admin_store import AdminStore
+from mydictionary.billing import (
+    BillingConfigurationError,
+    BillingService,
+    BillingSettings,
+    BillingValidationError,
+)
 from mydictionary.bot_profile import render_start_text
 from mydictionary.catalog import ContentPack, load_catalog
 from mydictionary.content import (
@@ -123,6 +137,11 @@ def _configured_access_mode() -> str:
 
 BOT_ACCESS_MODE = _configured_access_mode()
 AI_SETTINGS = AITutorSettings.from_env()
+BILLING_SETTINGS = BillingSettings.from_env()
+if BILLING_SETTINGS.enabled and not AI_SETTINGS.enabled:
+    raise BillingConfigurationError(
+        "Telegram Stars checkout requires AI_TUTOR_ENABLED=true"
+    )
 BOT_HEARTBEAT = BotHeartbeat(
     heartbeat_path(DATA_DIR),
     release_sha=os.environ.get("RELEASE_SHA", BASE_DIR.resolve().name),
@@ -174,6 +193,7 @@ PACK_DICTS: dict[str, list[dict]] = {
 _FALLBACK_PROGRESS: dict = load_progress()
 _STORE: DatabaseStore | None = None
 _AI_TUTOR: AITutorService | None = None
+_BILLING: BillingService | None = None
 
 
 def database_url() -> str:
@@ -213,6 +233,13 @@ def get_ai_tutor_service() -> AITutorService:
     if _AI_TUTOR is None:
         _AI_TUTOR = build_openai_tutor_service(get_store(), AI_SETTINGS)
     return _AI_TUTOR
+
+
+def get_billing_service() -> BillingService:
+    global _BILLING
+    if _BILLING is None:
+        _BILLING = BillingService(get_store(), BILLING_SETTINGS)
+    return _BILLING
 
 
 @dataclass
@@ -1176,7 +1203,9 @@ async def send_ai_tutor_answer(
             context=tutor_context,
         )
     except AIQuotaExceeded:
-        await message.reply_text("Пилотные AI-кредиты закончились.")
+        await message.reply_text(
+            "AI-кредиты закончились. Проверь баланс через /ai_stats или открой /buy."
+        )
         return
     except AIConfigurationError:
         logger.exception("AI tutor configuration error")
@@ -1231,17 +1260,139 @@ async def cmd_ai_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         int(update.effective_user.id),
         initial_credits=AI_SETTINGS.initial_credits,
     )
-    cost_usd = summary["cost_micro_usd"] / 1_000_000
     await update.message.reply_text(
         "AI-использование\n\n"
         f"Доступно кредитов: {summary['available_credits']}\n"
         f"Зарезервировано: {summary['reserved_credits']}\n"
         f"Использовано: {summary['spent_credits']}\n"
         f"Запросы: {summary['completed_requests']} успешно, "
-        f"{summary['failed_requests']} с возвратом\n"
-        f"Токены провайдера: {summary['total_tokens']}\n"
-        f"Расчётная стоимость: ${cost_usd:.6f}"
+        f"{summary['failed_requests']} с возвратом"
     )
+
+
+@auth
+async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not BILLING_SETTINGS.enabled:
+        await update.message.reply_text("Покупка AI-кредитов пока недоступна.")
+        return
+    products = await asyncio.to_thread(get_billing_service().active_products)
+    if not products:
+        await update.message.reply_text("Пакеты AI-кредитов пока не опубликованы.")
+        return
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    f"{product['title']} · {product['price_xtr']} ⭐",
+                    callback_data=f"buy:{product['product_id']}",
+                )
+            ]
+            for product in products
+        ]
+    )
+    await update.message.reply_text(
+        "Выбери пакет AI-кредитов:", reply_markup=keyboard
+    )
+
+
+@auth
+async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    product_id = query.data.split(":", 1)[1]
+    try:
+        order = await asyncio.to_thread(
+            get_billing_service().create_order,
+            user_id=int(update.effective_user.id),
+            product_id=product_id,
+        )
+    except (BillingConfigurationError, BillingValidationError, ValueError):
+        logger.warning("Stars invoice creation rejected for product=%s", product_id)
+        await query.message.reply_text("Этот пакет сейчас недоступен.")
+        return
+    await context.bot.send_invoice(
+        chat_id=query.message.chat_id,
+        title=order.title,
+        description=order.description,
+        payload=order.payload,
+        currency="XTR",
+        prices=[
+            LabeledPrice(
+                label=f"{order.credits} AI-кредитов",
+                amount=order.amount_xtr,
+            )
+        ],
+    )
+
+
+async def pre_checkout_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.pre_checkout_query
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(
+                get_billing_service().validate_pre_checkout,
+                user_id=int(query.from_user.id),
+                payload=query.invoice_payload,
+                currency=query.currency,
+                total_amount=query.total_amount,
+            ),
+            timeout=8,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Stars pre-checkout rejected: error_type=%s", type(exc).__name__
+        )
+        await query.answer(
+            ok=False,
+            error_message="Не удалось подтвердить цену. Создай новый счёт через /buy.",
+        )
+        return
+    await query.answer(ok=True)
+
+
+async def successful_payment_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    payment = update.message.successful_payment
+    try:
+        result = await asyncio.to_thread(
+            get_billing_service().fulfill_successful_payment,
+            user_id=int(update.effective_user.id),
+            payload=payment.invoice_payload,
+            currency=payment.currency,
+            total_amount=payment.total_amount,
+            telegram_payment_charge_id=payment.telegram_payment_charge_id,
+            provider_payment_charge_id=payment.provider_payment_charge_id,
+        )
+    except Exception as exc:
+        logger.error("Stars fulfillment failed: error_type=%s", type(exc).__name__)
+        await update.message.reply_text(
+            "Платёж получен, но начисление требует проверки. Напиши /paysupport."
+        )
+        return
+    if result.created:
+        await update.message.reply_text(
+            f"Оплата подтверждена. Начислено {result.credits} AI-кредитов.\n"
+            f"Доступно: {result.available_credits}."
+        )
+    else:
+        await update.message.reply_text(
+            f"Этот платёж уже учтён. Доступно: {result.available_credits}."
+        )
+
+
+async def cmd_terms(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(BILLING_SETTINGS.terms_text)
+
+
+async def cmd_paysupport(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    contact = BILLING_SETTINGS.support_contact
+    if contact:
+        await update.message.reply_text(f"Поддержка по платежам: {contact}")
+    else:
+        await update.message.reply_text("Платежи пока выключены.")
 
 @auth
 async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2623,6 +2774,9 @@ BOT_COMMANDS = [
     BotCommand("flash", "Весь словарь: карточки"),
     BotCommand("ai", "AI-репетитор по активному блоку"),
     BotCommand("ai_stats", "AI-кредиты и использование"),
+    BotCommand("buy", "Купить AI-кредиты за Stars"),
+    BotCommand("terms", "Условия AI-кредитов"),
+    BotCommand("paysupport", "Поддержка по платежам"),
     BotCommand("lang", "Сменить язык"),
     BotCommand("stats", "Статистика"),
     BotCommand("help", "Помощь"),
@@ -2694,10 +2848,18 @@ async def manual_polling():
     app.add_handler(CommandHandler("lang", cmd_lang))
     app.add_handler(CommandHandler("ai", cmd_ai))
     app.add_handler(CommandHandler("ai_stats", cmd_ai_stats))
+    app.add_handler(CommandHandler("buy", cmd_buy))
+    app.add_handler(CommandHandler("terms", cmd_terms))
+    app.add_handler(CommandHandler("paysupport", cmd_paysupport))
+    app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
+    app.add_handler(
+        MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler)
+    )
 
     # Welcome menu callbacks
     app.add_handler(CallbackQueryHandler(onboarding_cb, pattern=r"^onboarding:"))
     app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
+    app.add_handler(CallbackQueryHandler(buy_product_cb, pattern=r"^buy:"))
 
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))

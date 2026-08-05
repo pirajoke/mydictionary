@@ -55,6 +55,7 @@ ADMIN_TABS = {
     "funnel",
     "learning",
     "ai",
+    "billing",
     "content",
     "profile",
     "diagnostics",
@@ -391,6 +392,7 @@ def create_app(
             "search": search,
             "profile": admin_store.get_settings(),
             "dashboard": admin_store.dashboard(),
+            "admin_action_id": secrets.token_urlsafe(18),
         }
         if tab == "dashboard":
             context["users"] = admin_store.users(limit=8)
@@ -407,6 +409,13 @@ def create_app(
             context["ai"] = admin_store.ai_overview()
             context["usage"] = admin_store.recent_ai_usage(limit=100)
             context["ledger"] = admin_store.credit_ledger(limit=100)
+        elif tab == "billing":
+            context["billing"] = admin_store.billing_overview()
+            context["products"] = admin_store.billing_products()
+            context["orders"] = admin_store.recent_payment_orders(limit=100)
+            context["payments"] = admin_store.stars_payments(limit=100)
+            context["refunds"] = admin_store.refund_requests(limit=100)
+            context["reconciliation"] = admin_store.billing_reconciliation()
         elif tab == "content":
             context["content"] = _content_overview()
         elif tab == "diagnostics":
@@ -425,6 +434,10 @@ def create_app(
                 "migration": revision,
                 "ai_enabled": os.environ.get("AI_TUTOR_ENABLED", "false"),
                 "ai_provider_configured": bool(os.environ.get("OPENAI_API_KEY")),
+                "stars_enabled": admin_store.billing_settings.enabled,
+                "stars_unit_economics": (
+                    admin_store.billing_settings.net_micro_usd_per_xtr > 0
+                ),
                 "admin_host": app.config["ADMIN_HOST"],
                 "admin_port": app.config["ADMIN_PORT"],
                 "release_sha": os.environ.get("RELEASE_SHA", "not set"),
@@ -466,11 +479,55 @@ def create_app(
                 delta=delta,
                 reason=str(request.form.get("reason") or ""),
                 actor=current_actor(),
+                idempotency_key=(
+                    "admin:" + str(request.form.get("action_id") or "").strip()
+                    if request.form.get("action_id")
+                    else None
+                ),
             )
             flash(f"Новый доступный баланс пользователя {user_id}: {balance}.", "success")
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, RuntimeError) as exc:
             flash(str(exc), "error")
         return redirect(url_for("admin_index", tab="ai"))
+
+    @app.post("/admin/billing/products")
+    @login_required
+    def update_billing_product():
+        try:
+            product = admin_store.upsert_billing_product(
+                product_id=str(request.form.get("product_id") or ""),
+                title=str(request.form.get("title") or ""),
+                description=str(request.form.get("description") or ""),
+                credits=int(str(request.form.get("credits") or "")),
+                price_xtr=int(str(request.form.get("price_xtr") or "")),
+                status=str(request.form.get("status") or "draft"),
+                estimated_cost_micro_usd=int(
+                    str(request.form.get("estimated_cost_micro_usd") or "0")
+                ),
+                target_margin_bps=int(
+                    str(request.form.get("target_margin_bps") or "0")
+                ),
+                display_order=int(str(request.form.get("display_order") or "0")),
+                actor=current_actor(),
+            )
+            flash(f"Продукт {product['product_id']} сохранён.", "success")
+        except (TypeError, ValueError) as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("admin_index", tab="billing"))
+
+    @app.post("/admin/billing/refunds")
+    @login_required
+    def request_billing_refund():
+        try:
+            refund_id = admin_store.request_stars_refund(
+                payment_id=str(request.form.get("payment_id") or ""),
+                reason=str(request.form.get("reason") or ""),
+                actor=current_actor(),
+            )
+            flash(f"Refund-заявка {refund_id} создана.", "success")
+        except (TypeError, ValueError, RuntimeError) as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("admin_index", tab="billing"))
 
     @app.post("/admin/users/<int:user_id>/access")
     @login_required
@@ -528,6 +585,8 @@ def create_app(
             "learning": admin_store.word_progress_export,
             "ai-usage": admin_store.ai_usage_export,
             "credit-ledger": lambda: admin_store.credit_ledger(limit=10000),
+            "payment-orders": admin_store.payment_orders_export,
+            "stars-payments": admin_store.stars_payments_export,
             "analytics-events": admin_store.product_events_export,
         }
         if kind not in exporters:
