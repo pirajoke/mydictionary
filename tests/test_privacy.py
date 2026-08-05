@@ -20,6 +20,8 @@ from mydictionary.storage import (
     DatabaseStore,
     User,
     UserProgress,
+    VoiceSession,
+    VoiceTurn,
 )
 
 
@@ -75,6 +77,40 @@ class PrivacyTest(unittest.TestCase):
                         created_at=old,
                     )
                 )
+            session.add(
+                VoiceSession(
+                    session_id="voice-old",
+                    telegram_user_id=self.user_id,
+                    pack_id="basic-en-100",
+                    language="en",
+                    topic="daily",
+                    block_session_id=None,
+                    mode="pronunciation",
+                    vocabulary_ids_json='["' + "a" * 64 + '"]',
+                    status="completed",
+                    turn_count=1,
+                    next_position=1,
+                    expires_at=old,
+                    created_at=old,
+                    updated_at=old,
+                    ended_at=old,
+                )
+            )
+            session.add(
+                VoiceTurn(
+                    turn_id="voice-turn-old",
+                    session_id="voice-old",
+                    telegram_user_id=self.user_id,
+                    request_id=None,
+                    expected_vocabulary_id="a" * 64,
+                    matched_vocabulary_id="a" * 64,
+                    transcript="hello",
+                    feedback_code="exact",
+                    similarity_bps=10000,
+                    created_at=old,
+                    expires_at=old,
+                )
+            )
         policy = RetentionPolicy(30, 30, 30, 1)
         now = datetime(2026, 8, 5, tzinfo=timezone.utc)
 
@@ -83,10 +119,14 @@ class PrivacyTest(unittest.TestCase):
 
         self.assertEqual(preview.analytics_events, 1)
         self.assertEqual(preview.ai_usage, 1)
+        self.assertEqual(preview.voice_turns, 1)
+        self.assertEqual(preview.voice_sessions, 1)
         self.assertEqual(applied, preview)
         with self.store.Session() as session:
             self.assertIsNotNone(session.get(AIUsage, "reserved"))
             self.assertIsNone(session.get(AIUsage, "usage-old"))
+            self.assertIsNone(session.get(VoiceTurn, "voice-turn-old"))
+            self.assertIsNone(session.get(VoiceSession, "voice-old"))
 
     def test_erasure_removes_learning_data_and_preserves_financial_ledger(self):
         with self.store.Session.begin() as session:

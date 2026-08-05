@@ -45,10 +45,12 @@ must first be recovered by the normal AI reservation recovery path.
 | completed and failed AI usage | 365 days |
 | abuse events | 180 days |
 | inactive rate-limit buckets | 7 days |
+| voice transcripts and completed voice sessions | 30 days |
 
 The corresponding environment variables are `RETENTION_ANALYTICS_DAYS`,
 `RETENTION_AI_USAGE_DAYS`, `RETENTION_ABUSE_DAYS`, and
 `RETENTION_RATE_LIMIT_DAYS`.
+Voice transcript expiry uses `VOICE_TRANSCRIPT_RETENTION_DAYS`.
 
 The `/privacy` flow erases learning progress, product analytics, detailed AI
 usage, imports, rate-limit state, and Telegram profile fields. It blocks the

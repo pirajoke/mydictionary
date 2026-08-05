@@ -236,6 +236,85 @@ class AbuseEvent(Base):
     )
 
 
+class VoiceSession(Base):
+    __tablename__ = "voice_sessions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'completed', 'cancelled', 'expired')",
+            name="ck_voice_session_status",
+        ),
+        CheckConstraint(
+            "mode IN ('pronunciation', 'conversation')",
+            name="ck_voice_session_mode",
+        ),
+        CheckConstraint("turn_count >= 0", name="ck_voice_session_turn_count"),
+        CheckConstraint("next_position >= 0", name="ck_voice_session_position"),
+    )
+
+    session_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    pack_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    language: Mapped[str] = mapped_column(String(16), nullable=False)
+    topic: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    block_session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    vocabulary_ids_json: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    turn_count: Mapped[int] = mapped_column(Integer, default=0)
+    next_position: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class VoiceTurn(Base):
+    __tablename__ = "voice_turns"
+    __table_args__ = (
+        CheckConstraint(
+            "feedback_code IN ('exact', 'close', 'retry')",
+            name="ck_voice_turn_feedback",
+        ),
+        CheckConstraint(
+            "similarity_bps >= 0 AND similarity_bps <= 10000",
+            name="ck_voice_turn_similarity",
+        ),
+        UniqueConstraint("request_id", name="uq_voice_turn_request"),
+    )
+
+    turn_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("voice_sessions.session_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    request_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("ai_usage.request_id", ondelete="SET NULL"), nullable=True
+    )
+    expected_vocabulary_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matched_vocabulary_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    transcript: Mapped[str] = mapped_column(Text, nullable=False)
+    feedback_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    similarity_bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class DataImport(Base):
     __tablename__ = "data_imports"
 
@@ -1250,55 +1329,188 @@ class DatabaseStore:
                 .where(AIUsage.request_id == request_id)
                 .with_for_update()
             ).scalar_one_or_none()
-            if row is None or row.status != "reserved":
-                raise AIUsageStateError("AI request is not reserved")
-            if not 0 <= billed_credits <= row.reserved_credits:
-                raise ValueError("Billed credits must fit the reservation")
-            wallet = session.execute(
-                select(AIWallet)
-                .where(AIWallet.telegram_user_id == row.telegram_user_id)
-                .with_for_update()
-            ).scalar_one()
-            if wallet.reserved_credits < row.reserved_credits:
-                raise AIUsageStateError("AI wallet cannot settle reservation")
-            wallet.reserved_credits -= row.reserved_credits
-            wallet.balance_credits -= billed_credits
-            wallet.spent_credits += billed_credits
-            wallet.updated_at = utcnow()
-            if billed_credits:
-                session.add(
-                    BillingCreditLedger(
-                        entry_id=str(uuid4()),
-                        telegram_user_id=row.telegram_user_id,
-                        delta=-billed_credits,
-                        balance_after=wallet.balance_credits,
-                        entry_type="ai_usage",
-                        idempotency_key=f"ai-usage:{request_id}",
-                        reference_type="ai_usage",
-                        reference_id=request_id,
-                        reason=f"AI action: {row.action}"[:255],
-                        actor="system",
-                    )
-                )
+            return self._settle_ai_usage_locked(
+                session,
+                row,
+                request_id=request_id,
+                billed_credits=billed_credits,
+                provider_response_id=provider_response_id,
+                model=model,
+                usage=usage,
+                cost_micro_usd=cost_micro_usd,
+                latency_ms=latency_ms,
+            )
 
-            row.status = "completed"
-            row.billed_credits = billed_credits
-            row.provider_response_id = provider_response_id
-            row.model = model
-            for field in (
-                "input_tokens",
-                "cached_input_tokens",
-                "cache_write_tokens",
-                "output_tokens",
-                "reasoning_tokens",
-                "total_tokens",
+    def _settle_ai_usage_locked(
+        self,
+        session: Any,
+        row: AIUsage | None,
+        *,
+        request_id: str,
+        billed_credits: int,
+        provider_response_id: str | None,
+        model: str,
+        usage: Mapping[str, int],
+        cost_micro_usd: int,
+        latency_ms: int,
+    ) -> dict[str, int]:
+        if row is None or row.status != "reserved":
+            raise AIUsageStateError("AI request is not reserved")
+        if not 0 <= billed_credits <= row.reserved_credits:
+            raise ValueError("Billed credits must fit the reservation")
+        wallet = session.execute(
+            select(AIWallet)
+            .where(AIWallet.telegram_user_id == row.telegram_user_id)
+            .with_for_update()
+        ).scalar_one()
+        if wallet.reserved_credits < row.reserved_credits:
+            raise AIUsageStateError("AI wallet cannot settle reservation")
+        wallet.reserved_credits -= row.reserved_credits
+        wallet.balance_credits -= billed_credits
+        wallet.spent_credits += billed_credits
+        wallet.updated_at = utcnow()
+        if billed_credits:
+            session.add(
+                BillingCreditLedger(
+                    entry_id=str(uuid4()),
+                    telegram_user_id=row.telegram_user_id,
+                    delta=-billed_credits,
+                    balance_after=wallet.balance_credits,
+                    entry_type="ai_usage",
+                    idempotency_key=f"ai-usage:{request_id}",
+                    reference_type="ai_usage",
+                    reference_id=request_id,
+                    reason=f"AI action: {row.action}"[:255],
+                    actor="system",
+                )
+            )
+        row.status = "completed"
+        row.billed_credits = billed_credits
+        row.provider_response_id = provider_response_id
+        row.model = model
+        for field in (
+            "input_tokens",
+            "cached_input_tokens",
+            "cache_write_tokens",
+            "output_tokens",
+            "reasoning_tokens",
+            "total_tokens",
+        ):
+            setattr(row, field, max(0, int(usage.get(field, 0))))
+        row.cost_micro_usd = max(0, int(cost_micro_usd))
+        row.latency_ms = max(0, int(latency_ms))
+        row.completed_at = utcnow()
+        return self._wallet_summary(wallet)
+
+    def complete_voice_usage(
+        self,
+        *,
+        request_id: str,
+        session_id: str,
+        user_id: int,
+        turn_id: str,
+        expected_vocabulary_id: str,
+        matched_vocabulary_id: str | None,
+        transcript: str,
+        feedback_code: str,
+        similarity_bps: int,
+        transcript_expires_at: datetime,
+        billed_credits: int,
+        provider_response_id: str | None,
+        model: str,
+        usage: Mapping[str, int],
+        cost_micro_usd: int,
+        latency_ms: int,
+    ) -> dict[str, Any]:
+        """Atomically settle STT credits, persist a turn, and advance its session."""
+        if feedback_code not in {"exact", "close", "retry"}:
+            raise ValueError("Unknown voice feedback code")
+        transcript = str(transcript).strip()
+        if not 1 <= len(transcript) <= 1000:
+            raise ValueError("Voice transcript must contain 1-1000 characters")
+        if not 0 <= int(similarity_bps) <= 10000:
+            raise ValueError("Voice similarity is outside valid bounds")
+        with self.Session.begin() as session:
+            usage_row = session.execute(
+                select(AIUsage)
+                .where(AIUsage.request_id == str(request_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if (
+                usage_row is None
+                or usage_row.telegram_user_id != int(user_id)
+                or usage_row.action != "voice_transcription"
             ):
-                setattr(row, field, max(0, int(usage.get(field, 0))))
-            row.cost_micro_usd = max(0, int(cost_micro_usd))
-            row.latency_ms = max(0, int(latency_ms))
-            row.completed_at = utcnow()
-            result = self._wallet_summary(wallet)
-        return result
+                raise AIUsageStateError("Voice AI reservation does not match the user")
+            voice_session = session.execute(
+                select(VoiceSession)
+                .where(VoiceSession.session_id == str(session_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if (
+                voice_session is None
+                or voice_session.telegram_user_id != int(user_id)
+                or voice_session.status != "active"
+            ):
+                raise AIUsageStateError("Voice session is not active")
+            session_expiry = voice_session.expires_at
+            if session_expiry.tzinfo is None:
+                session_expiry = session_expiry.replace(tzinfo=timezone.utc)
+            if session_expiry <= utcnow():
+                raise AIUsageStateError("Voice session expired before completion")
+            transcript_expiry = transcript_expires_at
+            if transcript_expiry.tzinfo is None:
+                transcript_expiry = transcript_expiry.replace(tzinfo=timezone.utc)
+            if transcript_expiry <= utcnow():
+                raise ValueError("Voice transcript expiry must be in the future")
+            expected_ids = json.loads(voice_session.vocabulary_ids_json)
+            if (
+                not isinstance(expected_ids, list)
+                or voice_session.next_position >= len(expected_ids)
+                or expected_ids[voice_session.next_position]
+                != str(expected_vocabulary_id)
+            ):
+                raise AIUsageStateError("Voice session position changed")
+            allowance = self._settle_ai_usage_locked(
+                session,
+                usage_row,
+                request_id=request_id,
+                billed_credits=billed_credits,
+                provider_response_id=provider_response_id,
+                model=model,
+                usage=usage,
+                cost_micro_usd=cost_micro_usd,
+                latency_ms=latency_ms,
+            )
+            session.add(
+                VoiceTurn(
+                    turn_id=str(turn_id),
+                    session_id=voice_session.session_id,
+                    telegram_user_id=int(user_id),
+                    request_id=str(request_id),
+                    expected_vocabulary_id=str(expected_vocabulary_id),
+                    matched_vocabulary_id=(
+                        str(matched_vocabulary_id)
+                        if matched_vocabulary_id
+                        else None
+                    ),
+                    transcript=transcript,
+                    feedback_code=feedback_code,
+                    similarity_bps=int(similarity_bps),
+                    expires_at=transcript_expiry,
+                )
+            )
+            voice_session.turn_count += 1
+            voice_session.next_position += 1
+            voice_session.updated_at = utcnow()
+            if voice_session.next_position >= len(expected_ids):
+                voice_session.status = "completed"
+                voice_session.ended_at = utcnow()
+            return {
+                **allowance,
+                "session_status": voice_session.status,
+                "next_position": voice_session.next_position,
+            }
 
     def fail_ai_usage(self, request_id: str, *, error_code: str) -> bool:
         """Release a reservation after provider, validation, or storage failure."""

@@ -15,7 +15,7 @@
       <nav aria-label="Разделы">
         {% for id, label in [
           ('dashboard','Обзор'),('users','Пользователи'),('funnel','Воронка'),('learning','Обучение'),
-          ('ai','AI и кредиты'),('billing','Stars и платежи'),('safety','Безопасность'),('content','Контент'),('profile','Профиль бота'),
+          ('ai','AI и кредиты'),('billing','Stars и платежи'),('voice','Голос'),('safety','Безопасность'),('content','Контент'),('profile','Профиль бота'),
           ('diagnostics','Диагностика'),('audit','Аудит')
         ] %}
           <a href="{{ url_for('admin_index', tab=id) }}" class="{{ 'active' if tab == id else '' }}">{{ label }}</a>
@@ -31,7 +31,7 @@
       <header class="topbar">
         <div><p class="eyebrow">MY DICTIONARY</p><h1>{{ {
           'dashboard':'Обзор продукта','users':'Пользователи','funnel':'Продуктовая воронка','learning':'Обучение',
-          'ai':'AI и кредиты','billing':'Stars и платежи','safety':'Безопасность продукта','content':'Словари и темы','profile':'Профиль бота',
+          'ai':'AI и кредиты','billing':'Stars и платежи','voice':'Голосовая практика','safety':'Безопасность продукта','content':'Словари и темы','profile':'Профиль бота',
           'diagnostics':'Диагностика','audit':'Журнал аудита'
         }[tab] }}</h1></div>
         <span class="admin-name">{{ current_actor }}</span>
@@ -270,6 +270,22 @@
         </section>
       {% endif %}
 
+      {% if tab == 'voice' %}
+        <section class="metric-grid" aria-label="Голосовая практика">
+          <article><span>Сессии</span><strong>{{ voice.sessions }}</strong><small>{{ voice.active_sessions }} активных</small></article>
+          <article><span>Реплики</span><strong>{{ voice.turns }}</strong><small>аудио не хранится</small></article>
+          <article><span>Точное распознавание</span><strong>{{ voice.feedback.get('exact', 0) }}</strong><small>{{ voice.feedback.get('close', 0) }} близких</small></article>
+          <article><span>Среднее совпадение</span><strong>{{ voice.average_similarity_percent|round(1) }}%</strong><small>текст STT, не оценка акцента</small></article>
+        </section>
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Последние 100</p><h2>Результаты распознавания</h2></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Время</th><th>User ID</th><th>Режим</th><th>Набор</th><th>Ожидалось</th><th>Совпало</th><th>Результат</th><th>Совпадение</th><th>Удаление</th></tr></thead><tbody>
+            {% for row in voice_turns %}<tr><td>{{ row.created_at|datetime }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.mode }}</td><td>{{ row.pack_id }}</td><td class="mono">{{ row.expected_vocabulary_id[:12] }}</td><td class="mono">{{ row.matched_vocabulary_id[:12] }}</td><td><span class="status {{ row.feedback_code }}">{{ row.feedback_code }}</span></td><td>{{ row.similarity_percent|round(1) }}%</td><td>{{ row.expires_at|datetime }}</td></tr>
+            {% else %}<tr><td colspan="9" class="empty">Голосовых реплик пока нет.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+      {% endif %}
+
       {% if tab == 'safety' %}
         <section class="metric-grid" aria-label="Показатели безопасности">
           <article><span>События, 24 часа</span><strong>{{ safety.events_24h }}</strong><small>без текста сообщений</small></article>
@@ -291,6 +307,7 @@
             <div><dt>AI usage details</dt><dd>{{ retention.ai_usage_days }} дней</dd></div>
             <div><dt>Abuse events</dt><dd>{{ retention.abuse_days }} дней</dd></div>
             <div><dt>Rate-limit buckets</dt><dd>{{ retention.rate_limit_days }} дней</dd></div>
+            <div><dt>Voice transcripts</dt><dd>{{ retention.voice_transcript_days }} дней</dd></div>
           </dl>
         </section>
       {% endif %}
@@ -301,13 +318,14 @@
           <dl class="diagnostic-list">
             {% for label, value, ok in [
               ('База данных', diagnostics.database, true),
-              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0008_product_safety'),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0009_voice_tutor'),
               ('Telegram polling', diagnostics.bot_state ~ ' · ' ~ diagnostics.bot_reason, diagnostics.bot_ready),
               ('Heartbeat age', (diagnostics.bot_heartbeat_age_seconds|round(1)|string ~ ' s') if diagnostics.bot_heartbeat_age_seconds is not none else 'missing', diagnostics.bot_ready),
               ('Bot release', diagnostics.bot_release_sha, diagnostics.bot_release_sha != 'unknown'),
               ('Access mode', diagnostics.bot_access_mode, diagnostics.bot_access_mode in ['allowlist','pilot','public']),
               ('AI tutor enabled', diagnostics.ai_enabled, diagnostics.ai_enabled|lower in ['1','true','yes','on']),
               ('AI provider configured', 'yes' if diagnostics.ai_provider_configured else 'no', diagnostics.ai_provider_configured),
+              ('Voice tutor', diagnostics.voice_enabled ~ ' · ' ~ diagnostics.voice_model, diagnostics.voice_enabled|lower in ['1','true','yes','on']),
               ('Telegram Stars', 'enabled' if diagnostics.stars_enabled else 'disabled', diagnostics.stars_enabled),
               ('Stars unit economics', 'configured' if diagnostics.stars_unit_economics else 'missing', diagnostics.stars_unit_economics),
               ('Admin binding', diagnostics.admin_host ~ ':' ~ diagnostics.admin_port, diagnostics.admin_host in ['127.0.0.1','localhost','::1']),

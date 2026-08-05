@@ -181,6 +181,10 @@ class AdminLauncherTest(OpsTestCase):
         self.assertEqual(environment["DATA_DIR"], str(self.root.resolve()))
         self.assertEqual(environment["RELEASE_SHA"], NEW_SHA)
         self.assertEqual(environment["AI_TUTOR_ENABLED"], "false")
+        self.assertEqual(environment["VOICE_TUTOR_ENABLED"], "false")
+        self.assertEqual(
+            environment["VOICE_TRANSCRIPTION_MODEL"], "gpt-4o-transcribe"
+        )
         self.assertEqual(environment["TELEGRAM_STARS_ENABLED"], "false")
         self.assertEqual(environment["ADMIN_COOKIE_SECURE"], "true")
         rendered_arguments = " ".join(arguments)

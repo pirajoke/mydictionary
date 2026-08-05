@@ -11,6 +11,7 @@ polling. The default binding is loopback-only on the Mac mini.
 - managed pending, active, and blocked pilot access with an audit trail
 - dictionary and topic coverage
 - privacy-minimized AI request diagnostics without prompt or response storage
+- voice-session metrics and text-match diagnostics without transcript or audio exposure
 - audited wallet grants and withdrawals
 - draft and active Stars products with measured cost and margin floors
 - payment orders, Stars payments, refund holds, and local reconciliation

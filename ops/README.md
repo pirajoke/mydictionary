@@ -123,6 +123,12 @@ passes `TELEGRAM_STARS_ENABLED`, `BILLING_PAYLOAD_SECRET`,
 admin processes. Keep the payload secret out of plist files readable by other
 users and retain it while an issued invoice may still be paid.
 
+Voice tutor settings remain optional and default off. The admin launcher passes
+only `VOICE_TUTOR_ENABLED` and `VOICE_TRANSCRIPTION_MODEL` for diagnostics; it
+does not receive `OPENAI_API_KEY` and cannot initiate transcription requests.
+The bot runtime settings and activation checklist are documented in
+`docs/voice-tutor.md`.
+
 The scheduled backup wrapper uses the same two settings plus:
 
 ```text

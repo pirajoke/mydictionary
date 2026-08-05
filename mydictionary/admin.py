@@ -57,6 +57,7 @@ ADMIN_TABS = {
     "learning",
     "ai",
     "billing",
+    "voice",
     "safety",
     "content",
     "profile",
@@ -428,7 +429,11 @@ def create_app(
                 "ai_usage_days": retention.ai_usage_days,
                 "abuse_days": retention.abuse_days,
                 "rate_limit_days": retention.rate_limit_days,
+                "voice_transcript_days": retention.voice_transcript_days,
             }
+        elif tab == "voice":
+            context["voice"] = admin_store.voice_overview()
+            context["voice_turns"] = admin_store.recent_voice_turns(limit=100)
         elif tab == "content":
             context["content"] = _content_overview()
         elif tab == "diagnostics":
@@ -450,6 +455,10 @@ def create_app(
                 "stars_enabled": admin_store.billing_settings.enabled,
                 "stars_unit_economics": (
                     admin_store.billing_settings.net_micro_usd_per_xtr > 0
+                ),
+                "voice_enabled": os.environ.get("VOICE_TUTOR_ENABLED", "false"),
+                "voice_model": os.environ.get(
+                    "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
                 ),
                 "admin_host": app.config["ADMIN_HOST"],
                 "admin_port": app.config["ADMIN_PORT"],

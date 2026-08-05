@@ -9,7 +9,7 @@ import json
 import os
 from typing import Mapping
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, exists, func, select
 
 from mydictionary.storage import (
     AIAllowance,
@@ -23,6 +23,8 @@ from mydictionary.storage import (
     User,
     UserPackEnrollment,
     UserProgress,
+    VoiceSession,
+    VoiceTurn,
     WordProgress,
     utcnow,
 )
@@ -55,6 +57,7 @@ class RetentionPolicy:
     ai_usage_days: int
     abuse_days: int
     rate_limit_days: int
+    voice_transcript_days: int = 30
 
     @classmethod
     def from_env(
@@ -74,6 +77,13 @@ class RetentionPolicy:
             rate_limit_days=_bounded_days(
                 env, "RETENTION_RATE_LIMIT_DAYS", default=7, minimum=1
             ),
+            voice_transcript_days=_bounded_days(
+                env,
+                "VOICE_TRANSCRIPT_RETENTION_DAYS",
+                default=30,
+                minimum=1,
+                maximum=365,
+            ),
         )
 
 
@@ -83,6 +93,8 @@ class RetentionReport:
     ai_usage: int = 0
     abuse_events: int = 0
     rate_limit_buckets: int = 0
+    voice_turns: int = 0
+    voice_sessions: int = 0
 
     @property
     def total(self) -> int:
@@ -104,6 +116,8 @@ def _cutoffs(
         "ai_usage": observed_at - timedelta(days=policy.ai_usage_days),
         "abuse": observed_at - timedelta(days=policy.abuse_days),
         "rate_limit": observed_at - timedelta(days=policy.rate_limit_days),
+        "voice_session": observed_at
+        - timedelta(days=policy.voice_transcript_days),
     }
 
 
@@ -113,7 +127,8 @@ def retention_report(
     *,
     now: datetime | None = None,
 ) -> RetentionReport:
-    cutoffs = _cutoffs(policy, now or utcnow())
+    observed_at = now or utcnow()
+    cutoffs = _cutoffs(policy, observed_at)
     with store.Session() as session:
         return RetentionReport(
             analytics_events=int(
@@ -145,6 +160,29 @@ def retention_report(
                 session.scalar(
                     select(func.count()).select_from(RateLimitBucket).where(
                         RateLimitBucket.updated_at < cutoffs["rate_limit"]
+                    )
+                )
+                or 0
+            ),
+            voice_turns=int(
+                session.scalar(
+                    select(func.count()).select_from(VoiceTurn).where(
+                        VoiceTurn.expires_at <= observed_at
+                    )
+                )
+                or 0
+            ),
+            voice_sessions=int(
+                session.scalar(
+                    select(func.count()).select_from(VoiceSession).where(
+                        VoiceSession.status != "active",
+                        VoiceSession.updated_at < cutoffs["voice_session"],
+                        ~exists(
+                            select(VoiceTurn.turn_id).where(
+                                VoiceTurn.session_id == VoiceSession.session_id,
+                                VoiceTurn.expires_at > observed_at,
+                            )
+                        ),
                     )
                 )
                 or 0
@@ -182,11 +220,27 @@ def apply_retention(
                 RateLimitBucket.updated_at < cutoffs["rate_limit"]
             )
         ).rowcount
+        voice_turns = session.execute(
+            delete(VoiceTurn).where(VoiceTurn.expires_at <= observed_at)
+        ).rowcount
+        voice_sessions = session.execute(
+            delete(VoiceSession).where(
+                VoiceSession.status != "active",
+                VoiceSession.updated_at < cutoffs["voice_session"],
+                ~exists(
+                    select(VoiceTurn.turn_id).where(
+                        VoiceTurn.session_id == VoiceSession.session_id
+                    )
+                ),
+            )
+        ).rowcount
         report = RetentionReport(
             analytics_events=int(analytics or 0),
             ai_usage=int(ai_usage or 0),
             abuse_events=int(abuse or 0),
             rate_limit_buckets=int(buckets or 0),
+            voice_turns=int(voice_turns or 0),
+            voice_sessions=int(voice_sessions or 0),
         )
         session.add(
             AdminAuditLog(
@@ -227,6 +281,8 @@ def erase_user_learning_data(
 
         deleted_rows = 0
         for model in (
+            VoiceTurn,
+            VoiceSession,
             WordProgress,
             UserPackEnrollment,
             UserProgress,

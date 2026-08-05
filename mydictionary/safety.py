@@ -112,7 +112,12 @@ class SafetySettings:
         name = str(handler_name).lower()
         if "buy" in name or "subscription" in name:
             return "billing", self.billing
-        if name in {"cmd_ai", "block_ai_cb"} or name.startswith("voice"):
+        if name in {
+            "cmd_ai",
+            "block_ai_cb",
+            "block_voice_cb",
+            "cmd_conversation",
+        } or name.startswith("voice"):
             return "ai", self.ai
         if any(
             marker in name

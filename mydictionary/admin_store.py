@@ -37,6 +37,8 @@ from mydictionary.storage import (
     StarsSubscription,
     User,
     UserProgress,
+    VoiceSession,
+    VoiceTurn,
     WordProgress,
     utcnow,
 )
@@ -1040,6 +1042,63 @@ class AdminStore:
                 for column in AbuseEvent.__table__.columns
             }
             for row in rows
+        ]
+
+    def voice_overview(self) -> dict[str, Any]:
+        with self.store.Session() as session:
+            sessions = session.scalar(
+                select(func.count()).select_from(VoiceSession)
+            ) or 0
+            active = session.scalar(
+                select(func.count()).select_from(VoiceSession).where(
+                    VoiceSession.status == "active"
+                )
+            ) or 0
+            turns = session.scalar(
+                select(func.count()).select_from(VoiceTurn)
+            ) or 0
+            average = session.scalar(select(func.avg(VoiceTurn.similarity_bps))) or 0
+            feedback_rows = session.execute(
+                select(VoiceTurn.feedback_code, func.count(VoiceTurn.turn_id)).group_by(
+                    VoiceTurn.feedback_code
+                )
+            ).all()
+        return {
+            "sessions": int(sessions),
+            "active_sessions": int(active),
+            "turns": int(turns),
+            "average_similarity_percent": float(average) / 100,
+            "feedback": {row[0]: int(row[1]) for row in feedback_rows},
+        }
+
+    def recent_voice_turns(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(
+                    VoiceTurn,
+                    VoiceSession.pack_id,
+                    VoiceSession.language,
+                    VoiceSession.mode,
+                )
+                .join(VoiceSession, VoiceSession.session_id == VoiceTurn.session_id)
+                .order_by(VoiceTurn.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).all()
+        return [
+            {
+                "turn_id": turn.turn_id,
+                "telegram_user_id": turn.telegram_user_id,
+                "pack_id": pack_id,
+                "language": language,
+                "mode": mode,
+                "expected_vocabulary_id": turn.expected_vocabulary_id,
+                "matched_vocabulary_id": turn.matched_vocabulary_id or "",
+                "feedback_code": turn.feedback_code,
+                "similarity_percent": turn.similarity_bps / 100,
+                "created_at": turn.created_at,
+                "expires_at": turn.expires_at,
+            }
+            for turn, pack_id, language, mode in rows
         ]
 
     def stars_payments_export(self) -> list[dict[str, Any]]:
