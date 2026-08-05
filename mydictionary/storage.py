@@ -13,6 +13,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -354,6 +355,16 @@ class BillingProduct(Base):
             "target_margin_bps >= 0 AND target_margin_bps <= 10000",
             name="ck_billing_product_margin",
         ),
+        CheckConstraint(
+            "billing_mode IN ('one_time', 'subscription')",
+            name="ck_billing_product_mode",
+        ),
+        CheckConstraint(
+            "(billing_mode = 'one_time' AND subscription_period_seconds IS NULL) "
+            "OR (billing_mode = 'subscription' AND "
+            "subscription_period_seconds = 2592000)",
+            name="ck_billing_product_subscription_period",
+        ),
     )
 
     product_id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -365,6 +376,10 @@ class BillingProduct(Base):
     estimated_cost_micro_usd: Mapped[int] = mapped_column(BigInteger, default=0)
     target_margin_bps: Mapped[int] = mapped_column(Integer, default=0)
     display_order: Mapped[int] = mapped_column(Integer, default=0)
+    billing_mode: Mapped[str] = mapped_column(String(16), default="one_time")
+    subscription_period_seconds: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -379,8 +394,19 @@ class PaymentOrder(Base):
         CheckConstraint("currency = 'XTR'", name="ck_payment_order_currency"),
         CheckConstraint(
             "status IN ('created', 'prechecked', 'paid', 'expired', "
-            "'cancelled', 'refund_pending', 'refunded')",
+            "'cancelled', 'refund_pending', 'refunded', "
+            "'subscription_active', 'subscription_cancelled')",
             name="ck_payment_order_status",
+        ),
+        CheckConstraint(
+            "billing_mode IN ('one_time', 'subscription')",
+            name="ck_payment_order_mode",
+        ),
+        CheckConstraint(
+            "(billing_mode = 'one_time' AND subscription_period_seconds IS NULL) "
+            "OR (billing_mode = 'subscription' AND "
+            "subscription_period_seconds = 2592000)",
+            name="ck_payment_order_subscription_period",
         ),
         UniqueConstraint("invoice_payload", name="uq_payment_order_payload"),
     )
@@ -400,6 +426,10 @@ class PaymentOrder(Base):
     amount_xtr: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="XTR")
     invoice_payload: Mapped[str] = mapped_column(String(128), nullable=False)
+    billing_mode: Mapped[str] = mapped_column(String(16), default="one_time")
+    subscription_period_seconds: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     status: Mapped[str] = mapped_column(String(24), default="created")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     prechecked_at: Mapped[datetime | None] = mapped_column(
@@ -424,7 +454,6 @@ class StarsPayment(Base):
             "status IN ('paid', 'refund_pending', 'refunded')",
             name="ck_stars_payment_status",
         ),
-        UniqueConstraint("order_id", name="uq_stars_payment_order"),
         UniqueConstraint(
             "telegram_payment_charge_id", name="uq_stars_payment_charge"
         ),
@@ -447,10 +476,66 @@ class StarsPayment(Base):
     provider_payment_charge_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
+    subscription_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("stars_subscriptions.subscription_id"), nullable=True
+    )
+    is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_first_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
+    subscription_expiration_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(24), default="paid")
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     refunded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+
+class StarsSubscription(Base):
+    __tablename__ = "stars_subscriptions"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'cancelled', 'expired')",
+            name="ck_stars_subscription_status",
+        ),
+        CheckConstraint(
+            "period_seconds = 2592000",
+            name="ck_stars_subscription_period",
+        ),
+        UniqueConstraint("order_id", name="uq_stars_subscription_order"),
+        UniqueConstraint(
+            "telegram_payment_charge_id", name="uq_stars_subscription_charge"
+        ),
+    )
+
+    subscription_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    order_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("payment_orders.order_id"), nullable=False
+    )
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    product_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("billing_products.product_id"), nullable=False
+    )
+    telegram_payment_charge_id: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    period_seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    current_period_end: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
 
 

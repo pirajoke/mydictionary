@@ -102,7 +102,7 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0006_telegram_stars_billing")
+            self.assertEqual(revision, "0007_stars_subscriptions")
 
     def test_programmatic_migrations_preserve_application_logging(self):
         root_logger = logging.getLogger()

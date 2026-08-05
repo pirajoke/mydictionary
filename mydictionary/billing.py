@@ -24,6 +24,7 @@ from mydictionary.storage import (
     PaymentOrder,
     RefundRequest,
     StarsPayment,
+    StarsSubscription,
     utcnow,
 )
 
@@ -32,6 +33,8 @@ PRODUCT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{2,59}$")
 PAYLOAD_PREFIX = "md1"
 PAYLOAD_SIGNATURE_BYTES = 16
 PRODUCT_STATUSES = {"draft", "active", "archived"}
+BILLING_MODES = {"one_time", "subscription"}
+SUBSCRIPTION_PERIOD_SECONDS = 30 * 24 * 60 * 60
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -137,6 +140,7 @@ class InvoiceOrder:
     credits: int
     amount_xtr: int
     payload: str
+    subscription_period_seconds: int | None = None
 
 
 @dataclass(frozen=True)
@@ -146,6 +150,7 @@ class FulfillmentResult:
     credits: int
     available_credits: int
     created: bool
+    subscription_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -155,10 +160,97 @@ class ReconciliationIssue:
     details: str
 
 
-class StarsRefundGateway(Protocol):
+@dataclass(frozen=True)
+class StarTransactionPage:
+    rows: tuple[Mapping[str, Any], ...]
+    fetched_count: int
+
+
+class TelegramStarsGatewayProtocol(Protocol):
     async def refund_star_payment(
         self, *, user_id: int, telegram_payment_charge_id: str
     ) -> bool: ...
+
+    async def edit_user_star_subscription(
+        self,
+        *,
+        user_id: int,
+        telegram_payment_charge_id: str,
+        is_canceled: bool,
+    ) -> bool: ...
+
+    async def get_star_transactions(
+        self, *, offset: int, limit: int
+    ) -> StarTransactionPage: ...
+
+
+class TelegramStarsGateway:
+    """Normalize python-telegram-bot Stars methods behind a testable protocol."""
+
+    def __init__(self, bot: Any):
+        self.bot = bot
+
+    async def refund_star_payment(
+        self, *, user_id: int, telegram_payment_charge_id: str
+    ) -> bool:
+        return bool(
+            await self.bot.refund_star_payment(
+                user_id=int(user_id),
+                telegram_payment_charge_id=str(telegram_payment_charge_id),
+            )
+        )
+
+    async def edit_user_star_subscription(
+        self,
+        *,
+        user_id: int,
+        telegram_payment_charge_id: str,
+        is_canceled: bool,
+    ) -> bool:
+        return bool(
+            await self.bot.edit_user_star_subscription(
+                user_id=int(user_id),
+                telegram_payment_charge_id=str(telegram_payment_charge_id),
+                is_canceled=bool(is_canceled),
+            )
+        )
+
+    async def get_star_transactions(
+        self, *, offset: int, limit: int
+    ) -> StarTransactionPage:
+        page = await self.bot.get_star_transactions(
+            offset=max(0, int(offset)), limit=max(1, min(int(limit), 100))
+        )
+        source_rows = tuple(getattr(page, "transactions", ()))
+        normalized = []
+        for transaction in source_rows:
+            source = getattr(transaction, "source", None)
+            receiver = getattr(transaction, "receiver", None)
+            partner = source or receiver
+            if (
+                partner is None
+                or getattr(partner, "transaction_type", "")
+                != "invoice_payment"
+            ):
+                continue
+            user = getattr(partner, "user", None)
+            normalized.append(
+                {
+                    "telegram_payment_charge_id": str(
+                        getattr(transaction, "id", "")
+                    ),
+                    "user_id": int(getattr(user, "id", 0) or 0),
+                    "currency": "XTR",
+                    "total_amount": abs(
+                        int(getattr(transaction, "amount", 0) or 0)
+                    ),
+                    "is_refund": receiver is not None,
+                    "subscription_period": getattr(
+                        partner, "subscription_period", None
+                    ),
+                }
+            )
+        return StarTransactionPage(tuple(normalized), len(source_rows))
 
 
 class BillingService:
@@ -280,6 +372,12 @@ class BillingService:
                     amount_xtr=product.price_xtr,
                     currency="XTR",
                     invoice_payload=payload,
+                    billing_mode=product.billing_mode,
+                    subscription_period_seconds=(
+                        product.subscription_period_seconds
+                        if product.billing_mode == "subscription"
+                        else None
+                    ),
                     status="created",
                     expires_at=utcnow()
                     + timedelta(seconds=self.settings.order_ttl_seconds),
@@ -293,6 +391,11 @@ class BillingService:
             credits=product.credits,
             amount_xtr=product.price_xtr,
             payload=payload,
+            subscription_period_seconds=(
+                product.subscription_period_seconds
+                if product.billing_mode == "subscription"
+                else None
+            ),
         )
 
     def validate_pre_checkout(
@@ -341,6 +444,9 @@ class BillingService:
         total_amount: int,
         telegram_payment_charge_id: str,
         provider_payment_charge_id: str | None = None,
+        is_recurring: bool = False,
+        is_first_recurring: bool = False,
+        subscription_expiration_date: datetime | None = None,
     ) -> FulfillmentResult:
         """Grant credits exactly once, including after the feature flag is disabled."""
         order_id = self._order_id_from_payload(payload)
@@ -360,6 +466,23 @@ class BillingService:
                 raise BillingValidationError("Payment order belongs to another user")
             if str(currency) != "XTR" or int(total_amount) != order.amount_xtr:
                 raise BillingValidationError("Successful payment does not match order")
+            recurring = bool(is_recurring or is_first_recurring)
+            if order.billing_mode == "subscription":
+                if not recurring or subscription_expiration_date is None:
+                    raise BillingValidationError(
+                        "Subscription payment metadata is missing"
+                    )
+                expiration = _aware_utc(subscription_expiration_date)
+                if expiration <= utcnow():
+                    raise BillingValidationError(
+                        "Subscription expiration date is invalid"
+                    )
+            elif recurring or subscription_expiration_date is not None:
+                raise BillingValidationError(
+                    "One-time order cannot accept a recurring payment"
+                )
+            else:
+                expiration = None
             existing_charge = session.execute(
                 select(StarsPayment)
                 .where(StarsPayment.telegram_payment_charge_id == charge_id)
@@ -377,11 +500,52 @@ class BillingService:
                         wallet.balance_credits - wallet.reserved_credits
                     ),
                     created=False,
+                    subscription_id=existing_charge.subscription_id,
                 )
-            if order.status == "paid":
-                raise BillingStateError("Paid order has no matching charge record")
-            if order.status not in {"created", "prechecked"}:
-                raise BillingStateError("Payment order cannot be fulfilled")
+            subscription = session.execute(
+                select(StarsSubscription)
+                .where(StarsSubscription.order_id == order.order_id)
+                .with_for_update()
+            ).scalar_one_or_none()
+            if order.billing_mode == "one_time":
+                if order.status == "paid":
+                    raise BillingStateError("Paid order has no matching charge record")
+                if order.status not in {"created", "prechecked"}:
+                    raise BillingStateError("Payment order cannot be fulfilled")
+                subscription_id = None
+            elif is_first_recurring:
+                if subscription is not None:
+                    raise BillingStateError(
+                        "Subscription already has its first payment"
+                    )
+                if order.status not in {"created", "prechecked"}:
+                    raise BillingStateError("Subscription order cannot be fulfilled")
+                subscription_id = str(uuid4())
+                subscription = StarsSubscription(
+                    subscription_id=subscription_id,
+                    order_id=order.order_id,
+                    telegram_user_id=int(user_id),
+                    product_id=order.product_id,
+                    telegram_payment_charge_id=charge_id,
+                    status="active",
+                    period_seconds=order.subscription_period_seconds,
+                    current_period_end=expiration,
+                )
+                session.add(subscription)
+            else:
+                if subscription is None:
+                    raise BillingStateError(
+                        "Subscription renewal has no first payment"
+                    )
+                if subscription.telegram_user_id != int(user_id):
+                    raise BillingValidationError(
+                        "Subscription belongs to another user"
+                    )
+                subscription_id = subscription.subscription_id
+                subscription.status = "active"
+                subscription.cancelled_at = None
+                subscription.current_period_end = expiration
+                subscription.updated_at = utcnow()
             wallet = self.store._ensure_ai_wallet(session, user_id)
             wallet.balance_credits += order.credits_snapshot
             wallet.updated_at = utcnow()
@@ -399,6 +563,10 @@ class BillingService:
                         if provider_payment_charge_id
                         else None
                     ),
+                    subscription_id=subscription_id,
+                    is_recurring=recurring,
+                    is_first_recurring=bool(is_first_recurring),
+                    subscription_expiration_date=expiration,
                     status="paid",
                 )
             )
@@ -408,16 +576,29 @@ class BillingService:
                     telegram_user_id=int(user_id),
                     delta=order.credits_snapshot,
                     balance_after=wallet.balance_credits,
-                    entry_type="stars_purchase",
+                    entry_type=(
+                        "stars_subscription_renewal"
+                        if recurring
+                        else "stars_purchase"
+                    ),
                     idempotency_key=f"stars-payment:{charge_id}",
                     reference_type="stars_payment",
                     reference_id=payment_id,
-                    reason=f"Telegram Stars purchase: {order.product_id}"[:255],
+                    reason=(
+                        f"Telegram Stars subscription: {order.product_id}"
+                        if recurring
+                        else f"Telegram Stars purchase: {order.product_id}"
+                    )[:255],
                     actor="telegram",
                 )
             )
-            order.status = "paid"
-            order.paid_at = utcnow()
+            order.status = (
+                "subscription_active"
+                if order.billing_mode == "subscription"
+                else "paid"
+            )
+            if order.paid_at is None:
+                order.paid_at = utcnow()
             order.updated_at = utcnow()
             available = wallet.balance_credits - wallet.reserved_credits
         return FulfillmentResult(
@@ -426,6 +607,7 @@ class BillingService:
             credits=order.credits_snapshot,
             available_credits=available,
             created=True,
+            subscription_id=subscription_id,
         )
 
     def request_refund(
@@ -477,7 +659,8 @@ class BillingService:
                 )
             )
             payment.status = "refund_pending"
-            order.status = "refund_pending"
+            if payment.subscription_id is None:
+                order.status = "refund_pending"
             session.add(
                 AdminAuditLog(
                     actor=actor[:64],
@@ -493,7 +676,7 @@ class BillingService:
             return refund_id
 
     async def process_refund(
-        self, *, refund_id: str, gateway: StarsRefundGateway
+        self, *, refund_id: str, gateway: TelegramStarsGatewayProtocol
     ) -> bool:
         """Process a queued refund through an injected gateway, never implicitly."""
         with self.store.Session.begin() as session:
@@ -574,9 +757,10 @@ class BillingService:
             refund.updated_at = now
             payment.status = "refunded"
             payment.refunded_at = now
-            order.status = "refunded"
-            order.refunded_at = now
-            order.updated_at = now
+            if payment.subscription_id is None:
+                order.status = "refunded"
+                order.refunded_at = now
+                order.updated_at = now
             session.add(
                 AdminAuditLog(
                     actor=refund.requested_by,
@@ -587,6 +771,113 @@ class BillingService:
                 )
             )
         return True
+
+    def subscriptions_for_user(self, user_id: int) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(StarsSubscription)
+                .where(StarsSubscription.telegram_user_id == int(user_id))
+                .order_by(StarsSubscription.created_at.desc())
+            ).scalars().all()
+        return [
+            {
+                column.name: getattr(row, column.name)
+                for column in StarsSubscription.__table__.columns
+                if column.name != "telegram_payment_charge_id"
+            }
+            for row in rows
+        ]
+
+    async def set_subscription_autorenew(
+        self,
+        *,
+        subscription_id: str,
+        user_id: int,
+        is_canceled: bool,
+        gateway: TelegramStarsGatewayProtocol,
+    ) -> bool:
+        with self.store.Session() as session:
+            subscription = session.get(StarsSubscription, str(subscription_id))
+            if subscription is None:
+                raise BillingValidationError("Stars subscription does not exist")
+            if subscription.telegram_user_id != int(user_id):
+                raise BillingValidationError(
+                    "Stars subscription belongs to another user"
+                )
+            desired_status = "cancelled" if is_canceled else "active"
+            if subscription.status == desired_status:
+                return True
+            charge_id = subscription.telegram_payment_charge_id
+        changed = await asyncio.wait_for(
+            gateway.edit_user_star_subscription(
+                user_id=int(user_id),
+                telegram_payment_charge_id=charge_id,
+                is_canceled=bool(is_canceled),
+            ),
+            timeout=8,
+        )
+        if not changed:
+            raise BillingStateError("Telegram rejected subscription update")
+        with self.store.Session.begin() as session:
+            subscription = session.execute(
+                select(StarsSubscription)
+                .where(StarsSubscription.subscription_id == str(subscription_id))
+                .with_for_update()
+            ).scalar_one()
+            subscription.status = desired_status
+            subscription.cancelled_at = utcnow() if is_canceled else None
+            subscription.updated_at = utcnow()
+            order = session.get(PaymentOrder, subscription.order_id)
+            order.status = (
+                "subscription_cancelled" if is_canceled else "subscription_active"
+            )
+            order.updated_at = utcnow()
+        return True
+
+    async def reconcile_gateway(
+        self,
+        gateway: TelegramStarsGatewayProtocol,
+        *,
+        page_size: int = 100,
+        maximum_transactions: int = 1000,
+    ) -> list[ReconciliationIssue]:
+        page_size = max(1, min(int(page_size), 100))
+        maximum_transactions = max(page_size, min(int(maximum_transactions), 10000))
+        transactions: list[Mapping[str, Any]] = []
+        offset = 0
+        while offset < maximum_transactions:
+            page = await gateway.get_star_transactions(
+                offset=offset,
+                limit=min(page_size, maximum_transactions - offset),
+            )
+            transactions.extend(page.rows)
+            if page.fetched_count < page_size:
+                break
+            offset += page.fetched_count
+        issues = self.reconcile_transactions(transactions)
+        remote_ids = {
+            str(row.get("telegram_payment_charge_id") or "")
+            for row in transactions
+        }
+        with self.store.Session() as session:
+            local_ids = set(
+                session.execute(
+                    select(StarsPayment.telegram_payment_charge_id).where(
+                        StarsPayment.status.in_(
+                            {"paid", "refund_pending", "refunded"}
+                        )
+                    )
+                ).scalars()
+            )
+        for charge_id in sorted(local_ids - remote_ids):
+            issues.append(
+                ReconciliationIssue(
+                    "local_payment_missing_remotely",
+                    charge_id,
+                    "Local payment is absent from the fetched Telegram history",
+                )
+            )
+        return issues
 
     def reconcile_transactions(
         self, transactions: Sequence[Mapping[str, Any]]

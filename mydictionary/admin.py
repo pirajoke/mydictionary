@@ -414,6 +414,7 @@ def create_app(
             context["products"] = admin_store.billing_products()
             context["orders"] = admin_store.recent_payment_orders(limit=100)
             context["payments"] = admin_store.stars_payments(limit=100)
+            context["subscriptions"] = admin_store.stars_subscriptions(limit=100)
             context["refunds"] = admin_store.refund_requests(limit=100)
             context["reconciliation"] = admin_store.billing_reconciliation()
         elif tab == "content":
@@ -509,6 +510,13 @@ def create_app(
                 ),
                 display_order=int(str(request.form.get("display_order") or "0")),
                 actor=current_actor(),
+                billing_mode=str(
+                    request.form.get("billing_mode") or "one_time"
+                ),
+                subscription_period_seconds=(
+                    int(str(request.form.get("subscription_period_seconds") or "0"))
+                    or None
+                ),
             )
             flash(f"Продукт {product['product_id']} сохранён.", "success")
         except (TypeError, ValueError) as exc:

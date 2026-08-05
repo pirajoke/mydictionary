@@ -10,10 +10,12 @@ from uuid import uuid4
 from sqlalchemy import String, cast, func, or_, select
 
 from mydictionary.billing import (
+    BILLING_MODES,
     BillingService,
     BillingSettings,
     PRODUCT_ID_RE,
     PRODUCT_STATUSES,
+    SUBSCRIPTION_PERIOD_SECONDS,
 )
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS
 from mydictionary.storage import (
@@ -30,6 +32,7 @@ from mydictionary.storage import (
     PaymentOrder,
     RefundRequest,
     StarsPayment,
+    StarsSubscription,
     User,
     UserProgress,
     WordProgress,
@@ -658,21 +661,36 @@ class AdminStore:
         target_margin_bps: int,
         display_order: int,
         actor: str,
+        billing_mode: str = "one_time",
+        subscription_period_seconds: int | None = None,
     ) -> dict[str, Any]:
         product_id = str(product_id).strip().lower()
         title = str(title).strip()
         description = str(description).strip()
         status = str(status).strip().lower()
+        billing_mode = str(billing_mode).strip().lower()
         if not PRODUCT_ID_RE.fullmatch(product_id):
             raise ValueError("Product ID must use lowercase letters, digits, and hyphens")
         if not 1 <= len(title) <= 32 or not 1 <= len(description) <= 255:
             raise ValueError("Product title or description is outside Telegram limits")
         if status not in PRODUCT_STATUSES:
             raise ValueError("Unknown billing product status")
+        if billing_mode not in BILLING_MODES:
+            raise ValueError("Unknown billing product mode")
+        if billing_mode == "subscription":
+            if int(subscription_period_seconds or 0) != SUBSCRIPTION_PERIOD_SECONDS:
+                raise ValueError("Stars subscriptions must use a 30-day period")
+            subscription_period_seconds = SUBSCRIPTION_PERIOD_SECONDS
+        elif subscription_period_seconds not in {None, 0}:
+            raise ValueError("One-time products cannot have a subscription period")
+        else:
+            subscription_period_seconds = None
         if not 1 <= int(credits) <= 1_000_000:
             raise ValueError("Product credits must be between 1 and 1000000")
         if not 1 <= int(price_xtr) <= 1_000_000:
             raise ValueError("Product price must be between 1 and 1000000 XTR")
+        if billing_mode == "subscription" and int(price_xtr) > 10_000:
+            raise ValueError("Stars subscription price cannot exceed 10000 XTR")
         if int(estimated_cost_micro_usd) < 0:
             raise ValueError("Estimated product cost cannot be negative")
         if not 0 <= int(target_margin_bps) <= 10000:
@@ -709,6 +727,8 @@ class AdminStore:
             row.estimated_cost_micro_usd = int(estimated_cost_micro_usd)
             row.target_margin_bps = int(target_margin_bps)
             row.display_order = int(display_order)
+            row.billing_mode = billing_mode
+            row.subscription_period_seconds = subscription_period_seconds
             row.updated_at = utcnow()
             session.add(
                 AdminAuditLog(
@@ -726,6 +746,10 @@ class AdminStore:
                             ),
                             "target_margin_bps": int(target_margin_bps),
                             "estimated_margin_bps": estimated_margin,
+                            "billing_mode": billing_mode,
+                            "subscription_period_seconds": (
+                                subscription_period_seconds
+                            ),
                         }
                     ),
                 )
@@ -770,8 +794,13 @@ class AdminStore:
                 ).group_by(StarsPayment.status)
             ).all()
             credits_sold = session.scalar(
-                select(func.sum(PaymentOrder.credits_snapshot)).where(
-                    PaymentOrder.status.in_({"paid", "refund_pending"})
+                select(func.sum(PaymentOrder.credits_snapshot))
+                .join(StarsPayment, StarsPayment.order_id == PaymentOrder.order_id)
+                .where(StarsPayment.status.in_({"paid", "refund_pending"}))
+            ) or 0
+            active_subscriptions = session.scalar(
+                select(func.count(StarsSubscription.subscription_id)).where(
+                    StarsSubscription.status == "active"
                 )
             ) or 0
             credits_refunded = session.scalar(
@@ -804,6 +833,7 @@ class AdminStore:
             "credits_sold": int(credits_sold),
             "credits_refunded": int(credits_refunded),
             "pending_refunds": int(pending_refunds),
+            "active_subscriptions": int(active_subscriptions),
         }
 
     def recent_payment_orders(self, limit: int = 100) -> list[dict[str, Any]]:
@@ -841,11 +871,43 @@ class AdminStore:
                 "currency": payment.currency,
                 "total_amount": payment.total_amount,
                 "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+                "subscription_id": payment.subscription_id,
+                "is_recurring": payment.is_recurring,
+                "is_first_recurring": payment.is_first_recurring,
+                "subscription_expiration_date": (
+                    payment.subscription_expiration_date
+                ),
                 "status": payment.status,
                 "received_at": payment.received_at,
                 "refunded_at": payment.refunded_at,
             }
             for payment, order in rows
+        ]
+
+    def stars_subscriptions(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(StarsSubscription, PaymentOrder)
+                .join(PaymentOrder, PaymentOrder.order_id == StarsSubscription.order_id)
+                .order_by(StarsSubscription.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).all()
+        return [
+            {
+                "subscription_id": subscription.subscription_id,
+                "order_id": subscription.order_id,
+                "telegram_user_id": subscription.telegram_user_id,
+                "product_id": subscription.product_id,
+                "product_title": order.product_title,
+                "credits": order.credits_snapshot,
+                "amount_xtr": order.amount_xtr,
+                "status": subscription.status,
+                "period_seconds": subscription.period_seconds,
+                "current_period_end": subscription.current_period_end,
+                "cancelled_at": subscription.cancelled_at,
+                "created_at": subscription.created_at,
+            }
+            for subscription, order in rows
         ]
 
     def refund_requests(self, limit: int = 100) -> list[dict[str, Any]]:
@@ -873,28 +935,8 @@ class AdminStore:
     def billing_reconciliation(self) -> list[dict[str, str]]:
         issues: list[dict[str, str]] = []
         with self.store.Session() as session:
-            orders = session.execute(
-                select(PaymentOrder).where(
-                    PaymentOrder.status.in_(
-                        {"paid", "refund_pending", "refunded"}
-                    )
-                )
-            ).scalars().all()
-            for order in orders:
-                payment = session.execute(
-                    select(StarsPayment).where(
-                        StarsPayment.order_id == order.order_id
-                    )
-                ).scalar_one_or_none()
-                if payment is None:
-                    issues.append(
-                        {
-                            "code": "paid_order_missing_payment",
-                            "reference": order.order_id,
-                            "details": "Order state requires a Stars payment row",
-                        }
-                    )
-                    continue
+            payments = session.execute(select(StarsPayment)).scalars().all()
+            for payment in payments:
                 ledger = session.execute(
                     select(BillingCreditLedger).where(
                         BillingCreditLedger.idempotency_key

@@ -42,6 +42,7 @@ BOT_PROFILE_DEFAULTS = {
         "/ai — AI-репетитор по активному блоку\n"
         "/ai_stats — баланс AI-кредитов\n"
         "/buy — пакеты AI-кредитов за Telegram Stars\n"
+        "/subscriptions — управление Stars-подписками\n"
         "/terms — условия AI-кредитов\n"
         "/paysupport — поддержка по платежам"
     ),

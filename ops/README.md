@@ -145,3 +145,12 @@ backup files, heartbeat files, and release state never belong in the repository.
 
 See [the production runbook](../docs/runbooks/mac-mini-deployment.md) before
 installing, enabling, clearing quarantine, or recovering a failed release.
+
+## Billing operations
+
+`mydictionary_billing.py reconcile` is read-only and compares bounded Bot API
+transaction pages with the local Stars ledger. Refund and subscription changes
+require the exact local UUID plus `--execute`; the wrapper never prints tokens,
+invoice payloads, Telegram charge IDs, or learner identities. Keep it on the
+loopback production host and run it only after the corresponding admin record
+and support decision have been reviewed.

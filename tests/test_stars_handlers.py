@@ -7,7 +7,11 @@ os.environ.setdefault("BOT_TOKEN", "123456:TESTTOKEN")
 os.environ.setdefault("ALLOWED_USER_ID", "1")
 
 import bot
-from mydictionary.billing import FulfillmentResult, InvoiceOrder
+from mydictionary.billing import (
+    FulfillmentResult,
+    InvoiceOrder,
+    SUBSCRIPTION_PERIOD_SECONDS,
+)
 
 
 class StarsHandlerTest(unittest.IsolatedAsyncioTestCase):
@@ -81,6 +85,36 @@ class StarsHandlerTest(unittest.IsolatedAsyncioTestCase):
         query.answer.assert_awaited_once()
         self.assertFalse(query.answer.await_args.kwargs["ok"])
 
+    async def test_subscription_invoice_sets_only_the_supported_period(self):
+        service = MagicMock()
+        service.create_order.return_value = InvoiceOrder(
+            order_id="order-subscription",
+            product_id="ai-monthly",
+            title="AI Monthly",
+            description="Monthly credits",
+            credits=25,
+            amount_xtr=60,
+            payload="md1.subscription.signature",
+            subscription_period_seconds=SUBSCRIPTION_PERIOD_SECONDS,
+        )
+        query = SimpleNamespace(
+            data="buy:ai-monthly",
+            answer=AsyncMock(),
+            message=SimpleNamespace(chat_id=7001, reply_text=AsyncMock()),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=7001),
+        )
+        context = SimpleNamespace(bot=SimpleNamespace(send_invoice=AsyncMock()))
+        with patch.object(bot, "get_billing_service", return_value=service):
+            await bot.buy_product_cb.__wrapped__(update, context)
+
+        self.assertEqual(
+            context.bot.send_invoice.await_args.kwargs["subscription_period"],
+            SUBSCRIPTION_PERIOD_SECONDS,
+        )
+
     async def test_successful_payment_is_fulfilled_through_service(self):
         service = MagicMock()
         service.fulfill_successful_payment.return_value = FulfillmentResult(
@@ -110,6 +144,28 @@ class StarsHandlerTest(unittest.IsolatedAsyncioTestCase):
         service.fulfill_successful_payment.assert_called_once()
         message.reply_text.assert_awaited_once()
         self.assertIn("Начислено 50", message.reply_text.await_args.args[0])
+
+    async def test_subscription_callback_uses_telegram_gateway(self):
+        service = MagicMock()
+        service.set_subscription_autorenew = AsyncMock(return_value=True)
+        query = SimpleNamespace(
+            data="sub:cancel:subscription-id",
+            answer=AsyncMock(),
+            message=SimpleNamespace(reply_text=AsyncMock()),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=7001),
+        )
+        context = SimpleNamespace(bot=AsyncMock())
+        with patch.object(bot, "get_billing_service", return_value=service):
+            await bot.subscription_cb.__wrapped__(update, context)
+
+        kwargs = service.set_subscription_autorenew.await_args.kwargs
+        self.assertEqual(kwargs["subscription_id"], "subscription-id")
+        self.assertEqual(kwargs["user_id"], 7001)
+        self.assertTrue(kwargs["is_canceled"])
+        query.answer.assert_awaited_once()
 
 
 if __name__ == "__main__":

@@ -58,6 +58,7 @@ from mydictionary.billing import (
     BillingService,
     BillingSettings,
     BillingValidationError,
+    TelegramStarsGateway,
 )
 from mydictionary.bot_profile import render_start_text
 from mydictionary.catalog import ContentPack, load_catalog
@@ -1311,17 +1312,24 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Этот пакет сейчас недоступен.")
         return
     await context.bot.send_invoice(
-        chat_id=query.message.chat_id,
-        title=order.title,
-        description=order.description,
-        payload=order.payload,
-        currency="XTR",
-        prices=[
-            LabeledPrice(
-                label=f"{order.credits} AI-кредитов",
-                amount=order.amount_xtr,
-            )
-        ],
+        **{
+            "chat_id": query.message.chat_id,
+            "title": order.title,
+            "description": order.description,
+            "payload": order.payload,
+            "currency": "XTR",
+            "prices": [
+                LabeledPrice(
+                    label=f"{order.credits} AI-кредитов",
+                    amount=order.amount_xtr,
+                )
+            ],
+            **(
+                {"subscription_period": order.subscription_period_seconds}
+                if order.subscription_period_seconds
+                else {}
+            ),
+        }
     )
 
 
@@ -1365,6 +1373,13 @@ async def successful_payment_handler(
             total_amount=payment.total_amount,
             telegram_payment_charge_id=payment.telegram_payment_charge_id,
             provider_payment_charge_id=payment.provider_payment_charge_id,
+            is_recurring=bool(getattr(payment, "is_recurring", False)),
+            is_first_recurring=bool(
+                getattr(payment, "is_first_recurring", False)
+            ),
+            subscription_expiration_date=getattr(
+                payment, "subscription_expiration_date", None
+            ),
         )
     except Exception as exc:
         logger.error("Stars fulfillment failed: error_type=%s", type(exc).__name__)
@@ -1393,6 +1408,65 @@ async def cmd_paysupport(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Поддержка по платежам: {contact}")
     else:
         await update.message.reply_text("Платежи пока выключены.")
+
+
+@auth
+async def cmd_subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    subscriptions = await asyncio.to_thread(
+        get_billing_service().subscriptions_for_user,
+        int(update.effective_user.id),
+    )
+    if not subscriptions:
+        await update.message.reply_text("Активных Stars-подписок пока нет.")
+        return
+    for subscription in subscriptions:
+        cancelled = subscription["status"] == "cancelled"
+        action = "restore" if cancelled else "cancel"
+        label = "Возобновить" if cancelled else "Отключить автопродление"
+        period_end = subscription["current_period_end"].strftime("%Y-%m-%d")
+        await update.message.reply_text(
+            "Stars-подписка\n"
+            f"Статус: {subscription['status']}\n"
+            f"Оплачено до: {period_end}",
+            reply_markup=InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        label,
+                        callback_data=(
+                            f"sub:{action}:{subscription['subscription_id']}"
+                        ),
+                    )
+                ]]
+            ),
+        )
+
+
+@auth
+async def subscription_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    _, action, subscription_id = query.data.split(":", 2)
+    is_canceled = action == "cancel"
+    try:
+        await get_billing_service().set_subscription_autorenew(
+            subscription_id=subscription_id,
+            user_id=int(update.effective_user.id),
+            is_canceled=is_canceled,
+            gateway=TelegramStarsGateway(context.bot),
+        )
+    except Exception as exc:
+        logger.warning(
+            "Stars subscription update failed: error_type=%s",
+            type(exc).__name__,
+        )
+        await query.answer("Не удалось изменить подписку.", show_alert=True)
+        return
+    await query.answer("Настройка подписки обновлена.")
+    await query.message.reply_text(
+        "Автопродление отключено до конца оплаченного периода."
+        if is_canceled
+        else "Автопродление подписки снова включено."
+    )
+
 
 @auth
 async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2775,6 +2849,7 @@ BOT_COMMANDS = [
     BotCommand("ai", "AI-репетитор по активному блоку"),
     BotCommand("ai_stats", "AI-кредиты и использование"),
     BotCommand("buy", "Купить AI-кредиты за Stars"),
+    BotCommand("subscriptions", "Управление Stars-подписками"),
     BotCommand("terms", "Условия AI-кредитов"),
     BotCommand("paysupport", "Поддержка по платежам"),
     BotCommand("lang", "Сменить язык"),
@@ -2849,6 +2924,7 @@ async def manual_polling():
     app.add_handler(CommandHandler("ai", cmd_ai))
     app.add_handler(CommandHandler("ai_stats", cmd_ai_stats))
     app.add_handler(CommandHandler("buy", cmd_buy))
+    app.add_handler(CommandHandler("subscriptions", cmd_subscriptions))
     app.add_handler(CommandHandler("terms", cmd_terms))
     app.add_handler(CommandHandler("paysupport", cmd_paysupport))
     app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
@@ -2860,6 +2936,7 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(onboarding_cb, pattern=r"^onboarding:"))
     app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
     app.add_handler(CallbackQueryHandler(buy_product_cb, pattern=r"^buy:"))
+    app.add_handler(CallbackQueryHandler(subscription_cb, pattern=r"^sub:"))
 
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))

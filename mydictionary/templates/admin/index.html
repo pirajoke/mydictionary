@@ -163,16 +163,16 @@
         <section class="metric-grid" aria-label="Платёжные показатели">
           <article><span>Stars получено</span><strong>{{ billing.xtr_collected|number }}</strong><small>{{ billing.payments.get('paid', {}).get('count', 0) }} платежей</small></article>
           <article><span>Кредитов продано</span><strong>{{ billing.credits_sold|number }}</strong><small>{{ billing.credits_refunded|number }} возвращено</small></article>
-          <article><span>Refund-заявки</span><strong>{{ billing.pending_refunds|number }}</strong><small>{{ billing.xtr_refunded|number }} XTR возвращено</small></article>
+          <article><span>Подписки</span><strong>{{ billing.active_subscriptions|number }}</strong><small>{{ billing.pending_refunds|number }} refund-заявок</small></article>
           <article class="{{ 'accent-teal' if billing.enabled else 'accent-coral' }}"><span>Stars checkout</span><strong>{{ 'ON' if billing.enabled else 'OFF' }}</strong><small>{{ 'экономика настроена' if billing.unit_economics_configured else 'экономика не настроена' }}</small></article>
         </section>
 
         <section class="split-layout wide-left">
           <div class="panel">
             <div class="section-heading"><div><p class="eyebrow">Каталог</p><h2>Пакеты AI-кредитов</h2></div></div>
-            <div class="table-wrap"><table><thead><tr><th>ID</th><th>Название</th><th>Кредиты</th><th>Цена</th><th>Cost</th><th>Маржа</th><th>Статус</th></tr></thead><tbody>
-              {% for row in products %}<tr><td class="mono">{{ row.product_id }}</td><td><strong>{{ row.title }}</strong><span class="cell-sub">{{ row.description }}</span></td><td>{{ row.credits }}</td><td>{{ row.price_xtr }} XTR</td><td>{{ row.estimated_cost_micro_usd|usd }}</td><td>{{ (row.estimated_margin_bps / 100)|round(1) if row.estimated_margin_bps is not none else '—' }}%</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td></tr>
-              {% else %}<tr><td colspan="7" class="empty">Платёжных продуктов пока нет.</td></tr>{% endfor %}
+            <div class="table-wrap"><table><thead><tr><th>ID</th><th>Название</th><th>Режим</th><th>Кредиты</th><th>Цена</th><th>Cost</th><th>Маржа</th><th>Статус</th></tr></thead><tbody>
+              {% for row in products %}<tr><td class="mono">{{ row.product_id }}</td><td><strong>{{ row.title }}</strong><span class="cell-sub">{{ row.description }}</span></td><td>{{ row.billing_mode }}</td><td>{{ row.credits }}</td><td>{{ row.price_xtr }} XTR</td><td>{{ row.estimated_cost_micro_usd|usd }}</td><td>{{ (row.estimated_margin_bps / 100)|round(1) if row.estimated_margin_bps is not none else '—' }}%</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td></tr>
+              {% else %}<tr><td colspan="8" class="empty">Платёжных продуктов пока нет.</td></tr>{% endfor %}
             </tbody></table></div>
           </div>
           <div class="panel action-panel">
@@ -184,6 +184,8 @@
               <label>Описание<input name="description" maxlength="255" required></label>
               <label>AI-кредиты<input name="credits" type="number" min="1" required></label>
               <label>Цена, XTR<input name="price_xtr" type="number" min="1" required></label>
+              <label>Режим<select name="billing_mode"><option value="one_time">one_time</option><option value="subscription">subscription</option></select></label>
+              <label>Период подписки, сек.<input name="subscription_period_seconds" type="number" value="0" min="0"><small>Для subscription: 2592000</small></label>
               <label>Себестоимость, micro USD<input name="estimated_cost_micro_usd" type="number" min="0" value="0" required></label>
               <label>Минимальная маржа, bps<input name="target_margin_bps" type="number" min="0" max="10000" value="0" required></label>
               <label>Порядок<input name="display_order" type="number" value="0" required></label>
@@ -198,6 +200,14 @@
           <div class="table-wrap"><table><thead><tr><th>Время</th><th>Payment ID</th><th>User ID</th><th>Продукт</th><th>Кредиты</th><th>Stars</th><th>Статус</th><th>Refund</th></tr></thead><tbody>
             {% for row in payments %}<tr><td>{{ row.received_at|datetime }}</td><td class="mono">{{ row.payment_id }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.product_title }}</td><td>{{ row.credits }}</td><td>{{ row.total_amount }} XTR</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td><td>{% if row.status == 'paid' %}<form method="post" action="{{ url_for('request_billing_refund') }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="payment_id" value="{{ row.payment_id }}"><input name="reason" minlength="3" maxlength="255" placeholder="Причина" required><button type="submit" class="compact-button">Запросить</button></form>{% else %}—{% endif %}</td></tr>
             {% else %}<tr><td colspan="8" class="empty">Stars-платежей пока нет.</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Recurring Stars</p><h2>Подписки</h2></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Создана</th><th>ID</th><th>User ID</th><th>Продукт</th><th>Кредиты</th><th>Цена</th><th>Оплачено до</th><th>Статус</th></tr></thead><tbody>
+            {% for row in subscriptions %}<tr><td>{{ row.created_at|datetime }}</td><td class="mono">{{ row.subscription_id }}</td><td class="mono">{{ row.telegram_user_id }}</td><td>{{ row.product_title }}</td><td>{{ row.credits }}</td><td>{{ row.amount_xtr }} XTR</td><td>{{ row.current_period_end|datetime }}</td><td><span class="status {{ row.status }}">{{ row.status }}</span></td></tr>
+            {% else %}<tr><td colspan="8" class="empty">Stars-подписок пока нет.</td></tr>{% endfor %}
           </tbody></table></div>
         </section>
 
