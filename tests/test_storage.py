@@ -72,6 +72,12 @@ class DatabaseStoreTest(unittest.TestCase):
                 "ai_credit_ledger",
                 "user_pack_enrollments",
                 "analytics_events",
+                "ai_wallets",
+                "billing_products",
+                "payment_orders",
+                "stars_payments",
+                "billing_credit_ledger",
+                "refund_requests",
             }.issubset(tables)
         )
         user_columns = {column["name"] for column in inspector.get_columns("users")}
@@ -95,7 +101,7 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0005_pilot_access")
+        self.assertEqual(revision, "0006_telegram_stars_billing")
 
     def test_programmatic_migrations_preserve_application_logging(self):
         root_logger = logging.getLogger()

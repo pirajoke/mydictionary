@@ -1,23 +1,26 @@
 # MY DICTIONARY admin console
 
-The Stage 3 admin console is a separate server-rendered process. It reads the
+The Stage 3-4 admin console is a separate server-rendered process. It reads the
 same PostgreSQL database as the Telegram bot and does not start Telegram
 polling. The default binding is loopback-only on the Mac mini.
 
 ## Scope
 
-- dashboard for users, learning, languages, AI usage, costs, and pilot credits
+- dashboard for users, learning, languages, AI usage, costs, and AI wallets
 - searchable learner table and CSV exports
 - managed pending, active, and blocked pilot access with an audit trail
 - dictionary and topic coverage
 - privacy-minimized AI request diagnostics without prompt or response storage
-- audited pilot credit grants and withdrawals
+- audited wallet grants and withdrawals
+- draft and active Stars products with measured cost and margin floors
+- payment orders, Stars payments, refund holds, and local reconciliation
 - editable Telegram profile, `/start`, and `/help` text
 - database, migration, feature-flag, release, asset, and Telegram polling readiness
 - append-only administration audit log
 
-Payments, subscriptions, refunds, and Telegram Stars are intentionally outside
-this stage.
+The admin can request a refund hold but cannot call Telegram's refund API. Live
+refund processing remains an explicit operator action through an injected
+gateway.
 
 ## Required environment
 
@@ -30,6 +33,7 @@ ADMIN_HOST=127.0.0.1
 ADMIN_PORT=8787
 DATA_DIR=<shared runtime directory>
 BOT_HEARTBEAT_MAX_AGE_SECONDS=45
+TELEGRAM_STARS_ENABLED=false
 ```
 
 The bot and admin processes must resolve the same heartbeat path. By default it

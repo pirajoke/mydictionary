@@ -109,6 +109,13 @@ MYDICTIONARY_PGDUMP_DATABASE=<local libpq database target>
 MYDICTIONARY_BACKUP_DIR=<private local backup directory>
 ```
 
+Telegram Stars settings are optional and default off. A reviewed billing rollout
+passes `TELEGRAM_STARS_ENABLED`, `BILLING_PAYLOAD_SECRET`,
+`BILLING_SUPPORT_CONTACT`, `BILLING_TERMS_TEXT`,
+`BILLING_ORDER_TTL_SECONDS`, and `BILLING_NET_MICRO_USD_PER_XTR` to both bot and
+admin processes. Keep the payload secret out of plist files readable by other
+users and retain it while an issued invoice may still be paid.
+
 The scheduled backup wrapper uses the same two settings plus:
 
 ```text

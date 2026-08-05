@@ -8,20 +8,28 @@ from typing import Any, Mapping
 from uuid import uuid4
 
 from sqlalchemy import String, cast, func, or_, select
-from sqlalchemy.dialects.postgresql import insert as postgresql_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
+from mydictionary.billing import (
+    BillingService,
+    BillingSettings,
+    PRODUCT_ID_RE,
+    PRODUCT_STATUSES,
+)
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS
 from mydictionary.storage import (
     ACCESS_STATUSES,
-    AIAllowance,
-    AICreditLedger,
+    AIWallet,
     AIUsage,
     AnalyticsEvent,
     AdminAuditLog,
     AdminCredential,
     AppSetting,
+    BillingCreditLedger,
+    BillingProduct,
     DatabaseStore,
+    PaymentOrder,
+    RefundRequest,
+    StarsPayment,
     User,
     UserProgress,
     WordProgress,
@@ -41,8 +49,14 @@ def _name(user: User) -> str:
 
 
 class AdminStore:
-    def __init__(self, store: DatabaseStore):
+    def __init__(
+        self,
+        store: DatabaseStore,
+        billing_settings: BillingSettings | None = None,
+    ):
         self.store = store
+        self.billing_settings = billing_settings or BillingSettings.from_env()
+        self.billing = BillingService(store, self.billing_settings)
 
     def get_settings(self) -> dict[str, str]:
         with self.store.Session() as session:
@@ -168,76 +182,25 @@ class AdminStore:
         delta: int,
         reason: str,
         actor: str,
+        idempotency_key: str | None = None,
     ) -> int:
         if delta == 0:
             raise ValueError("Credit adjustment cannot be zero")
         reason = reason.strip()
         if len(reason) < 3 or len(reason) > 255:
             raise ValueError("Reason must contain 3 to 255 characters")
-        with self.store.Session.begin() as session:
-            existing_user = session.execute(
-                select(User.telegram_user_id)
-                .where(User.telegram_user_id == int(user_id))
-                .with_for_update()
-            ).scalar_one_or_none()
-            if existing_user is None:
-                raise ValueError("Telegram user does not exist")
-            insert_for_dialect = (
-                postgresql_insert
-                if self.store.engine.dialect.name == "postgresql"
-                else sqlite_insert
-            )
-            session.execute(
-                insert_for_dialect(AIAllowance)
-                .values(
-                    telegram_user_id=int(user_id),
-                    available_credits=0,
-                    reserved_credits=0,
-                    spent_credits=0,
-                    updated_at=utcnow(),
-                )
-                .on_conflict_do_nothing(
-                    index_elements=[AIAllowance.telegram_user_id]
-                )
-            )
-            allowance = session.execute(
-                select(AIAllowance)
-                .where(AIAllowance.telegram_user_id == int(user_id))
-                .with_for_update()
-            ).scalar_one()
-            balance_after = allowance.available_credits + int(delta)
-            if balance_after < 0:
-                raise ValueError("Credit balance cannot become negative")
-            allowance.available_credits = balance_after
-            allowance.updated_at = utcnow()
-            entry_id = str(uuid4())
-            session.add(
-                AICreditLedger(
-                    entry_id=entry_id,
-                    telegram_user_id=int(user_id),
-                    delta=int(delta),
-                    balance_after=balance_after,
-                    reason=reason,
-                    actor=actor,
-                )
-            )
-            session.add(
-                AdminAuditLog(
-                    actor=actor,
-                    action="ai_credits_adjusted",
-                    target_type="telegram_user",
-                    target_id=str(user_id),
-                    details_json=_json(
-                        {
-                            "delta": int(delta),
-                            "balance_after": balance_after,
-                            "reason": reason,
-                            "ledger_entry_id": entry_id,
-                        }
-                    ),
-                )
-            )
-            return balance_after
+        result = self.store.adjust_ai_wallet(
+            user_id,
+            delta=int(delta),
+            reason=reason,
+            actor=actor,
+            idempotency_key=(
+                str(idempotency_key).strip()[:249]
+                if idempotency_key
+                else f"admin:{uuid4()}"
+            ),
+        )
+        return result["available_credits"]
 
     def set_user_access_status(
         self,
@@ -329,9 +292,9 @@ class AdminStore:
             ) or 0
             credits = session.execute(
                 select(
-                    func.sum(AIAllowance.available_credits),
-                    func.sum(AIAllowance.reserved_credits),
-                    func.sum(AIAllowance.spent_credits),
+                    func.sum(AIWallet.balance_credits - AIWallet.reserved_credits),
+                    func.sum(AIWallet.reserved_credits),
+                    func.sum(AIWallet.spent_credits),
                 )
             ).one()
             language_rows = session.execute(
@@ -410,7 +373,7 @@ class AdminStore:
             select(
                 User,
                 UserProgress,
-                AIAllowance,
+                AIWallet,
                 word_stats.c.tracked_words,
                 learned_stats.c.learned_words,
                 word_stats.c.word_correct,
@@ -424,8 +387,8 @@ class AdminStore:
                 UserProgress.telegram_user_id == User.telegram_user_id,
             )
             .outerjoin(
-                AIAllowance,
-                AIAllowance.telegram_user_id == User.telegram_user_id,
+                AIWallet,
+                AIWallet.telegram_user_id == User.telegram_user_id,
             )
             .outerjoin(
                 word_stats, word_stats.c.user_id == User.telegram_user_id
@@ -453,7 +416,7 @@ class AdminStore:
             rows = session.execute(statement).all()
         result = []
         for row in rows:
-            user, progress, allowance = row[0], row[1], row[2]
+            user, progress, wallet = row[0], row[1], row[2]
             correct = int((progress.total_correct if progress else 0) or 0)
             wrong = int((progress.total_wrong if progress else 0) or 0)
             attempts = correct + wrong
@@ -489,12 +452,14 @@ class AdminStore:
                     "ai_tokens": int(row[8] or 0),
                     "ai_cost_micro_usd": int(row[9] or 0),
                     "credits_available": (
-                        allowance.available_credits if allowance else 0
+                        wallet.balance_credits - wallet.reserved_credits
+                        if wallet
+                        else 0
                     ),
                     "credits_reserved": (
-                        allowance.reserved_credits if allowance else 0
+                        wallet.reserved_credits if wallet else 0
                     ),
-                    "credits_spent": allowance.spent_credits if allowance else 0,
+                    "credits_spent": wallet.spent_credits if wallet else 0,
                     "created_at": user.created_at,
                     "updated_at": user.updated_at,
                 }
@@ -680,20 +645,310 @@ class AdminStore:
             for row in rows
         ]
 
+    def upsert_billing_product(
+        self,
+        *,
+        product_id: str,
+        title: str,
+        description: str,
+        credits: int,
+        price_xtr: int,
+        status: str,
+        estimated_cost_micro_usd: int,
+        target_margin_bps: int,
+        display_order: int,
+        actor: str,
+    ) -> dict[str, Any]:
+        product_id = str(product_id).strip().lower()
+        title = str(title).strip()
+        description = str(description).strip()
+        status = str(status).strip().lower()
+        if not PRODUCT_ID_RE.fullmatch(product_id):
+            raise ValueError("Product ID must use lowercase letters, digits, and hyphens")
+        if not 1 <= len(title) <= 32 or not 1 <= len(description) <= 255:
+            raise ValueError("Product title or description is outside Telegram limits")
+        if status not in PRODUCT_STATUSES:
+            raise ValueError("Unknown billing product status")
+        if not 1 <= int(credits) <= 1_000_000:
+            raise ValueError("Product credits must be between 1 and 1000000")
+        if not 1 <= int(price_xtr) <= 1_000_000:
+            raise ValueError("Product price must be between 1 and 1000000 XTR")
+        if int(estimated_cost_micro_usd) < 0:
+            raise ValueError("Estimated product cost cannot be negative")
+        if not 0 <= int(target_margin_bps) <= 10000:
+            raise ValueError("Target margin must be between 0 and 10000 bps")
+        candidate = {
+            "price_xtr": int(price_xtr),
+            "estimated_cost_micro_usd": int(estimated_cost_micro_usd),
+        }
+        estimated_margin = self.billing.product_margin_bps(candidate)
+        if status == "active":
+            if int(estimated_cost_micro_usd) <= 0 or int(target_margin_bps) <= 0:
+                raise ValueError(
+                    "Active products require measured cost and a positive margin floor"
+                )
+            if estimated_margin is None:
+                raise ValueError(
+                    "Configure BILLING_NET_MICRO_USD_PER_XTR before activation"
+                )
+            if estimated_margin < int(target_margin_bps):
+                raise ValueError("Estimated margin is below the configured floor")
+        with self.store.Session.begin() as session:
+            row = session.get(BillingProduct, product_id)
+            action = "billing_product_created"
+            if row is None:
+                row = BillingProduct(product_id=product_id)
+                session.add(row)
+            else:
+                action = "billing_product_updated"
+            row.title = title
+            row.description = description
+            row.credits = int(credits)
+            row.price_xtr = int(price_xtr)
+            row.status = status
+            row.estimated_cost_micro_usd = int(estimated_cost_micro_usd)
+            row.target_margin_bps = int(target_margin_bps)
+            row.display_order = int(display_order)
+            row.updated_at = utcnow()
+            session.add(
+                AdminAuditLog(
+                    actor=actor[:64],
+                    action=action,
+                    target_type="billing_product",
+                    target_id=product_id,
+                    details_json=_json(
+                        {
+                            "credits": int(credits),
+                            "price_xtr": int(price_xtr),
+                            "status": status,
+                            "estimated_cost_micro_usd": int(
+                                estimated_cost_micro_usd
+                            ),
+                            "target_margin_bps": int(target_margin_bps),
+                            "estimated_margin_bps": estimated_margin,
+                        }
+                    ),
+                )
+            )
+        return self.billing_products(product_id=product_id)[0]
+
+    def billing_products(
+        self, *, product_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        statement = select(BillingProduct).order_by(
+            BillingProduct.display_order, BillingProduct.price_xtr
+        )
+        if product_id is not None:
+            statement = statement.where(BillingProduct.product_id == product_id)
+        with self.store.Session() as session:
+            rows = session.execute(statement).scalars().all()
+        result = []
+        for row in rows:
+            product = {
+                column.name: getattr(row, column.name)
+                for column in BillingProduct.__table__.columns
+            }
+            product["estimated_margin_bps"] = self.billing.product_margin_bps(row)
+            product["estimated_net_revenue_micro_usd"] = (
+                row.price_xtr * self.billing_settings.net_micro_usd_per_xtr
+            )
+            result.append(product)
+        return result
+
+    def billing_overview(self) -> dict[str, Any]:
+        with self.store.Session() as session:
+            order_rows = session.execute(
+                select(PaymentOrder.status, func.count(PaymentOrder.order_id)).group_by(
+                    PaymentOrder.status
+                )
+            ).all()
+            payment_rows = session.execute(
+                select(
+                    StarsPayment.status,
+                    func.count(StarsPayment.payment_id),
+                    func.sum(StarsPayment.total_amount),
+                ).group_by(StarsPayment.status)
+            ).all()
+            credits_sold = session.scalar(
+                select(func.sum(PaymentOrder.credits_snapshot)).where(
+                    PaymentOrder.status.in_({"paid", "refund_pending"})
+                )
+            ) or 0
+            credits_refunded = session.scalar(
+                select(func.sum(RefundRequest.credits)).where(
+                    RefundRequest.status == "completed"
+                )
+            ) or 0
+            pending_refunds = session.scalar(
+                select(func.count(RefundRequest.refund_id)).where(
+                    RefundRequest.status.in_({"requested", "processing", "failed"})
+                )
+            ) or 0
+        payment_statuses = {
+            status: {"count": int(count or 0), "xtr": int(amount or 0)}
+            for status, count, amount in payment_rows
+        }
+        return {
+            "enabled": self.billing_settings.enabled,
+            "unit_economics_configured": (
+                self.billing_settings.net_micro_usd_per_xtr > 0
+            ),
+            "orders": {status: int(count) for status, count in order_rows},
+            "payments": payment_statuses,
+            "xtr_collected": sum(
+                value["xtr"]
+                for status, value in payment_statuses.items()
+                if status in {"paid", "refund_pending"}
+            ),
+            "xtr_refunded": payment_statuses.get("refunded", {}).get("xtr", 0),
+            "credits_sold": int(credits_sold),
+            "credits_refunded": int(credits_refunded),
+            "pending_refunds": int(pending_refunds),
+        }
+
+    def recent_payment_orders(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(PaymentOrder)
+                .order_by(PaymentOrder.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).scalars().all()
+        return [
+            {
+                column.name: getattr(row, column.name)
+                for column in PaymentOrder.__table__.columns
+                if column.name != "invoice_payload"
+            }
+            for row in rows
+        ]
+
+    def stars_payments(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(StarsPayment, PaymentOrder)
+                .join(PaymentOrder, PaymentOrder.order_id == StarsPayment.order_id)
+                .order_by(StarsPayment.received_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).all()
+        return [
+            {
+                "payment_id": payment.payment_id,
+                "order_id": payment.order_id,
+                "telegram_user_id": payment.telegram_user_id,
+                "product_id": order.product_id,
+                "product_title": order.product_title,
+                "credits": order.credits_snapshot,
+                "currency": payment.currency,
+                "total_amount": payment.total_amount,
+                "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+                "status": payment.status,
+                "received_at": payment.received_at,
+                "refunded_at": payment.refunded_at,
+            }
+            for payment, order in rows
+        ]
+
+    def refund_requests(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(RefundRequest)
+                .order_by(RefundRequest.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).scalars().all()
+        return [
+            {
+                column.name: getattr(row, column.name)
+                for column in RefundRequest.__table__.columns
+            }
+            for row in rows
+        ]
+
+    def request_stars_refund(
+        self, *, payment_id: str, reason: str, actor: str
+    ) -> str:
+        return self.billing.request_refund(
+            payment_id=payment_id, reason=reason, actor=actor
+        )
+
+    def billing_reconciliation(self) -> list[dict[str, str]]:
+        issues: list[dict[str, str]] = []
+        with self.store.Session() as session:
+            orders = session.execute(
+                select(PaymentOrder).where(
+                    PaymentOrder.status.in_(
+                        {"paid", "refund_pending", "refunded"}
+                    )
+                )
+            ).scalars().all()
+            for order in orders:
+                payment = session.execute(
+                    select(StarsPayment).where(
+                        StarsPayment.order_id == order.order_id
+                    )
+                ).scalar_one_or_none()
+                if payment is None:
+                    issues.append(
+                        {
+                            "code": "paid_order_missing_payment",
+                            "reference": order.order_id,
+                            "details": "Order state requires a Stars payment row",
+                        }
+                    )
+                    continue
+                ledger = session.execute(
+                    select(BillingCreditLedger).where(
+                        BillingCreditLedger.idempotency_key
+                        == f"stars-payment:{payment.telegram_payment_charge_id}"
+                    )
+                ).scalar_one_or_none()
+                if ledger is None:
+                    issues.append(
+                        {
+                            "code": "payment_missing_credit_ledger",
+                            "reference": payment.payment_id,
+                            "details": "Payment has no idempotent credit grant",
+                        }
+                    )
+            refunds = session.execute(
+                select(RefundRequest).where(RefundRequest.status == "completed")
+            ).scalars().all()
+            for refund in refunds:
+                ledger = session.execute(
+                    select(BillingCreditLedger).where(
+                        BillingCreditLedger.reference_type == "refund",
+                        BillingCreditLedger.reference_id == refund.refund_id,
+                    )
+                ).scalar_one_or_none()
+                if ledger is None:
+                    issues.append(
+                        {
+                            "code": "refund_missing_credit_reversal",
+                            "reference": refund.refund_id,
+                            "details": "Completed refund has no ledger reversal",
+                        }
+                    )
+        return issues
+
     def credit_ledger(self, limit: int = 100) -> list[dict[str, Any]]:
         with self.store.Session() as session:
             rows = session.execute(
-                select(AICreditLedger)
-                .order_by(AICreditLedger.created_at.desc())
+                select(BillingCreditLedger)
+                .order_by(BillingCreditLedger.created_at.desc())
                 .limit(max(1, min(int(limit), 10000)))
             ).scalars().all()
         return [
             {
                 column.name: getattr(row, column.name)
-                for column in AICreditLedger.__table__.columns
+                for column in BillingCreditLedger.__table__.columns
             }
             for row in rows
         ]
+
+    def payment_orders_export(self) -> list[dict[str, Any]]:
+        return self.recent_payment_orders(limit=10000)
+
+    def stars_payments_export(self) -> list[dict[str, Any]]:
+        return self.stars_payments(limit=10000)
 
     def audit_log(self, limit: int = 100) -> list[dict[str, Any]]:
         with self.store.Session() as session:

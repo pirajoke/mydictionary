@@ -11,8 +11,8 @@ from mydictionary.admin import LoginLimiter, create_app
 from mydictionary.admin_store import AdminStore
 from mydictionary.readiness import BotHeartbeat
 from mydictionary.storage import (
-    AIAllowance,
-    AICreditLedger,
+    AIWallet,
+    BillingCreditLedger,
     AdminAuditLog,
     DatabaseStore,
 )
@@ -113,6 +113,7 @@ class AdminConsoleTest(unittest.TestCase):
             "funnel",
             "learning",
             "ai",
+            "billing",
             "content",
             "profile",
             "diagnostics",
@@ -145,20 +146,27 @@ class AdminConsoleTest(unittest.TestCase):
     def test_credit_adjustment_is_transactional_and_has_ledger(self):
         self.login()
         self.store.ensure_user_id(5501)
+        adjustment = {
+            "csrf_token": self.csrf(),
+            "action_id": "same-admin-action",
+            "user_id": "5501",
+            "delta": "12",
+            "reason": "closed beta grant",
+        }
         response = self.client.post(
             "/admin/credits",
-            data={
-                "csrf_token": self.csrf(),
-                "user_id": "5501",
-                "delta": "12",
-                "reason": "closed beta grant",
-            },
+            data=adjustment,
         )
         self.assertEqual(response.status_code, 302)
+        replay = self.client.post(
+            "/admin/credits",
+            data={**adjustment, "csrf_token": self.csrf()},
+        )
+        self.assertEqual(replay.status_code, 302)
         with self.store.Session() as database_session:
-            allowance = database_session.get(AIAllowance, 5501)
-            ledger = database_session.execute(select(AICreditLedger)).scalar_one()
-            self.assertEqual(allowance.available_credits, 12)
+            wallet = database_session.get(AIWallet, 5501)
+            ledger = database_session.execute(select(BillingCreditLedger)).scalar_one()
+            self.assertEqual(wallet.balance_credits, 12)
             self.assertEqual(ledger.delta, 12)
             self.assertEqual(ledger.balance_after, 12)
 
@@ -174,13 +182,42 @@ class AdminConsoleTest(unittest.TestCase):
         self.assertEqual(rejected.status_code, 302)
         with self.store.Session() as database_session:
             self.assertEqual(
-                database_session.get(AIAllowance, 5501).available_credits,
+                database_session.get(AIWallet, 5501).balance_credits,
                 12,
             )
             self.assertEqual(
-                len(database_session.execute(select(AICreditLedger)).scalars().all()),
+                len(
+                    database_session.execute(
+                        select(BillingCreditLedger)
+                    ).scalars().all()
+                ),
                 1,
             )
+
+    def test_billing_product_draft_is_managed_with_csrf_and_audit(self):
+        self.login()
+        response = self.client.post(
+            "/admin/billing/products",
+            data={
+                "csrf_token": self.csrf(),
+                "product_id": "ai-starter",
+                "title": "AI Starter",
+                "description": "50 AI credits",
+                "credits": "50",
+                "price_xtr": "100",
+                "estimated_cost_micro_usd": "0",
+                "target_margin_bps": "0",
+                "display_order": "10",
+                "status": "draft",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        page = self.client.get("/admin?tab=billing").get_data(as_text=True)
+        self.assertIn("ai-starter", page)
+        self.assertIn("draft", page)
+        with self.store.Session() as session:
+            actions = session.execute(select(AdminAuditLog.action)).scalars().all()
+        self.assertIn("billing_product_created", actions)
 
     def test_credit_adjustment_rejects_unknown_user(self):
         with self.assertRaisesRegex(ValueError, "does not exist"):
