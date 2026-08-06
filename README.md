@@ -1,41 +1,54 @@
 # MY DICTIONARY
 
-Telegram-first vocabulary learning bot with multilingual content, topic-based study blocks, spaced repetition, text-to-speech, and an optional gated AI tutor.
+MY DICTIONARY is a Telegram-first vocabulary trainer with themed lessons,
+spaced repetition, pronunciation audio, quizzes, and a protected operations
+console.
 
 ## Product scope
 
-- English, Vietnamese, and Japanese vocabulary packs with Russian meanings and transcriptions.
-- Guided onboarding and topic-based 10-word learning blocks.
-- Flashcards, quizzes, review scheduling, and learner progress.
-- Edge TTS pronunciation support.
-- PostgreSQL-backed multi-user storage with Alembic migrations.
-- Optional AI tutor with deterministic evaluation, credits, cost accounting, and fail-closed configuration.
-- Separate server-rendered admin console with audited operator actions.
-
-Payments and subscriptions are not part of the current release. The AI tutor remains disabled until its evaluation and rollout gates are approved.
+- Free starter packs for English, French, German, Japanese, Arabic, Chinese,
+  Russian, and Spanish, plus the existing Vietnamese pack.
+- Topic-based 10-word learning blocks, flashcards, written and multiple-choice
+  tests, XP, streaks, and scheduled review.
+- Russian meanings, target-language spelling, Latin transcription, and
+  text-to-speech pronunciation.
+- PostgreSQL multi-user storage with Alembic migrations and an explicit
+  local-only SQLite mode.
+- A server-rendered admin console for learner access, pilot D1/D7 retention,
+  privacy-safe product analytics, credit operations, and audit history.
+- Optional AI tutor, voice practice, and Telegram Stars billing. All three are
+  fail-closed and remain off until their separate rollout gates are approved.
+- Verified local PostgreSQL backups, encrypted off-site replication tooling,
+  retention controls, health monitoring, and a migration-aware Mac mini
+  release process.
 
 ## Local development
 
 Requirements:
 
 - Python 3.12+
-- PostgreSQL 16 for the full storage and admin test path
+- PostgreSQL 16 for the full storage and admin path
 
-Install dependencies:
+Install the locked dependencies:
 
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install --requirement requirements.txt
+python -m pip install --requirement requirements.lock
 ```
 
-Configure secrets outside Git. The bot requires `BOT_TOKEN`; production also requires `DATABASE_URL`. Local SQLite is available only when `ALLOW_SQLITE_DEV=true` is set intentionally.
+Keep secrets outside Git. The bot requires `BOT_TOKEN`; production also
+requires `DATABASE_URL`. SQLite is available only when
+`ALLOW_SQLITE_DEV=true` is set explicitly.
 
 Start the Telegram polling process:
 
 ```bash
 python bot.py
 ```
+
+For admin-console setup and local commands, see
+[`docs/admin-console.md`](docs/admin-console.md).
 
 ## Validation
 
@@ -44,30 +57,38 @@ python -m unittest discover -s tests -v
 python -m compileall -q .
 ```
 
-The GitHub Actions workflow runs the suite against PostgreSQL 16.
+GitHub Actions runs the complete suite against PostgreSQL 16, including
+migrations, isolated persistence, and concurrent credit reservations.
 
-## Architecture
+## Repository map
 
 | Path | Purpose |
 |---|---|
-| `bot.py` | Telegram adapter and polling entrypoint |
-| `mydictionary/` | Storage, learning, AI tutor, catalog, and admin services |
+| `bot.py` | Telegram adapter and polling entry point |
+| `mydictionary/` | Storage, catalog, learning, billing, privacy, AI, voice, and admin services |
 | `migrations/` | Alembic database migrations |
-| `content/`, `words*.json` | Checked-in vocabulary content |
-| `tests/` | Product, storage, AI-contract, and admin tests |
+| `content/`, `words*.json` | Versioned vocabulary sources and generated packs |
+| `ops/` | Mac mini deploy, backup, monitoring, retention, and billing wrappers |
+| `tests/` | Product, storage, operations, safety, and provider-contract tests |
 | `docs/product-foundation.md` | Product principles and rollout boundary |
-| `docs/architecture-ai-platform.md` | Target service architecture |
-| `docs/admin-console.md` | Admin runtime and security controls |
-| `docs/ai-evaluation.md` | AI tutor evaluation gate |
+| `docs/pilot-operations.md` | Controlled cohort and D1/D7 measurement |
+| `docs/launch-readiness.md` | Paid and voice release gates |
+| `docs/runbooks/mac-mini-deployment.md` | Production deployment and recovery runbook |
 
-Production is designed for the owner-controlled Mac mini runtime. `render.yaml` is retained as a legacy/alternative deployment artifact, not the current target architecture.
+Production runs on an owner-controlled Mac mini. `render.yaml` is retained only
+as a legacy deployment artifact.
 
 ## Security and privacy
 
-- Never commit Telegram, database, admin, or AI-provider credentials.
-- AI usage records contain operational metadata, not learner prompts or generated answers.
-- Admin state changes are authenticated, CSRF-protected, and audit logged.
-- Production feature enablement and credential changes require explicit approval.
+- Never commit Telegram, database, admin, backup, or provider credentials.
+- Product analytics accept only allowlisted structured fields, never learner
+  messages, answers, prompts, names, or contact details.
+- AI usage records retain operational metadata rather than prompts or generated
+  answers; voice transcripts are temporary and separately consented.
+- Admin mutations require authentication and CSRF protection and are written to
+  an audit log.
+- Feature activation, migrations, external messages, payments, and production
+  deployment require explicit operational approval.
 
 ## License
 
