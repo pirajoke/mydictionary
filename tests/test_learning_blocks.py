@@ -1,5 +1,6 @@
 import os
 from io import BytesIO
+from datetime import datetime, timedelta
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -32,6 +33,30 @@ class LearningBlocksTest(unittest.TestCase):
         self.assertNotIn("🇷🇺", prompt)
         self.assertNotIn("*я*", prompt)
         self.assertEqual(prompt, "🇯🇵 *watashi (私)*")
+
+    def test_visual_card_uses_topic_emoji_progress_and_hides_meaning(self):
+        user_data = {}
+        bot.reset_block_state(user_data, [10, 21, 22, 23, 24], "ja", None)
+        bot.start_block_attempt(user_data, "flash")
+
+        card = bot.format_learning_card_front(user_data, 10)
+
+        self.assertTrue(card.startswith("👥"))
+        self.assertIn("Карточка 1 из 5", card)
+        self.assertIn("▰▱▱▱▱", card)
+        self.assertIn("watashi (私)", card)
+        self.assertNotIn("🇷🇺 *я*", card)
+
+    def test_due_words_only_returns_reviews_that_have_arrived(self):
+        now = datetime.now()
+        words = [
+            {"next_review": (now - timedelta(days=2)).isoformat()},
+            {"next_review": None},
+            {"next_review": (now + timedelta(days=2)).isoformat()},
+            {"next_review": (now - timedelta(hours=1)).isoformat()},
+        ]
+        with patch.object(bot, "W", return_value=words):
+            self.assertEqual(bot.due_word_indices(), [0, 3])
 
     def test_japanese_study_list_uses_romaji_with_kanji_in_parentheses(self):
         study_list = bot.format_study_list([10])
@@ -280,6 +305,84 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
             cache_namespace="ja-basics-100:v1",
         )
         send_voice.assert_awaited_once_with(chat_id=123, voice=audio)
+
+
+class DailyLessonTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        bot.PROGRESS["active_lang"] = "ja"
+
+    async def test_home_lesson_starts_directly_in_flashcard_mode(self):
+        message = SimpleNamespace(chat_id=123, reply_text=AsyncMock())
+        query = SimpleNamespace(message=message)
+        context = SimpleNamespace(
+            user_data={},
+            bot=SimpleNamespace(send_message=AsyncMock()),
+        )
+        pack = bot.CATALOG.require("ja-basics-100")
+        with (
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.object(bot, "daily_lesson_size", return_value=5),
+            patch.object(bot, "pick_block", return_value=[10, 21, 22, 23, 24]),
+            patch.object(bot, "block_send_question_msg", new=AsyncMock()) as send,
+        ):
+            await bot.start_home_lesson(query, context, lesson_kind="daily")
+
+        self.assertEqual(context.user_data["block_mode"], "flash")
+        self.assertEqual(context.user_data["lesson_kind"], "daily")
+        self.assertEqual(len(context.user_data["block_indices"]), 5)
+        send.assert_awaited_once_with(message, context)
+
+    async def test_empty_review_offers_a_new_lesson(self):
+        message = SimpleNamespace(chat_id=123)
+        context = SimpleNamespace(
+            user_data={},
+            bot=SimpleNamespace(send_message=AsyncMock()),
+        )
+        pack = bot.CATALOG.require("ja-basics-100")
+        with (
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.object(bot, "daily_lesson_size", return_value=5),
+            patch.object(bot, "due_word_indices", return_value=[]),
+        ):
+            await bot.start_home_lesson(
+                SimpleNamespace(message=message),
+                context,
+                lesson_kind="review",
+            )
+
+        payload = context.bot.send_message.await_args.kwargs
+        self.assertIn("всё повторено", payload["text"])
+        self.assertEqual(
+            payload["reply_markup"].inline_keyboard[0][0].callback_data,
+            "start:daily",
+        )
+
+    async def test_flash_card_reveal_has_replay_and_simple_rating_buttons(self):
+        user_data = {}
+        bot.reset_block_state(user_data, [10], "ja", "people")
+        bot.start_block_attempt(user_data, "flash")
+        session_id = user_data["block_session"]
+        query = SimpleNamespace(
+            data=f"bflash_show:{session_id}:10",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=SimpleNamespace(chat_id=123),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=1),
+        )
+        context = SimpleNamespace(user_data=user_data, bot=SimpleNamespace())
+        with patch.object(bot, "record_product_event") as record:
+            await bot.block_flash_show_cb.__wrapped__(update, context)
+
+        payload = query.edit_message_text.await_args
+        self.assertIn("🇷🇺 *я*", payload.args[0])
+        buttons = payload.kwargs["reply_markup"].inline_keyboard
+        self.assertEqual(buttons[0][0].callback_data, f"bplay:{session_id}:10")
+        self.assertEqual([button.text for button in buttons[1]], ["😵 Не знаю", "✅ Знаю"])
+        record.assert_called_once()
+        self.assertEqual(record.call_args.args[0], "card_revealed")
 
 
 class GlobalCallbackIsolationTest(unittest.IsolatedAsyncioTestCase):

@@ -337,6 +337,29 @@ class DatabaseStoreTest(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             self.assertIsNotNone(rows[0].revoked_at)
 
+    def test_card_analytics_accepts_privacy_safe_interaction_dimensions(self):
+        event_id = self.store.record_event(
+            213,
+            "card_rated",
+            properties={
+                "pack_id": "ja-basics-100",
+                "language": "ja",
+                "lesson_kind": "daily",
+                "mode": "flash",
+                "position": 2,
+                "rating": "known",
+                "word_count": 5,
+                "word_index": 10,
+            },
+            session_id="abc123",
+            source="home",
+        )
+        with self.store.Session() as session:
+            event = session.get(AnalyticsEvent, event_id)
+            self.assertIn('"lesson_kind":"daily"', event.properties_json)
+            self.assertIn('"rating":"known"', event.properties_json)
+            self.assertNotIn("target", event.properties_json)
+
     def test_profiles_and_words_are_isolated_by_telegram_user(self):
         user_one = dict(PROFILE_DEFAULTS, active_lang="ja", xp=25, total_correct=1)
         word_one = {

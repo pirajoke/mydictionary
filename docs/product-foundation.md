@@ -21,17 +21,30 @@ carry `pack_id`; the server rechecks visibility before activation.
 
 Users have an immutable-safe role transition: runtime configuration can promote
 a learner to `admin`, but a later request cannot downgrade an administrator.
-New learners complete four onboarding decisions before learning commands are
-available:
+New learners complete two visible onboarding decisions before learning commands
+are available:
 
-1. Confirm Russian meanings and interface.
-2. Select a published public pack.
-3. Select a learning goal.
-4. Select a daily pace of 5, 10, or 20 words.
+1. Select a published public pack. Russian meanings and a general-learning goal
+   are applied as safe defaults.
+2. Select a daily pace of 5, 10, or 20 cards.
 
 Pack enrollment and the active pack are persisted independently from Telegram
 session state. Existing configured administrators are bootstrapped onto the
 pack matching their previous active language and do not lose legacy progress.
+
+## Telegram learning experience
+
+The home screen has one primary action: `Урок на сегодня`. It starts a
+spaced-repetition-prioritized lesson immediately in card mode, using the
+learner's saved daily pace. `Повторить` starts a due-only lesson and gives a
+clear empty state when nothing is due. Topics, progress, and settings remain
+available as secondary actions.
+
+Cards are shown one at a time. The front contains a topic emoji, position,
+five-step progress indicator, target word, transcription, and pronunciation.
+The revealed side adds the Russian meaning and example, with simple `Знаю` and
+`Не знаю` ratings plus an explicit pronunciation replay. Existing quiz, typing,
+and topic-block callbacks remain supported for compatibility.
 
 ## Product analytics
 
@@ -51,6 +64,12 @@ The protected admin console exposes a 30-day unique-user funnel:
 
 Recent privacy-safe events can be exported as CSV. Acquisition source is
 accepted only from a short ASCII Telegram `/start` payload.
+
+The daily-lesson experience also records `lesson_started`, `card_shown`,
+`card_revealed`, `card_audio_replayed`, `card_rated`, and `lesson_completed`.
+Only allowlisted dimensions such as pack, language, lesson kind, position,
+rating, and aggregate correctness are stored; word or message text is never
+included.
 
 ## Rollout boundary
 
