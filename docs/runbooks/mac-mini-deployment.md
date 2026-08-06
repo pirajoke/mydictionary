@@ -78,14 +78,21 @@ run `--operator-deploy` interactively with the timer still unloaded.
 
 For a schema change the deployer performs this sequence:
 
-1. stop bot and admin launchd services
+1. stop bot and admin launchd services and wait for each registration to be
+   removed
 2. create a PostgreSQL custom-format backup with mode `0600`
 3. validate the backup using `pg_restore --list`
 4. record its filename, SHA-256, old revision, and target revision locally
 5. activate the candidate release
 6. apply the candidate Alembic head
-7. bootstrap bot and admin
+7. bootstrap bot and admin from the reviewed current plist files
 8. prove candidate readiness before updating `.deployed-sha`
+
+`launchctl bootout` can return before launchd has removed the service
+registration. The deployer therefore waits for the requested registration
+state with a bounded timeout. Bootstrap never kickstarts a registration left
+over from an earlier release: it unloads that registration, waits for removal,
+then loads the current plist and verifies that registration appeared.
 
 ### Telegram Stars migration
 
@@ -150,6 +157,17 @@ and refund holds first.
 Restoring a PostgreSQL dump is destructive and can discard writes made after
 the snapshot. Never restore automatically. Confirm the exact dump, checksum,
 target database, expected data-loss window, and service stop before a restore.
+
+### Completing manual recovery
+
+Use `--adopt-current` only after an approved fix-forward recovery has made the
+merged `origin/main` release healthy. Adoption verifies the active release,
+database head, and readiness. When the recovery record is still
+`manual_recovery_required`, it also requires the recorded release and revision
+to match, recomputes any recorded backup checksum, and validates that dump with
+`pg_restore --list`. Only then does it mark recovery
+`ready_after_manual_adopt` and clear the matching hold. A mismatch is
+fail-closed and leaves the hold and recovery record unchanged.
 
 ## Quarantine handling
 

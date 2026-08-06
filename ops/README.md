@@ -40,11 +40,24 @@ Reviewed content or schema changes require an operator invocation. If the
 schema differs, this mode stops application services, creates and validates a
 private PostgreSQL custom-format backup, activates the candidate, applies the
 migration, and then proves readiness. Once migration execution begins, the
-tool never activates older code automatically.
+tool never activates older code automatically. Service shutdown waits for
+launchd registration removal, and bootstrap reloads every service from its
+current reviewed plist instead of kickstarting stale registration state.
 
 ```bash
 python ops/mydictionary_autodeploy.py --operator-deploy
 ```
+
+After a separately approved fix-forward recovery, adopt an already-running
+healthy `origin/main` release with:
+
+```bash
+python ops/mydictionary_autodeploy.py --adopt-current
+```
+
+If manual recovery metadata exists, adoption verifies its release, migration
+revision, backup digest, and dump readability before completing the recovery
+record and clearing the hold.
 
 A deterministic candidate or readiness failure is quarantined by commit SHA.
 After the cause has been reviewed and corrected, clear exactly one failed SHA:

@@ -504,6 +504,199 @@ class DeployPolicyTest(OpsTestCase):
         )
 
 
+class ServiceLifecycleTest(OpsTestCase):
+    def test_stop_services_waits_for_async_launchctl_removal(self):
+        launchctl = self.stack.enter_context(
+            patch.object(
+                deployer.subprocess,
+                "run",
+                return_value=MagicMock(returncode=0),
+            )
+        )
+        loaded = self.stack.enter_context(
+            patch.object(
+                deployer,
+                "service_is_loaded",
+                side_effect=[True, False, False],
+            )
+        )
+        self.stack.enter_context(
+            patch.object(deployer, "SERVICE_TRANSITION_POLL_SECONDS", 0)
+        )
+
+        deployer.stop_services(self.config)
+
+        domain = f"gui/{os.getuid()}"
+        self.assertEqual(
+            [entry.args[0] for entry in launchctl.call_args_list],
+            [
+                ["launchctl", "bootout", f"{domain}/test.admin"],
+                ["launchctl", "bootout", f"{domain}/test.bot"],
+            ],
+        )
+        self.assertEqual(loaded.call_count, 3)
+
+    def test_stop_services_fails_if_registration_never_disappears(self):
+        self.stack.enter_context(
+            patch.object(
+                deployer.subprocess,
+                "run",
+                return_value=MagicMock(returncode=0),
+            )
+        )
+        self.stack.enter_context(
+            patch.object(deployer, "service_is_loaded", return_value=True)
+        )
+        self.stack.enter_context(
+            patch.object(deployer, "SERVICE_TRANSITION_TIMEOUT_SECONDS", 0)
+        )
+
+        with self.assertRaisesRegex(
+            deployer.DeploymentError,
+            "test.admin, test.bot",
+        ):
+            deployer.stop_services(self.config)
+
+    def test_bootstrap_reloads_current_plist_after_stale_registration(self):
+        launchctl = self.stack.enter_context(
+            patch.object(
+                deployer.subprocess,
+                "run",
+                return_value=MagicMock(returncode=0),
+            )
+        )
+        self.stack.enter_context(
+            patch.object(deployer, "service_is_loaded", return_value=True)
+        )
+        wait = self.stack.enter_context(
+            patch.object(deployer, "wait_for_service_registration")
+        )
+        command = self.stack.enter_context(patch.object(deployer, "run"))
+        config = MagicMock(
+            service_labels=("test.admin",),
+            service_plists=(self.root / "test.admin.plist",),
+        )
+
+        deployer.bootstrap_services(config)
+
+        domain = f"gui/{os.getuid()}"
+        launchctl.assert_called_once_with(
+            ["launchctl", "bootout", f"{domain}/test.admin"],
+            capture_output=True,
+            text=True,
+        )
+        command.assert_called_once_with(
+            [
+                "launchctl",
+                "bootstrap",
+                domain,
+                str(self.root / "test.admin.plist"),
+            ]
+        )
+        self.assertEqual(
+            wait.call_args_list,
+            [
+                call("test.admin", loaded=False),
+                call("test.admin", loaded=True),
+            ],
+        )
+
+
+class RecoveryAdoptionTest(OpsTestCase):
+    def _record_manual_recovery(self, *, target_sha=NEW_SHA):
+        backup = self.config.backup_dir / "mydictionary-reviewed.dump"
+        backup.parent.mkdir()
+        backup.write_bytes(b"reviewed backup")
+        record = deployer.BackupRecord(
+            backup,
+            deployer._sha256_file(backup),
+            "0005_pilot_access",
+            "0006_next",
+        )
+        deployer.write_recovery_state(
+            self.config,
+            deployer._recovery_payload(
+                status="manual_recovery_required",
+                target_sha=target_sha,
+                previous_sha=OLD_SHA,
+                previous_revision=record.database_revision,
+                target_revision=record.target_revision,
+                backup=record,
+                stage="migration_or_readiness_failed_contained",
+            ),
+        )
+        deployer.record_hold(
+            self.config,
+            NEW_SHA,
+            kind="failed",
+            stage="operator_migration",
+            error_type="ReadinessError",
+            previous_sha=OLD_SHA,
+        )
+        return record
+
+    def _patch_healthy_current_release(self):
+        self.stack.enter_context(patch.object(deployer, "validate_config"))
+        self.stack.enter_context(patch.object(deployer, "ensure_source_checkout"))
+        self.stack.enter_context(
+            patch.object(deployer, "main_sha", return_value=NEW_SHA)
+        )
+        self.stack.enter_context(
+            patch.object(deployer, "current_target", return_value=self.new_release)
+        )
+        self.stack.enter_context(
+            patch.object(deployer, "database_revision", return_value="0006_next")
+        )
+        self.stack.enter_context(
+            patch.object(deployer, "migration_head", return_value="0006_next")
+        )
+        self.stack.enter_context(patch.object(deployer, "wait_for_readiness"))
+
+    def test_adopt_completes_matching_verified_manual_recovery(self):
+        record = self._record_manual_recovery()
+        self._patch_healthy_current_release()
+        command = self.stack.enter_context(patch.object(deployer, "run"))
+
+        result = deployer.adopt_current_release(self.config)
+
+        self.assertEqual(result, NEW_SHA)
+        self.assertEqual(self.config.deployed_state_file.read_text().strip(), NEW_SHA)
+        self.assertIsNone(deployer.release_hold(self.config, NEW_SHA))
+        recovery = json.loads(self.config.recovery_file.read_text(encoding="utf-8"))
+        self.assertEqual(recovery["status"], "completed")
+        self.assertEqual(recovery["stage"], "ready_after_manual_adopt")
+        command.assert_called_once_with(
+            [self.config.pg_restore_binary, "--list", str(record.path)]
+        )
+
+    def test_adopt_refuses_mismatched_manual_recovery_and_keeps_hold(self):
+        self._record_manual_recovery(target_sha=OLD_SHA)
+        self._patch_healthy_current_release()
+
+        with self.assertRaisesRegex(
+            deployer.DeploymentError,
+            "Recovery target does not match current release",
+        ):
+            deployer.adopt_current_release(self.config)
+
+        self.assertFalse(self.config.deployed_state_file.exists())
+        self.assertIsNotNone(deployer.release_hold(self.config, NEW_SHA))
+
+    def test_adopt_refuses_tampered_recovery_backup_and_keeps_hold(self):
+        record = self._record_manual_recovery()
+        record.path.write_bytes(b"tampered backup")
+        self._patch_healthy_current_release()
+
+        with self.assertRaisesRegex(
+            deployer.DeploymentError,
+            "Recovery backup digest does not match",
+        ):
+            deployer.adopt_current_release(self.config)
+
+        self.assertFalse(self.config.deployed_state_file.exists())
+        self.assertIsNotNone(deployer.release_hold(self.config, NEW_SHA))
+
+
 class OperatorMigrationTest(OpsTestCase):
     def test_operator_migration_backs_up_stops_migrates_and_proves_readiness(self):
         backup = deployer.BackupRecord(
