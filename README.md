@@ -41,6 +41,12 @@ Keep secrets outside Git. The bot requires `BOT_TOKEN`; production also
 requires `DATABASE_URL`. SQLite is available only when
 `ALLOW_SQLITE_DEV=true` is set explicitly.
 
+Access is fail-closed by default: `BOT_ACCESS_MODE=allowlist` admits only the
+Telegram IDs listed in `ALLOWED_USER_ID` or comma-separated
+`ALLOWED_USER_IDS`. Set one of those values for private local testing. Use
+`BOT_ACCESS_MODE=public` only as a deliberate public-access opt-in; `pilot`
+keeps self-registration separate from owner approval.
+
 Start the Telegram polling process:
 
 ```bash
@@ -75,8 +81,9 @@ migrations, isolated persistence, and concurrent credit reservations.
 | `docs/launch-readiness.md` | Paid and voice release gates |
 | `docs/runbooks/mac-mini-deployment.md` | Production deployment and recovery runbook |
 
-Production runs on an owner-controlled Mac mini. `render.yaml` is retained only
-as a legacy deployment artifact.
+Production runs on an owner-controlled Mac mini. `render.yaml` is an obsolete
+historical artifact and is not a supported or deployable production
+configuration.
 
 ## Security and privacy
 
@@ -92,4 +99,7 @@ as a legacy deployment artifact.
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+The application source code is MIT-licensed; see [`LICENSE`](LICENSE). The
+seven generated schema-v2 starter packs derive from the project's original
+`content/basic_100.tsv` matrix. Verify provenance and redistribution rights
+before republishing legacy or externally supplied vocabulary datasets.
