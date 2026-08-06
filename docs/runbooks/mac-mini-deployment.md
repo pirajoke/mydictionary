@@ -139,8 +139,9 @@ and refund holds first.
 - Deletion, off-host transfer, or restore is a separate operator action. Before
   a restore, recompute the checksum and compare it with the recovery record.
 - Host-local backups do not cover loss or compromise of the Mac mini or its
-  storage. Until an encrypted off-host target is designed and approved, this
-  residual risk remains open and must be included in pilot readiness reviews.
+  storage. This residual risk remains open until immutable encrypted upload is
+  scheduled and a separate recovery host has produced a reviewed restore-drill
+  receipt with `ops/mydictionary_restore_drill.py`.
 
 ## Recovery matrix
 
