@@ -69,18 +69,34 @@ def _required(value: str | None, *, row: int, column: str) -> str:
     return normalized
 
 
-def _parse_cell(value: str | None, *, row: int, language: str) -> tuple[str, str, str]:
+def _parse_cell(
+    value: str | None, *, row: int, language: str
+) -> tuple[str, str, str, tuple[str, ...]]:
     parts = [part.strip() for part in (value or "").split("|")]
-    if len(parts) not in {2, 3} or not all(parts):
+    if len(parts) not in {2, 3, 4} or not all(parts):
         raise SourceError(
-            f"row {row}: {language} must be target|transcription[|speech]"
+            f"row {row}: {language} must be "
+            "target|transcription[|speech[|meaning;accepted meaning]]"
         )
     target, transcription = parts[:2]
     speech = parts[2] if len(parts) == 3 else target
+    accepted_meanings: tuple[str, ...] = ()
+    if len(parts) == 4:
+        speech = parts[2]
+        accepted_meanings = tuple(
+            _required(item, row=row, column=f"{language}.accepted_meanings")
+            for item in parts[3].split(";")
+        )
+        normalized = [item.casefold() for item in accepted_meanings]
+        if len(accepted_meanings) > 12 or len(normalized) != len(set(normalized)):
+            raise SourceError(
+                f"row {row}: {language} has invalid accepted meanings"
+            )
     return (
         _required(target, row=row, column=f"{language}.target"),
         _required(transcription, row=row, column=f"{language}.transcription"),
         _required(speech, row=row, column=f"{language}.speech"),
+        accepted_meanings,
     )
 
 
@@ -113,7 +129,7 @@ def load_rows(path: Path = SOURCE) -> list[dict[str, str]]:
         _required(row["meaning_ru"], row=number, column="meaning_ru")
         _required(row["ru_definition"], row=number, column="ru_definition")
         for pack in PACKS:
-            target, _, _ = _parse_cell(
+            target, _, _, _ = _parse_cell(
                 row[pack.language], row=number, language=pack.language
             )
             target_key = target.casefold()
@@ -134,25 +150,27 @@ def build_documents(path: Path = SOURCE) -> dict[str, dict[str, object]]:
     for pack in PACKS:
         entries = []
         for number, row in enumerate(rows, 2):
-            target, transcription, speech = _parse_cell(
+            target, transcription, speech, accepted_meanings = _parse_cell(
                 row[pack.language], row=number, language=pack.language
             )
-            meaning = _required(
+            default_meaning = _required(
                 row[pack.meaning_column],
                 row=number,
                 column=pack.meaning_column,
             )
-            entries.append(
-                {
-                    "entry_id": row["entry_id"].strip(),
-                    "target": target,
-                    "meaning": meaning,
-                    "transcription": transcription,
-                    "speech": speech,
-                    "topics": [row["topic"].strip()],
-                    "example": None,
-                }
-            )
+            meaning = accepted_meanings[0] if accepted_meanings else default_meaning
+            entry = {
+                "entry_id": row["entry_id"].strip(),
+                "target": target,
+                "meaning": meaning,
+                "transcription": transcription,
+                "speech": speech,
+                "topics": [row["topic"].strip()],
+                "example": None,
+            }
+            if accepted_meanings:
+                entry["accepted_meanings"] = list(accepted_meanings)
+            entries.append(entry)
         documents[pack.filename] = {"schema_version": 2, "entries": entries}
     return documents
 

@@ -92,13 +92,18 @@
     {
       "entry_id": "good-morning",
       "target": "bonjour",
-      "meaning": "доброе утро",
+      "meaning": "здравствуйте",
       "transcription": "/bɔ̃.ʒuʁ/",
       "speech": "bonjour",
       "topics": [
         "greetings"
       ],
-      "example": null
+      "example": null,
+      "accepted_meanings": [
+        "здравствуйте",
+        "добрый день",
+        "доброе утро"
+      ]
     },
     {
       "entry_id": "good-night",

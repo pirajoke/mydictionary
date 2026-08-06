@@ -63,8 +63,10 @@ from mydictionary.billing import (
 from mydictionary.bot_profile import render_start_text
 from mydictionary.catalog import ContentPack, load_catalog
 from mydictionary.content import (
+    answer_matches,
     example_meaning_text,
     example_target_text,
+    meaning_display_text,
     meaning_text,
     speech_text,
     target_text,
@@ -644,7 +646,7 @@ def format_word_details(idx: int) -> str:
     word = W()[idx]
     pack = active_content_pack()
     lines = [
-        f"{pack.meaning_flag} *{escape_markdown(meaning_text(word))}*",
+        f"{pack.meaning_flag} *{escape_markdown(meaning_display_text(word))}*",
         f"{pack.flag} *{escape_markdown(format_target_word(word, pack))}*",
     ]
     return "\n".join(lines)
@@ -2367,9 +2369,6 @@ async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE)
 @auth
 async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Check typed translation — works for both single and block mode."""
-    import re
-    clean = lambda s: re.sub(r'[^\w\s]', '', s).strip()
-
     # Ignore language switch button presses
     if update.message.text in PACK_SWITCH_TEXTS:
         return
@@ -2380,8 +2379,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     word = W()[idx]
     answer = update.message.text.strip().lower()
-    correct = meaning_text(word).lower()
-    is_correct = clean(answer) == clean(correct)
+    is_correct = answer_matches(word, answer)
 
     # Block type mode
     if context.user_data.get("block_typing"):
@@ -2808,7 +2806,7 @@ def format_study_list(indices: list[int]) -> str:
     for n, idx in enumerate(indices, 1):
         w = W()[idx]
         target = escape_markdown(format_target_word(w, pack))
-        meaning = escape_markdown(meaning_text(w))
+        meaning = escape_markdown(meaning_display_text(w))
         lines.append(f"{n}. *{target}* — {meaning}")
     return "\n".join(lines)
 
@@ -2972,7 +2970,7 @@ def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup
     correct_ru = meaning_text(W()[idx])
     session_id = user_data["block_session"]
     buttons = []
-    for option in build_block_quiz_options(user_data["block_indices"], idx):
+    for option in build_block_quiz_options(user_data["block_all_indices"], idx):
         is_right = "1" if option == correct_ru else "0"
         callback_data = f"bquiz:{session_id}:{idx}:{is_right}"
         buttons.append([InlineKeyboardButton(option, callback_data=callback_data)])
@@ -2994,9 +2992,14 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
     audio_row2 = [InlineKeyboardButton(f"🔊 {n}", callback_data=f"lplay:{session_id}:{idx}")
                   for n, idx in enumerate(indices[5:], 6)]
     mode_row = [
-        InlineKeyboardButton("Тест блока ❓", callback_data=f"bmode:{session_id}:quiz"),
-        InlineKeyboardButton("Ввод ✍️", callback_data=f"bmode:{session_id}:type"),
-        InlineKeyboardButton("Карточки 👁", callback_data=f"bmode:{session_id}:flash"),
+        InlineKeyboardButton(
+            "Тест · 4 варианта",
+            callback_data=f"bmode:{session_id}:quiz",
+        ),
+        InlineKeyboardButton(
+            "Письменно",
+            callback_data=f"bmode:{session_id}:type",
+        ),
     ]
     rows = [audio_row1]
     if audio_row2:
@@ -3587,29 +3590,26 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Main
 # ---------------------------------------------------------------------------
 
-BOT_COMMANDS = [
-    BotCommand("start", "Главное меню"),
-    BotCommand("learn", "Блок 10 слов и тест блока"),
-    BotCommand("smart", "Весь словарь: адаптивно"),
-    BotCommand("poll", "Весь словарь: квиз с таймером"),
-    BotCommand("quiz", "Весь словарь: варианты"),
-    BotCommand("type", "Весь словарь: написать перевод"),
-    BotCommand("flash", "Весь словарь: карточки"),
-    BotCommand("ai", "AI-репетитор по активному блоку"),
-    BotCommand("voice", "Произношение по активному блоку"),
-    BotCommand("conversation", "Фразы по активному блоку"),
-    BotCommand("voice_stop", "Остановить голосовую практику"),
-    BotCommand("voice_transcript", "Транскрипт голосовой практики"),
-    BotCommand("ai_stats", "AI-кредиты и использование"),
-    BotCommand("buy", "Купить AI-кредиты за Stars"),
-    BotCommand("subscriptions", "Управление Stars-подписками"),
-    BotCommand("terms", "Условия AI-кредитов"),
-    BotCommand("paysupport", "Поддержка по платежам"),
-    BotCommand("privacy", "Хранение и удаление данных"),
-    BotCommand("lang", "Сменить язык"),
-    BotCommand("stats", "Статистика"),
-    BotCommand("help", "Помощь"),
-]
+def build_bot_commands(*, ai_enabled: bool) -> list[BotCommand]:
+    """Return a stable, compact command menu; legacy handlers stay callable."""
+    commands = [
+        BotCommand("start", "Главное меню"),
+        BotCommand("learn", "Блок: тест или письменно"),
+        BotCommand("lang", "Выбрать язык"),
+        BotCommand("stats", "Мой прогресс"),
+    ]
+    if ai_enabled:
+        commands.append(BotCommand("ai", "AI-репетитор"))
+    commands.extend(
+        [
+            BotCommand("privacy", "Данные и приватность"),
+            BotCommand("help", "Помощь"),
+        ]
+    )
+    return commands
+
+
+BOT_COMMANDS = build_bot_commands(ai_enabled=AI_SETTINGS.enabled)
 
 
 async def sync_telegram_profile(telegram_bot) -> None:
