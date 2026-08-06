@@ -51,6 +51,18 @@ class LearningBlocksTest(unittest.TestCase):
             f"{meaning_text(word)}",
         )
 
+    def test_french_study_list_shows_curated_bonjour_meanings(self):
+        bot.PROGRESS["active_lang"] = "fr"
+        idx = next(
+            i for i, word in enumerate(bot.W())
+            if target_text(word) == "bonjour"
+        )
+
+        self.assertIn(
+            "здравствуйте / добрый день / доброе утро",
+            bot.format_study_list([idx]),
+        )
+
     def test_rtl_pack_uses_configured_transcription_order_and_isolation(self):
         pack = ContentPack(
             pack_id="ar-basics-100",
@@ -146,9 +158,27 @@ class LearningBlocksTest(unittest.TestCase):
         for idx in indices:
             options = bot.build_block_quiz_options(indices, idx)
             self.assertIn(meaning_text(bot.W()[idx]), options)
-            self.assertLessEqual(len(options), 4)
+            self.assertEqual(len(options), 4)
             self.assertEqual(len(options), len(set(options)))
             self.assertTrue(set(options).issubset(allowed_translations))
+
+    def test_block_study_keyboard_has_only_quiz_and_written_modes(self):
+        keyboard = bot.build_study_buttons(list(range(10)), "session1")
+        mode_buttons = [
+            button
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.callback_data and button.callback_data.startswith("bmode:")
+        ]
+
+        self.assertEqual(
+            [button.callback_data for button in mode_buttons],
+            ["bmode:session1:quiz", "bmode:session1:type"],
+        )
+        self.assertEqual(
+            [button.text for button in mode_buttons],
+            ["Тест · 4 варианта", "Письменно"],
+        )
 
     def test_quiz_callbacks_are_bound_to_active_session(self):
         indices = list(range(10))
@@ -174,6 +204,9 @@ class LearningBlocksTest(unittest.TestCase):
         self.assertEqual(user_data["block_all_indices"], indices)
         self.assertEqual(user_data["block_indices"], [indices[1], indices[4]])
         self.assertNotEqual(user_data["block_session"], previous_session)
+
+        keyboard = bot.build_block_quiz_keyboard(user_data, indices[1])
+        self.assertEqual(len(keyboard.inline_keyboard), 4)
 
     def test_global_mode_invalidation_leaves_no_active_block_answer(self):
         user_data = {}

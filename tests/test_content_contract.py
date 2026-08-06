@@ -5,8 +5,11 @@ import unittest
 
 from mydictionary.catalog import CatalogError, load_catalog
 from mydictionary.content import (
+    accepted_meanings,
+    answer_matches,
     content_progress_id,
     legacy_progress_id,
+    meaning_display_text,
     meaning_text,
     speech_text,
     target_text,
@@ -160,6 +163,40 @@ class ContentContractV2Test(unittest.TestCase):
 
         self.assertEqual(word["example_target"], "")
         self.assertEqual(word["example_meaning"], "")
+
+    def test_curated_meaning_variants_are_displayed_and_matched_exactly(self):
+        catalog = self.fixture.write(
+            entry=arabic_entry(
+                meaning="здравствуйте",
+                accepted_meanings=[
+                    "здравствуйте",
+                    "добрый день",
+                    "доброе утро",
+                ],
+            )
+        )
+        word = catalog.words(catalog.require("ar-basics-100"))[0]
+
+        self.assertEqual(
+            accepted_meanings(word),
+            ("здравствуйте", "добрый день", "доброе утро"),
+        )
+        self.assertEqual(
+            meaning_display_text(word),
+            "здравствуйте / добрый день / доброе утро",
+        )
+        self.assertTrue(answer_matches(word, "  Добрый, день! "))
+        self.assertTrue(answer_matches(word, "доброе утро"))
+        self.assertFalse(answer_matches(word, "добрый вечер"))
+
+    def test_contract_rejects_variants_without_primary_meaning(self):
+        with self.assertRaisesRegex(CatalogError, "invalid accepted_meanings"):
+            self.fixture.write(
+                entry=arabic_entry(
+                    meaning="привет",
+                    accepted_meanings=["здравствуйте"],
+                )
+            )
 
     def test_loader_returns_copies_of_immutable_catalog_entries(self):
         catalog = self.fixture.write()

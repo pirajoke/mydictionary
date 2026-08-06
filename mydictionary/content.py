@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from typing import Any, Mapping
+import unicodedata
 
 
 PROGRESS_ID_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -47,6 +48,42 @@ def target_text(word: Mapping[str, Any]) -> str:
 
 def meaning_text(word: Mapping[str, Any]) -> str:
     return str(word.get("meaning") or word.get("ru") or "").strip()
+
+
+def accepted_meanings(word: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return curated Russian answers, always including the primary meaning."""
+    primary = meaning_text(word)
+    raw = word.get("accepted_meanings")
+    if not isinstance(raw, (list, tuple)):
+        return (primary,) if primary else ()
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in (primary, *raw):
+        normalized = str(value or "").strip()
+        key = normalized.casefold()
+        if normalized and key not in seen:
+            result.append(normalized)
+            seen.add(key)
+    return tuple(result)
+
+
+def meaning_display_text(word: Mapping[str, Any]) -> str:
+    return " / ".join(accepted_meanings(word))
+
+
+def normalize_meaning_answer(value: str) -> str:
+    """Normalize exact learner answers without guessing their semantics."""
+    value = unicodedata.normalize("NFKC", str(value)).casefold().replace("ё", "е")
+    characters = [character if character.isalnum() else " " for character in value]
+    return " ".join("".join(characters).split())
+
+
+def answer_matches(word: Mapping[str, Any], answer: str) -> bool:
+    normalized = normalize_meaning_answer(answer)
+    return bool(normalized) and any(
+        normalized == normalize_meaning_answer(candidate)
+        for candidate in accepted_meanings(word)
+    )
 
 
 def transcription_text(word: Mapping[str, Any]) -> str:

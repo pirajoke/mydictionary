@@ -256,6 +256,7 @@ def _legacy_entry(raw: Any, pack_id: str, index: int) -> dict[str, Any]:
         "progress_id": progress_id,
         "target": target,
         "meaning": meaning,
+        "accepted_meanings": (meaning,),
         "transcription": _optional_text(raw, "ipa", owner, maximum=160),
         "speech": _optional_text(raw, "reading", owner, maximum=512) or target,
         "topics": (),
@@ -280,7 +281,7 @@ def _v2_entry(
         "topics",
         "example",
     }
-    optional = {"legacy_progress_id"}
+    optional = {"legacy_progress_id", "accepted_meanings"}
     if (
         not isinstance(raw, dict)
         or not required.issubset(raw)
@@ -294,6 +295,23 @@ def _v2_entry(
         raise CatalogError(f"{owner} has invalid entry_id")
     target = _required_text(raw, "target", owner)
     meaning = _required_text(raw, "meaning", owner)
+    raw_meanings = raw.get("accepted_meanings", [meaning])
+    if not isinstance(raw_meanings, list) or not 1 <= len(raw_meanings) <= 12:
+        raise CatalogError(f"{owner} has invalid accepted_meanings")
+    accepted_meanings = tuple(
+        _required_text(
+            {"value": value},
+            "value",
+            f"{owner} accepted meaning {position}",
+        )
+        for position, value in enumerate(raw_meanings, 1)
+    )
+    normalized_meanings = [value.casefold() for value in accepted_meanings]
+    if (
+        meaning.casefold() not in normalized_meanings
+        or len(normalized_meanings) != len(set(normalized_meanings))
+    ):
+        raise CatalogError(f"{owner} has invalid accepted_meanings")
     transcription = _optional_text(raw, "transcription", owner, maximum=160)
     if pack.pronunciation.transcription_system != "none" and not transcription:
         raise CatalogError(f"{owner} requires transcription")
@@ -321,6 +339,7 @@ def _v2_entry(
         "progress_id": progress_id or content_progress_id(pack.pack_id, entry_id),
         "target": target,
         "meaning": meaning,
+        "accepted_meanings": accepted_meanings,
         "transcription": transcription,
         "speech": speech,
         "topics": tuple(topics),

@@ -8,6 +8,7 @@ import unicodedata
 
 from mydictionary.catalog import load_catalog
 from mydictionary.content import (
+    accepted_meanings,
     meaning_text,
     speech_text,
     target_text,
@@ -166,6 +167,19 @@ class BasicLanguagePacksTest(unittest.TestCase):
                 self.assertEqual(pronunciation.tts_locale, locale)
                 self.assertEqual(pronunciation.tts_voice, voice)
                 self.assertEqual(pronunciation.tts_rate, "-25%")
+
+    def test_french_bonjour_has_a_clear_primary_and_curated_answers(self):
+        pack = self.catalog.require("fr-basics-100")
+        word = next(
+            word for word in self.catalog.words(pack)
+            if target_text(word) == "bonjour"
+        )
+
+        self.assertEqual(meaning_text(word), "здравствуйте")
+        self.assertEqual(
+            accepted_meanings(word),
+            ("здравствуйте", "добрый день", "доброе утро"),
+        )
 
     def test_generated_pack_files_match_the_source_matrix(self):
         result = subprocess.run(
