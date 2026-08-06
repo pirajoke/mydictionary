@@ -1,31 +1,5 @@
 [
   {
-    "id": "ja-russian-first",
-    "language": "ja",
-    "term": "私",
-    "transcription": "watashi",
-    "meaning_ru": "я",
-    "summary_ru": "Разберём японское местоимение из активного блока.",
-    "explanation_ru": "Нейтральное местоимение первого лица.",
-    "examples": [
-      {"target": "私は学生です。", "russian": "Я студент."},
-      {"target": "私はマリアです。", "russian": "Я Мария."}
-    ]
-  },
-  {
-    "id": "vi-transcription",
-    "language": "vi",
-    "term": "thích",
-    "transcription": "/tʰik/",
-    "meaning_ru": "нравиться; любить",
-    "summary_ru": "Разберём вьетнамский глагол из активного блока.",
-    "explanation_ru": "Глагол выражает симпатию или предпочтение.",
-    "examples": [
-      {"target": "Tôi thích cà phê.", "russian": "Мне нравится кофе."},
-      {"target": "Bạn thích gì?", "russian": "Что тебе нравится?"}
-    ]
-  },
-  {
     "id": "en-basic-word",
     "language": "en",
     "term": "hello",
@@ -36,6 +10,97 @@
     "examples": [
       {"target": "Hello, Anna!", "russian": "Привет, Анна!"},
       {"target": "Hello, how are you?", "russian": "Привет, как дела?"}
+    ]
+  },
+  {
+    "id": "fr-basic-word",
+    "language": "fr",
+    "term": "salut",
+    "transcription": "/sa.ly/",
+    "meaning_ru": "привет",
+    "summary_ru": "Разберём французское приветствие из активного блока.",
+    "explanation_ru": "Разговорное приветствие для неформальной ситуации.",
+    "examples": [
+      {"target": "Salut, Marie !", "russian": "Привет, Мари!"},
+      {"target": "Salut, ça va ?", "russian": "Привет, как дела?"}
+    ]
+  },
+  {
+    "id": "de-basic-word",
+    "language": "de",
+    "term": "Hallo",
+    "transcription": "/ˈhaloː/",
+    "meaning_ru": "привет",
+    "summary_ru": "Разберём немецкое приветствие из активного блока.",
+    "explanation_ru": "Нейтральное приветствие для повседневного общения.",
+    "examples": [
+      {"target": "Hallo, Anna!", "russian": "Привет, Анна!"},
+      {"target": "Hallo, wie geht es dir?", "russian": "Привет, как ты?"}
+    ]
+  },
+  {
+    "id": "ja-basic-word",
+    "language": "ja",
+    "term": "こんにちは",
+    "transcription": "konnichiwa",
+    "meaning_ru": "здравствуйте; привет",
+    "summary_ru": "Разберём японское приветствие из активного блока.",
+    "explanation_ru": "Дневное приветствие в нейтральной и вежливой речи.",
+    "examples": [
+      {"target": "こんにちは、田中さん。", "russian": "Здравствуйте, господин Танака."},
+      {"target": "みなさん、こんにちは。", "russian": "Всем здравствуйте."}
+    ]
+  },
+  {
+    "id": "ar-basic-word",
+    "language": "ar",
+    "term": "مرحبا",
+    "transcription": "marḥaban",
+    "meaning_ru": "привет",
+    "summary_ru": "Разберём арабское приветствие из активного блока.",
+    "explanation_ru": "Распространённое нейтральное приветствие.",
+    "examples": [
+      {"target": "مرحبا يا مريم", "russian": "Привет, Марьям."},
+      {"target": "مرحبا بكم", "russian": "Добро пожаловать."}
+    ]
+  },
+  {
+    "id": "zh-basic-word",
+    "language": "zh",
+    "term": "你好",
+    "transcription": "nǐ hǎo",
+    "meaning_ru": "привет",
+    "summary_ru": "Разберём китайское приветствие из активного блока.",
+    "explanation_ru": "Нейтральное приветствие, буквально пожелание добра.",
+    "examples": [
+      {"target": "你好，李明！", "russian": "Привет, Ли Мин!"},
+      {"target": "老师，你好。", "russian": "Здравствуйте, учитель."}
+    ]
+  },
+  {
+    "id": "ru-basic-word",
+    "language": "ru",
+    "term": "привет",
+    "transcription": "privet",
+    "meaning_ru": "приветствие",
+    "summary_ru": "Разберём русское приветствие из активного блока.",
+    "explanation_ru": "Неформальное приветствие для знакомых людей.",
+    "examples": [
+      {"target": "Привет, Анна!", "russian": "Неформальное приветствие Анны."},
+      {"target": "Всем привет!", "russian": "Приветствие группы людей."}
+    ]
+  },
+  {
+    "id": "es-basic-word",
+    "language": "es",
+    "term": "hola",
+    "transcription": "/ˈola/",
+    "meaning_ru": "привет",
+    "summary_ru": "Разберём испанское приветствие из активного блока.",
+    "explanation_ru": "Универсальное приветствие для повседневной речи.",
+    "examples": [
+      {"target": "¡Hola, Ana!", "russian": "Привет, Ана!"},
+      {"target": "Hola, ¿cómo estás?", "russian": "Привет, как ты?"}
     ]
   }
 ]

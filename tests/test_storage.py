@@ -11,16 +11,21 @@ from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
+from mydictionary.content import target_text
+
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, select, text
 
 from mydictionary.legacy import import_legacy_user
 from mydictionary.storage import (
     AIQuotaExceeded,
     AIUsage,
     AnalyticsEvent,
+    BillingCreditLedger,
     DatabaseStore,
+    TelegramNotification,
+    UserConsent,
     UserPackEnrollment,
     vocabulary_id_for,
 )
@@ -70,6 +75,14 @@ class DatabaseStoreTest(unittest.TestCase):
                 "ai_credit_ledger",
                 "user_pack_enrollments",
                 "analytics_events",
+                "ai_wallets",
+                "billing_products",
+                "payment_orders",
+                "stars_payments",
+                "billing_credit_ledger",
+                "refund_requests",
+                "user_consents",
+                "telegram_notifications",
             }.issubset(tables)
         )
         user_columns = {column["name"] for column in inspector.get_columns("users")}
@@ -93,7 +106,87 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0005_pilot_access")
+            self.assertEqual(revision, "0011_pilot_operations")
+
+    def test_notification_outbox_leases_retries_and_completes(self):
+        user_id = 221
+        observed_at = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
+        self.store.ensure_user_id(user_id)
+        self.store.activate_user_access(user_id)
+        with self.store.Session.begin() as session:
+            session.add(
+                TelegramNotification(
+                    notification_id="notification-1",
+                    telegram_user_id=user_id,
+                    kind="pilot_access_approved",
+                    status="pending",
+                    idempotency_key="pilot-access:221:test",
+                    available_at=observed_at,
+                    created_at=observed_at,
+                    updated_at=observed_at,
+                )
+            )
+
+        first = self.store.claim_telegram_notifications(now=observed_at)
+        self.assertEqual(len(first), 1)
+        self.assertEqual(first[0]["attempts"], 1)
+        self.assertEqual(
+            self.store.claim_telegram_notifications(now=observed_at), []
+        )
+
+        status = self.store.retry_telegram_notification(
+            "notification-1",
+            error_code="Timed Out!",
+            retry_seconds=10,
+            now=observed_at,
+        )
+        self.assertEqual(status, "pending")
+        self.assertEqual(
+            self.store.claim_telegram_notifications(
+                now=observed_at + timedelta(seconds=9)
+            ),
+            [],
+        )
+
+        second = self.store.claim_telegram_notifications(
+            now=observed_at + timedelta(seconds=10)
+        )
+        self.assertEqual(second[0]["attempts"], 2)
+        self.assertTrue(
+            self.store.complete_telegram_notification(
+                "notification-1",
+                now=observed_at + timedelta(seconds=11),
+            )
+        )
+        with self.store.Session() as session:
+            notification = session.get(
+                TelegramNotification, "notification-1"
+            )
+            self.assertEqual(notification.status, "sent")
+            self.assertEqual(notification.last_error_code, None)
+            self.assertIsNotNone(notification.sent_at)
+
+    def test_notification_outbox_skips_restricted_users(self):
+        user_id = 222
+        observed_at = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
+        self.store.ensure_user_id(user_id)
+        with self.store.Session.begin() as session:
+            session.add(
+                TelegramNotification(
+                    notification_id="notification-pending-user",
+                    telegram_user_id=user_id,
+                    kind="pilot_access_approved",
+                    status="pending",
+                    idempotency_key="pilot-access:222:test",
+                    available_at=observed_at,
+                    created_at=observed_at,
+                    updated_at=observed_at,
+                )
+            )
+
+        self.assertEqual(
+            self.store.claim_telegram_notifications(now=observed_at), []
+        )
 
     def test_programmatic_migrations_preserve_application_logging(self):
         root_logger = logging.getLogger()
@@ -197,6 +290,52 @@ class DatabaseStoreTest(unittest.TestCase):
                 "ai_answered",
                 properties={"prompt_text": "private learner content"},
             )
+
+    def test_versioned_consent_can_be_replaced_and_revoked(self):
+        self.assertTrue(
+            self.store.grant_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-08",
+                source="telegram",
+            )
+        )
+        self.assertFalse(
+            self.store.grant_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-08",
+                source="telegram",
+            )
+        )
+        self.assertTrue(
+            self.store.has_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-08",
+            )
+        )
+        self.assertFalse(
+            self.store.has_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-09",
+            )
+        )
+        self.assertEqual(
+            self.store.revoke_consent(213, consent_type="voice_processing"), 1
+        )
+        self.assertFalse(
+            self.store.has_consent(
+                213,
+                consent_type="voice_processing",
+                document_version="voice-2026-08",
+            )
+        )
+        with self.store.Session() as session:
+            rows = session.execute(select(UserConsent)).scalars().all()
+            self.assertEqual(len(rows), 1)
+            self.assertIsNotNone(rows[0].revoked_at)
 
     def test_profiles_and_words_are_isolated_by_telegram_user(self):
         user_one = dict(PROFILE_DEFAULTS, active_lang="ja", xp=25, total_correct=1)
@@ -400,10 +539,12 @@ class BotRuntimeIsolationTest(unittest.TestCase):
             self.bot.learner_scope(SimpleNamespace(id=1003)),
         ):
             with self.assertRaises(PermissionError):
-                self.bot.W("en")
-            for language in ("vi", "ja"):
-                for word in self.bot.W(language):
-                    with self.subTest(language=language, term=word["en"]):
+                self.bot.W("pirajoke-en-personal")
+            for pack in self.bot.CATALOG.visible_packs("learner"):
+                for word in self.bot.W(pack.pack_id):
+                    with self.subTest(
+                        pack=pack.pack_id, term=target_text(word)
+                    ):
                         self.assertEqual(word["correct_count"], 0)
                         self.assertEqual(word["wrong_count"], 0)
                         self.assertIsNone(word["last_seen"])
@@ -412,8 +553,8 @@ class BotRuntimeIsolationTest(unittest.TestCase):
 
     def test_word_progress_follows_vocabulary_when_dictionary_is_reordered(self):
         user = SimpleNamespace(id=1004)
-        original_words = self.bot.DICTS["ja"]
-        learned_term = original_words[0]["en"]
+        original_words = self.bot.PACK_DICTS["ja-basics-100"]
+        learned_term = target_text(original_words[0])
 
         with (
             patch.object(self.bot, "_STORE", self.store),
@@ -430,7 +571,9 @@ class BotRuntimeIsolationTest(unittest.TestCase):
             patch.dict(self.bot.PACK_DICTS, {"ja-basics-100": reordered}),
             self.bot.learner_scope(user),
         ):
-            self.assertEqual(self.bot.W("ja")[1]["en"], learned_term)
+            self.assertEqual(
+                target_text(self.bot.W("ja")[1]), learned_term
+            )
             self.assertEqual(self.bot.W("ja")[1]["correct_count"], 1)
             self.assertEqual(self.bot.W("ja")[0]["correct_count"], 0)
 
@@ -606,6 +749,14 @@ class PostgresStoreTest(unittest.TestCase):
             self.assertEqual(recovered["available_credits"], 1)
             self.assertEqual(recovered["reserved_credits"], 0)
             self.assertEqual(recovered["failed_requests"], 1)
+            with store.Session() as session:
+                initial_grants = session.execute(
+                    select(BillingCreditLedger).where(
+                        BillingCreditLedger.telegram_user_id == 900001,
+                        BillingCreditLedger.entry_type == "initial_grant",
+                    )
+                ).scalars().all()
+            self.assertEqual(len(initial_grants), 1)
         finally:
             store.close()
 

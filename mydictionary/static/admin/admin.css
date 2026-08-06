@@ -79,6 +79,11 @@ tbody tr:hover { background: #f7faf8; }
 .details { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 .empty { padding: 24px; color: var(--muted); text-align: center; }
 .toolbar { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.segmented { display: flex; flex-wrap: wrap; gap: 0; margin-bottom: 12px; }
+.segmented a { min-height: 36px; display: inline-flex; align-items: center; padding: 7px 11px; border: 1px solid #b9c4be; border-right: 0; color: var(--ink); background: var(--surface); font-weight: 650; }
+.segmented a:first-child { border-radius: 6px 0 0 6px; }
+.segmented a:last-child { border-right: 1px solid #b9c4be; border-radius: 0 6px 6px 0; }
+.segmented a.active { color: #fff; border-color: var(--green); background: var(--green); }
 .search-form { display: flex; width: min(520px, 100%); gap: 8px; }
 .button-link { display: inline-flex; align-items: center; justify-content: center; }
 .content-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; border: 1px solid var(--line); background: var(--line); }
@@ -105,11 +110,16 @@ tbody tr:hover { background: #f7faf8; }
 .status.completed { color: var(--green); background: var(--green-soft); }
 .status.failed { color: var(--danger); background: #f8e4e1; }
 .status.reserved { color: #73500d; background: #fff0c9; }
+.status.active, .status.paid, .status.completed { color: var(--green); background: var(--green-soft); }
+.status.draft, .status.created, .status.prechecked, .status.requested, .status.processing, .status.refund_pending { color: #73500d; background: #fff0c9; }
+.status.archived, .status.expired, .status.cancelled, .status.refunded { color: var(--muted); background: #edf1ee; }
 .status.access-active { color: var(--green); background: var(--green-soft); }
 .status.access-pending { color: #73500d; background: #fff0c9; }
 .status.access-blocked { color: var(--danger); background: #f8e4e1; }
 .access-actions { display: flex; align-items: center; gap: 5px; margin-top: 7px; }
 .access-actions form { margin: 0; }
+.inline-form { display: flex; align-items: center; gap: 6px; margin: 0; }
+.inline-form input { min-width: 150px; }
 .compact-button { min-height: 30px; padding: 5px 8px; font-size: 11px; }
 .notice { margin-bottom: 18px; padding: 12px 14px; border-left: 4px solid var(--green); background: var(--green-soft); }
 .notice.error { border-color: var(--danger); background: #f9e5e2; }

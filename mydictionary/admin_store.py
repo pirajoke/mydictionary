@@ -7,23 +7,39 @@ import json
 from typing import Any, Mapping
 from uuid import uuid4
 
-from sqlalchemy import String, cast, func, or_, select
-from sqlalchemy.dialects.postgresql import insert as postgresql_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy import String, case, cast, func, or_, select
 
+from mydictionary.billing import (
+    BILLING_MODES,
+    BillingService,
+    BillingSettings,
+    PRODUCT_ID_RE,
+    PRODUCT_STATUSES,
+    SUBSCRIPTION_PERIOD_SECONDS,
+)
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS
 from mydictionary.storage import (
     ACCESS_STATUSES,
-    AIAllowance,
-    AICreditLedger,
+    AIWallet,
     AIUsage,
+    AbuseEvent,
     AnalyticsEvent,
     AdminAuditLog,
     AdminCredential,
     AppSetting,
+    BillingCreditLedger,
+    BillingProduct,
     DatabaseStore,
+    PaymentOrder,
+    RefundRequest,
+    RateLimitBucket,
+    StarsPayment,
+    StarsSubscription,
+    TelegramNotification,
     User,
     UserProgress,
+    VoiceSession,
+    VoiceTurn,
     WordProgress,
     utcnow,
 )
@@ -40,9 +56,48 @@ def _name(user: User) -> str:
     return full_name or (f"@{user.username}" if user.username else "Без имени")
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+PILOT_STAGE_LABELS = (
+    ("pilot_waitlist_joined", "Оставили заявку"),
+    ("pilot_access_approved", "Допущены"),
+    ("onboarding_completed", "Завершили настройку"),
+    ("block_started", "Открыли первый блок"),
+    ("block_completed", "Завершили первый блок"),
+)
+PILOT_ACTIVITY_EVENTS = {
+    "start_received",
+    "onboarding_started",
+    "onboarding_completed",
+    "language_switched",
+    "block_started",
+    "block_mode_started",
+    "word_audio_played",
+    "block_completed",
+}
+PILOT_USER_STAGES = {
+    "all",
+    "pending",
+    "onboarding",
+    "first_block",
+    "engaged",
+    "blocked",
+}
+
+
 class AdminStore:
-    def __init__(self, store: DatabaseStore):
+    def __init__(
+        self,
+        store: DatabaseStore,
+        billing_settings: BillingSettings | None = None,
+    ):
         self.store = store
+        self.billing_settings = billing_settings or BillingSettings.from_env()
+        self.billing = BillingService(store, self.billing_settings)
 
     def get_settings(self) -> dict[str, str]:
         with self.store.Session() as session:
@@ -168,76 +223,25 @@ class AdminStore:
         delta: int,
         reason: str,
         actor: str,
+        idempotency_key: str | None = None,
     ) -> int:
         if delta == 0:
             raise ValueError("Credit adjustment cannot be zero")
         reason = reason.strip()
         if len(reason) < 3 or len(reason) > 255:
             raise ValueError("Reason must contain 3 to 255 characters")
-        with self.store.Session.begin() as session:
-            existing_user = session.execute(
-                select(User.telegram_user_id)
-                .where(User.telegram_user_id == int(user_id))
-                .with_for_update()
-            ).scalar_one_or_none()
-            if existing_user is None:
-                raise ValueError("Telegram user does not exist")
-            insert_for_dialect = (
-                postgresql_insert
-                if self.store.engine.dialect.name == "postgresql"
-                else sqlite_insert
-            )
-            session.execute(
-                insert_for_dialect(AIAllowance)
-                .values(
-                    telegram_user_id=int(user_id),
-                    available_credits=0,
-                    reserved_credits=0,
-                    spent_credits=0,
-                    updated_at=utcnow(),
-                )
-                .on_conflict_do_nothing(
-                    index_elements=[AIAllowance.telegram_user_id]
-                )
-            )
-            allowance = session.execute(
-                select(AIAllowance)
-                .where(AIAllowance.telegram_user_id == int(user_id))
-                .with_for_update()
-            ).scalar_one()
-            balance_after = allowance.available_credits + int(delta)
-            if balance_after < 0:
-                raise ValueError("Credit balance cannot become negative")
-            allowance.available_credits = balance_after
-            allowance.updated_at = utcnow()
-            entry_id = str(uuid4())
-            session.add(
-                AICreditLedger(
-                    entry_id=entry_id,
-                    telegram_user_id=int(user_id),
-                    delta=int(delta),
-                    balance_after=balance_after,
-                    reason=reason,
-                    actor=actor,
-                )
-            )
-            session.add(
-                AdminAuditLog(
-                    actor=actor,
-                    action="ai_credits_adjusted",
-                    target_type="telegram_user",
-                    target_id=str(user_id),
-                    details_json=_json(
-                        {
-                            "delta": int(delta),
-                            "balance_after": balance_after,
-                            "reason": reason,
-                            "ledger_entry_id": entry_id,
-                        }
-                    ),
-                )
-            )
-            return balance_after
+        result = self.store.adjust_ai_wallet(
+            user_id,
+            delta=int(delta),
+            reason=reason,
+            actor=actor,
+            idempotency_key=(
+                str(idempotency_key).strip()[:249]
+                if idempotency_key
+                else f"admin:{uuid4()}"
+            ),
+        )
+        return result["available_credits"]
 
     def set_user_access_status(
         self,
@@ -262,9 +266,13 @@ class AdminStore:
             previous = user.access_status
             if previous == status:
                 return status
+            observed_at = utcnow()
             user.access_status = status
-            user.access_status_updated_at = utcnow()
-            user.updated_at = utcnow()
+            user.access_status_updated_at = observed_at
+            if status == "active" and user.privacy_status == "erased":
+                user.privacy_status = "active"
+                user.privacy_deleted_at = None
+            user.updated_at = observed_at
             session.add(
                 AdminAuditLog(
                     actor=actor[:64],
@@ -276,6 +284,50 @@ class AdminStore:
                     ),
                 )
             )
+            event_name = {
+                "active": "pilot_access_approved",
+                "pending": "pilot_access_pending",
+                "blocked": "pilot_access_blocked",
+            }[status]
+            session.add(
+                AnalyticsEvent(
+                    event_id=str(uuid4()),
+                    telegram_user_id=user.telegram_user_id,
+                    event_name=event_name,
+                    source="admin",
+                    properties_json="{}",
+                    occurred_at=observed_at,
+                )
+            )
+            if status == "active":
+                session.add(
+                    TelegramNotification(
+                        notification_id=str(uuid4()),
+                        telegram_user_id=user.telegram_user_id,
+                        kind="pilot_access_approved",
+                        status="pending",
+                        idempotency_key=(
+                            f"pilot-access:{user.telegram_user_id}:"
+                            f"{observed_at.isoformat()}"
+                        ),
+                        available_at=observed_at,
+                        created_at=observed_at,
+                        updated_at=observed_at,
+                    )
+                )
+            else:
+                queued = session.execute(
+                    select(TelegramNotification).where(
+                        TelegramNotification.telegram_user_id
+                        == user.telegram_user_id,
+                        TelegramNotification.kind == "pilot_access_approved",
+                        TelegramNotification.status.in_({"pending", "processing"}),
+                    )
+                ).scalars().all()
+                for notification in queued:
+                    notification.status = "cancelled"
+                    notification.lease_until = None
+                    notification.updated_at = observed_at
         return status
 
     def dashboard(self) -> dict[str, Any]:
@@ -329,9 +381,9 @@ class AdminStore:
             ) or 0
             credits = session.execute(
                 select(
-                    func.sum(AIAllowance.available_credits),
-                    func.sum(AIAllowance.reserved_credits),
-                    func.sum(AIAllowance.spent_credits),
+                    func.sum(AIWallet.balance_credits - AIWallet.reserved_credits),
+                    func.sum(AIWallet.reserved_credits),
+                    func.sum(AIWallet.spent_credits),
                 )
             ).one()
             language_rows = session.execute(
@@ -410,7 +462,7 @@ class AdminStore:
             select(
                 User,
                 UserProgress,
-                AIAllowance,
+                AIWallet,
                 word_stats.c.tracked_words,
                 learned_stats.c.learned_words,
                 word_stats.c.word_correct,
@@ -424,8 +476,8 @@ class AdminStore:
                 UserProgress.telegram_user_id == User.telegram_user_id,
             )
             .outerjoin(
-                AIAllowance,
-                AIAllowance.telegram_user_id == User.telegram_user_id,
+                AIWallet,
+                AIWallet.telegram_user_id == User.telegram_user_id,
             )
             .outerjoin(
                 word_stats, word_stats.c.user_id == User.telegram_user_id
@@ -453,7 +505,7 @@ class AdminStore:
             rows = session.execute(statement).all()
         result = []
         for row in rows:
-            user, progress, allowance = row[0], row[1], row[2]
+            user, progress, wallet = row[0], row[1], row[2]
             correct = int((progress.total_correct if progress else 0) or 0)
             wrong = int((progress.total_wrong if progress else 0) or 0)
             attempts = correct + wrong
@@ -466,6 +518,8 @@ class AdminStore:
                     "role": user.role,
                     "access_status": user.access_status,
                     "access_status_updated_at": user.access_status_updated_at,
+                    "privacy_status": user.privacy_status,
+                    "privacy_deleted_at": user.privacy_deleted_at,
                     "native_language": user.native_language or "",
                     "learning_goal": user.learning_goal or "",
                     "daily_word_goal": user.daily_word_goal,
@@ -489,30 +543,238 @@ class AdminStore:
                     "ai_tokens": int(row[8] or 0),
                     "ai_cost_micro_usd": int(row[9] or 0),
                     "credits_available": (
-                        allowance.available_credits if allowance else 0
+                        wallet.balance_credits - wallet.reserved_credits
+                        if wallet
+                        else 0
                     ),
                     "credits_reserved": (
-                        allowance.reserved_credits if allowance else 0
+                        wallet.reserved_credits if wallet else 0
                     ),
-                    "credits_spent": allowance.spent_credits if allowance else 0,
+                    "credits_spent": wallet.spent_credits if wallet else 0,
                     "created_at": user.created_at,
                     "updated_at": user.updated_at,
                 }
             )
         return result
 
+    def pilot_overview(self, *, days: int = 30) -> dict[str, Any]:
+        days = max(1, min(int(days), 365))
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(days=days)
+        with self.store.Session() as session:
+            waitlist_rows = session.execute(
+                select(
+                    AnalyticsEvent.telegram_user_id,
+                    func.min(AnalyticsEvent.occurred_at),
+                )
+                .join(User, User.telegram_user_id == AnalyticsEvent.telegram_user_id)
+                .where(
+                    User.role == "learner",
+                    AnalyticsEvent.event_name == "pilot_waitlist_joined",
+                    AnalyticsEvent.occurred_at >= since,
+                )
+                .group_by(AnalyticsEvent.telegram_user_id)
+            ).all()
+            joined_at = {
+                int(user_id): _as_utc(observed_at)
+                for user_id, observed_at in waitlist_rows
+            }
+            cohort_ids = set(joined_at)
+            if cohort_ids:
+                tracked_names = {
+                    name for name, _ in PILOT_STAGE_LABELS
+                } | PILOT_ACTIVITY_EVENTS
+                event_rows = session.execute(
+                    select(
+                        AnalyticsEvent.telegram_user_id,
+                        AnalyticsEvent.event_name,
+                        AnalyticsEvent.occurred_at,
+                    ).where(
+                        AnalyticsEvent.telegram_user_id.in_(cohort_ids),
+                        AnalyticsEvent.event_name.in_(tracked_names),
+                        AnalyticsEvent.occurred_at >= since,
+                    )
+                ).all()
+                user_rows = session.execute(
+                    select(User, UserProgress)
+                    .outerjoin(
+                        UserProgress,
+                        UserProgress.telegram_user_id == User.telegram_user_id,
+                    )
+                    .where(User.telegram_user_id.in_(cohort_ids))
+                ).all()
+                notification_rows = session.execute(
+                    select(
+                        TelegramNotification.status,
+                        func.count(TelegramNotification.notification_id),
+                    )
+                    .where(TelegramNotification.telegram_user_id.in_(cohort_ids))
+                    .group_by(TelegramNotification.status)
+                ).all()
+            else:
+                event_rows = []
+                user_rows = []
+                notification_rows = []
+
+        first_events: dict[str, dict[int, datetime]] = {
+            name: {} for name, _ in PILOT_STAGE_LABELS
+        }
+        activity_by_user: dict[int, list[datetime]] = {
+            user_id: [] for user_id in cohort_ids
+        }
+        for user_id, event_name, occurred_at in event_rows:
+            user_id = int(user_id)
+            observed_at = _as_utc(occurred_at)
+            if event_name in first_events:
+                previous = first_events[event_name].get(user_id)
+                if previous is None or observed_at < previous:
+                    first_events[event_name][user_id] = observed_at
+            if event_name in PILOT_ACTIVITY_EVENTS:
+                activity_by_user[user_id].append(observed_at)
+        first_events["pilot_waitlist_joined"] = dict(joined_at)
+        cohort_size = len(cohort_ids)
+        stages = []
+        for event_name, label in PILOT_STAGE_LABELS:
+            users = len(first_events[event_name])
+            stages.append(
+                {
+                    "event_name": event_name,
+                    "label": label,
+                    "users": users,
+                    "conversion": users / cohort_size * 100 if cohort_size else 0,
+                }
+            )
+
+        def retention(day: int) -> dict[str, float | int]:
+            eligible = {
+                user_id
+                for user_id, joined in joined_at.items()
+                if joined <= now - timedelta(days=day)
+            }
+            retained = {
+                user_id
+                for user_id in eligible
+                if any(
+                    joined_at[user_id] + timedelta(days=day) <= observed
+                    < joined_at[user_id] + timedelta(days=day + 1)
+                    for observed in activity_by_user[user_id]
+                )
+            }
+            return {
+                "eligible": len(eligible),
+                "users": len(retained),
+                "rate": len(retained) / len(eligible) * 100 if eligible else 0,
+            }
+
+        access: dict[str, int] = {}
+        sources: dict[str, int] = {}
+        languages: dict[str, int] = {}
+        for user, progress in user_rows:
+            access[user.access_status] = access.get(user.access_status, 0) + 1
+            source = user.acquisition_source or "direct"
+            sources[source] = sources.get(source, 0) + 1
+            language = progress.active_lang if progress else "en"
+            languages[language] = languages.get(language, 0) + 1
+        return {
+            "days": days,
+            "cohort": cohort_size,
+            "stages": stages,
+            "retention": {"d1": retention(1), "d7": retention(7)},
+            "access": access,
+            "notifications": {
+                status: int(count) for status, count in notification_rows
+            },
+            "sources": [
+                {"source": key, "users": value}
+                for key, value in sorted(
+                    sources.items(), key=lambda item: (-item[1], item[0])
+                )
+            ],
+            "languages": [
+                {"language": key, "users": value}
+                for key, value in sorted(
+                    languages.items(), key=lambda item: (-item[1], item[0])
+                )
+            ],
+        }
+
+    def pilot_users(
+        self, *, stage: str = "all", limit: int = 250
+    ) -> list[dict[str, Any]]:
+        stage = str(stage).strip().lower()
+        if stage not in PILOT_USER_STAGES:
+            stage = "all"
+        with self.store.Session() as session:
+            waitlist_rows = session.execute(
+                select(
+                    AnalyticsEvent.telegram_user_id,
+                    func.min(AnalyticsEvent.occurred_at),
+                )
+                .join(
+                    User,
+                    User.telegram_user_id == AnalyticsEvent.telegram_user_id,
+                )
+                .where(
+                    User.role == "learner",
+                    AnalyticsEvent.event_name == "pilot_waitlist_joined",
+                )
+                .group_by(AnalyticsEvent.telegram_user_id)
+            ).all()
+            joined_at = {
+                int(user_id): _as_utc(observed_at)
+                for user_id, observed_at in waitlist_rows
+            }
+            cohort_ids = set(joined_at)
+            block_rows = (
+                session.execute(
+                    select(
+                        AnalyticsEvent.telegram_user_id,
+                        AnalyticsEvent.occurred_at,
+                    ).where(
+                        AnalyticsEvent.telegram_user_id.in_(cohort_ids),
+                        AnalyticsEvent.event_name == "block_started",
+                    )
+                ).all()
+                if cohort_ids
+                else []
+            )
+        activated_ids = {
+            int(user_id)
+            for user_id, observed_at in block_rows
+            if _as_utc(observed_at) >= joined_at[int(user_id)]
+        }
+        result = []
+        for user in self.users(limit=10000):
+            if user["id"] not in cohort_ids:
+                continue
+            if user["access_status"] == "blocked":
+                pilot_stage = "blocked"
+            elif user["access_status"] == "pending":
+                pilot_stage = "pending"
+            elif not user["onboarding_completed_at"]:
+                pilot_stage = "onboarding"
+            elif user["id"] not in activated_ids:
+                pilot_stage = "first_block"
+            else:
+                pilot_stage = "engaged"
+            if stage != "all" and pilot_stage != stage:
+                continue
+            result.append(dict(user, pilot_stage=pilot_stage))
+            if len(result) >= max(1, min(int(limit), 1000)):
+                break
+        return result
+
     def product_funnel(self, *, days: int = 30) -> dict[str, Any]:
         days = max(1, min(int(days), 365))
         since = datetime.now(timezone.utc) - timedelta(days=days)
-        steps = [
+        event_steps = [
             ("start_received", "Открыли /start"),
-            ("pilot_waitlist_joined", "Встали в очередь пилота"),
-            ("onboarding_started", "Начали настройку"),
             ("onboarding_completed", "Завершили настройку"),
             ("block_started", "Открыли учебный блок"),
-            ("block_completed", "Завершили блок"),
+            ("buy_opened", "Открыли покупку"),
+            ("billing_terms_accepted", "Приняли условия"),
         ]
-        event_names = [name for name, _ in steps]
+        event_names = [name for name, _ in event_steps]
         with self.store.Session() as session:
             rows = session.execute(
                 select(
@@ -531,27 +793,106 @@ class AdminStore:
                 )
                 .group_by(AnalyticsEvent.event_name)
             ).all()
+            order_events, order_users = session.execute(
+                select(
+                    func.count(PaymentOrder.order_id),
+                    func.count(func.distinct(PaymentOrder.telegram_user_id)),
+                ).where(PaymentOrder.created_at >= since)
+            ).one()
+            payment_events, payment_users, gross_xtr, refunded_xtr = session.execute(
+                select(
+                    func.count(StarsPayment.payment_id),
+                    func.count(func.distinct(StarsPayment.telegram_user_id)),
+                    func.coalesce(func.sum(StarsPayment.total_amount), 0),
+                    func.coalesce(
+                        func.sum(
+                            case(
+                                (StarsPayment.status == "refunded", StarsPayment.total_amount),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ),
+                ).where(StarsPayment.received_at >= since)
+            ).one()
+            ai_events, ai_users = session.execute(
+                select(
+                    func.count(AIUsage.request_id),
+                    func.count(func.distinct(AIUsage.telegram_user_id)),
+                ).where(
+                    AIUsage.created_at >= since,
+                    AIUsage.status == "completed",
+                )
+            ).one()
+            payment_counts = (
+                select(
+                    StarsPayment.telegram_user_id.label("telegram_user_id"),
+                    func.count(StarsPayment.payment_id).label("payment_count"),
+                )
+                .where(StarsPayment.received_at >= since)
+                .group_by(StarsPayment.telegram_user_id)
+                .subquery()
+            )
+            repeat_users, repeat_events = session.execute(
+                select(
+                    func.count(payment_counts.c.telegram_user_id),
+                    func.coalesce(func.sum(payment_counts.c.payment_count), 0),
+                ).where(payment_counts.c.payment_count >= 2)
+            ).one()
         aggregates = {
             row[0]: {"events": int(row[1]), "users": int(row[2])}
             for row in rows
         }
+        durable_steps = {
+            "invoice_created": {
+                "label": "Создали счёт",
+                "events": int(order_events or 0),
+                "users": int(order_users or 0),
+            },
+            "stars_payment_completed": {
+                "label": "Успешно оплатили",
+                "events": int(payment_events or 0),
+                "users": int(payment_users or 0),
+            },
+            "ai_request_completed": {
+                "label": "Использовали AI",
+                "events": int(ai_events or 0),
+                "users": int(ai_users or 0),
+            },
+            "repeat_purchase": {
+                "label": "Купили повторно",
+                "events": int(repeat_events or 0),
+                "users": int(repeat_users or 0),
+            },
+        }
         starts = aggregates.get("start_received", {}).get("users", 0)
+        steps = [
+            {
+                "event_name": name,
+                "label": label,
+                "events": aggregates.get(name, {}).get("events", 0),
+                "users": aggregates.get(name, {}).get("users", 0),
+                "source": "analytics",
+            }
+            for name, label in event_steps
+        ]
+        steps.extend(
+            dict(event_name=name, source="ledger", **values)
+            for name, values in durable_steps.items()
+        )
+        for step in steps:
+            step["conversion"] = step["users"] / starts * 100 if starts else 0
         return {
             "days": days,
-            "steps": [
-                {
-                    "event_name": name,
-                    "label": label,
-                    "events": aggregates.get(name, {}).get("events", 0),
-                    "users": aggregates.get(name, {}).get("users", 0),
-                    "conversion": (
-                        aggregates.get(name, {}).get("users", 0) / starts * 100
-                        if starts
-                        else 0
-                    ),
-                }
-                for name, label in steps
-            ],
+            "steps": steps,
+            "commercial": {
+                "orders": int(order_events or 0),
+                "payments": int(payment_events or 0),
+                "payers": int(payment_users or 0),
+                "gross_xtr": int(gross_xtr or 0),
+                "refunded_xtr": int(refunded_xtr or 0),
+                "net_xtr": int(gross_xtr or 0) - int(refunded_xtr or 0),
+            },
         }
 
     def recent_product_events(self, limit: int = 100) -> list[dict[str, Any]]:
@@ -680,20 +1021,452 @@ class AdminStore:
             for row in rows
         ]
 
+    def upsert_billing_product(
+        self,
+        *,
+        product_id: str,
+        title: str,
+        description: str,
+        credits: int,
+        price_xtr: int,
+        status: str,
+        estimated_cost_micro_usd: int,
+        target_margin_bps: int,
+        display_order: int,
+        actor: str,
+        billing_mode: str = "one_time",
+        subscription_period_seconds: int | None = None,
+    ) -> dict[str, Any]:
+        product_id = str(product_id).strip().lower()
+        title = str(title).strip()
+        description = str(description).strip()
+        status = str(status).strip().lower()
+        billing_mode = str(billing_mode).strip().lower()
+        if not PRODUCT_ID_RE.fullmatch(product_id):
+            raise ValueError("Product ID must use lowercase letters, digits, and hyphens")
+        if not 1 <= len(title) <= 32 or not 1 <= len(description) <= 255:
+            raise ValueError("Product title or description is outside Telegram limits")
+        if status not in PRODUCT_STATUSES:
+            raise ValueError("Unknown billing product status")
+        if billing_mode not in BILLING_MODES:
+            raise ValueError("Unknown billing product mode")
+        if billing_mode == "subscription":
+            if int(subscription_period_seconds or 0) != SUBSCRIPTION_PERIOD_SECONDS:
+                raise ValueError("Stars subscriptions must use a 30-day period")
+            subscription_period_seconds = SUBSCRIPTION_PERIOD_SECONDS
+        elif subscription_period_seconds not in {None, 0}:
+            raise ValueError("One-time products cannot have a subscription period")
+        else:
+            subscription_period_seconds = None
+        if not 1 <= int(credits) <= 1_000_000:
+            raise ValueError("Product credits must be between 1 and 1000000")
+        if not 1 <= int(price_xtr) <= 1_000_000:
+            raise ValueError("Product price must be between 1 and 1000000 XTR")
+        if billing_mode == "subscription" and int(price_xtr) > 10_000:
+            raise ValueError("Stars subscription price cannot exceed 10000 XTR")
+        if int(estimated_cost_micro_usd) < 0:
+            raise ValueError("Estimated product cost cannot be negative")
+        if not 0 <= int(target_margin_bps) <= 10000:
+            raise ValueError("Target margin must be between 0 and 10000 bps")
+        candidate = {
+            "price_xtr": int(price_xtr),
+            "estimated_cost_micro_usd": int(estimated_cost_micro_usd),
+        }
+        estimated_margin = self.billing.product_margin_bps(candidate)
+        if status == "active":
+            if int(estimated_cost_micro_usd) <= 0 or int(target_margin_bps) <= 0:
+                raise ValueError(
+                    "Active products require measured cost and a positive margin floor"
+                )
+            if estimated_margin is None:
+                raise ValueError(
+                    "Configure BILLING_NET_MICRO_USD_PER_XTR before activation"
+                )
+            if estimated_margin < int(target_margin_bps):
+                raise ValueError("Estimated margin is below the configured floor")
+        with self.store.Session.begin() as session:
+            row = session.get(BillingProduct, product_id)
+            action = "billing_product_created"
+            if row is None:
+                row = BillingProduct(product_id=product_id)
+                session.add(row)
+            else:
+                action = "billing_product_updated"
+            row.title = title
+            row.description = description
+            row.credits = int(credits)
+            row.price_xtr = int(price_xtr)
+            row.status = status
+            row.estimated_cost_micro_usd = int(estimated_cost_micro_usd)
+            row.target_margin_bps = int(target_margin_bps)
+            row.display_order = int(display_order)
+            row.billing_mode = billing_mode
+            row.subscription_period_seconds = subscription_period_seconds
+            row.updated_at = utcnow()
+            session.add(
+                AdminAuditLog(
+                    actor=actor[:64],
+                    action=action,
+                    target_type="billing_product",
+                    target_id=product_id,
+                    details_json=_json(
+                        {
+                            "credits": int(credits),
+                            "price_xtr": int(price_xtr),
+                            "status": status,
+                            "estimated_cost_micro_usd": int(
+                                estimated_cost_micro_usd
+                            ),
+                            "target_margin_bps": int(target_margin_bps),
+                            "estimated_margin_bps": estimated_margin,
+                            "billing_mode": billing_mode,
+                            "subscription_period_seconds": (
+                                subscription_period_seconds
+                            ),
+                        }
+                    ),
+                )
+            )
+        return self.billing_products(product_id=product_id)[0]
+
+    def billing_products(
+        self, *, product_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        statement = select(BillingProduct).order_by(
+            BillingProduct.display_order, BillingProduct.price_xtr
+        )
+        if product_id is not None:
+            statement = statement.where(BillingProduct.product_id == product_id)
+        with self.store.Session() as session:
+            rows = session.execute(statement).scalars().all()
+        result = []
+        for row in rows:
+            product = {
+                column.name: getattr(row, column.name)
+                for column in BillingProduct.__table__.columns
+            }
+            product["estimated_margin_bps"] = self.billing.product_margin_bps(row)
+            product["estimated_net_revenue_micro_usd"] = (
+                row.price_xtr * self.billing_settings.net_micro_usd_per_xtr
+            )
+            result.append(product)
+        return result
+
+    def billing_overview(self) -> dict[str, Any]:
+        with self.store.Session() as session:
+            order_rows = session.execute(
+                select(PaymentOrder.status, func.count(PaymentOrder.order_id)).group_by(
+                    PaymentOrder.status
+                )
+            ).all()
+            payment_rows = session.execute(
+                select(
+                    StarsPayment.status,
+                    func.count(StarsPayment.payment_id),
+                    func.sum(StarsPayment.total_amount),
+                ).group_by(StarsPayment.status)
+            ).all()
+            credits_sold = session.scalar(
+                select(func.sum(PaymentOrder.credits_snapshot))
+                .join(StarsPayment, StarsPayment.order_id == PaymentOrder.order_id)
+                .where(StarsPayment.status.in_({"paid", "refund_pending"}))
+            ) or 0
+            active_subscriptions = session.scalar(
+                select(func.count(StarsSubscription.subscription_id)).where(
+                    StarsSubscription.status == "active"
+                )
+            ) or 0
+            credits_refunded = session.scalar(
+                select(func.sum(RefundRequest.credits)).where(
+                    RefundRequest.status == "completed"
+                )
+            ) or 0
+            pending_refunds = session.scalar(
+                select(func.count(RefundRequest.refund_id)).where(
+                    RefundRequest.status.in_({"requested", "processing", "failed"})
+                )
+            ) or 0
+        payment_statuses = {
+            status: {"count": int(count or 0), "xtr": int(amount or 0)}
+            for status, count, amount in payment_rows
+        }
+        return {
+            "enabled": self.billing_settings.enabled,
+            "unit_economics_configured": (
+                self.billing_settings.net_micro_usd_per_xtr > 0
+            ),
+            "orders": {status: int(count) for status, count in order_rows},
+            "payments": payment_statuses,
+            "xtr_collected": sum(
+                value["xtr"]
+                for status, value in payment_statuses.items()
+                if status in {"paid", "refund_pending"}
+            ),
+            "xtr_refunded": payment_statuses.get("refunded", {}).get("xtr", 0),
+            "credits_sold": int(credits_sold),
+            "credits_refunded": int(credits_refunded),
+            "pending_refunds": int(pending_refunds),
+            "active_subscriptions": int(active_subscriptions),
+        }
+
+    def recent_payment_orders(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(PaymentOrder)
+                .order_by(PaymentOrder.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).scalars().all()
+        return [
+            {
+                column.name: getattr(row, column.name)
+                for column in PaymentOrder.__table__.columns
+                if column.name != "invoice_payload"
+            }
+            for row in rows
+        ]
+
+    def stars_payments(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(StarsPayment, PaymentOrder)
+                .join(PaymentOrder, PaymentOrder.order_id == StarsPayment.order_id)
+                .order_by(StarsPayment.received_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).all()
+        return [
+            {
+                "payment_id": payment.payment_id,
+                "order_id": payment.order_id,
+                "telegram_user_id": payment.telegram_user_id,
+                "product_id": order.product_id,
+                "product_title": order.product_title,
+                "credits": order.credits_snapshot,
+                "currency": payment.currency,
+                "total_amount": payment.total_amount,
+                "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+                "subscription_id": payment.subscription_id,
+                "is_recurring": payment.is_recurring,
+                "is_first_recurring": payment.is_first_recurring,
+                "subscription_expiration_date": (
+                    payment.subscription_expiration_date
+                ),
+                "status": payment.status,
+                "received_at": payment.received_at,
+                "refunded_at": payment.refunded_at,
+            }
+            for payment, order in rows
+        ]
+
+    def stars_subscriptions(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(StarsSubscription, PaymentOrder)
+                .join(PaymentOrder, PaymentOrder.order_id == StarsSubscription.order_id)
+                .order_by(StarsSubscription.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).all()
+        return [
+            {
+                "subscription_id": subscription.subscription_id,
+                "order_id": subscription.order_id,
+                "telegram_user_id": subscription.telegram_user_id,
+                "product_id": subscription.product_id,
+                "product_title": order.product_title,
+                "credits": order.credits_snapshot,
+                "amount_xtr": order.amount_xtr,
+                "status": subscription.status,
+                "period_seconds": subscription.period_seconds,
+                "current_period_end": subscription.current_period_end,
+                "cancelled_at": subscription.cancelled_at,
+                "created_at": subscription.created_at,
+            }
+            for subscription, order in rows
+        ]
+
+    def refund_requests(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(RefundRequest)
+                .order_by(RefundRequest.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).scalars().all()
+        return [
+            {
+                column.name: getattr(row, column.name)
+                for column in RefundRequest.__table__.columns
+            }
+            for row in rows
+        ]
+
+    def request_stars_refund(
+        self, *, payment_id: str, reason: str, actor: str
+    ) -> str:
+        return self.billing.request_refund(
+            payment_id=payment_id, reason=reason, actor=actor
+        )
+
+    def billing_reconciliation(self) -> list[dict[str, str]]:
+        issues: list[dict[str, str]] = []
+        with self.store.Session() as session:
+            payments = session.execute(select(StarsPayment)).scalars().all()
+            for payment in payments:
+                ledger = session.execute(
+                    select(BillingCreditLedger).where(
+                        BillingCreditLedger.idempotency_key
+                        == f"stars-payment:{payment.telegram_payment_charge_id}"
+                    )
+                ).scalar_one_or_none()
+                if ledger is None:
+                    issues.append(
+                        {
+                            "code": "payment_missing_credit_ledger",
+                            "reference": payment.payment_id,
+                            "details": "Payment has no idempotent credit grant",
+                        }
+                    )
+            refunds = session.execute(
+                select(RefundRequest).where(RefundRequest.status == "completed")
+            ).scalars().all()
+            for refund in refunds:
+                ledger = session.execute(
+                    select(BillingCreditLedger).where(
+                        BillingCreditLedger.reference_type == "refund",
+                        BillingCreditLedger.reference_id == refund.refund_id,
+                    )
+                ).scalar_one_or_none()
+                if ledger is None:
+                    issues.append(
+                        {
+                            "code": "refund_missing_credit_reversal",
+                            "reference": refund.refund_id,
+                            "details": "Completed refund has no ledger reversal",
+                        }
+                    )
+        return issues
+
     def credit_ledger(self, limit: int = 100) -> list[dict[str, Any]]:
         with self.store.Session() as session:
             rows = session.execute(
-                select(AICreditLedger)
-                .order_by(AICreditLedger.created_at.desc())
+                select(BillingCreditLedger)
+                .order_by(BillingCreditLedger.created_at.desc())
                 .limit(max(1, min(int(limit), 10000)))
             ).scalars().all()
         return [
             {
                 column.name: getattr(row, column.name)
-                for column in AICreditLedger.__table__.columns
+                for column in BillingCreditLedger.__table__.columns
             }
             for row in rows
         ]
+
+    def payment_orders_export(self) -> list[dict[str, Any]]:
+        return self.recent_payment_orders(limit=10000)
+
+    def safety_overview(self) -> dict[str, int]:
+        now = utcnow()
+        since = now - timedelta(hours=24)
+        with self.store.Session() as session:
+            events = session.scalar(
+                select(func.count()).select_from(AbuseEvent).where(
+                    AbuseEvent.occurred_at >= since
+                )
+            ) or 0
+            affected_users = session.scalar(
+                select(func.count(func.distinct(AbuseEvent.telegram_user_id))).where(
+                    AbuseEvent.occurred_at >= since
+                )
+            ) or 0
+            active_blocks = session.scalar(
+                select(func.count()).select_from(RateLimitBucket).where(
+                    RateLimitBucket.blocked_until > now
+                )
+            ) or 0
+            erased_users = session.scalar(
+                select(func.count()).select_from(User).where(
+                    User.privacy_status == "erased"
+                )
+            ) or 0
+        return {
+            "events_24h": int(events),
+            "affected_users_24h": int(affected_users),
+            "active_blocks": int(active_blocks),
+            "erased_users": int(erased_users),
+        }
+
+    def recent_abuse_events(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(AbuseEvent)
+                .order_by(AbuseEvent.occurred_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).scalars().all()
+        return [
+            {
+                column.name: getattr(row, column.name)
+                for column in AbuseEvent.__table__.columns
+            }
+            for row in rows
+        ]
+
+    def voice_overview(self) -> dict[str, Any]:
+        with self.store.Session() as session:
+            sessions = session.scalar(
+                select(func.count()).select_from(VoiceSession)
+            ) or 0
+            active = session.scalar(
+                select(func.count()).select_from(VoiceSession).where(
+                    VoiceSession.status == "active"
+                )
+            ) or 0
+            turns = session.scalar(
+                select(func.count()).select_from(VoiceTurn)
+            ) or 0
+            average = session.scalar(select(func.avg(VoiceTurn.similarity_bps))) or 0
+            feedback_rows = session.execute(
+                select(VoiceTurn.feedback_code, func.count(VoiceTurn.turn_id)).group_by(
+                    VoiceTurn.feedback_code
+                )
+            ).all()
+        return {
+            "sessions": int(sessions),
+            "active_sessions": int(active),
+            "turns": int(turns),
+            "average_similarity_percent": float(average) / 100,
+            "feedback": {row[0]: int(row[1]) for row in feedback_rows},
+        }
+
+    def recent_voice_turns(self, limit: int = 100) -> list[dict[str, Any]]:
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(
+                    VoiceTurn,
+                    VoiceSession.pack_id,
+                    VoiceSession.language,
+                    VoiceSession.mode,
+                )
+                .join(VoiceSession, VoiceSession.session_id == VoiceTurn.session_id)
+                .order_by(VoiceTurn.created_at.desc())
+                .limit(max(1, min(int(limit), 1000)))
+            ).all()
+        return [
+            {
+                "turn_id": turn.turn_id,
+                "telegram_user_id": turn.telegram_user_id,
+                "pack_id": pack_id,
+                "language": language,
+                "mode": mode,
+                "expected_vocabulary_id": turn.expected_vocabulary_id,
+                "matched_vocabulary_id": turn.matched_vocabulary_id or "",
+                "feedback_code": turn.feedback_code,
+                "similarity_percent": turn.similarity_bps / 100,
+                "created_at": turn.created_at,
+                "expires_at": turn.expires_at,
+            }
+            for turn, pack_id, language, mode in rows
+        ]
+
+    def stars_payments_export(self) -> list[dict[str, Any]]:
+        return self.stars_payments(limit=10000)
 
     def audit_log(self, limit: int = 100) -> list[dict[str, Any]]:
         with self.store.Session() as session:

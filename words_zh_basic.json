@@ -1,0 +1,1105 @@
+{
+  "schema_version": 2,
+  "entries": [
+    {
+      "entry_id": "hello",
+      "target": "你好",
+      "meaning": "привет",
+      "transcription": "nǐ hǎo",
+      "speech": "你好",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "goodbye",
+      "target": "再见",
+      "meaning": "до свидания",
+      "transcription": "zài jiàn",
+      "speech": "再见",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "please",
+      "target": "请",
+      "meaning": "пожалуйста",
+      "transcription": "qǐng",
+      "speech": "请",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thank-you",
+      "target": "谢谢",
+      "meaning": "спасибо",
+      "transcription": "xièxie",
+      "speech": "谢谢",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yes",
+      "target": "对",
+      "meaning": "да",
+      "transcription": "duì",
+      "speech": "对",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "no",
+      "target": "不",
+      "meaning": "нет",
+      "transcription": "bù",
+      "speech": "不",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "excuse-me",
+      "target": "劳驾",
+      "meaning": "извините",
+      "transcription": "láo jià",
+      "speech": "劳驾",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sorry",
+      "target": "对不起",
+      "meaning": "простите",
+      "transcription": "duìbuqǐ",
+      "speech": "对不起",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good-morning",
+      "target": "早上好",
+      "meaning": "доброе утро",
+      "transcription": "zǎoshang hǎo",
+      "speech": "早上好",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good-night",
+      "target": "晚安",
+      "meaning": "спокойной ночи",
+      "transcription": "wǎn'ān",
+      "speech": "晚安",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "person",
+      "target": "人",
+      "meaning": "человек",
+      "transcription": "rén",
+      "speech": "人",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "friend",
+      "target": "朋友",
+      "meaning": "друг",
+      "transcription": "péngyou",
+      "speech": "朋友",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "family",
+      "target": "家庭",
+      "meaning": "семья",
+      "transcription": "jiātíng",
+      "speech": "家庭",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mother",
+      "target": "妈妈",
+      "meaning": "мать",
+      "transcription": "māma",
+      "speech": "妈妈",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "father",
+      "target": "爸爸",
+      "meaning": "отец",
+      "transcription": "bàba",
+      "speech": "爸爸",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "child",
+      "target": "孩子",
+      "meaning": "ребёнок",
+      "transcription": "háizi",
+      "speech": "孩子",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "woman",
+      "target": "女人",
+      "meaning": "женщина",
+      "transcription": "nǚrén",
+      "speech": "女人",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "man",
+      "target": "男人",
+      "meaning": "мужчина",
+      "transcription": "nánrén",
+      "speech": "男人",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "name",
+      "target": "名字",
+      "meaning": "имя",
+      "transcription": "míngzi",
+      "speech": "名字",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "teacher",
+      "target": "老师",
+      "meaning": "учитель",
+      "transcription": "lǎoshī",
+      "speech": "老师",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "water",
+      "target": "水",
+      "meaning": "вода",
+      "transcription": "shuǐ",
+      "speech": "水",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "food",
+      "target": "食物",
+      "meaning": "еда",
+      "transcription": "shíwù",
+      "speech": "食物",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bread",
+      "target": "面包",
+      "meaning": "хлеб",
+      "transcription": "miànbāo",
+      "speech": "面包",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "milk",
+      "target": "牛奶",
+      "meaning": "молоко",
+      "transcription": "niúnǎi",
+      "speech": "牛奶",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "coffee",
+      "target": "咖啡",
+      "meaning": "кофе",
+      "transcription": "kāfēi",
+      "speech": "咖啡",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tea",
+      "target": "茶",
+      "meaning": "чай",
+      "transcription": "chá",
+      "speech": "茶",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "apple",
+      "target": "苹果",
+      "meaning": "яблоко",
+      "transcription": "píngguǒ",
+      "speech": "苹果",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "rice",
+      "target": "米饭",
+      "meaning": "рис",
+      "transcription": "mǐfàn",
+      "speech": "米饭",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "meat",
+      "target": "肉",
+      "meaning": "мясо",
+      "transcription": "ròu",
+      "speech": "肉",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fish",
+      "target": "鱼",
+      "meaning": "рыба",
+      "transcription": "yú",
+      "speech": "鱼",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "house",
+      "target": "房子",
+      "meaning": "дом",
+      "transcription": "fángzi",
+      "speech": "房子",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "room",
+      "target": "房间",
+      "meaning": "комната",
+      "transcription": "fángjiān",
+      "speech": "房间",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "door",
+      "target": "门",
+      "meaning": "дверь",
+      "transcription": "mén",
+      "speech": "门",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "window",
+      "target": "窗户",
+      "meaning": "окно",
+      "transcription": "chuānghu",
+      "speech": "窗户",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "table",
+      "target": "桌子",
+      "meaning": "стол",
+      "transcription": "zhuōzi",
+      "speech": "桌子",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "chair",
+      "target": "椅子",
+      "meaning": "стул",
+      "transcription": "yǐzi",
+      "speech": "椅子",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bed",
+      "target": "床",
+      "meaning": "кровать",
+      "transcription": "chuáng",
+      "speech": "床",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "kitchen",
+      "target": "厨房",
+      "meaning": "кухня",
+      "transcription": "chúfáng",
+      "speech": "厨房",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bathroom",
+      "target": "浴室",
+      "meaning": "ванная",
+      "transcription": "yùshì",
+      "speech": "浴室",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "key",
+      "target": "钥匙",
+      "meaning": "ключ",
+      "transcription": "yàoshi",
+      "speech": "钥匙",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "road",
+      "target": "路",
+      "meaning": "дорога",
+      "transcription": "lù",
+      "speech": "路",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "station",
+      "target": "车站",
+      "meaning": "станция",
+      "transcription": "chēzhàn",
+      "speech": "车站",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "airport",
+      "target": "机场",
+      "meaning": "аэропорт",
+      "transcription": "jīchǎng",
+      "speech": "机场",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hotel",
+      "target": "酒店",
+      "meaning": "отель",
+      "transcription": "jiǔdiàn",
+      "speech": "酒店",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ticket",
+      "target": "票",
+      "meaning": "билет",
+      "transcription": "piào",
+      "speech": "票",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "car",
+      "target": "汽车",
+      "meaning": "автомобиль",
+      "transcription": "qìchē",
+      "speech": "汽车",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "train",
+      "target": "火车",
+      "meaning": "поезд",
+      "transcription": "huǒchē",
+      "speech": "火车",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bus",
+      "target": "公共汽车",
+      "meaning": "автобус",
+      "transcription": "gōnggòng qìchē",
+      "speech": "公共汽车",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "city",
+      "target": "城市",
+      "meaning": "город",
+      "transcription": "chéngshì",
+      "speech": "城市",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "country",
+      "target": "国家",
+      "meaning": "страна",
+      "transcription": "guójiā",
+      "speech": "国家",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "today",
+      "target": "今天",
+      "meaning": "сегодня",
+      "transcription": "jīntiān",
+      "speech": "今天",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tomorrow",
+      "target": "明天",
+      "meaning": "завтра",
+      "transcription": "míngtiān",
+      "speech": "明天",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yesterday",
+      "target": "昨天",
+      "meaning": "вчера",
+      "transcription": "zuótiān",
+      "speech": "昨天",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "now",
+      "target": "现在",
+      "meaning": "сейчас",
+      "transcription": "xiànzài",
+      "speech": "现在",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "morning",
+      "target": "早上",
+      "meaning": "утро",
+      "transcription": "zǎoshang",
+      "speech": "早上",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "evening",
+      "target": "晚上",
+      "meaning": "вечер",
+      "transcription": "wǎnshang",
+      "speech": "晚上",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "day",
+      "target": "天",
+      "meaning": "день",
+      "transcription": "tiān",
+      "speech": "天",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "week",
+      "target": "星期",
+      "meaning": "неделя",
+      "transcription": "xīngqī",
+      "speech": "星期",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "month",
+      "target": "月",
+      "meaning": "месяц",
+      "transcription": "yuè",
+      "speech": "月",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "year",
+      "target": "年",
+      "meaning": "год",
+      "transcription": "nián",
+      "speech": "年",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "work",
+      "target": "工作",
+      "meaning": "работа",
+      "transcription": "gōngzuò",
+      "speech": "工作",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "school",
+      "target": "学校",
+      "meaning": "школа",
+      "transcription": "xuéxiào",
+      "speech": "学校",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "student",
+      "target": "学生",
+      "meaning": "студент",
+      "transcription": "xuésheng",
+      "speech": "学生",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "book",
+      "target": "书",
+      "meaning": "книга",
+      "transcription": "shū",
+      "speech": "书",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "money",
+      "target": "钱",
+      "meaning": "деньги",
+      "transcription": "qián",
+      "speech": "钱",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shop",
+      "target": "商店",
+      "meaning": "магазин",
+      "transcription": "shāngdiàn",
+      "speech": "商店",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "office",
+      "target": "办公室",
+      "meaning": "офис",
+      "transcription": "bàngōngshì",
+      "speech": "办公室",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "computer",
+      "target": "电脑",
+      "meaning": "компьютер",
+      "transcription": "diànnǎo",
+      "speech": "电脑",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "phone",
+      "target": "电话",
+      "meaning": "телефон",
+      "transcription": "diànhuà",
+      "speech": "电话",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "question",
+      "target": "问题",
+      "meaning": "вопрос",
+      "transcription": "wèntí",
+      "speech": "问题",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "doctor",
+      "target": "医生",
+      "meaning": "врач",
+      "transcription": "yīshēng",
+      "speech": "医生",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hospital",
+      "target": "医院",
+      "meaning": "больница",
+      "transcription": "yīyuàn",
+      "speech": "医院",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "head",
+      "target": "头",
+      "meaning": "голова",
+      "transcription": "tóu",
+      "speech": "头",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hand",
+      "target": "手",
+      "meaning": "рука",
+      "transcription": "shǒu",
+      "speech": "手",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "eye",
+      "target": "眼睛",
+      "meaning": "глаз",
+      "transcription": "yǎnjing",
+      "speech": "眼睛",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "heart",
+      "target": "心脏",
+      "meaning": "сердце",
+      "transcription": "xīnzàng",
+      "speech": "心脏",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pain",
+      "target": "疼痛",
+      "meaning": "боль",
+      "transcription": "téngtòng",
+      "speech": "疼痛",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "medicine",
+      "target": "药",
+      "meaning": "лекарство",
+      "transcription": "yào",
+      "speech": "药",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tired",
+      "target": "累",
+      "meaning": "уставший",
+      "transcription": "lèi",
+      "speech": "累",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "healthy",
+      "target": "健康",
+      "meaning": "здоровый",
+      "transcription": "jiànkāng",
+      "speech": "健康",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "go",
+      "target": "去",
+      "meaning": "идти",
+      "transcription": "qù",
+      "speech": "去",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "come",
+      "target": "来",
+      "meaning": "приходить",
+      "transcription": "lái",
+      "speech": "来",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "eat",
+      "target": "吃",
+      "meaning": "есть",
+      "transcription": "chī",
+      "speech": "吃",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "drink",
+      "target": "喝",
+      "meaning": "пить",
+      "transcription": "hē",
+      "speech": "喝",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sleep",
+      "target": "睡觉",
+      "meaning": "спать",
+      "transcription": "shuìjiào",
+      "speech": "睡觉",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "read",
+      "target": "读",
+      "meaning": "читать",
+      "transcription": "dú",
+      "speech": "读",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "write",
+      "target": "写",
+      "meaning": "писать",
+      "transcription": "xiě",
+      "speech": "写",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "speak",
+      "target": "说",
+      "meaning": "говорить",
+      "transcription": "shuō",
+      "speech": "说",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "listen",
+      "target": "听",
+      "meaning": "слушать",
+      "transcription": "tīng",
+      "speech": "听",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "help",
+      "target": "帮助",
+      "meaning": "помогать",
+      "transcription": "bāngzhù",
+      "speech": "帮助",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "big",
+      "target": "大",
+      "meaning": "большой",
+      "transcription": "dà",
+      "speech": "大",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "small",
+      "target": "小",
+      "meaning": "маленький",
+      "transcription": "xiǎo",
+      "speech": "小",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "good",
+      "target": "好",
+      "meaning": "хороший",
+      "transcription": "hǎo",
+      "speech": "好",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bad",
+      "target": "坏",
+      "meaning": "плохой",
+      "transcription": "huài",
+      "speech": "坏",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "new",
+      "target": "新",
+      "meaning": "новый",
+      "transcription": "xīn",
+      "speech": "新",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "old",
+      "target": "旧",
+      "meaning": "старый",
+      "transcription": "jiù",
+      "speech": "旧",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hot",
+      "target": "热",
+      "meaning": "горячий",
+      "transcription": "rè",
+      "speech": "热",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cold",
+      "target": "冷",
+      "meaning": "холодный",
+      "transcription": "lěng",
+      "speech": "冷",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "happy",
+      "target": "高兴",
+      "meaning": "счастливый",
+      "transcription": "gāoxìng",
+      "speech": "高兴",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sad",
+      "target": "难过",
+      "meaning": "грустный",
+      "transcription": "nánguò",
+      "speech": "难过",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    }
+  ]
+}

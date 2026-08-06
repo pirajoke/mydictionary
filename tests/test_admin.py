@@ -9,12 +9,18 @@ from sqlalchemy import select
 
 from mydictionary.admin import LoginLimiter, create_app
 from mydictionary.admin_store import AdminStore
+from mydictionary.billing import BillingService, BillingSettings
 from mydictionary.readiness import BotHeartbeat
 from mydictionary.storage import (
-    AIAllowance,
-    AICreditLedger,
+    AIWallet,
+    AIUsage,
+    BillingCreditLedger,
     AdminAuditLog,
+    AnalyticsEvent,
     DatabaseStore,
+    TelegramNotification,
+    User,
+    UserProgress,
 )
 
 
@@ -110,9 +116,11 @@ class AdminConsoleTest(unittest.TestCase):
         for tab in (
             "dashboard",
             "users",
+            "pilot",
             "funnel",
             "learning",
             "ai",
+            "billing",
             "content",
             "profile",
             "diagnostics",
@@ -145,20 +153,27 @@ class AdminConsoleTest(unittest.TestCase):
     def test_credit_adjustment_is_transactional_and_has_ledger(self):
         self.login()
         self.store.ensure_user_id(5501)
+        adjustment = {
+            "csrf_token": self.csrf(),
+            "action_id": "same-admin-action",
+            "user_id": "5501",
+            "delta": "12",
+            "reason": "closed beta grant",
+        }
         response = self.client.post(
             "/admin/credits",
-            data={
-                "csrf_token": self.csrf(),
-                "user_id": "5501",
-                "delta": "12",
-                "reason": "closed beta grant",
-            },
+            data=adjustment,
         )
         self.assertEqual(response.status_code, 302)
+        replay = self.client.post(
+            "/admin/credits",
+            data={**adjustment, "csrf_token": self.csrf()},
+        )
+        self.assertEqual(replay.status_code, 302)
         with self.store.Session() as database_session:
-            allowance = database_session.get(AIAllowance, 5501)
-            ledger = database_session.execute(select(AICreditLedger)).scalar_one()
-            self.assertEqual(allowance.available_credits, 12)
+            wallet = database_session.get(AIWallet, 5501)
+            ledger = database_session.execute(select(BillingCreditLedger)).scalar_one()
+            self.assertEqual(wallet.balance_credits, 12)
             self.assertEqual(ledger.delta, 12)
             self.assertEqual(ledger.balance_after, 12)
 
@@ -174,13 +189,42 @@ class AdminConsoleTest(unittest.TestCase):
         self.assertEqual(rejected.status_code, 302)
         with self.store.Session() as database_session:
             self.assertEqual(
-                database_session.get(AIAllowance, 5501).available_credits,
+                database_session.get(AIWallet, 5501).balance_credits,
                 12,
             )
             self.assertEqual(
-                len(database_session.execute(select(AICreditLedger)).scalars().all()),
+                len(
+                    database_session.execute(
+                        select(BillingCreditLedger)
+                    ).scalars().all()
+                ),
                 1,
             )
+
+    def test_billing_product_draft_is_managed_with_csrf_and_audit(self):
+        self.login()
+        response = self.client.post(
+            "/admin/billing/products",
+            data={
+                "csrf_token": self.csrf(),
+                "product_id": "ai-starter",
+                "title": "AI Starter",
+                "description": "50 AI credits",
+                "credits": "50",
+                "price_xtr": "100",
+                "estimated_cost_micro_usd": "0",
+                "target_margin_bps": "0",
+                "display_order": "10",
+                "status": "draft",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        page = self.client.get("/admin?tab=billing").get_data(as_text=True)
+        self.assertIn("ai-starter", page)
+        self.assertIn("draft", page)
+        with self.store.Session() as session:
+            actions = session.execute(select(AdminAuditLog.action)).scalars().all()
+        self.assertIn("billing_product_created", actions)
 
     def test_credit_adjustment_rejects_unknown_user(self):
         with self.assertRaisesRegex(ValueError, "does not exist"):
@@ -216,7 +260,20 @@ class AdminConsoleTest(unittest.TestCase):
                     AdminAuditLog.action == "user_access_updated"
                 )
             ).scalar_one()
+            access_event = database_session.execute(
+                select(AnalyticsEvent).where(
+                    AnalyticsEvent.telegram_user_id == user_id,
+                    AnalyticsEvent.event_name == "pilot_access_approved",
+                )
+            ).scalar_one()
+            notification = database_session.execute(
+                select(TelegramNotification).where(
+                    TelegramNotification.telegram_user_id == user_id
+                )
+            ).scalar_one()
         self.assertEqual(audit.target_id, str(user_id))
+        self.assertEqual(access_event.source, "admin")
+        self.assertEqual(notification.status, "pending")
         self.assertEqual(
             json.loads(audit.details_json),
             {"previous": "pending", "current": "active"},
@@ -245,7 +302,119 @@ class AdminConsoleTest(unittest.TestCase):
                     AdminAuditLog.action == "user_access_updated"
                 )
             ).scalars().all()
+            events = database_session.execute(
+                select(AnalyticsEvent.event_name).where(
+                    AnalyticsEvent.telegram_user_id == user_id
+                )
+            ).scalars().all()
+            notification = database_session.execute(
+                select(TelegramNotification).where(
+                    TelegramNotification.telegram_user_id == user_id
+                )
+            ).scalar_one()
         self.assertEqual(len(audits), 2)
+        self.assertEqual(
+            events,
+            ["pilot_access_approved", "pilot_access_blocked"],
+        )
+        self.assertEqual(notification.status, "cancelled")
+
+    def test_pilot_dashboard_tracks_funnel_retention_and_stage_filters(self):
+        user_id = 5510
+        now = datetime.now(timezone.utc)
+        joined_at = now - timedelta(days=8, hours=2)
+        self.store.ensure_user(
+            SimpleNamespace(
+                id=user_id,
+                username="pilot_student",
+                first_name="Pilot",
+                last_name=None,
+                language_code="ru",
+            )
+        )
+        waitlist_id = self.store.record_event(
+            user_id,
+            "pilot_waitlist_joined",
+            source="referral",
+        )
+        AdminStore(self.store).set_user_access_status(
+            user_id,
+            status="active",
+            actor="owner",
+        )
+        onboarding_id = self.store.record_event(
+            user_id, "onboarding_completed"
+        )
+        block_started_id = self.store.record_event(user_id, "block_started")
+        block_completed_id = self.store.record_event(
+            user_id, "block_completed"
+        )
+        d7_activity_id = self.store.record_event(
+            user_id, "language_switched"
+        )
+        with self.store.Session.begin() as session:
+            session.get(AnalyticsEvent, waitlist_id).occurred_at = joined_at
+            session.get(AnalyticsEvent, onboarding_id).occurred_at = (
+                joined_at + timedelta(hours=1)
+            )
+            session.get(AnalyticsEvent, block_started_id).occurred_at = (
+                joined_at + timedelta(days=1, hours=1)
+            )
+            session.get(AnalyticsEvent, block_completed_id).occurred_at = (
+                joined_at + timedelta(days=1, hours=2)
+            )
+            session.get(AnalyticsEvent, d7_activity_id).occurred_at = (
+                joined_at + timedelta(days=7, hours=1)
+            )
+            user = session.get(User, user_id)
+            user.acquisition_source = "referral"
+            user.onboarding_completed_at = joined_at + timedelta(hours=1)
+            progress = session.get(UserProgress, user_id)
+            progress.active_lang = "fr"
+            progress.sessions = 1
+
+        admin_store = AdminStore(self.store)
+        pilot = admin_store.pilot_overview(days=30)
+        stages = {stage["event_name"]: stage for stage in pilot["stages"]}
+        self.assertEqual(pilot["cohort"], 1)
+        self.assertTrue(all(stage["users"] == 1 for stage in stages.values()))
+        self.assertEqual(pilot["retention"]["d1"]["rate"], 100)
+        self.assertEqual(pilot["retention"]["d7"]["rate"], 100)
+        self.assertEqual(pilot["sources"], [{"source": "referral", "users": 1}])
+        self.assertEqual(pilot["languages"], [{"language": "fr", "users": 1}])
+        self.assertEqual(
+            [user["id"] for user in admin_store.pilot_users(stage="engaged")],
+            [user_id],
+        )
+        self.assertEqual(admin_store.pilot_users(stage="pending"), [])
+
+        legacy_user_id = 5511
+        self.store.ensure_user_id(legacy_user_id)
+        self.store.record_event(legacy_user_id, "pilot_waitlist_joined")
+        admin_store.set_user_access_status(
+            legacy_user_id,
+            status="active",
+            actor="owner",
+        )
+        with self.store.Session.begin() as session:
+            legacy_user = session.get(User, legacy_user_id)
+            legacy_user.onboarding_completed_at = joined_at
+            legacy_progress = session.get(UserProgress, legacy_user_id)
+            legacy_progress.sessions = 9
+        self.assertEqual(
+            [
+                user["id"]
+                for user in admin_store.pilot_users(stage="first_block")
+            ],
+            [legacy_user_id],
+        )
+
+        self.login()
+        page = self.client.get(
+            "/admin?tab=pilot&pilot_stage=engaged"
+        ).get_data(as_text=True)
+        self.assertIn("Воронка когорты", page)
+        self.assertIn("pilot_student", page)
 
     def test_administrator_access_cannot_be_restricted(self):
         user_id = 5503
@@ -349,21 +518,22 @@ class AdminConsoleTest(unittest.TestCase):
 
     def test_product_funnel_renders_and_exports_privacy_safe_events(self):
         self.store.record_event(7001, "start_received", source="direct")
-        self.store.record_event(7001, "pilot_waitlist_joined", source="direct")
-        self.store.record_event(7001, "onboarding_started")
         self.store.record_event(
             7001,
             "onboarding_completed",
             properties={"pack_id": "ja-basics-100", "language": "ja"},
         )
+        self.store.record_event(7001, "buy_opened", source="command")
         self.store.ensure_user(SimpleNamespace(id=7002), role="admin")
         self.store.record_event(7002, "start_received", source="direct")
         funnel = AdminStore(self.store).product_funnel(days=30)
         steps = {step["event_name"]: step for step in funnel["steps"]}
         self.assertEqual(steps["start_received"]["users"], 1)
         self.assertEqual(steps["start_received"]["events"], 1)
-        self.assertEqual(steps["pilot_waitlist_joined"]["users"], 1)
+        self.assertEqual(steps["buy_opened"]["users"], 1)
         self.assertEqual(steps["onboarding_completed"]["conversion"], 100)
+        self.assertEqual(steps["invoice_created"]["source"], "ledger")
+        self.assertEqual(funnel["commercial"]["net_xtr"], 0)
 
         self.login()
         response = self.client.get("/admin?tab=funnel")
@@ -374,6 +544,72 @@ class AdminConsoleTest(unittest.TestCase):
         body = exported.get_data(as_text=True)
         self.assertIn("onboarding_completed", body)
         self.assertNotIn("prompt", body)
+
+    def test_commercial_funnel_uses_durable_orders_payments_and_ai_usage(self):
+        user_id = 7010
+        self.store.ensure_user_id(user_id)
+        self.store.grant_consent(
+            user_id,
+            consent_type="billing_terms",
+            document_version="funnel-1",
+            source="test",
+        )
+        settings = BillingSettings(
+            enabled=True,
+            payload_secret="s" * 40,
+            support_contact="@support",
+            terms_text="Funnel terms",
+            terms_version="funnel-1",
+            net_micro_usd_per_xtr=1000,
+        )
+        admin = AdminStore(self.store, settings)
+        admin.upsert_billing_product(
+            product_id="funnel-pack",
+            title="Funnel pack",
+            description="Test credits",
+            credits=5,
+            price_xtr=10,
+            status="active",
+            estimated_cost_micro_usd=100,
+            target_margin_bps=100,
+            display_order=1,
+            actor="test",
+        )
+        billing = BillingService(self.store, settings)
+        for index in range(2):
+            order = billing.create_order(
+                user_id=user_id, product_id="funnel-pack"
+            )
+            billing.fulfill_successful_payment(
+                user_id=user_id,
+                payload=order.payload,
+                currency="XTR",
+                total_amount=10,
+                telegram_payment_charge_id=f"funnel-charge-{index}",
+            )
+        with self.store.Session.begin() as session:
+            session.add(
+                AIUsage(
+                    request_id="funnel-ai-request",
+                    telegram_user_id=user_id,
+                    action="block_tutor",
+                    provider="test",
+                    model="test",
+                    status="completed",
+                    context_fingerprint="f" * 64,
+                    reserved_credits=1,
+                    billed_credits=1,
+                )
+            )
+
+        funnel = admin.product_funnel(days=30)
+        steps = {step["event_name"]: step for step in funnel["steps"]}
+        self.assertEqual(steps["invoice_created"]["events"], 2)
+        self.assertEqual(steps["stars_payment_completed"]["users"], 1)
+        self.assertEqual(steps["ai_request_completed"]["users"], 1)
+        self.assertEqual(steps["repeat_purchase"]["users"], 1)
+        self.assertEqual(funnel["commercial"]["gross_xtr"], 20)
+        self.assertEqual(funnel["commercial"]["net_xtr"], 20)
 
     def test_health_exposes_no_internal_configuration(self):
         response = self.client.get("/health")

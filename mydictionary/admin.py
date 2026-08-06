@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import defaultdict, deque
 import csv
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 import getpass
 import hmac
@@ -34,29 +35,45 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
+from mydictionary.content import example_target_text
 from mydictionary.readiness import (
     configured_max_age_seconds,
     heartbeat_path,
     inspect_bot_heartbeat,
 )
+from mydictionary.privacy import RetentionPolicy
 from mydictionary.storage import DatabaseStore
-from vocabulary_topics import TOPIC_LABELS, topic_counts, transcription_for
+from vocabulary_topics import topic_counts, transcription_for
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CATALOG = load_catalog(BASE_DIR)
-LANG_LABELS = {pack.language: pack.label for pack in CATALOG.packs}
+LANG_LABELS = {
+    pack.target_language: pack.label for pack in CATALOG.packs
+}
 ADMIN_TABS = {
     "dashboard",
     "users",
+    "pilot",
     "funnel",
     "learning",
     "ai",
+    "billing",
+    "voice",
+    "safety",
     "content",
     "profile",
     "diagnostics",
     "audit",
 }
+
+
+def _positive_decimal_setting(name: str) -> bool:
+    try:
+        value = Decimal(os.environ.get(name, "0"))
+    except (InvalidOperation, ValueError):
+        return False
+    return value.is_finite() and value > 0
 
 
 def database_url_from_env() -> str:
@@ -108,21 +125,27 @@ def _content_overview() -> list[dict[str, Any]]:
     for pack in CATALOG.packs:
         words = CATALOG.words(pack)
         transcribed = sum(
-            1 for word in words if transcription_for(word, pack.language)
+            1
+            for word in words
+            if transcription_for(word, pack.target_language)
         )
-        examples = sum(1 for word in words if str(word.get("example", "")).strip())
-        topics = topic_counts(words, pack.language)
+        examples = sum(1 for word in words if example_target_text(word))
+        topics = topic_counts(
+            words,
+            pack.target_language,
+            topic_labels=CATALOG.topic_labels,
+        )
         result.append(
             {
                 "pack_id": pack.pack_id,
-                "language": pack.language,
+                "language": pack.target_language,
                 "label": pack.label,
                 "title": pack.title,
                 "filename": pack.filename,
                 "visibility": pack.visibility,
                 "is_free": pack.is_free,
                 "status": pack.status,
-                "version": pack.version,
+                "version": pack.content_version,
                 "words": len(words),
                 "transcribed": transcribed,
                 "examples": examples,
@@ -130,7 +153,7 @@ def _content_overview() -> list[dict[str, Any]]:
                 "topics": [
                     {
                         "id": topic,
-                        "label": TOPIC_LABELS.get(topic, topic),
+                        "label": CATALOG.topic_labels.get(topic, topic),
                         "words": count,
                     }
                     for topic, count in topics.items()
@@ -382,12 +405,21 @@ def create_app(
             "search": search,
             "profile": admin_store.get_settings(),
             "dashboard": admin_store.dashboard(),
+            "admin_action_id": secrets.token_urlsafe(18),
         }
         if tab == "dashboard":
             context["users"] = admin_store.users(limit=8)
             context["audit"] = admin_store.audit_log(limit=8)
         elif tab == "users":
             context["users"] = admin_store.users(search=search, limit=250)
+        elif tab == "pilot":
+            pilot_stage = str(request.args.get("pilot_stage") or "all")
+            context["pilot_stage"] = pilot_stage
+            context["pilot"] = admin_store.pilot_overview(days=30)
+            context["users"] = admin_store.pilot_users(
+                stage=pilot_stage,
+                limit=250,
+            )
         elif tab == "funnel":
             context["funnel"] = admin_store.product_funnel(days=30)
             context["events"] = admin_store.recent_product_events(limit=100)
@@ -398,6 +430,28 @@ def create_app(
             context["ai"] = admin_store.ai_overview()
             context["usage"] = admin_store.recent_ai_usage(limit=100)
             context["ledger"] = admin_store.credit_ledger(limit=100)
+        elif tab == "billing":
+            context["billing"] = admin_store.billing_overview()
+            context["products"] = admin_store.billing_products()
+            context["orders"] = admin_store.recent_payment_orders(limit=100)
+            context["payments"] = admin_store.stars_payments(limit=100)
+            context["subscriptions"] = admin_store.stars_subscriptions(limit=100)
+            context["refunds"] = admin_store.refund_requests(limit=100)
+            context["reconciliation"] = admin_store.billing_reconciliation()
+        elif tab == "safety":
+            context["safety"] = admin_store.safety_overview()
+            context["abuse_events"] = admin_store.recent_abuse_events(limit=100)
+            retention = RetentionPolicy.from_env()
+            context["retention"] = {
+                "analytics_days": retention.analytics_days,
+                "ai_usage_days": retention.ai_usage_days,
+                "abuse_days": retention.abuse_days,
+                "rate_limit_days": retention.rate_limit_days,
+                "voice_transcript_days": retention.voice_transcript_days,
+            }
+        elif tab == "voice":
+            context["voice"] = admin_store.voice_overview()
+            context["voice_turns"] = admin_store.recent_voice_turns(limit=100)
         elif tab == "content":
             context["content"] = _content_overview()
         elif tab == "diagnostics":
@@ -416,6 +470,27 @@ def create_app(
                 "migration": revision,
                 "ai_enabled": os.environ.get("AI_TUTOR_ENABLED", "false"),
                 "ai_provider_configured": bool(os.environ.get("OPENAI_API_KEY")),
+                "ai_pricing_configured": all(
+                    _positive_decimal_setting(name)
+                    for name in (
+                        "AI_INPUT_USD_PER_MILLION",
+                        "AI_CACHED_INPUT_USD_PER_MILLION",
+                        "AI_CACHE_WRITE_USD_PER_MILLION",
+                        "AI_OUTPUT_USD_PER_MILLION",
+                    )
+                ),
+                "stars_enabled": admin_store.billing_settings.enabled,
+                "stars_unit_economics": (
+                    admin_store.billing_settings.net_micro_usd_per_xtr > 0
+                ),
+                "voice_enabled": os.environ.get("VOICE_TUTOR_ENABLED", "false"),
+                "voice_model": os.environ.get(
+                    "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
+                ),
+                "billing_terms_version": admin_store.billing_settings.terms_version,
+                "voice_consent_version": os.environ.get(
+                    "VOICE_CONSENT_VERSION", "unversioned"
+                ),
                 "admin_host": app.config["ADMIN_HOST"],
                 "admin_port": app.config["ADMIN_PORT"],
                 "release_sha": os.environ.get("RELEASE_SHA", "not set"),
@@ -457,11 +532,62 @@ def create_app(
                 delta=delta,
                 reason=str(request.form.get("reason") or ""),
                 actor=current_actor(),
+                idempotency_key=(
+                    "admin:" + str(request.form.get("action_id") or "").strip()
+                    if request.form.get("action_id")
+                    else None
+                ),
             )
             flash(f"Новый доступный баланс пользователя {user_id}: {balance}.", "success")
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, RuntimeError) as exc:
             flash(str(exc), "error")
         return redirect(url_for("admin_index", tab="ai"))
+
+    @app.post("/admin/billing/products")
+    @login_required
+    def update_billing_product():
+        try:
+            product = admin_store.upsert_billing_product(
+                product_id=str(request.form.get("product_id") or ""),
+                title=str(request.form.get("title") or ""),
+                description=str(request.form.get("description") or ""),
+                credits=int(str(request.form.get("credits") or "")),
+                price_xtr=int(str(request.form.get("price_xtr") or "")),
+                status=str(request.form.get("status") or "draft"),
+                estimated_cost_micro_usd=int(
+                    str(request.form.get("estimated_cost_micro_usd") or "0")
+                ),
+                target_margin_bps=int(
+                    str(request.form.get("target_margin_bps") or "0")
+                ),
+                display_order=int(str(request.form.get("display_order") or "0")),
+                actor=current_actor(),
+                billing_mode=str(
+                    request.form.get("billing_mode") or "one_time"
+                ),
+                subscription_period_seconds=(
+                    int(str(request.form.get("subscription_period_seconds") or "0"))
+                    or None
+                ),
+            )
+            flash(f"Продукт {product['product_id']} сохранён.", "success")
+        except (TypeError, ValueError) as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("admin_index", tab="billing"))
+
+    @app.post("/admin/billing/refunds")
+    @login_required
+    def request_billing_refund():
+        try:
+            refund_id = admin_store.request_stars_refund(
+                payment_id=str(request.form.get("payment_id") or ""),
+                reason=str(request.form.get("reason") or ""),
+                actor=current_actor(),
+            )
+            flash(f"Refund-заявка {refund_id} создана.", "success")
+        except (TypeError, ValueError, RuntimeError) as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("admin_index", tab="billing"))
 
     @app.post("/admin/users/<int:user_id>/access")
     @login_required
@@ -480,6 +606,15 @@ def create_app(
             flash(f"Пользователь {user_id}: {labels[status]}.", "success")
         except (TypeError, ValueError) as exc:
             flash(str(exc), "error")
+        return_tab = str(request.form.get("return_tab") or "users")
+        if return_tab == "pilot":
+            return redirect(
+                url_for(
+                    "admin_index",
+                    tab="pilot",
+                    pilot_stage=str(request.form.get("pilot_stage") or "all"),
+                )
+            )
         return redirect(url_for("admin_index", tab="users"))
 
     @app.post("/admin/security")
@@ -519,6 +654,8 @@ def create_app(
             "learning": admin_store.word_progress_export,
             "ai-usage": admin_store.ai_usage_export,
             "credit-ledger": lambda: admin_store.credit_ledger(limit=10000),
+            "payment-orders": admin_store.payment_orders_export,
+            "stars-payments": admin_store.stars_payments_export,
             "analytics-events": admin_store.product_events_export,
         }
         if kind not in exporters:

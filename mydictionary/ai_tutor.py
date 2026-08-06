@@ -274,6 +274,19 @@ class AITutorSettings:
                 "AI_OUTPUT_USD_PER_MILLION",
             ),
         )
+        if enabled and any(
+            price <= 0
+            for price in (
+                pricing.input_usd_per_million,
+                pricing.cached_input_usd_per_million,
+                pricing.cache_write_usd_per_million,
+                pricing.output_usd_per_million,
+            )
+        ):
+            raise AIConfigurationError(
+                "Enabled AI tutor requires positive input, cached input, "
+                "cache write, and output pricing"
+            )
         return cls(
             enabled=enabled,
             provider=provider,

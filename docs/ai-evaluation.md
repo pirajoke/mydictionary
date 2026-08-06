@@ -7,7 +7,8 @@ No model is enabled for users until it passes a deterministic evaluation set.
 - Explain a word from the active 10-word block in Russian first.
 - Show target writing, Latin transcription, Russian meaning, and two examples.
 - Never include a word outside the active block when asked for a block test.
-- Respect the active language for English, Vietnamese, and Japanese.
+- Respect the active language for English, French, German, Japanese, Arabic,
+  Chinese, Russian, and Spanish.
 - Preserve Japanese romaji and keep Japanese writing in parentheses where the
   current product format requires it.
 - Identify weak words only from computed progress supplied by a tool.
@@ -29,6 +30,6 @@ the same cases. Model names and prices remain admin configuration, not product
 logic.
 
 The deterministic stage 2 contract set lives in
-`tests/fixtures/ai_tutor_eval.json` and covers English, Vietnamese, and
-Japanese formatting without making provider requests. Live-provider quality is
+`tests/fixtures/ai_tutor_eval.json` and covers all eight launch languages
+without making provider requests. Live-provider quality is
 a separate rollout gate and must not run in normal CI.

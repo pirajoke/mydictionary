@@ -61,3 +61,7 @@ an authenticated admin session.
 
 Moving to `public`, enabling AI, or accepting payment requires independent
 review and production confirmation.
+
+Release automation and schema-aware recovery are defined in
+[`ADR-0002`](adr/0002-fail-closed-local-deployment.md) and the
+[Mac mini deployment runbook](runbooks/mac-mini-deployment.md).

@@ -16,18 +16,27 @@ import time
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 import yaml
-from telegram import Bot, BotCommand, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram import (
+    Bot,
+    BotCommand,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    LabeledPrice,
+    ReplyKeyboardMarkup,
+    Update,
+)
 from telegram.error import Conflict, TelegramError
+from telegram.helpers import escape_markdown
 from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, PollAnswerHandler, filters, ContextTypes
+    Application, CommandHandler, CallbackQueryHandler, ContextTypes,
+    MessageHandler, PollAnswerHandler, PreCheckoutQueryHandler, filters
 )
 
 from tts import get_audio
 from vocabulary_topics import (
-    TOPIC_LABELS,
     topic_counts,
     topics_for_word,
     transcription_for,
@@ -44,16 +53,45 @@ from mydictionary.ai_tutor import (
     render_tutor_answer,
 )
 from mydictionary.admin_store import AdminStore
+from mydictionary.billing import (
+    BillingConfigurationError,
+    BillingService,
+    BillingSettings,
+    BillingValidationError,
+    TelegramStarsGateway,
+)
 from mydictionary.bot_profile import render_start_text
 from mydictionary.catalog import ContentPack, load_catalog
+from mydictionary.content import (
+    answer_matches,
+    example_meaning_text,
+    example_target_text,
+    meaning_display_text,
+    meaning_text,
+    speech_text,
+    target_text,
+)
 from mydictionary.legacy import import_legacy_user
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
+from mydictionary.privacy import erase_user_learning_data
+from mydictionary.safety import PersistentRateLimiter, SafetySettings
 from mydictionary.storage import (
     ACCESS_STATUSES,
     AIQuotaExceeded,
     DatabaseStore,
     WORD_PROGRESS_DEFAULTS,
     vocabulary_id_for,
+)
+from mydictionary.voice_tutor import (
+    VoiceConfigurationError,
+    VoiceProviderError,
+    VoiceSessionError,
+    VoiceSessionState,
+    VoiceTutorService,
+    VoiceTutorSettings,
+    VoiceUsageRecoveryError,
+    VoiceWord,
+    build_openai_voice_service,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -115,6 +153,13 @@ def _configured_access_mode() -> str:
 
 BOT_ACCESS_MODE = _configured_access_mode()
 AI_SETTINGS = AITutorSettings.from_env()
+BILLING_SETTINGS = BillingSettings.from_env()
+SAFETY_SETTINGS = SafetySettings.from_env()
+VOICE_SETTINGS = VoiceTutorSettings.from_env()
+if BILLING_SETTINGS.enabled and not AI_SETTINGS.enabled:
+    raise BillingConfigurationError(
+        "Telegram Stars checkout requires AI_TUTOR_ENABLED=true"
+    )
 BOT_HEARTBEAT = BotHeartbeat(
     heartbeat_path(DATA_DIR),
     release_sha=os.environ.get("RELEASE_SHA", BASE_DIR.resolve().name),
@@ -127,19 +172,11 @@ BOT_HEARTBEAT = BotHeartbeat(
 
 CATALOG = load_catalog(BASE_DIR)
 # Legacy JSON import namespaces stay fixed as new packs are added to the catalog.
-LANG_FILES = {"en": "words.json", "vi": "words_vi.json", "ja": "words_ja.json"}
-LANG_LABELS = {pack.language: pack.label for pack in CATALOG.packs}
-LANG_FLAGS = {"en": "🇬🇧", "vi": "🇻🇳", "ja": "🇯🇵"}
-
-def load_words(lang: str) -> list[dict]:
-    """Load immutable vocabulary content from the checked-in dictionary."""
-    with open(BASE_DIR / LANG_FILES[lang], "r", encoding="utf-8") as f:
-        raw_words = json.load(f)
-    words = [dict(word, **WORD_PROGRESS_DEFAULTS) for word in raw_words]
-    vocabulary_ids = [vocabulary_id_for(word) for word in words]
-    if len(vocabulary_ids) != len(set(vocabulary_ids)):
-        raise RuntimeError(f"Dictionary {lang} requires unique vocabulary entries")
-    return words
+LEGACY_LANG_FILES = {
+    "en": "words.json",
+    "vi": "words_vi.json",
+    "ja": "words_ja.json",
+}
 
 PROGRESS_DEFAULTS = {
     "total_correct": 0, "total_wrong": 0, "sessions": 0,
@@ -167,7 +204,6 @@ def load_progress() -> dict:
         data.setdefault(k, v)
     return data
 
-DICTS: dict[str, list[dict]] = {lang: load_words(lang) for lang in LANG_FILES}
 PACK_DICTS: dict[str, list[dict]] = {
     pack.pack_id: [dict(word, **WORD_PROGRESS_DEFAULTS) for word in CATALOG.words(pack)]
     for pack in CATALOG.packs
@@ -175,6 +211,8 @@ PACK_DICTS: dict[str, list[dict]] = {
 _FALLBACK_PROGRESS: dict = load_progress()
 _STORE: DatabaseStore | None = None
 _AI_TUTOR: AITutorService | None = None
+_BILLING: BillingService | None = None
+_VOICE_TUTOR: VoiceTutorService | None = None
 
 
 def database_url() -> str:
@@ -216,6 +254,20 @@ def get_ai_tutor_service() -> AITutorService:
     return _AI_TUTOR
 
 
+def get_billing_service() -> BillingService:
+    global _BILLING
+    if _BILLING is None:
+        _BILLING = BillingService(get_store(), BILLING_SETTINGS)
+    return _BILLING
+
+
+def get_voice_tutor_service() -> VoiceTutorService:
+    global _VOICE_TUTOR
+    if _VOICE_TUTOR is None:
+        _VOICE_TUTOR = build_openai_voice_service(get_store(), VOICE_SETTINGS)
+    return _VOICE_TUTOR
+
+
 @dataclass
 class LearnerRuntime:
     user_id: int
@@ -234,7 +286,10 @@ class LearnerRuntime:
                 and self.progress.get("active_pack_id")
             ):
                 active_pack = CATALOG.get(self.progress["active_pack_id"])
-                if active_pack and active_pack.language == language_or_pack:
+                if (
+                    active_pack
+                    and active_pack.target_language == language_or_pack
+                ):
                     pack = active_pack
             pack = pack or CATALOG.pack_for_language(language_or_pack, self.role)
         if pack is None or not pack.visible_to(self.role):
@@ -291,13 +346,19 @@ def W(language: str | None = None) -> list[dict]:
         active_pack = CATALOG.get(PROGRESS.get("active_pack_id"))
         selected = (
             active_pack.pack_id
-            if active_pack and active_pack.language == PROGRESS["active_lang"]
+            if (
+                active_pack
+                and active_pack.target_language == PROGRESS["active_lang"]
+            )
             else PROGRESS["active_lang"]
         )
     runtime = _ACTIVE_RUNTIME.get()
     if runtime:
         return runtime.words(selected)
-    return PACK_DICTS[selected] if selected in PACK_DICTS else DICTS[selected]
+    pack = CATALOG.get(selected) or CATALOG.pack_for_language(selected, "admin")
+    if pack is None:
+        raise KeyError(f"Unknown content pack or language: {selected}")
+    return PACK_DICTS[pack.pack_id]
 
 
 def visible_packs() -> tuple[ContentPack, ...]:
@@ -315,7 +376,7 @@ def active_content_pack() -> ContentPack:
     pack = CATALOG.get(PROGRESS.get("active_pack_id"))
     if (
         pack is None
-        or pack.language != PROGRESS["active_lang"]
+        or pack.target_language != PROGRESS["active_lang"]
         or pack not in visible_packs()
     ):
         pack = visible_pack_for_language(PROGRESS["active_lang"])
@@ -331,11 +392,11 @@ def activate_content_pack(pack: ContentPack, *, source: str) -> None:
     runtime.store.activate_pack(
         runtime.user_id,
         pack_id=pack.pack_id,
-        language=pack.language,
+        language=pack.target_language,
         source=source,
     )
     PROGRESS["active_pack_id"] = pack.pack_id
-    PROGRESS["active_lang"] = pack.language
+    PROGRESS["active_lang"] = pack.target_language
 
 
 def record_product_event(
@@ -376,7 +437,7 @@ def save_answer_state(index: int) -> None:
     runtime = _ACTIVE_RUNTIME.get()
     if runtime:
         pack = CATALOG.get(PROGRESS.get("active_pack_id"))
-        if pack is None or pack.language != PROGRESS["active_lang"]:
+        if pack is None or pack.target_language != PROGRESS["active_lang"]:
             pack = visible_pack_for_language(PROGRESS["active_lang"])
             if pack is None:
                 raise PermissionError("Content pack is not available to this user")
@@ -405,7 +466,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
             user_id,
             DATA_DIR,
             BASE_DIR,
-            LANG_FILES,
+            LEGACY_LANG_FILES,
             PROGRESS_DEFAULTS,
         )
     product = store.product_profile(user_id)
@@ -421,7 +482,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
         store.activate_pack(
             user_id,
             pack_id=pack.pack_id,
-            language=pack.language,
+            language=pack.target_language,
             source="admin_bootstrap",
         )
         store.update_product_profile(
@@ -529,34 +590,64 @@ def format_xp_line(xp_earned: int, streak_bonus: int = 0) -> str:
 
 def get_example(idx: int) -> str:
     """Return example sentence if available."""
-    ex = W()[idx].get("example")
-    return f"\n💡 _{ex}_" if ex else ""
+    word = W()[idx]
+    target_example = example_target_text(word)
+    meaning_example = example_meaning_text(word)
+    if not target_example:
+        return ""
+    example = target_example
+    if meaning_example:
+        example = f"{target_example} — {meaning_example}"
+    return f"\n💡 _{escape_markdown(example)}_"
 
-def format_target_word(word: dict, lang: str) -> str:
+
+def _content_pack(pack_or_language: ContentPack | str | None = None) -> ContentPack:
+    if isinstance(pack_or_language, ContentPack):
+        return pack_or_language
+    if pack_or_language:
+        pack = CATALOG.get(pack_or_language) or visible_pack_for_language(
+            pack_or_language
+        )
+        if pack is not None:
+            return pack
+    return active_content_pack()
+
+
+def _directional_text(value: str, direction: str) -> str:
+    """Keep RTL target text isolated inside mixed-direction Telegram messages."""
+    if direction == "rtl":
+        return f"\u2067{value}\u2069"
+    return value
+
+
+def format_target_word(
+    word: dict, pack_or_language: ContentPack | str | None = None
+) -> str:
     """Format a readable target-language word with its transcription."""
-    transcription = transcription_for(word, lang)
-    if lang == "ja" and transcription:
-        return f"{transcription} ({word['en']})"
-    if transcription:
-        return f"{word['en']} {transcription}"
-    return word["en"]
+    pack = _content_pack(pack_or_language)
+    transcription = transcription_for(word, pack.target_language)
+    target = _directional_text(target_text(word), pack.direction)
+    position = pack.pronunciation.transcription_position
+    if transcription and position == "before":
+        return f"{transcription} ({target})"
+    if transcription and position == "after":
+        return f"{target} {transcription}"
+    return target
 
 def format_word_label(idx: int) -> str:
     """Format a question prompt without exposing the Russian answer."""
     w = W()[idx]
-    lang = PROGRESS["active_lang"]
-    flag = LANG_FLAGS.get(lang, "")
-    return f"{flag} *{format_target_word(w, lang)}*"
+    pack = active_content_pack()
+    return f"{pack.flag} *{escape_markdown(format_target_word(w, pack))}*"
 
 
 def format_word_details(idx: int) -> str:
-    """Format a revealed card: Russian first, foreign word, transcription."""
+    """Format a revealed card: meaning first, then target and transcription."""
     word = W()[idx]
-    lang = PROGRESS["active_lang"]
-    flag = LANG_FLAGS.get(lang, "")
+    pack = active_content_pack()
     lines = [
-        f"🇷🇺 *{word['ru']}*",
-        f"{flag} *{format_target_word(word, lang)}*",
+        f"{pack.meaning_flag} *{escape_markdown(meaning_display_text(word))}*",
+        f"{pack.flag} *{escape_markdown(format_target_word(word, pack))}*",
     ]
     return "\n".join(lines)
 
@@ -564,9 +655,8 @@ def format_word_details(idx: int) -> str:
 def format_plain_word_prompt(idx: int) -> str:
     """Format a compact prompt for Telegram surfaces without Markdown."""
     word = W()[idx]
-    lang = PROGRESS["active_lang"]
-    flag = LANG_FLAGS.get(lang, "")
-    return f"{flag} {format_target_word(word, lang)}"
+    pack = active_content_pack()
+    return f"{pack.flag} {format_target_word(word, pack)}"
 
 def get_lang_keyboard():
     """Return one-time ReplyKeyboardMarkup with language buttons."""
@@ -589,7 +679,7 @@ def language_picker_keyboard() -> InlineKeyboardMarkup:
         )
         rows.append([
             InlineKeyboardButton(
-                f"{pack.label} ({learned}/{pack.word_count}){marker}",
+                f"{pack.label} ({learned}/{pack.entry_count}){marker}",
                 callback_data=f"lang:{pack.pack_id}",
             )
         ])
@@ -597,28 +687,38 @@ def language_picker_keyboard() -> InlineKeyboardMarkup:
 
 PACK_SWITCH_TEXTS = {pack.label: pack.pack_id for pack in CATALOG.packs}
 
-FORVO_LANG_CODES = {"en": "en", "vi": "vi", "ja": "ja"}
-
 def forvo_button(idx: int) -> InlineKeyboardButton:
     """Return an inline button linking to Forvo pronunciation page."""
     word = W()[idx]
-    lang = FORVO_LANG_CODES.get(PROGRESS["active_lang"], "en")
-    url = f"https://forvo.com/word/{word['en'].replace(' ', '_')}/#{lang}"
+    pack = active_content_pack()
+    encoded_word = quote(target_text(word).replace(" ", "_"), safe="")
+    url = f"https://forvo.com/word/{encoded_word}/#{pack.target_language}"
     return InlineKeyboardButton("🔊 Forvo", url=url)
 
 async def send_pronunciation(chat_id: int, idx: int, context: ContextTypes.DEFAULT_TYPE):
     """Generate and send voice pronunciation for the word at idx."""
     try:
         word = W()[idx]
-        lang = PROGRESS["active_lang"]
-        audio = await get_audio(word["en"], lang)
+        pack = active_content_pack()
+        audio = await get_audio(
+            speech_text(word),
+            voice=pack.pronunciation.tts_voice,
+            rate=pack.pronunciation.tts_rate,
+            cache_namespace=f"{pack.pack_id}:v{pack.content_version}",
+        )
         try:
             await context.bot.send_voice(chat_id=chat_id, voice=audio)
         except Exception:
             audio.seek(0)
-            await context.bot.send_audio(chat_id=chat_id, audio=audio, title=word["en"])
-    except Exception as e:
-        logger.warning(f"TTS failed for word {idx}: {e}")
+            await context.bot.send_audio(
+                chat_id=chat_id,
+                audio=audio,
+                title=target_text(word),
+            )
+    except Exception as exc:
+        logger.warning(
+            "TTS failed for word %s: error_type=%s", idx, type(exc).__name__
+        )
 
 def adaptive_mode(idx: int) -> str:
     """Pick quiz type based on word strength. Weak → quiz (recognition), strong → type (recall)."""
@@ -629,13 +729,14 @@ def adaptive_mode(idx: int) -> str:
 
 def build_quiz_options(idx: int) -> tuple[list[str], int]:
     """Build 4 options for a quiz question. Returns (options, correct_index)."""
-    correct_ru = W()[idx]["ru"]
+    correct_ru = meaning_text(W()[idx])
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        if r["ru"] != correct_ru:
-            distractors.add(r["ru"])
+        candidate = meaning_text(r)
+        if candidate != correct_ru:
+            distractors.add(candidate)
         attempts += 1
     options = list(distractors) + [correct_ru]
     random.shuffle(options)
@@ -797,6 +898,20 @@ def auth(func):
             if runtime.access_status != "active":
                 runtime.store.activate_user_access(runtime.user_id)
                 runtime.access_status = "active"
+            if SAFETY_SETTINGS.enabled and runtime.role != "admin":
+                scope, policy = SAFETY_SETTINGS.for_handler(func.__name__)
+                rate_decision = PersistentRateLimiter(runtime.store).consume(
+                    user_id=runtime.user_id,
+                    scope=scope,
+                    policy=policy,
+                )
+                if not rate_decision.allowed:
+                    await reject_access(
+                        update,
+                        "Слишком много действий подряд. "
+                        f"Попробуй снова через {rate_decision.retry_after_seconds} сек.",
+                    )
+                    return
             if (
                 runtime.role != "admin"
                 and not runtime.onboarding_completed
@@ -904,7 +1019,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton(
-                        f"{pack.label} · {pack.word_count} слов",
+                        f"{pack.label} · {pack.entry_count} слов",
                         callback_data=f"onboarding:pack:{pack.pack_id}",
                     )]
                     for pack in public_packs
@@ -921,7 +1036,10 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["onboarding_pack_id"] = pack.pack_id
         record_product_event(
             "onboarding_pack_selected",
-            properties={"pack_id": pack.pack_id, "language": pack.language},
+            properties={
+                "pack_id": pack.pack_id,
+                "language": pack.target_language,
+            },
         )
         await query.edit_message_text(
             "Шаг 3 из 4. Для чего ты учишь язык?",
@@ -968,7 +1086,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "onboarding_completed",
             properties={
                 "pack_id": pack.pack_id,
-                "language": pack.language,
+                "language": pack.target_language,
                 "daily_word_goal": int(parts[2]),
             },
         )
@@ -1022,6 +1140,109 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 @auth
+async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    voice_consent = get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
+    )
+    await update.message.reply_text(
+        "Приватность MY DICTIONARY\n\n"
+        "Учебная история, события продукта и AI-запросы удаляются по "
+        "ограниченным срокам хранения. Ты можешь стереть свои учебные данные "
+        "сразу. Платёжные и аудиторские записи сохраняются для возвратов, "
+        "сверки и защиты от мошенничества. После удаления доступ будет заблокирован.",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "Удалить мои учебные данные",
+                        callback_data="privacy:request",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        (
+                            "Отозвать согласие на обработку голоса"
+                            if voice_consent
+                            else "Согласие на обработку голоса не выдано"
+                        ),
+                        callback_data=(
+                            "privacy:voice_revoke"
+                            if voice_consent
+                            else "privacy:voice_status"
+                        ),
+                    )
+                ],
+            ]
+        ),
+    )
+
+
+@auth
+async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    action = query.data.split(":", 1)[1]
+    if action == "voice_status":
+        await query.answer(
+            "Согласие можно выдать при запуске /voice.", show_alert=True
+        )
+        return
+    if action == "voice_revoke":
+        changed = get_store().revoke_consent(
+            int(update.effective_user.id), consent_type="voice_processing"
+        )
+        context.user_data.pop("pending_voice_consent", None)
+        if VOICE_SETTINGS.enabled:
+            get_voice_tutor_service().stop_session(int(update.effective_user.id))
+        record_product_event(
+            "voice_consent_revoked",
+            properties={"consent_type": "voice_processing"},
+        )
+        await query.answer("Согласие отозвано.")
+        await query.edit_message_text(
+            "Согласие на обработку голоса отозвано. Активная голосовая "
+            f"сессия остановлена. Изменено записей: {changed}."
+        )
+        return
+    if action == "request":
+        await query.answer()
+        await query.edit_message_text(
+            "Удалить учебный профиль, прогресс, аналитику и историю AI? "
+            "Восстановить эти данные будет нельзя.",
+            reply_markup=InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        "Подтвердить удаление",
+                        callback_data="privacy:confirm",
+                    ),
+                    InlineKeyboardButton("Отмена", callback_data="privacy:cancel"),
+                ]]
+            ),
+        )
+        return
+    if action == "cancel":
+        await query.answer("Удаление отменено.")
+        await query.edit_message_text("Учебные данные не изменены.")
+        return
+    if action != "confirm":
+        await query.answer("Неизвестное действие.", show_alert=True)
+        return
+    runtime = _ACTIVE_RUNTIME.get()
+    result = erase_user_learning_data(
+        runtime.store,
+        user_id=runtime.user_id,
+        actor="telegram-self-service",
+    )
+    context.user_data.clear()
+    await query.answer("Данные удалены.")
+    await query.edit_message_text(
+        "Учебные данные удалены. Сохранён только обязательный платёжный и "
+        f"аудиторский след. Номер операции: {result.user_reference}."
+    )
+
+
+@auth
 async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1030,7 +1251,7 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if action == "learn":
         invalidate_block_session(context.user_data)
         pack = active_content_pack()
-        context.user_data["block_lang"] = pack.language
+        context.user_data["block_lang"] = pack.target_language
         context.user_data["block_pack_id"] = pack.pack_id
         await context.bot.send_message(
             chat_id=chat_id,
@@ -1064,7 +1285,8 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "2. Изучи связанный блок из 10 слов.\n"
                 "3. Открой каждое слово: сначала русский смысл, затем написание, "
                 "латинская транскрипция и голосовое произношение.\n"
-                "4. Закрепи именно этот блок тестом, вводом или карточками.\n"
+                "4. Закрепи именно этот блок тестом с четырьмя вариантами "
+                "или письменным режимом.\n"
                 "5. Возвращайся к словам, которые бот поставил на повторение."
             ),
             reply_markup=InlineKeyboardMarkup(
@@ -1078,10 +1300,16 @@ def active_tutor_context(user_data: dict) -> TutorContext | None:
     if not user_data.get("block_session"):
         return None
     indices = user_data.get("block_all_indices", [])
+    pack = CATALOG.get(user_data.get("block_pack_id", ""))
     language = user_data.get("block_lang")
-    if not indices or language not in DICTS:
+    if (
+        not indices
+        or pack is None
+        or pack.target_language != language
+        or pack not in visible_packs()
+    ):
         return None
-    source_words = W(language)
+    source_words = W(pack.pack_id)
     words = []
     for index in indices:
         if not isinstance(index, int) or not 0 <= index < len(source_words):
@@ -1089,16 +1317,528 @@ def active_tutor_context(user_data: dict) -> TutorContext | None:
         word = source_words[index]
         words.append(
             TutorWord(
-                term=str(word["en"]),
+                term=target_text(word),
                 transcription=transcription_for(word, language),
-                meaning_ru=str(word["ru"]),
-                example_target=word.get("example"),
+                meaning_ru=meaning_text(word),
+                example_target=example_target_text(word) or None,
             )
         )
     return TutorContext(
         language=language,
         topic=user_data.get("block_topic"),
         words=tuple(words),
+    )
+
+
+def _voice_word(
+    word: dict, language: str, *, mode: str = "pronunciation"
+) -> VoiceWord:
+    focus_target = target_text(word)
+    focus_transcription = transcription_for(word, language)
+    if mode == "conversation":
+        practice_target = example_target_text(word) or focus_target
+        practice_meaning = example_meaning_text(word) or meaning_text(word)
+        return VoiceWord(
+            vocabulary_id=vocabulary_id_for(word),
+            target=practice_target,
+            speech=practice_target,
+            transcription="",
+            meaning_ru=practice_meaning,
+            focus_target=focus_target,
+            focus_transcription=focus_transcription,
+        )
+    return VoiceWord(
+        vocabulary_id=vocabulary_id_for(word),
+        target=focus_target,
+        speech=speech_text(word),
+        transcription=focus_transcription,
+        meaning_ru=meaning_text(word),
+        focus_target=focus_target,
+        focus_transcription=focus_transcription,
+    )
+
+
+def active_voice_block(
+    user_data: dict, *, mode: str = "pronunciation"
+) -> tuple[ContentPack, list[tuple[int, VoiceWord]]] | None:
+    if not user_data.get("block_session"):
+        return None
+    pack = CATALOG.get(user_data.get("block_pack_id", ""))
+    indices = user_data.get("block_all_indices", [])
+    if pack is None or pack not in visible_packs() or not indices:
+        return None
+    words = W(pack.pack_id)
+    result = []
+    for index in indices:
+        if not isinstance(index, int) or not 0 <= index < len(words):
+            return None
+        result.append(
+            (
+                index,
+                _voice_word(words[index], pack.target_language, mode=mode),
+            )
+        )
+    return pack, result
+
+
+def restore_voice_block(
+    state: VoiceSessionState,
+) -> tuple[ContentPack, list[tuple[int, VoiceWord]]]:
+    pack = CATALOG.get(state.pack_id)
+    if (
+        pack is None
+        or pack.target_language != state.language
+        or pack not in visible_packs()
+    ):
+        raise VoiceSessionError("Voice content pack is unavailable")
+    if PROGRESS.get("active_pack_id") != pack.pack_id:
+        activate_content_pack(pack, source="voice_restore")
+    source = W(pack.pack_id)
+    by_id = {
+        vocabulary_id_for(word): (
+            index,
+            _voice_word(word, pack.target_language, mode=state.mode),
+        )
+        for index, word in enumerate(source)
+    }
+    try:
+        ordered = [by_id[vocabulary_id] for vocabulary_id in state.vocabulary_ids]
+    except KeyError as exc:
+        raise VoiceSessionError("Voice session content changed") from exc
+    return pack, ordered
+
+
+def voice_prompt_text(
+    pack: ContentPack,
+    word: VoiceWord,
+    *,
+    position: int,
+    total: int,
+    mode: str,
+) -> str:
+    target = _directional_text(word.target, pack.direction)
+    reading = f" {word.transcription}" if word.transcription else ""
+    title = "Разговорная практика" if mode == "conversation" else "Голосовая практика"
+    focus = ""
+    if mode == "conversation" and word.focus_target:
+        focus = (
+            f"\nКлючевое слово: {word.focus_target}"
+            f" {word.focus_transcription or ''}"
+        ).rstrip()
+    return (
+        f"{title} {position}/{total}\n\n"
+        f"🇷🇺 {word.meaning_ru}\n"
+        f"{pack.flag} {target}{reading}{focus}\n\n"
+        "Прослушай эталон ниже, затем отправь голосовое сообщение."
+    )
+
+
+async def send_voice_prompt(
+    *,
+    chat_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+    pack: ContentPack,
+    indexed_word: tuple[int, VoiceWord],
+    position: int,
+    total: int,
+    mode: str = "pronunciation",
+) -> None:
+    index, word = indexed_word
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=voice_prompt_text(
+            pack, word, position=position, total=total, mode=mode
+        ),
+    )
+    await send_voice_reference(
+        chat_id=chat_id,
+        context=context,
+        pack=pack,
+        indexed_word=indexed_word,
+        mode=mode,
+    )
+
+
+async def send_voice_reference(
+    *,
+    chat_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+    pack: ContentPack,
+    indexed_word: tuple[int, VoiceWord],
+    mode: str,
+) -> None:
+    index, word = indexed_word
+    if mode == "pronunciation":
+        await send_pronunciation(chat_id, index, context)
+        return
+    try:
+        audio = await get_audio(
+            word.speech,
+            voice=pack.pronunciation.tts_voice,
+            rate=pack.pronunciation.tts_rate,
+            cache_namespace=f"{pack.pack_id}:conversation:v{pack.content_version}",
+        )
+        try:
+            await context.bot.send_voice(chat_id=chat_id, voice=audio)
+        except Exception:
+            if hasattr(audio, "seek"):
+                audio.seek(0)
+            await context.bot.send_audio(
+                chat_id=chat_id,
+                audio=audio,
+                title=word.target,
+            )
+    except Exception as exc:
+        logger.warning(
+            "Conversation TTS failed: error_type=%s", type(exc).__name__
+        )
+
+
+def voice_feedback_text(result) -> str:
+    labels = {
+        "exact": "Текст распознан как ожидаемое слово.",
+        "close": "Распознавание близко к ожидаемому слову.",
+        "retry": "Распознавание не совпало. Прослушай эталон и попробуй ещё раз в новой сессии.",
+    }
+    feedback = result.feedback
+    lines = [
+        f"Распознано: {feedback.transcript}",
+        f"Значение: {feedback.expected.meaning_ru}",
+    ]
+    if (
+        feedback.expected.focus_target
+        and feedback.expected.focus_target != feedback.expected.target
+    ):
+        lines.extend(
+            [
+                f"Фраза: {feedback.expected.target}",
+                f"Ключевое слово: {feedback.expected.focus_target}",
+                f"Транскрипция слова: {feedback.expected.focus_transcription or ''}",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                f"Слово: {feedback.expected.target}",
+                f"Транскрипция: {feedback.expected.transcription}",
+            ]
+        )
+    lines.extend(["", labels[feedback.code]])
+    if (
+        feedback.matched is not None
+        and feedback.matched.vocabulary_id != feedback.expected.vocabulary_id
+    ):
+        lines.append(
+            f"Похоже на другое слово блока: {feedback.matched.target} — "
+            f"{feedback.matched.meaning_ru}."
+        )
+    lines.extend(
+        [
+            "Это сравнение текста распознавания, а не акустическая оценка акцента.",
+            f"AI-кредиты: {result.available_credits}",
+        ]
+    )
+    return "\n".join(lines)
+
+
+async def start_voice_mode(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    mode: str,
+) -> None:
+    message = update.effective_message
+    if not VOICE_SETTINGS.enabled:
+        await message.reply_text("Голосовой тренажёр пока выключен.")
+        return
+    block = active_voice_block(context.user_data, mode=mode)
+    if block is None:
+        await message.reply_text(
+            "Сначала выбери тему и создай блок из 10 слов через /learn."
+        )
+        return
+    user_id = int(update.effective_user.id)
+    if not get_store().has_consent(
+        user_id,
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
+    ):
+        context.user_data["pending_voice_consent"] = {
+            "mode": mode,
+            "block_session": context.user_data.get("block_session"),
+            "expires_at": int(time.time()) + 600,
+        }
+        await message.reply_text(
+            "Согласие на обработку голоса\n\n"
+            f"{VOICE_SETTINGS.processing_notice}\n\n"
+            f"Версия: {VOICE_SETTINGS.consent_version}",
+            reply_markup=InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        "Согласен и начать",
+                        callback_data="voiceconsent:accept",
+                    ),
+                    InlineKeyboardButton(
+                        "Отмена", callback_data="voiceconsent:cancel"
+                    ),
+                ]]
+            ),
+        )
+        return
+    await launch_voice_mode(update, context, mode=mode)
+
+
+async def launch_voice_mode(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    mode: str,
+) -> None:
+    message = update.effective_message
+    block = active_voice_block(context.user_data, mode=mode)
+    if block is None:
+        await message.reply_text(
+            "Блок устарел. Выбери тему и создай новый блок через /learn."
+        )
+        return
+    pack, indexed_words = block
+    state = get_voice_tutor_service().start_session(
+        user_id=int(update.effective_user.id),
+        pack_id=pack.pack_id,
+        language=pack.target_language,
+        topic=context.user_data.get("block_topic"),
+        block_session_id=context.user_data.get("block_session"),
+        mode=mode,
+        words=[word for _, word in indexed_words],
+    )
+    record_product_event(
+        "voice_session_started",
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.target_language,
+            "topic": state.topic or "all",
+            "word_count": len(indexed_words),
+            "mode": mode,
+        },
+        session_id=context.user_data.get("block_session"),
+    )
+    await send_voice_prompt(
+        chat_id=update.effective_chat.id,
+        context=context,
+        pack=pack,
+        indexed_word=indexed_words[0],
+        position=1,
+        total=len(indexed_words),
+        mode=mode,
+    )
+
+
+@auth
+async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not VOICE_SETTINGS.enabled:
+        context.user_data.pop("pending_voice_consent", None)
+        await query.answer("Голосовая практика пока выключена.", show_alert=True)
+        return
+    action = query.data.split(":", 1)[1]
+    if action == "cancel":
+        context.user_data.pop("pending_voice_consent", None)
+        await query.answer("Голосовая практика отменена.")
+        await query.edit_message_reply_markup(reply_markup=None)
+        return
+    pending = context.user_data.pop("pending_voice_consent", None)
+    if (
+        action != "accept"
+        or not isinstance(pending, dict)
+        or int(pending.get("expires_at", 0)) < int(time.time())
+        or pending.get("block_session") != context.user_data.get("block_session")
+        or pending.get("mode") not in {"pronunciation", "conversation"}
+    ):
+        await query.answer("Запрос устарел. Запусти /voice снова.", show_alert=True)
+        return
+    user_id = int(update.effective_user.id)
+    changed = get_store().grant_consent(
+        user_id,
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
+        source="telegram",
+    )
+    if changed:
+        record_product_event(
+            "voice_consent_accepted",
+            properties={
+                "consent_type": "voice_processing",
+                "document_version": VOICE_SETTINGS.consent_version,
+            },
+        )
+    await query.answer("Согласие сохранено.")
+    await query.edit_message_reply_markup(reply_markup=None)
+    await launch_voice_mode(update, context, mode=pending["mode"])
+
+
+@auth
+async def cmd_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await start_voice_mode(update, context, mode="pronunciation")
+
+
+@auth
+async def cmd_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await start_voice_mode(update, context, mode="conversation")
+
+
+@auth
+async def cmd_voice_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    stopped = get_voice_tutor_service().stop_session(int(update.effective_user.id))
+    await update.message.reply_text(
+        "Голосовая сессия остановлена. Транскрипт: /voice_transcript."
+        if stopped
+        else "Активной голосовой сессии нет."
+    )
+
+
+@auth
+async def cmd_voice_transcript(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    service = get_voice_tutor_service()
+    state = service.latest_session(int(update.effective_user.id))
+    if state is None:
+        await update.message.reply_text("Голосовых сессий пока нет.")
+        return
+    pack, words = restore_voice_block(state)
+    by_id = {word.vocabulary_id: word for _, word in words}
+    turns = service.turns(
+        user_id=int(update.effective_user.id), session_id=state.session_id
+    )
+    lines = [
+        f"Транскрипт голосовой сессии · {pack.label}",
+        f"Статус: {state.status}",
+        "",
+    ]
+    for position, turn in enumerate(turns, 1):
+        expected = by_id.get(turn["expected_vocabulary_id"])
+        lines.extend(
+            [
+                f"{position}. 🇷🇺 {expected.meaning_ru if expected else 'слово из блока'}",
+                f"   {pack.flag} {expected.target if expected else turn['expected_vocabulary_id']}",
+                f"   Распознано: {str(turn['transcript'])[:300]}",
+                f"   Результат: {turn['feedback_code']}",
+            ]
+        )
+    if not turns:
+        lines.append("Сохранённых реплик нет или срок хранения истёк.")
+    rendered = "\n".join(lines)
+    for start in range(0, len(rendered), 3900):
+        await update.message.reply_text(rendered[start:start + 3900])
+
+
+@auth
+async def voice_message_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    if not VOICE_SETTINGS.enabled:
+        await update.message.reply_text("Голосовой тренажёр пока выключен.")
+        return
+    if not get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
+    ):
+        await update.message.reply_text(
+            "Согласие на обработку голоса отсутствует или устарело. "
+            "Запусти /voice и подтверди актуальные условия."
+        )
+        return
+    voice = update.message.voice
+    duration = int(getattr(voice, "duration", 0) or 0)
+    file_size = getattr(voice, "file_size", None)
+    if (
+        duration < 1
+        or duration > VOICE_SETTINGS.max_duration_seconds
+        or file_size is None
+        or int(file_size) <= 0
+        or int(file_size) > VOICE_SETTINGS.max_audio_bytes
+    ):
+        await update.message.reply_text(
+            "Голосовое не принято: длительность или размер вне допустимого лимита."
+        )
+        return
+    service = get_voice_tutor_service()
+    state = service.active_session(int(update.effective_user.id))
+    if state is None:
+        await update.message.reply_text(
+            "Сначала запусти практику командой /voice после выбора блока."
+        )
+        return
+    try:
+        pack, indexed_words = restore_voice_block(state)
+        expected_indexed = indexed_words[state.next_position]
+        telegram_file = await context.bot.get_file(voice.file_id)
+        downloaded = await telegram_file.download_as_bytearray()
+        if not downloaded or len(downloaded) > VOICE_SETTINGS.max_audio_bytes:
+            raise ValueError("Downloaded voice exceeds size limit")
+        result = await service.process_turn(
+            user_id=int(update.effective_user.id),
+            audio=bytes(downloaded),
+            duration_seconds=duration,
+            words=[word for _, word in indexed_words],
+        )
+    except AIQuotaExceeded:
+        await update.message.reply_text(
+            "AI-кредиты закончились. Проверь /ai_stats или открой /buy."
+        )
+        return
+    except VoiceUsageRecoveryError:
+        logger.exception("Voice credit reservation recovery failed")
+        await update.message.reply_text(
+            "Не удалось подтвердить возврат AI-кредита. Проверь /ai_stats."
+        )
+        return
+    except (VoiceProviderError, VoiceSessionError, ValueError) as exc:
+        logger.warning("Voice turn rejected: error_type=%s", type(exc).__name__)
+        await update.message.reply_text(
+            "Не удалось безопасно обработать голосовое. AI-кредит не списан."
+        )
+        return
+    except (TelegramError, VoiceConfigurationError) as exc:
+        logger.warning("Voice service unavailable: error_type=%s", type(exc).__name__)
+        await update.message.reply_text("Голосовой тренажёр временно недоступен.")
+        return
+    except Exception as exc:
+        logger.warning("Voice request failed: error_type=%s", type(exc).__name__)
+        await update.message.reply_text(
+            "Голосовой тренажёр временно недоступен. AI-кредит не списан."
+        )
+        return
+    await update.message.reply_text(voice_feedback_text(result))
+    await send_voice_reference(
+        chat_id=update.effective_chat.id,
+        context=context,
+        pack=pack,
+        indexed_word=expected_indexed,
+        mode=state.mode,
+    )
+    record_product_event(
+        "voice_turn_completed",
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.target_language,
+            "mode": result.feedback.code,
+            "word_index": expected_indexed[0],
+        },
+        session_id=state.session_id,
+    )
+    if result.session_status == "completed":
+        await update.message.reply_text(
+            "Голосовой блок завершён. Открой /voice_transcript, чтобы увидеть все реплики."
+        )
+        return
+    await send_voice_prompt(
+        chat_id=update.effective_chat.id,
+        context=context,
+        pack=pack,
+        indexed_word=indexed_words[result.next_position],
+        position=result.next_position + 1,
+        total=len(indexed_words),
+        mode=state.mode,
     )
 
 
@@ -1119,7 +1859,9 @@ async def send_ai_tutor_answer(
             context=tutor_context,
         )
     except AIQuotaExceeded:
-        await message.reply_text("Пилотные AI-кредиты закончились.")
+        await message.reply_text(
+            "AI-кредиты закончились. Проверь баланс через /ai_stats или открой /buy."
+        )
         return
     except AIConfigurationError:
         logger.exception("AI tutor configuration error")
@@ -1174,17 +1916,283 @@ async def cmd_ai_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         int(update.effective_user.id),
         initial_credits=AI_SETTINGS.initial_credits,
     )
-    cost_usd = summary["cost_micro_usd"] / 1_000_000
     await update.message.reply_text(
         "AI-использование\n\n"
         f"Доступно кредитов: {summary['available_credits']}\n"
         f"Зарезервировано: {summary['reserved_credits']}\n"
         f"Использовано: {summary['spent_credits']}\n"
         f"Запросы: {summary['completed_requests']} успешно, "
-        f"{summary['failed_requests']} с возвратом\n"
-        f"Токены провайдера: {summary['total_tokens']}\n"
-        f"Расчётная стоимость: ${cost_usd:.6f}"
+        f"{summary['failed_requests']} с возвратом"
     )
+
+
+@auth
+async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not BILLING_SETTINGS.enabled:
+        await update.message.reply_text("Покупка AI-кредитов пока недоступна.")
+        return
+    record_product_event("buy_opened", source="command")
+    if not get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="billing_terms",
+        document_version=BILLING_SETTINGS.terms_version,
+    ):
+        await send_billing_terms(update.message)
+        return
+    await send_billing_products(update.message)
+
+
+def billing_terms_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton(
+                "Принимаю условия",
+                callback_data="billing:accept_terms",
+            )
+        ]]
+    )
+
+
+async def send_billing_terms(message) -> None:
+    instruction = (
+        "Нажимая кнопку, ты подтверждаешь, что прочитал и принимаешь условия."
+        if BILLING_SETTINGS.enabled
+        else "Покупка AI-кредитов сейчас выключена."
+    )
+    await message.reply_text(
+        "Условия покупки AI-кредитов\n\n"
+        f"{BILLING_SETTINGS.terms_text}\n\n"
+        f"Версия: {BILLING_SETTINGS.terms_version}\n"
+        f"{instruction}",
+        reply_markup=(billing_terms_keyboard() if BILLING_SETTINGS.enabled else None),
+    )
+
+
+async def send_billing_products(message) -> None:
+    products = await asyncio.to_thread(get_billing_service().active_products)
+    if not products:
+        await message.reply_text("Пакеты AI-кредитов пока не опубликованы.")
+        return
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    f"{product['title']} · {product['price_xtr']} ⭐",
+                    callback_data=f"buy:{product['product_id']}",
+                )
+            ]
+            for product in products
+        ]
+    )
+    await message.reply_text("Выбери пакет AI-кредитов:", reply_markup=keyboard)
+
+
+@auth
+async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not BILLING_SETTINGS.enabled:
+        await query.answer("Покупка AI-кредитов пока выключена.", show_alert=True)
+        return
+    if query.data != "billing:accept_terms":
+        await query.answer("Неизвестное действие.", show_alert=True)
+        return
+    changed = get_store().grant_consent(
+        int(update.effective_user.id),
+        consent_type="billing_terms",
+        document_version=BILLING_SETTINGS.terms_version,
+        source="telegram",
+    )
+    if changed:
+        record_product_event(
+            "billing_terms_accepted",
+            properties={
+                "consent_type": "billing_terms",
+                "document_version": BILLING_SETTINGS.terms_version,
+            },
+        )
+    await query.answer("Условия приняты.")
+    await query.edit_message_reply_markup(reply_markup=None)
+    await send_billing_products(query.message)
+
+
+@auth
+async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if not get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="billing_terms",
+        document_version=BILLING_SETTINGS.terms_version,
+    ):
+        await send_billing_terms(query.message)
+        return
+    product_id = query.data.split(":", 1)[1]
+    try:
+        order = await asyncio.to_thread(
+            get_billing_service().create_order,
+            user_id=int(update.effective_user.id),
+            product_id=product_id,
+        )
+    except (BillingConfigurationError, BillingValidationError, ValueError):
+        logger.warning("Stars invoice creation rejected for product=%s", product_id)
+        await query.message.reply_text("Этот пакет сейчас недоступен.")
+        return
+    await context.bot.send_invoice(
+        **{
+            "chat_id": query.message.chat_id,
+            "title": order.title,
+            "description": order.description,
+            "payload": order.payload,
+            "currency": "XTR",
+            "prices": [
+                LabeledPrice(
+                    label=f"{order.credits} AI-кредитов",
+                    amount=order.amount_xtr,
+                )
+            ],
+            **(
+                {"subscription_period": order.subscription_period_seconds}
+                if order.subscription_period_seconds
+                else {}
+            ),
+        }
+    )
+
+
+async def pre_checkout_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.pre_checkout_query
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(
+                get_billing_service().validate_pre_checkout,
+                user_id=int(query.from_user.id),
+                payload=query.invoice_payload,
+                currency=query.currency,
+                total_amount=query.total_amount,
+            ),
+            timeout=8,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Stars pre-checkout rejected: error_type=%s", type(exc).__name__
+        )
+        await query.answer(
+            ok=False,
+            error_message="Не удалось подтвердить цену. Создай новый счёт через /buy.",
+        )
+        return
+    await query.answer(ok=True)
+
+
+async def successful_payment_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    payment = update.message.successful_payment
+    try:
+        result = await asyncio.to_thread(
+            get_billing_service().fulfill_successful_payment,
+            user_id=int(update.effective_user.id),
+            payload=payment.invoice_payload,
+            currency=payment.currency,
+            total_amount=payment.total_amount,
+            telegram_payment_charge_id=payment.telegram_payment_charge_id,
+            provider_payment_charge_id=payment.provider_payment_charge_id,
+            is_recurring=bool(getattr(payment, "is_recurring", False)),
+            is_first_recurring=bool(
+                getattr(payment, "is_first_recurring", False)
+            ),
+            subscription_expiration_date=getattr(
+                payment, "subscription_expiration_date", None
+            ),
+        )
+    except Exception as exc:
+        logger.error("Stars fulfillment failed: error_type=%s", type(exc).__name__)
+        await update.message.reply_text(
+            "Платёж получен, но начисление требует проверки. Напиши /paysupport."
+        )
+        return
+    if result.created:
+        await update.message.reply_text(
+            f"Оплата подтверждена. Начислено {result.credits} AI-кредитов.\n"
+            f"Доступно: {result.available_credits}."
+        )
+    else:
+        await update.message.reply_text(
+            f"Этот платёж уже учтён. Доступно: {result.available_credits}."
+        )
+
+
+async def cmd_terms(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await send_billing_terms(update.message)
+
+
+async def cmd_paysupport(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    contact = BILLING_SETTINGS.support_contact
+    if contact:
+        await update.message.reply_text(f"Поддержка по платежам: {contact}")
+    else:
+        await update.message.reply_text("Платежи пока выключены.")
+
+
+@auth
+async def cmd_subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    subscriptions = await asyncio.to_thread(
+        get_billing_service().subscriptions_for_user,
+        int(update.effective_user.id),
+    )
+    if not subscriptions:
+        await update.message.reply_text("Активных Stars-подписок пока нет.")
+        return
+    for subscription in subscriptions:
+        cancelled = subscription["status"] == "cancelled"
+        action = "restore" if cancelled else "cancel"
+        label = "Возобновить" if cancelled else "Отключить автопродление"
+        period_end = subscription["current_period_end"].strftime("%Y-%m-%d")
+        await update.message.reply_text(
+            "Stars-подписка\n"
+            f"Статус: {subscription['status']}\n"
+            f"Оплачено до: {period_end}",
+            reply_markup=InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        label,
+                        callback_data=(
+                            f"sub:{action}:{subscription['subscription_id']}"
+                        ),
+                    )
+                ]]
+            ),
+        )
+
+
+@auth
+async def subscription_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    _, action, subscription_id = query.data.split(":", 2)
+    is_canceled = action == "cancel"
+    try:
+        await get_billing_service().set_subscription_autorenew(
+            subscription_id=subscription_id,
+            user_id=int(update.effective_user.id),
+            is_canceled=is_canceled,
+            gateway=TelegramStarsGateway(context.bot),
+        )
+    except Exception as exc:
+        logger.warning(
+            "Stars subscription update failed: error_type=%s",
+            type(exc).__name__,
+        )
+        await query.answer("Не удалось изменить подписку.", show_alert=True)
+        return
+    await query.answer("Настройка подписки обновлена.")
+    await query.message.reply_text(
+        "Автопродление отключено до конца оплаченного периода."
+        if is_canceled
+        else "Автопродление подписки снова включено."
+    )
+
 
 @auth
 async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1210,10 +2218,13 @@ async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     activate_content_pack(pack, source="catalog")
     record_product_event(
         "language_switched",
-        properties={"pack_id": pack.pack_id, "language": pack.language},
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.target_language,
+        },
     )
     await query.edit_message_text(
-        f"Подключён набор *{pack.title}* ({pack.word_count} слов)",
+        f"Подключён набор *{pack.title}* ({pack.entry_count} слов)",
         parse_mode="Markdown"
     )
     # Send persistent keyboard
@@ -1231,13 +2242,14 @@ async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     word = W()[idx]
 
     # Build 4 options: 1 correct + 3 distractors
-    correct_ru = word["ru"]
+    correct_ru = meaning_text(word)
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        if r["ru"] != correct_ru:
-            distractors.add(r["ru"])
+        candidate = meaning_text(r)
+        if candidate != correct_ru:
+            distractors.add(candidate)
         attempts += 1
 
     options = list(distractors) + [correct_ru]
@@ -1292,13 +2304,14 @@ async def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     word = W()[idx]
 
-    correct_ru = word["ru"]
+    correct_ru = meaning_text(word)
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        if r["ru"] != correct_ru:
-            distractors.add(r["ru"])
+        candidate = meaning_text(r)
+        if candidate != correct_ru:
+            distractors.add(candidate)
         attempts += 1
 
     options = list(distractors) + [correct_ru]
@@ -1343,10 +2356,13 @@ async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE)
     activate_content_pack(pack, source="reply_keyboard")
     record_product_event(
         "language_switched",
-        properties={"pack_id": pack.pack_id, "language": pack.language},
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.target_language,
+        },
     )
     await update.message.reply_text(
-        f"Подключён набор *{pack.title}* ({pack.word_count} слов)",
+        f"Подключён набор *{pack.title}* ({pack.entry_count} слов)",
         parse_mode="Markdown",
         reply_markup=get_lang_keyboard(),
     )
@@ -1354,9 +2370,6 @@ async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE)
 @auth
 async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Check typed translation — works for both single and block mode."""
-    import re
-    clean = lambda s: re.sub(r'[^\w\s]', '', s).strip()
-
     # Ignore language switch button presses
     if update.message.text in PACK_SWITCH_TEXTS:
         return
@@ -1367,8 +2380,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     word = W()[idx]
     answer = update.message.text.strip().lower()
-    correct = word["ru"].strip().lower()
-    is_correct = clean(answer) == clean(correct)
+    is_correct = answer_matches(word, answer)
 
     # Block type mode
     if context.user_data.get("block_typing"):
@@ -1525,7 +2537,13 @@ def format_stats_text() -> str:
         key=lambda w: w["wrong_count"] - w["correct_count"],
         reverse=True
     )[:10]
-    weak_text = "\n".join(f"  • {w['ru']} — {w['en']}" for w in weak) if weak else "  Пока нет"
+    weak_text = (
+        "\n".join(
+            f"  • {meaning_text(word)} — {target_text(word)}" for word in weak
+        )
+        if weak
+        else "  Пока нет"
+    )
 
     # Overdue
     now = datetime.now().isoformat()
@@ -1574,7 +2592,7 @@ async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options, correct_pos = build_quiz_options(idx)
         buttons = []
         for opt in options:
-            is_right = "1" if opt == word["ru"] else "0"
+            is_right = "1" if opt == meaning_text(word) else "0"
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await update.message.reply_text(
@@ -1627,7 +2645,7 @@ async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options, _ = build_quiz_options(idx)
         buttons = []
         for opt in options:
-            is_right = "1" if opt == word["ru"] else "0"
+            is_right = "1" if opt == meaning_text(word) else "0"
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await query.edit_message_text(
@@ -1653,13 +2671,14 @@ async def cmd_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options=options,
         type="quiz",
         correct_option_id=correct_pos,
-        explanation=word.get("example", f"{word['ru']} — {word['en']}"),
+        explanation=example_target_text(word)
+        or f"{meaning_text(word)} — {target_text(word)}",
         open_period=15,
         is_anonymous=False,
     )
     context.bot_data.setdefault("poll_map", {})[msg.poll.id] = (
         int(update.effective_user.id),
-        PROGRESS["active_lang"],
+        active_content_pack().pack_id,
         idx,
         correct_pos,
     )
@@ -1676,10 +2695,24 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     invalidate_block_session(context.user_data)
     if len(poll_data) == 4:
-        poll_user_id, language, idx, correct_pos = poll_data
+        poll_user_id, pack_or_language, idx, correct_pos = poll_data
         if int(poll_user_id) != int(answer.user.id):
             return
-        PROGRESS["active_lang"] = language
+        pack = CATALOG.get(pack_or_language) or visible_pack_for_language(
+            pack_or_language
+        )
+        if pack is None or pack not in visible_packs():
+            poll_map.pop(answer.poll_id, None)
+            return
+        runtime = _ACTIVE_RUNTIME.get()
+        if runtime is not None and (
+            PROGRESS.get("active_pack_id") != pack.pack_id
+            or PROGRESS.get("active_lang") != pack.target_language
+        ):
+            activate_content_pack(pack, source="poll_restore")
+        elif runtime is None:
+            PROGRESS["active_pack_id"] = pack.pack_id
+            PROGRESS["active_lang"] = pack.target_language
     else:
         # Compatibility with poll state created before the multi-user migration.
         idx, correct_pos = poll_data
@@ -1701,13 +2734,14 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         options=opts,
         type="quiz",
         correct_option_id=new_correct,
-        explanation=new_word.get("example", f"{new_word['ru']} — {new_word['en']}"),
+        explanation=example_target_text(new_word)
+        or f"{meaning_text(new_word)} — {target_text(new_word)}",
         open_period=15,
         is_anonymous=False,
     )
     poll_map[msg.poll.id] = (
         int(answer.user.id),
-        PROGRESS["active_lang"],
+        active_content_pack().pack_id,
         new_idx,
         new_correct,
     )
@@ -1721,16 +2755,20 @@ def activate_block_language(user_data: dict):
     lang = user_data.get("block_lang")
     pack = CATALOG.get(user_data.get("block_pack_id", ""))
     runtime = _ACTIVE_RUNTIME.get()
-    if (
-        runtime is not None
-        and pack is not None
-        and pack.visible_to(runtime.role)
-        and PROGRESS.get("active_pack_id") != pack.pack_id
-    ):
+    if pack is None or pack.target_language != lang:
+        return
+    role = runtime.role if runtime is not None else "admin"
+    if not pack.visible_to(role):
+        return
+    if runtime is not None and PROGRESS.get("active_pack_id") != pack.pack_id:
         activate_content_pack(pack, source="block_restore")
         return
-    if lang in DICTS and PROGRESS["active_lang"] != lang:
-        PROGRESS["active_lang"] = lang
+    if (
+        PROGRESS.get("active_pack_id") != pack.pack_id
+        or PROGRESS["active_lang"] != pack.target_language
+    ):
+        PROGRESS["active_pack_id"] = pack.pack_id
+        PROGRESS["active_lang"] = pack.target_language
         save_progress(PROGRESS)
 
 
@@ -1765,10 +2803,12 @@ def pick_block(
 
 def format_study_list(indices: list[int]) -> str:
     lines = []
+    pack = active_content_pack()
     for n, idx in enumerate(indices, 1):
         w = W()[idx]
-        lang = PROGRESS["active_lang"]
-        lines.append(f"{n}. *{format_target_word(w, lang)}* — {w['ru']}")
+        target = escape_markdown(format_target_word(w, pack))
+        meaning = escape_markdown(meaning_display_text(w))
+        lines.append(f"{n}. *{target}* — {meaning}")
     return "\n".join(lines)
 
 
@@ -1783,14 +2823,18 @@ def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardM
     if pack is None or pack not in visible_packs():
         raise PermissionError("Content pack is not available to this user")
     words = PACK_DICTS[pack.pack_id]
-    counts = topic_counts(words, pack.language)
+    counts = topic_counts(
+        words,
+        pack.target_language,
+        topic_labels=CATALOG.topic_labels,
+    )
     rows = [[InlineKeyboardButton(
         f"🌐 Все слова ({len(words)})",
         callback_data=f"ltopic:{pack.pack_id}:all",
     )]]
     topic_buttons = [
         InlineKeyboardButton(
-            f"{TOPIC_LABELS[topic]} ({count})",
+            f"{CATALOG.topic_labels[topic]} ({count})",
             callback_data=f"ltopic:{pack.pack_id}:{topic}",
         )
         for topic, count in counts.items()
@@ -1800,7 +2844,7 @@ def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardM
 
 
 def topic_title(topic: str | None) -> str:
-    return TOPIC_LABELS.get(topic, "🌐 Все слова")
+    return CATALOG.topic_labels.get(topic, "🌐 Все слова")
 
 
 BLOCK_STALE_TEXT = "Эта кнопка устарела. Используй последнее сообщение блока."
@@ -1839,7 +2883,7 @@ def reset_block_state(
     user_data["block_lang"] = lang
     if pack_id is None:
         candidate = CATALOG.get(PROGRESS.get("active_pack_id"))
-        if candidate is None or candidate.language != lang:
+        if candidate is None or candidate.target_language != lang:
             candidate = visible_pack_for_language(lang)
         pack_id = candidate.pack_id if candidate else None
     user_data["block_pack_id"] = pack_id
@@ -1911,11 +2955,11 @@ async def validate_block_callback(
 
 def build_block_quiz_options(indices: list[int], idx: int) -> list[str]:
     """Build quiz options exclusively from the active block attempt."""
-    correct_ru = W()[idx]["ru"]
+    correct_ru = meaning_text(W()[idx])
     distractors = list({
-        W()[candidate]["ru"]
+        meaning_text(W()[candidate])
         for candidate in indices
-        if candidate != idx and W()[candidate]["ru"] != correct_ru
+        if candidate != idx and meaning_text(W()[candidate]) != correct_ru
     })
     random.shuffle(distractors)
     options = distractors[:3] + [correct_ru]
@@ -1924,10 +2968,10 @@ def build_block_quiz_options(indices: list[int], idx: int) -> list[str]:
 
 
 def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup:
-    correct_ru = W()[idx]["ru"]
+    correct_ru = meaning_text(W()[idx])
     session_id = user_data["block_session"]
     buttons = []
-    for option in build_block_quiz_options(user_data["block_indices"], idx):
+    for option in build_block_quiz_options(user_data["block_all_indices"], idx):
         is_right = "1" if option == correct_ru else "0"
         callback_data = f"bquiz:{session_id}:{idx}:{is_right}"
         buttons.append([InlineKeyboardButton(option, callback_data=callback_data)])
@@ -1949,9 +2993,14 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
     audio_row2 = [InlineKeyboardButton(f"🔊 {n}", callback_data=f"lplay:{session_id}:{idx}")
                   for n, idx in enumerate(indices[5:], 6)]
     mode_row = [
-        InlineKeyboardButton("Тест блока ❓", callback_data=f"bmode:{session_id}:quiz"),
-        InlineKeyboardButton("Ввод ✍️", callback_data=f"bmode:{session_id}:type"),
-        InlineKeyboardButton("Карточки 👁", callback_data=f"bmode:{session_id}:flash"),
+        InlineKeyboardButton(
+            "Тест · 4 варианта",
+            callback_data=f"bmode:{session_id}:quiz",
+        ),
+        InlineKeyboardButton(
+            "Письменно",
+            callback_data=f"bmode:{session_id}:type",
+        ),
     ]
     rows = [audio_row1]
     if audio_row2:
@@ -1971,7 +3020,7 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
 async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
     pack = active_content_pack()
-    context.user_data["block_lang"] = pack.language
+    context.user_data["block_lang"] = pack.target_language
     context.user_data["block_pack_id"] = pack.pack_id
     await update.message.reply_text(
         f"📚 *{pack.label}*\n\nВыбери тему:",
@@ -1995,13 +3044,13 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Этот набор недоступен.")
         return
     topic = None if topic_id == "all" else topic_id
-    if topic and topic not in TOPIC_LABELS:
+    if topic and topic not in CATALOG.topic_labels:
         return
 
     activate_content_pack(pack, source="learning")
     indices = pick_block(topic=topic)
     reset_block_state(
-        context.user_data, indices, pack.language, topic, pack.pack_id
+        context.user_data, indices, pack.target_language, topic, pack.pack_id
     )
     if not indices:
         await query.edit_message_text(
@@ -2018,7 +3067,7 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "block_started",
         properties={
             "pack_id": pack.pack_id,
-            "language": pack.language,
+            "language": pack.target_language,
             "topic": topic or "all",
             "word_count": len(indices),
         },
@@ -2095,6 +3144,23 @@ async def block_ai_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Объясни главные связи между словами этого блока.",
         user_id=int(update.effective_user.id),
     )
+
+
+@auth
+async def block_voice_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    parts = query.data.split(":")
+    if len(parts) != 2 or not await validate_block_callback(
+        query, context.user_data, parts[1]
+    ):
+        return
+    if not VOICE_SETTINGS.enabled:
+        await query.answer("Голосовой тренажёр пока выключен.", show_alert=True)
+        return
+    mode = "conversation" if parts[0] == "bconversation" else "pronunciation"
+    activate_block_language(context.user_data)
+    await query.answer()
+    await start_voice_mode(update, context, mode=mode)
 
 
 @auth
@@ -2266,13 +3332,16 @@ def format_block_summary(ud) -> str:
     text = f"📊 *Результат: {correct}/{total}*"
     if wrong_indices:
         text += "\n\n❌ Ошибки:"
+        pack = active_content_pack()
         for idx in wrong_indices:
             w = W()[idx]
-            lang = PROGRESS["active_lang"]
-            text += f"\n  • 🇷🇺 *{w['ru']}*"
             text += (
-                f"\n    {LANG_FLAGS.get(lang, '')} "
-                f"*{format_target_word(w, lang)}*"
+                f"\n  • {pack.meaning_flag} "
+                f"*{escape_markdown(meaning_text(w))}*"
+            )
+            text += (
+                f"\n    {pack.flag} "
+                f"*{escape_markdown(format_target_word(w, pack))}*"
             )
     else:
         text += "\n\n🎉 Без ошибок!"
@@ -2318,6 +3387,15 @@ async def block_summary(query, context: ContextTypes.DEFAULT_TYPE):
     if AI_SETTINGS.enabled:
         rows.append([
             InlineKeyboardButton("AI-репетитор", callback_data=f"bai:{session_id}")
+        ])
+    if VOICE_SETTINGS.enabled:
+        rows.append([
+            InlineKeyboardButton(
+                "Произношение", callback_data=f"bvoice:{session_id}"
+            ),
+            InlineKeyboardButton(
+                "Фразы", callback_data=f"bconversation:{session_id}"
+            ),
         ])
     rows.append([
         InlineKeyboardButton("Следующий блок ➡️", callback_data=f"bnext:{session_id}"),
@@ -2489,7 +3567,9 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     previous_indices = set(ud.get("block_all_indices", []))
     indices = pick_block(topic=topic, exclude_indices=previous_indices)
     pack = active_content_pack()
-    reset_block_state(ud, indices, pack.language, topic, pack.pack_id)
+    reset_block_state(
+        ud, indices, pack.target_language, topic, pack.pack_id
+    )
     await query.edit_message_text(
         format_block_intro(indices, topic),
         reply_markup=build_study_buttons(indices, ud["block_session"]),
@@ -2499,7 +3579,7 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "block_started",
         properties={
             "pack_id": pack.pack_id,
-            "language": pack.language,
+            "language": pack.target_language,
             "topic": topic or "all",
             "word_count": len(indices),
         },
@@ -2511,20 +3591,26 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Main
 # ---------------------------------------------------------------------------
 
-BOT_COMMANDS = [
-    BotCommand("start", "Главное меню"),
-    BotCommand("learn", "Блок 10 слов и тест блока"),
-    BotCommand("smart", "Весь словарь: адаптивно"),
-    BotCommand("poll", "Весь словарь: квиз с таймером"),
-    BotCommand("quiz", "Весь словарь: варианты"),
-    BotCommand("type", "Весь словарь: написать перевод"),
-    BotCommand("flash", "Весь словарь: карточки"),
-    BotCommand("ai", "AI-репетитор по активному блоку"),
-    BotCommand("ai_stats", "AI-кредиты и использование"),
-    BotCommand("lang", "Сменить язык"),
-    BotCommand("stats", "Статистика"),
-    BotCommand("help", "Помощь"),
-]
+def build_bot_commands(*, ai_enabled: bool) -> list[BotCommand]:
+    """Return a stable, compact command menu; legacy handlers stay callable."""
+    commands = [
+        BotCommand("start", "Главное меню"),
+        BotCommand("learn", "Блок: тест или письменно"),
+        BotCommand("lang", "Выбрать язык"),
+        BotCommand("stats", "Мой прогресс"),
+    ]
+    if ai_enabled:
+        commands.append(BotCommand("ai", "AI-репетитор"))
+    commands.extend(
+        [
+            BotCommand("privacy", "Данные и приватность"),
+            BotCommand("help", "Помощь"),
+        ]
+    )
+    return commands
+
+
+BOT_COMMANDS = build_bot_commands(ai_enabled=AI_SETTINGS.enabled)
 
 
 async def sync_telegram_profile(telegram_bot) -> None:
@@ -2555,6 +3641,67 @@ async def sync_telegram_profile(telegram_bot) -> None:
                 operation,
                 type(exc).__name__,
             )
+
+
+TELEGRAM_NOTIFICATION_TEXTS = {
+    "pilot_access_approved": (
+        "Доступ к бесплатному пилоту MY DICTIONARY открыт. "
+        "Отправь /start, выбери язык и начни первый блок."
+    )
+}
+
+
+def _notification_retry_seconds(exc: Exception, attempts: int) -> int:
+    retry_after = getattr(exc, "retry_after", None)
+    if isinstance(retry_after, timedelta):
+        return max(1, min(int(retry_after.total_seconds()) + 1, 3600))
+    if isinstance(retry_after, (int, float)):
+        return max(1, min(int(retry_after) + 1, 3600))
+    return min(30 * (2 ** max(0, int(attempts) - 1)), 3600)
+
+
+async def deliver_telegram_notifications(
+    telegram_bot,
+    store: DatabaseStore,
+    *,
+    limit: int = 10,
+) -> int:
+    """Deliver one leased outbox batch without exposing recipient data in logs."""
+    claim = getattr(store, "claim_telegram_notifications", None)
+    if not callable(claim):
+        return 0
+    notifications = claim(limit=limit)
+    delivered = 0
+    for notification in notifications:
+        notification_id = notification["notification_id"]
+        profile = store.access_profile(notification["telegram_user_id"])
+        text = TELEGRAM_NOTIFICATION_TEXTS.get(notification["kind"])
+        if not profile or profile["access_status"] != "active" or not text:
+            store.cancel_telegram_notification(notification_id)
+            continue
+        try:
+            await telegram_bot.send_message(
+                chat_id=notification["telegram_user_id"],
+                text=text,
+            )
+        except Exception as exc:
+            status = store.retry_telegram_notification(
+                notification_id,
+                error_code=type(exc).__name__,
+                retry_seconds=_notification_retry_seconds(
+                    exc, notification["attempts"]
+                ),
+            )
+            logger.warning(
+                "Telegram notification delivery deferred: "
+                "error_type=%s status=%s",
+                type(exc).__name__,
+                status,
+            )
+        else:
+            if store.complete_telegram_notification(notification_id):
+                delivered += 1
+    return delivered
 
 
 async def manual_polling():
@@ -2591,11 +3738,32 @@ async def manual_polling():
     app.add_handler(CommandHandler("poll", cmd_poll))
     app.add_handler(CommandHandler("lang", cmd_lang))
     app.add_handler(CommandHandler("ai", cmd_ai))
+    app.add_handler(CommandHandler("voice", cmd_voice))
+    app.add_handler(CommandHandler("conversation", cmd_conversation))
+    app.add_handler(CommandHandler("voice_stop", cmd_voice_stop))
+    app.add_handler(CommandHandler("voice_transcript", cmd_voice_transcript))
     app.add_handler(CommandHandler("ai_stats", cmd_ai_stats))
+    app.add_handler(CommandHandler("buy", cmd_buy))
+    app.add_handler(CommandHandler("subscriptions", cmd_subscriptions))
+    app.add_handler(CommandHandler("terms", cmd_terms))
+    app.add_handler(CommandHandler("paysupport", cmd_paysupport))
+    app.add_handler(CommandHandler("privacy", cmd_privacy))
+    app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
+    app.add_handler(
+        MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler)
+    )
+    app.add_handler(MessageHandler(filters.VOICE, voice_message_handler))
 
     # Welcome menu callbacks
     app.add_handler(CallbackQueryHandler(onboarding_cb, pattern=r"^onboarding:"))
     app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
+    app.add_handler(CallbackQueryHandler(billing_consent_cb, pattern=r"^billing:"))
+    app.add_handler(
+        CallbackQueryHandler(voice_consent_cb, pattern=r"^voiceconsent:")
+    )
+    app.add_handler(CallbackQueryHandler(buy_product_cb, pattern=r"^buy:"))
+    app.add_handler(CallbackQueryHandler(subscription_cb, pattern=r"^sub:"))
+    app.add_handler(CallbackQueryHandler(privacy_cb, pattern=r"^privacy:"))
 
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))
@@ -2612,6 +3780,10 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(block_topics_cb, pattern=r"^btopics(?::|$)"))
     app.add_handler(CallbackQueryHandler(learn_play_cb, pattern=r"^lplay:"))
     app.add_handler(CallbackQueryHandler(block_ai_cb, pattern=r"^bai:"))
+    app.add_handler(CallbackQueryHandler(block_voice_cb, pattern=r"^bvoice:"))
+    app.add_handler(
+        CallbackQueryHandler(block_voice_cb, pattern=r"^bconversation:")
+    )
     app.add_handler(CallbackQueryHandler(block_mode_cb, pattern=r"^bmode:"))
     app.add_handler(CallbackQueryHandler(block_quiz_cb, pattern=r"^bquiz:"))
     app.add_handler(CallbackQueryHandler(block_flash_show_cb, pattern=r"^bflash_show:"))
@@ -2661,6 +3833,21 @@ async def manual_polling():
                 for update in updates:
                     offset = update.update_id + 1
                     await app.process_update(update)
+                try:
+                    delivered = await deliver_telegram_notifications(
+                        app.bot,
+                        store,
+                    )
+                    if delivered:
+                        logger.info(
+                            "Telegram notifications delivered: count=%s",
+                            delivered,
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "Telegram notification delivery skipped: error_type=%s",
+                        type(exc).__name__,
+                    )
             except Conflict:
                 BOT_HEARTBEAT.mark_starting()
                 logger.warning("Conflict — another instance polling. Waiting 30s...")
@@ -2684,8 +3871,10 @@ async def manual_polling():
         store.close()
 
 def main():
-    langs = ", ".join(f"{l}: {len(DICTS[l])}" for l in DICTS)
-    logger.info(f"Bot starting — {langs}")
+    packs = ", ".join(
+        f"{pack.pack_id}: {pack.entry_count}" for pack in CATALOG.packs
+    )
+    logger.info("Bot starting — %s", packs)
     asyncio.run(manual_polling())
 
 if __name__ == "__main__":

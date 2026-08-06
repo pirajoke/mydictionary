@@ -1,0 +1,101 @@
+entry_id	topic	meaning_ru	ru_definition	en	fr	de	ar	zh	ru	es
+hello	greetings	привет	приветствие	hello|/həˈloʊ/	salut|/sa.ly/	Hallo|/ˈhaloː/	مرحبا|marḥaban	你好|nǐ hǎo	привет|privet	hola|/ˈola/
+goodbye	greetings	до свидания	прощальная фраза	goodbye|/ɡʊdˈbaɪ/	au revoir|/o ʁə.vwaʁ/	auf Wiedersehen|/aʊf ˈviːdɐˌzeːən/	إلى اللقاء|ilā al-liqāʾ	再见|zài jiàn	до свидания|do svidaniya	adiós|/aˈðjos/
+please	greetings	пожалуйста	вежливая просьба	please|/pliːz/	s'il vous plaît|/sil vu plɛ/	bitte|/ˈbɪtə/	من فضلك|min faḍlik	请|qǐng	пожалуйста|pozhaluysta	por favor|/poɾ faˈβoɾ/
+thank-you	greetings	спасибо	выражение благодарности	thank you|/θæŋk juː/	merci|/mɛʁ.si/	danke|/ˈdaŋkə/	شكرا|shukran	谢谢|xièxie	спасибо|spasibo	gracias|/ˈɡɾaθjas/
+yes	greetings	да	утвердительный ответ	yes|/jɛs/	oui|/wi/	ja|/jaː/	نعم|naʿam	对|duì	да|da	sí|/si/
+no	greetings	нет	отрицательный ответ	no|/noʊ/	non|/nɔ̃/	nein|/naɪn/	لا|lā	不|bù	нет|net	no|/no/
+excuse-me	greetings	извините	вежливое обращение	excuse me|/ɪkˈskjuːz miː/	excusez-moi|/ɛks.ky.ze mwa/	entschuldigen Sie|/ɛntˈʃʊldɪɡn̩ ziː/	عفوا|ʿafwan	劳驾|láo jià	извините|izvinite	disculpe|/disˈkulpe/
+sorry	greetings	простите	выражение извинения	sorry|/ˈsɑːri/	désolé|/de.zɔ.le/	es tut mir leid|/ɛs tuːt miːɐ laɪt/	آسف|āsif	对不起|duìbuqǐ	простите|prostite	lo siento|/lo ˈsjento/
+good-morning	greetings	доброе утро	утреннее приветствие	good morning|/ɡʊd ˈmɔːrnɪŋ/	bonjour|/bɔ̃.ʒuʁ/|bonjour|здравствуйте;добрый день;доброе утро	guten Morgen|/ˈɡuːtn̩ ˈmɔʁɡn̩/	صباح الخير|ṣabāḥ al-khayr	早上好|zǎoshang hǎo	доброе утро|dobroye utro	buenos días|/ˈbwenos ˈdi.as/
+good-night	greetings	спокойной ночи	вечернее пожелание	good night|/ɡʊd naɪt/	bonne nuit|/bɔn nɥi/	gute Nacht|/ˈɡuːtə naxt/	تصبح على خير|tuṣbiḥ ʿalā khayr	晚安|wǎn'ān	спокойной ночи|spokoynoy nochi	buenas noches|/ˈbwenas ˈnotʃes/
+person	people	человек	человеческое существо	person|/ˈpɜːrsən/	personne|/pɛʁ.sɔn/	Person|/pɛʁˈzoːn/	شخص|shakhs	人|rén	человек|chelovek	persona|/peɾˈsona/
+friend	people	друг	близкий товарищ	friend|/frɛnd/	ami|/a.mi/	Freund|/fʁɔɪnt/	صديق|ṣadīq	朋友|péngyou	друг|drug	amigo|/aˈmiɣo/
+family	people	семья	родственники вместе	family|/ˈfæməli/	famille|/fa.mij/	Familie|/faˈmiːli̯ə/	عائلة|ʿāʾila	家庭|jiātíng	семья|semya	familia|/faˈmilja/
+mother	people	мать	женщина-родитель	mother|/ˈmʌðər/	mère|/mɛʁ/	Mutter|/ˈmʊtɐ/	أم|umm	妈妈|māma	мать|mat	madre|/ˈmaðɾe/
+father	people	отец	мужчина-родитель	father|/ˈfɑːðər/	père|/pɛʁ/	Vater|/ˈfaːtɐ/	أب|ab	爸爸|bàba	отец|otets	padre|/ˈpaðɾe/
+child	people	ребёнок	юный человек	child|/tʃaɪld/	enfant|/ɑ̃.fɑ̃/	Kind|/kɪnt/	طفل|ṭifl	孩子|háizi	ребёнок|rebyonok	niño|/ˈniɲo/
+woman	people	женщина	взрослый человек женского пола	woman|/ˈwʊmən/	femme|/fam/	Frau|/fʁaʊ/	امرأة|imraʾa	女人|nǚrén	женщина|zhenshchina	mujer|/muˈxeɾ/
+man	people	мужчина	взрослый человек мужского пола	man|/mæn/	homme|/ɔm/	Mann|/man/	رجل|rajul	男人|nánrén	мужчина|muzhchina	hombre|/ˈombɾe/
+name	people	имя	личное название	name|/neɪm/	nom|/nɔ̃/	Name|/ˈnaːmə/	اسم|ism	名字|míngzi	имя|imya	nombre|/ˈnombɾe/
+teacher	people	учитель	тот, кто обучает	teacher|/ˈtiːtʃər/	professeur|/pʁɔ.fɛ.sœʁ/	Lehrer|/ˈleːʁɐ/	معلم|muʿallim	老师|lǎoshī	учитель|uchitel	profesor|/pɾofeˈsoɾ/
+water	food	вода	жидкость для питья	water|/ˈwɔːtər/	eau|/o/	Wasser|/ˈvasɐ/	ماء|māʾ	水|shuǐ	вода|voda	agua|/ˈaɣwa/
+food	food	еда	пища	food|/fuːd/	nourriture|/nu.ʁi.tyʁ/	Nahrung|/ˈnaːʁʊŋ/	طعام|ṭaʿām	食物|shíwù	еда|yeda	comida|/koˈmiða/
+bread	food	хлеб	выпеченный продукт из муки	bread|/brɛd/	pain|/pɛ̃/	Brot|/bʁoːt/	خبز|khubz	面包|miànbāo	хлеб|khleb	pan|/pan/
+milk	food	молоко	белый молочный напиток	milk|/mɪlk/	lait|/lɛ/	Milch|/mɪlç/	حليب|ḥalīb	牛奶|niúnǎi	молоко|moloko	leche|/ˈletʃe/
+coffee	food	кофе	напиток из кофейных зёрен	coffee|/ˈkɔːfi/	café|/ka.fe/	Kaffee|/kaˈfeː/	قهوة|qahwa	咖啡|kāfēi	кофе|kofe	café|/kaˈfe/
+tea	food	чай	заваренный напиток	tea|/tiː/	thé|/te/	Tee|/teː/	شاي|shāy	茶|chá	чай|chay	té|/te/
+apple	food	яблоко	круглый фрукт	apple|/ˈæpəl/	pomme|/pɔm/	Apfel|/ˈapfl̩/	تفاحة|tuffāḥa	苹果|píngguǒ	яблоко|yabloko	manzana|/manˈθana/
+rice	food	рис	зерновой продукт	rice|/raɪs/	riz|/ʁi/	Reis|/ʁaɪs/	أرز|aruzz	米饭|mǐfàn	рис|ris	arroz|/aˈroθ/
+meat	food	мясо	животный пищевой продукт	meat|/miːt/	viande|/vjɑ̃d/	Fleisch|/flaɪʃ/	لحم|laḥm	肉|ròu	мясо|myaso	carne|/ˈkaɾne/
+fish	food	рыба	водное животное	fish|/fɪʃ/	poisson|/pwa.sɔ̃/	Fisch|/fɪʃ/	سمك|samak	鱼|yú	рыба|ryba	pescado|/pesˈkaðo/
+house	home	дом	жилое здание	house|/haʊs/	maison|/mɛ.zɔ̃/	Haus|/haʊs/	بيت|bayt	房子|fángzi	дом|dom	casa|/ˈkasa/
+room	home	комната	отдельное помещение	room|/ruːm/	chambre|/ʃɑ̃bʁ/	Zimmer|/ˈtsɪmɐ/	غرفة|ghurfa	房间|fángjiān	комната|komnata	habitación|/aβitaˈθjon/
+door	home	дверь	входная створка	door|/dɔːr/	porte|/pɔʁt/	Tür|/tyːɐ/	باب|bāb	门|mén	дверь|dver	puerta|/ˈpweɾta/
+window	home	окно	проём со стеклом	window|/ˈwɪndoʊ/	fenêtre|/fə.nɛtʁ/	Fenster|/ˈfɛnstɐ/	نافذة|nāfidha	窗户|chuānghu	окно|okno	ventana|/benˈtana/
+table	home	стол	мебель с горизонтальной поверхностью	table|/ˈteɪbəl/	table|/tabl/	Tisch|/tɪʃ/	طاولة|ṭāwila	桌子|zhuōzi	стол|stol	mesa|/ˈmesa/
+chair	home	стул	мебель для сидения	chair|/tʃɛr/	chaise|/ʃɛz/	Stuhl|/ʃtuːl/	كرسي|kursī	椅子|yǐzi	стул|stul	silla|/ˈsiʝa/
+bed	home	кровать	место для сна	bed|/bɛd/	lit|/li/	Bett|/bɛt/	سرير|sarīr	床|chuáng	кровать|krovat	cama|/ˈkama/
+kitchen	home	кухня	помещение для приготовления еды	kitchen|/ˈkɪtʃən/	cuisine|/kɥi.zin/	Küche|/ˈkʏçə/	مطبخ|maṭbakh	厨房|chúfáng	кухня|kukhnya	cocina|/koˈθina/
+bathroom	home	ванная	помещение для мытья	bathroom|/ˈbæθruːm/	salle de bains|/sal də bɛ̃/	Badezimmer|/ˈbaːdəˌtsɪmɐ/	حمام|ḥammām	浴室|yùshì	ванная|vannaya	baño|/ˈbaɲo/
+key	home	ключ	предмет для замка	key|/kiː/	clé|/kle/	Schlüssel|/ˈʃlʏsl̩/	مفتاح|miftāḥ	钥匙|yàoshi	ключ|klyuch	llave|/ˈʝaβe/
+road	travel	дорога	путь для движения	road|/roʊd/	route|/ʁut/	Straße|/ˈʃtʁaːsə/	طريق|ṭarīq	路|lù	дорога|doroga	carretera|/kareˈtera/
+station	travel	станция	место остановки транспорта	station|/ˈsteɪʃən/	gare|/ɡaʁ/	Bahnhof|/ˈbaːnˌhoːf/	محطة|maḥaṭṭa	车站|chēzhàn	станция|stantsiya	estación|/estaˈθjon/
+airport	travel	аэропорт	место вылета самолётов	airport|/ˈɛrˌpɔːrt/	aéroport|/a.e.ʁɔ.pɔʁ/	Flughafen|/ˈfluːkˌhaːfn̩/	مطار|maṭār	机场|jīchǎng	аэропорт|aeroport	aeropuerto|/aeɾoˈpweɾto/
+hotel	travel	отель	жильё для путешественников	hotel|/hoʊˈtɛl/	hôtel|/o.tɛl/	Hotel|/hoˈtɛl/	فندق|funduq	酒店|jiǔdiàn	отель|otel	hotel|/oˈtel/
+ticket	travel	билет	документ для поездки	ticket|/ˈtɪkɪt/	billet|/bi.jɛ/	Fahrkarte|/ˈfaːɐˌkaʁtə/	تذكرة|tadhkira	票|piào	билет|bilet	billete|/biˈʝete/
+car	travel	автомобиль	личное дорожное транспортное средство	car|/kɑːr/	voiture|/vwa.tyʁ/	Auto|/ˈaʊto/	سيارة|sayyāra	汽车|qìchē	автомобиль|avtomobil	coche|/ˈkotʃe/
+train	travel	поезд	железнодорожный транспорт	train|/treɪn/	train|/tʁɛ̃/	Zug|/tsuːk/	قطار|qiṭār	火车|huǒchē	поезд|poyezd	tren|/tɾen/
+bus	travel	автобус	городской пассажирский транспорт	bus|/bʌs/	bus|/bys/	Bus|/bʊs/	حافلة|ḥāfila	公共汽车|gōnggòng qìchē	автобус|avtobus	autobús|/autoˈβus/
+city	travel	город	крупный населённый пункт	city|/ˈsɪti/	ville|/vil/	Stadt|/ʃtat/	مدينة|madīna	城市|chéngshì	город|gorod	ciudad|/θjuˈðað/
+country	travel	страна	государство	country|/ˈkʌntri/	pays|/pe.i/	Land|/lant/	بلد|balad	国家|guójiā	страна|strana	país|/paˈis/
+today	time	сегодня	текущий день	today|/təˈdeɪ/	aujourd'hui|/o.ʒuʁ.dɥi/	heute|/ˈhɔɪtə/	اليوم|al-yawm	今天|jīntiān	сегодня|segodnya	hoy|/oi/
+tomorrow	time	завтра	следующий день	tomorrow|/təˈmɑːroʊ/	demain|/də.mɛ̃/	morgen|/ˈmɔʁɡn̩/	غدا|ghadan	明天|míngtiān	завтра|zavtra	mañana|/maˈɲana/
+yesterday	time	вчера	предыдущий день	yesterday|/ˈjɛstərdeɪ/	hier|/jɛʁ/	gestern|/ˈɡɛstɐn/	أمس|ams	昨天|zuótiān	вчера|vchera	ayer|/aˈʝeɾ/
+now	time	сейчас	текущий момент	now|/naʊ/	maintenant|/mɛ̃.tə.nɑ̃/	jetzt|/jɛtst/	الآن|al-ān	现在|xiànzài	сейчас|seychas	ahora|/aˈoɾa/
+morning	time	утро	начало дня	morning|/ˈmɔːrnɪŋ/	matin|/ma.tɛ̃/	Vormittag|/ˈfoːɐˌmɪtaːk/	صباح|ṣabāḥ	早上|zǎoshang	утро|utro	la mañana|/la maˈɲana/
+evening	time	вечер	конец дня	evening|/ˈiːvnɪŋ/	soir|/swaʁ/	Abend|/ˈaːbn̩t/	مساء|masāʾ	晚上|wǎnshang	вечер|vecher	tarde|/ˈtaɾðe/
+day	time	день	сутки	day|/deɪ/	jour|/ʒuʁ/	Tag|/taːk/	يوم|yawm	天|tiān	день|den	día|/ˈdi.a/
+week	time	неделя	семь дней	week|/wiːk/	semaine|/sə.mɛn/	Woche|/ˈvɔxə/	أسبوع|usbūʿ	星期|xīngqī	неделя|nedelya	semana|/seˈmana/
+month	time	месяц	часть года	month|/mʌnθ/	mois|/mwa/	Monat|/ˈmoːnat/	شهر|shahr	月|yuè	месяц|mesyats	mes|/mes/
+year	time	год	двенадцать месяцев	year|/jɪr/	an|/ɑ̃/	Jahr|/jaːɐ/	سنة|sana	年|nián	год|god	año|/ˈaɲo/
+work	work	работа	трудовая деятельность	work|/wɜːrk/	travail|/tʁa.vaj/	Arbeit|/ˈaʁbaɪt/	عمل|ʿamal	工作|gōngzuò	работа|rabota	trabajo|/tɾaˈβaxo/
+school	work	школа	место обучения	school|/skuːl/	école|/e.kɔl/	Schule|/ˈʃuːlə/	مدرسة|madrasa	学校|xuéxiào	школа|shkola	escuela|/esˈkwela/
+student	work	студент	учащийся вуза	student|/ˈstuːdənt/	étudiant|/e.ty.djɑ̃/	Student|/ʃtuˈdɛnt/	طالب|ṭālib	学生|xuésheng	студент|student	estudiante|/estuˈðjante/
+book	work	книга	печатное произведение	book|/bʊk/	livre|/livʁ/	Buch|/buːx/	كتاب|kitāb	书|shū	книга|kniga	libro|/ˈliβɾo/
+money	work	деньги	средство оплаты	money|/ˈmʌni/	argent|/aʁ.ʒɑ̃/	Geld|/ɡɛlt/	مال|māl	钱|qián	деньги|dengi	dinero|/diˈneɾo/
+shop	work	магазин	место торговли	shop|/ʃɑːp/	magasin|/ma.ɡa.zɛ̃/	Geschäft|/ɡəˈʃɛft/	متجر|matjar	商店|shāngdiàn	магазин|magazin	tienda|/ˈtjenda/
+office	work	офис	рабочее помещение	office|/ˈɔːfɪs/	bureau|/by.ʁo/	Büro|/byˈʁoː/	مكتب|maktab	办公室|bàngōngshì	офис|ofis	oficina|/ofiˈθina/
+computer	work	компьютер	электронное вычислительное устройство	computer|/kəmˈpjuːtər/	ordinateur|/ɔʁ.di.na.tœʁ/	Computer|/kɔmˈpjuːtɐ/	حاسوب|ḥāsūb	电脑|diànnǎo	компьютер|kompyuter	ordenador|/oɾðenaˈðoɾ/
+phone	work	телефон	устройство связи	phone|/foʊn/	téléphone|/te.le.fɔn/	Telefon|/teleˈfoːn/	هاتف|hātif	电话|diànhuà	телефон|telefon	teléfono|/teˈlefono/
+question	work	вопрос	запрос информации	question|/ˈkwɛstʃən/	question|/kɛs.tjɔ̃/	Frage|/ˈfʁaːɡə/	سؤال|suʾāl	问题|wèntí	вопрос|vopros	pregunta|/pɾeˈɣunta/
+doctor	health	врач	медицинский специалист	doctor|/ˈdɑːktər/	médecin|/med.sɛ̃/	Arzt|/aʁtst/	طبيب|ṭabīb	医生|yīshēng	врач|vrach	médico|/ˈmeðiko/
+hospital	health	больница	медицинское учреждение	hospital|/ˈhɑːspɪtəl/	hôpital|/o.pi.tal/	Krankenhaus|/ˈkʁaŋkn̩ˌhaʊs/	مستشفى|mustashfā	医院|yīyuàn	больница|bolnitsa	hospital|/ospiˈtal/
+head	health	голова	верхняя часть тела	head|/hɛd/	tête|/tɛt/	Kopf|/kɔpf/	رأس|raʾs	头|tóu	голова|golova	cabeza|/kaˈβeθa/
+hand	health	рука	часть руки с пальцами	hand|/hænd/	main|/mɛ̃/	Hand|/hant/	يد|yad	手|shǒu	рука|ruka	mano|/ˈmano/
+eye	health	глаз	орган зрения	eye|/aɪ/	œil|/œj/	Auge|/ˈaʊɡə/	عين|ʿayn	眼睛|yǎnjing	глаз|glaz	ojo|/ˈoxo/
+heart	health	сердце	орган кровообращения	heart|/hɑːrt/	cœur|/kœʁ/	Herz|/hɛʁt͡s/	قلب|qalb	心脏|xīnzàng	сердце|serdtse	corazón|/koɾaˈθon/
+pain	health	боль	неприятное физическое ощущение	pain|/peɪn/	douleur|/du.lœʁ/	Schmerz|/ʃmɛʁt͡s/	ألم|alam	疼痛|téngtòng	боль|bol	dolor|/doˈloɾ/
+medicine	health	лекарство	средство лечения	medicine|/ˈmɛdɪsɪn/	médicament|/me.di.ka.mɑ̃/	Medizin|/medɪˈt͡siːn/	دواء|dawāʾ	药|yào	лекарство|lekarstvo	medicina|/meðiˈθina/
+tired	health	уставший	испытывающий усталость	tired|/ˈtaɪərd/	fatigué|/fa.ti.ɡe/	müde|/ˈmyːdə/	متعب|mutʿab	累|lèi	уставший|ustavshiy	cansado|/kanˈsaðo/
+healthy	health	здоровый	не имеющий болезни	healthy|/ˈhɛlθi/	sain|/sɛ̃/	gesund|/ɡəˈzʊnt/	صحي|ṣiḥḥī	健康|jiànkāng	здоровый|zdorovyy	sano|/ˈsano/
+go	actions	идти	двигаться пешком	go|/ɡoʊ/	aller|/a.le/	gehen|/ˈɡeːən/	يذهب|yadhhab	去|qù	идти|idti	ir|/iɾ/
+come	actions	приходить	прибывать	come|/kʌm/	venir|/və.niʁ/	kommen|/ˈkɔmən/	يأتي|yaʾtī	来|lái	приходить|prikhodit	venir|/beˈniɾ/
+eat	actions	есть	принимать пищу	eat|/iːt/	manger|/mɑ̃.ʒe/	essen|/ˈɛsn̩/	يأكل|yaʾkul	吃|chī	есть|yest	comer|/koˈmeɾ/
+drink	actions	пить	принимать жидкость	drink|/drɪŋk/	boire|/bwaʁ/	trinken|/ˈtʁɪŋkn̩/	يشرب|yashrab	喝|hē	пить|pit	beber|/beˈβeɾ/
+sleep	actions	спать	находиться во сне	sleep|/sliːp/	dormir|/dɔʁ.miʁ/	schlafen|/ˈʃlaːfn̩/	ينام|yanām	睡觉|shuìjiào	спать|spat	dormir|/doɾˈmiɾ/
+read	actions	читать	воспринимать написанное	read|/riːd/	lire|/liʁ/	lesen|/ˈleːzn̩/	يقرأ|yaqraʾ	读|dú	читать|chitat	leer|/leˈeɾ/
+write	actions	писать	создавать текст	write|/raɪt/	écrire|/e.kʁiʁ/	schreiben|/ˈʃʁaɪbn̩/	يكتب|yaktub	写|xiě	писать|pisat	escribir|/eskɾiˈβiɾ/
+speak	actions	говорить	выражать мысли словами	speak|/spiːk/	parler|/paʁ.le/	sprechen|/ˈʃpʁɛçn̩/	يتكلم|yatakallam	说|shuō	говорить|govorit	hablar|/aˈβlaɾ/
+listen	actions	слушать	воспринимать звуки	listen|/ˈlɪsən/	écouter|/e.ku.te/	zuhören|/ˈtsuːˌhøːʁən/	يستمع|yastamiʿ	听|tīng	слушать|slushat	escuchar|/eskutʃaɾ/
+help	actions	помогать	оказывать поддержку	help|/hɛlp/	aider|/e.de/	helfen|/ˈhɛlfn̩/	يساعد|yusāʿid	帮助|bāngzhù	помогать|pomogat	ayudar|/aʝuˈðaɾ/
+big	descriptions	большой	крупного размера	big|/bɪɡ/	grand|/ɡʁɑ̃/	groß|/ɡʁoːs/	كبير|kabīr	大|dà	большой|bolshoy	grande|/ˈɡɾande/
+small	descriptions	маленький	небольшого размера	small|/smɔːl/	petit|/pə.ti/	klein|/klaɪn/	صغير|ṣaghīr	小|xiǎo	маленький|malenkiy	pequeño|/peˈkeɲo/
+good	descriptions	хороший	положительного качества	good|/ɡʊd/	bon|/bɔ̃/	gut|/ɡuːt/	جيد|jayyid	好|hǎo	хороший|khoroshiy	bueno|/ˈbweno/
+bad	descriptions	плохой	отрицательного качества	bad|/bæd/	mauvais|/mo.vɛ/	schlecht|/ʃlɛçt/	سيئ|sayyiʾ	坏|huài	плохой|plokhoy	malo|/ˈmalo/
+new	descriptions	новый	недавно созданный	new|/nuː/	nouveau|/nu.vo/	neu|/nɔɪ/	جديد|jadīd	新|xīn	новый|novyy	nuevo|/ˈnweβo/
+old	descriptions	старый	существующий давно	old|/oʊld/	vieux|/vjø/	alt|/alt/	قديم|qadīm	旧|jiù	старый|staryy	viejo|/ˈbjexo/
+hot	descriptions	горячий	имеющий высокую температуру	hot|/hɑːt/	chaud|/ʃo/	heiß|/haɪs/	ساخن|sākhin	热|rè	горячий|goryachiy	caliente|/kaˈljente/
+cold	descriptions	холодный	имеющий низкую температуру	cold|/koʊld/	froid|/fʁwa/	kalt|/kalt/	بارد|bārid	冷|lěng	холодный|kholodnyy	frío|/ˈfɾi.o/
+happy	descriptions	счастливый	испытывающий радость	happy|/ˈhæpi/	heureux|/ø.ʁø/	glücklich|/ˈɡlʏklɪç/	سعيد|saʿīd	高兴|gāoxìng	счастливый|schastlivyy	feliz|/feˈliθ/
+sad	descriptions	грустный	испытывающий печаль	sad|/sæd/	triste|/tʁist/	traurig|/ˈtʁaʊʁɪç/	حزين|ḥazīn	难过|nánguò	грустный|grustnyy	triste|/ˈtɾiste/
