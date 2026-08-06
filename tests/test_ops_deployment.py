@@ -196,6 +196,34 @@ class AdminLauncherTest(OpsTestCase):
         with self.assertRaisesRegex(RuntimeError, "refuses to enable AI"):
             admin_launcher.build_process(self.launcher_environment(ai_enabled="true"))
 
+    def test_launcher_forwards_non_secret_economics_diagnostics(self):
+        source = self.launcher_environment()
+        source.update(
+            {
+                "AI_MODEL": "gpt-5.6-luna",
+                "AI_PRICING_REVIEWED_ON": "2026-08-06",
+                "AI_PRICING_MAX_AGE_DAYS": "30",
+                "AI_MAX_DAILY_REQUESTS_PER_USER": "5",
+                "AI_MAX_COST_MICRO_USD_PER_REQUEST": "5000",
+                "AI_MAX_PROVIDER_INPUT_CHARS": "12000",
+                "AI_MAX_OUTPUT_TOKENS": "1000",
+                "BILLING_ECONOMICS_REVIEWED_ON": "2026-08-06",
+                "BILLING_ECONOMICS_MAX_AGE_DAYS": "30",
+                "BILLING_PRIVATE_CHAT_TOPICS_ENABLED": "false",
+                "BILLING_TERMS_APPROVED": "false",
+                "OPENAI_API_KEY": "must-not-reach-admin",
+                "AI_SAFETY_SALT": "must-not-reach-admin-either",
+            }
+        )
+
+        _, _, environment, _ = admin_launcher.build_process(source)
+
+        self.assertEqual(environment["AI_MODEL"], "gpt-5.6-luna")
+        self.assertEqual(environment["AI_MAX_DAILY_REQUESTS_PER_USER"], "5")
+        self.assertEqual(environment["BILLING_TERMS_APPROVED"], "false")
+        self.assertNotIn("OPENAI_API_KEY", environment)
+        self.assertNotIn("AI_SAFETY_SALT", environment)
+
     def test_launcher_rejects_release_outside_versioned_tree(self):
         environment = self.launcher_environment()
         outside = self.root / NEW_SHA

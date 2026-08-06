@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import select
 
+from mydictionary.economics import parse_reviewed_on, require_current_review
 from mydictionary.storage import (
     AIUsageStateError,
     AdminAuditLog,
@@ -36,6 +37,11 @@ PAYLOAD_SIGNATURE_BYTES = 16
 PRODUCT_STATUSES = {"draft", "active", "archived"}
 BILLING_MODES = {"one_time", "subscription"}
 SUBSCRIPTION_PERIOD_SECONDS = 30 * 24 * 60 * 60
+TELEGRAM_STAR_REWARD_MICRO_USD = 13_000
+TELEGRAM_STAR_CONSERVATIVE_NET_MICRO_USD = (
+    TELEGRAM_STAR_REWARD_MICRO_USD - 3_000
+)
+PRIVATE_CHAT_TOPICS_FEE_BPS = 1_500
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -54,13 +60,13 @@ class BillingValidationError(ValueError):
     """Raised when Telegram payment data does not match the signed order."""
 
 
-def _env_bool(value: str) -> bool:
+def _env_bool(value: str, *, setting_name: str = "TELEGRAM_STARS_ENABLED") -> bool:
     normalized = str(value).strip().lower()
     if normalized in {"1", "true", "yes", "on"}:
         return True
     if normalized in {"0", "false", "no", "off", ""}:
         return False
-    raise BillingConfigurationError("TELEGRAM_STARS_ENABLED must be a boolean")
+    raise BillingConfigurationError(f"{setting_name} must be a boolean")
 
 
 @dataclass(frozen=True)
@@ -72,11 +78,23 @@ class BillingSettings:
     terms_version: str = "unversioned"
     order_ttl_seconds: int = 1800
     net_micro_usd_per_xtr: int = 0
+    terms_approved: bool = False
+    economics_reviewed_on: str | None = None
+    economics_max_age_days: int = 30
+    private_chat_topics_enabled: bool = False
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "BillingSettings":
         env = values if values is not None else os.environ
         enabled = _env_bool(env.get("TELEGRAM_STARS_ENABLED", "false"))
+        terms_approved = _env_bool(
+            env.get("BILLING_TERMS_APPROVED", "false"),
+            setting_name="BILLING_TERMS_APPROVED",
+        )
+        private_chat_topics_enabled = _env_bool(
+            env.get("BILLING_PRIVATE_CHAT_TOPICS_ENABLED", "false"),
+            setting_name="BILLING_PRIVATE_CHAT_TOPICS_ENABLED",
+        )
         payload_secret = env.get("BILLING_PAYLOAD_SECRET") or None
         support_contact = env.get("BILLING_SUPPORT_CONTACT", "").strip()
         configured_terms = env.get("BILLING_TERMS_TEXT", "").strip()
@@ -90,9 +108,12 @@ class BillingSettings:
             net_micro_usd_per_xtr = int(
                 env.get("BILLING_NET_MICRO_USD_PER_XTR", "0")
             )
+            economics_max_age_days = int(
+                env.get("BILLING_ECONOMICS_MAX_AGE_DAYS", "30")
+            )
         except ValueError as exc:
             raise BillingConfigurationError(
-                "Billing TTL and unit economics settings must be integers"
+                "Billing TTL, review age, and unit economics settings must be integers"
             ) from exc
         if not 300 <= order_ttl_seconds <= 86400:
             raise BillingConfigurationError(
@@ -101,6 +122,23 @@ class BillingSettings:
         if net_micro_usd_per_xtr < 0:
             raise BillingConfigurationError(
                 "BILLING_NET_MICRO_USD_PER_XTR cannot be negative"
+            )
+        if not 1 <= economics_max_age_days <= 90:
+            raise BillingConfigurationError(
+                "BILLING_ECONOMICS_MAX_AGE_DAYS must be between 1 and 90"
+            )
+        topics_fee_bps = (
+            PRIVATE_CHAT_TOPICS_FEE_BPS if private_chat_topics_enabled else 0
+        )
+        maximum_net_micro_usd = (
+            TELEGRAM_STAR_CONSERVATIVE_NET_MICRO_USD
+            * (10_000 - topics_fee_bps)
+            // 10_000
+        )
+        if net_micro_usd_per_xtr > maximum_net_micro_usd:
+            raise BillingConfigurationError(
+                "BILLING_NET_MICRO_USD_PER_XTR exceeds the conservative "
+                "reviewed net cap after applicable private-chat topic fees"
             )
         if not terms_text or len(terms_text) > 3500:
             raise BillingConfigurationError(
@@ -111,6 +149,17 @@ class BillingSettings:
             raise BillingConfigurationError(
                 "BILLING_TERMS_VERSION must be a safe 1 to 64 character identifier"
             )
+        economics_reviewed_on = env.get(
+            "BILLING_ECONOMICS_REVIEWED_ON", ""
+        ).strip()
+        if economics_reviewed_on:
+            try:
+                parse_reviewed_on(
+                    economics_reviewed_on,
+                    setting_name="BILLING_ECONOMICS_REVIEWED_ON",
+                )
+            except ValueError as exc:
+                raise BillingConfigurationError(str(exc)) from exc
         if enabled:
             if not payload_secret or len(payload_secret) < 32:
                 raise BillingConfigurationError(
@@ -129,10 +178,22 @@ class BillingSettings:
                 raise BillingConfigurationError(
                     "Enabled Stars billing requires BILLING_TERMS_VERSION"
                 )
+            if not terms_approved:
+                raise BillingConfigurationError(
+                    "Enabled Stars billing requires BILLING_TERMS_APPROVED=true"
+                )
             if net_micro_usd_per_xtr <= 0:
                 raise BillingConfigurationError(
                     "Enabled Stars billing requires BILLING_NET_MICRO_USD_PER_XTR"
                 )
+            try:
+                require_current_review(
+                    economics_reviewed_on,
+                    max_age_days=economics_max_age_days,
+                    setting_name="BILLING_ECONOMICS_REVIEWED_ON",
+                )
+            except ValueError as exc:
+                raise BillingConfigurationError(str(exc)) from exc
         return cls(
             enabled=enabled,
             payload_secret=payload_secret,
@@ -141,6 +202,10 @@ class BillingSettings:
             terms_version=terms_version,
             order_ttl_seconds=order_ttl_seconds,
             net_micro_usd_per_xtr=net_micro_usd_per_xtr,
+            terms_approved=terms_approved,
+            economics_reviewed_on=economics_reviewed_on or None,
+            economics_max_age_days=economics_max_age_days,
+            private_chat_topics_enabled=private_chat_topics_enabled,
         )
 
 

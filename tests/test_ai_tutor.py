@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -99,6 +100,9 @@ class AITutorSettingsTest(unittest.TestCase):
             "AI_TUTOR_ENABLED": "true",
             "OPENAI_API_KEY": "test-key",
             "AI_SAFETY_SALT": "s" * 32,
+            "AI_PRICING_REVIEWED_ON": datetime.now(timezone.utc)
+            .date()
+            .isoformat(),
         }
         with self.assertRaisesRegex(AIConfigurationError, "pricing"):
             AITutorSettings.from_env(common)
@@ -112,6 +116,34 @@ class AITutorSettingsTest(unittest.TestCase):
             }
         )
         self.assertTrue(configured.enabled)
+
+    def test_enabled_tutor_requires_current_pricing_review(self):
+        common = {
+            "AI_TUTOR_ENABLED": "true",
+            "OPENAI_API_KEY": "test-key",
+            "AI_SAFETY_SALT": "s" * 32,
+            "AI_INPUT_USD_PER_MILLION": "0.20",
+            "AI_CACHED_INPUT_USD_PER_MILLION": "0.02",
+            "AI_CACHE_WRITE_USD_PER_MILLION": "0.25",
+            "AI_OUTPUT_USD_PER_MILLION": "1.20",
+        }
+        with self.assertRaisesRegex(AIConfigurationError, "REVIEWED_ON"):
+            AITutorSettings.from_env(common)
+        stale = (datetime.now(timezone.utc).date() - timedelta(days=31)).isoformat()
+        with self.assertRaisesRegex(AIConfigurationError, "stale"):
+            AITutorSettings.from_env(
+                {**common, "AI_PRICING_REVIEWED_ON": stale}
+            )
+        configured = AITutorSettings.from_env(
+            {
+                **common,
+                "AI_PRICING_REVIEWED_ON": datetime.now(timezone.utc)
+                .date()
+                .isoformat(),
+            }
+        )
+        self.assertEqual(configured.max_daily_requests_per_user, 5)
+        self.assertEqual(configured.max_cost_micro_usd_per_request, 5000)
 
     def test_non_finite_pricing_is_rejected(self):
         with self.assertRaises(AIConfigurationError):
@@ -293,6 +325,42 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(AIQuotaExceeded):
             await service.ask(user_id=104, question="Второй запрос", context=CONTEXT)
 
+    async def test_daily_limit_counts_failed_provider_attempts(self):
+        service = AITutorService(
+            store=self.store,
+            provider=FailingProvider(),
+            settings=replace(
+                settings(initial_credits=10), max_daily_requests_per_user=2
+            ),
+        )
+        for _ in range(2):
+            with self.assertRaises(RuntimeError):
+                await service.ask(
+                    user_id=108, question="Объясни блок", context=CONTEXT
+                )
+
+        with self.assertRaisesRegex(AIQuotaExceeded, "daily"):
+            await service.ask(
+                user_id=108, question="Ещё один запрос", context=CONTEXT
+            )
+        self.assertEqual(self.store.ai_usage_summary(108)["failed_requests"], 2)
+
+    async def test_cost_outlier_opens_circuit_breaker_for_later_requests(self):
+        service = AITutorService(
+            store=self.store,
+            provider=StaticProvider(),
+            settings=replace(
+                settings(initial_credits=3), max_cost_micro_usd_per_request=400
+            ),
+        )
+        await service.ask(user_id=109, question="Первый запрос", context=CONTEXT)
+
+        with self.assertRaisesRegex(AIQuotaExceeded, "circuit breaker"):
+            await service.ask(
+                user_id=109, question="Второй запрос", context=CONTEXT
+            )
+        self.assertEqual(self.store.ai_usage_summary(109)["completed_requests"], 1)
+
     def test_render_is_russian_first_and_uses_canonical_reading(self):
         result = SimpleNamespace(
             answer=answer_for(),
@@ -407,6 +475,48 @@ class OpenAIResponsesProviderTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             [word["term"] for word in sent["active_block"]], ["私", "先生"]
         )
+
+    async def test_request_respects_input_and_output_cost_ceilings(self):
+        responses = FakeResponses()
+        provider = OpenAIResponsesProvider(
+            api_key="test-key",
+            model="gpt-test",
+            safety_salt="test-safety-salt-long",
+            max_provider_input_chars=1000,
+            max_output_tokens=512,
+            client=SimpleNamespace(responses=responses),
+        )
+        oversized_context = TutorContext(
+            language="ja",
+            topic="people",
+            words=(
+                TutorWord(
+                    term="私",
+                    transcription="w" * 900,
+                    meaning_ru="я",
+                ),
+            ),
+        )
+        with self.assertRaisesRegex(AIProviderError, "character ceiling"):
+            await provider.generate(
+                TutorRequest(
+                    request_id="oversized",
+                    user_id=42,
+                    question="Объясни",
+                    context=oversized_context,
+                )
+            )
+        self.assertIsNone(responses.kwargs)
+
+        await provider.generate(
+            TutorRequest(
+                request_id="bounded",
+                user_id=42,
+                question="Объясни 私",
+                context=CONTEXT,
+            )
+        )
+        self.assertEqual(responses.kwargs["max_output_tokens"], 512)
 
 
 if __name__ == "__main__":

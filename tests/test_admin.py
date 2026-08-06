@@ -589,6 +589,8 @@ class AdminConsoleTest(unittest.TestCase):
             terms_text="Funnel terms",
             terms_version="funnel-1",
             net_micro_usd_per_xtr=1000,
+            terms_approved=True,
+            economics_reviewed_on=datetime.now(timezone.utc).date().isoformat(),
         )
         admin = AdminStore(self.store, settings)
         admin.upsert_billing_product(

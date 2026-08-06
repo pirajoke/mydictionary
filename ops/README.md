@@ -170,6 +170,18 @@ installing, enabling, clearing quarantine, or recovering a failed release.
 
 ## Billing operations
 
+Validate the checked-in draft AI/Stars assumptions and render only non-secret,
+disabled environment values with:
+
+```bash
+python ops/mydictionary_economics.py --check
+python ops/mydictionary_economics.py --render-env
+```
+
+The renderer never includes provider keys, payload secrets, safety salts,
+support contacts, or terms text. Its output is a review aid, not an activation
+command; AI, Stars, and terms approval remain false.
+
 `mydictionary_billing.py reconcile` is read-only and compares bounded Bot API
 transaction pages with the local Stars ledger. Refund and subscription changes
 require the exact local UUID plus `--execute`; the wrapper never prints tokens,
