@@ -54,6 +54,7 @@ LANG_LABELS = {
 ADMIN_TABS = {
     "dashboard",
     "users",
+    "pilot",
     "funnel",
     "learning",
     "ai",
@@ -411,6 +412,14 @@ def create_app(
             context["audit"] = admin_store.audit_log(limit=8)
         elif tab == "users":
             context["users"] = admin_store.users(search=search, limit=250)
+        elif tab == "pilot":
+            pilot_stage = str(request.args.get("pilot_stage") or "all")
+            context["pilot_stage"] = pilot_stage
+            context["pilot"] = admin_store.pilot_overview(days=30)
+            context["users"] = admin_store.pilot_users(
+                stage=pilot_stage,
+                limit=250,
+            )
         elif tab == "funnel":
             context["funnel"] = admin_store.product_funnel(days=30)
             context["events"] = admin_store.recent_product_events(limit=100)
@@ -597,6 +606,15 @@ def create_app(
             flash(f"Пользователь {user_id}: {labels[status]}.", "success")
         except (TypeError, ValueError) as exc:
             flash(str(exc), "error")
+        return_tab = str(request.form.get("return_tab") or "users")
+        if return_tab == "pilot":
+            return redirect(
+                url_for(
+                    "admin_index",
+                    tab="pilot",
+                    pilot_stage=str(request.form.get("pilot_stage") or "all"),
+                )
+            )
         return redirect(url_for("admin_index", tab="users"))
 
     @app.post("/admin/security")

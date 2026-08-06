@@ -6,7 +6,7 @@
       {% if not compact and user.role != 'admin' %}<div class="access-actions">
         {% for status, label in [('active','Допустить'),('pending','В очередь'),('blocked','Блокировать')] %}
           {% if status != user.access_status %}<form method="post" action="{{ url_for('update_user_access', user_id=user.id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="{{ status }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="{{ status }}"><input type="hidden" name="return_tab" value="{{ tab }}">{% if tab == 'pilot' %}<input type="hidden" name="pilot_stage" value="{{ pilot_stage }}">{% endif %}
             <button type="submit" class="compact-button">{{ label }}</button>
           </form>{% endif %}
         {% endfor %}

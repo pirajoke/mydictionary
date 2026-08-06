@@ -24,6 +24,7 @@ from mydictionary.storage import (
     AnalyticsEvent,
     BillingCreditLedger,
     DatabaseStore,
+    TelegramNotification,
     UserConsent,
     UserPackEnrollment,
     vocabulary_id_for,
@@ -81,6 +82,7 @@ class DatabaseStoreTest(unittest.TestCase):
                 "billing_credit_ledger",
                 "refund_requests",
                 "user_consents",
+                "telegram_notifications",
             }.issubset(tables)
         )
         user_columns = {column["name"] for column in inspector.get_columns("users")}
@@ -104,7 +106,87 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-            self.assertEqual(revision, "0010_launch_readiness")
+            self.assertEqual(revision, "0011_pilot_operations")
+
+    def test_notification_outbox_leases_retries_and_completes(self):
+        user_id = 221
+        observed_at = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
+        self.store.ensure_user_id(user_id)
+        self.store.activate_user_access(user_id)
+        with self.store.Session.begin() as session:
+            session.add(
+                TelegramNotification(
+                    notification_id="notification-1",
+                    telegram_user_id=user_id,
+                    kind="pilot_access_approved",
+                    status="pending",
+                    idempotency_key="pilot-access:221:test",
+                    available_at=observed_at,
+                    created_at=observed_at,
+                    updated_at=observed_at,
+                )
+            )
+
+        first = self.store.claim_telegram_notifications(now=observed_at)
+        self.assertEqual(len(first), 1)
+        self.assertEqual(first[0]["attempts"], 1)
+        self.assertEqual(
+            self.store.claim_telegram_notifications(now=observed_at), []
+        )
+
+        status = self.store.retry_telegram_notification(
+            "notification-1",
+            error_code="Timed Out!",
+            retry_seconds=10,
+            now=observed_at,
+        )
+        self.assertEqual(status, "pending")
+        self.assertEqual(
+            self.store.claim_telegram_notifications(
+                now=observed_at + timedelta(seconds=9)
+            ),
+            [],
+        )
+
+        second = self.store.claim_telegram_notifications(
+            now=observed_at + timedelta(seconds=10)
+        )
+        self.assertEqual(second[0]["attempts"], 2)
+        self.assertTrue(
+            self.store.complete_telegram_notification(
+                "notification-1",
+                now=observed_at + timedelta(seconds=11),
+            )
+        )
+        with self.store.Session() as session:
+            notification = session.get(
+                TelegramNotification, "notification-1"
+            )
+            self.assertEqual(notification.status, "sent")
+            self.assertEqual(notification.last_error_code, None)
+            self.assertIsNotNone(notification.sent_at)
+
+    def test_notification_outbox_skips_restricted_users(self):
+        user_id = 222
+        observed_at = datetime(2026, 8, 6, 12, 0, tzinfo=timezone.utc)
+        self.store.ensure_user_id(user_id)
+        with self.store.Session.begin() as session:
+            session.add(
+                TelegramNotification(
+                    notification_id="notification-pending-user",
+                    telegram_user_id=user_id,
+                    kind="pilot_access_approved",
+                    status="pending",
+                    idempotency_key="pilot-access:222:test",
+                    available_at=observed_at,
+                    created_at=observed_at,
+                    updated_at=observed_at,
+                )
+            )
+
+        self.assertEqual(
+            self.store.claim_telegram_notifications(now=observed_at), []
+        )
 
     def test_programmatic_migrations_preserve_application_logging(self):
         root_logger = logging.getLogger()

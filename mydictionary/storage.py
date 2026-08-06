@@ -12,6 +12,7 @@ from uuid import uuid4
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import (
+    and_,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -24,6 +25,7 @@ from sqlalchemy import (
     case,
     create_engine,
     func,
+    or_,
     select,
 )
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
@@ -191,6 +193,53 @@ class AnalyticsEvent(Base):
     properties_json: Mapped[str] = mapped_column(Text, default="{}")
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
+    )
+
+
+class TelegramNotification(Base):
+    __tablename__ = "telegram_notifications"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('pilot_access_approved')",
+            name="ck_telegram_notification_kind",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'processing', 'sent', 'failed', 'cancelled')",
+            name="ck_telegram_notification_status",
+        ),
+        CheckConstraint("attempts >= 0", name="ck_telegram_notification_attempts"),
+        UniqueConstraint(
+            "idempotency_key", name="uq_telegram_notification_idempotency"
+        ),
+    )
+
+    notification_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    available_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    lease_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_error_code: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
 
 
@@ -777,6 +826,13 @@ class AIUsageStateError(RuntimeError):
 
 USER_ROLES = {"learner", "admin"}
 ACCESS_STATUSES = {"pending", "active", "blocked"}
+TELEGRAM_NOTIFICATION_STATUSES = {
+    "pending",
+    "processing",
+    "sent",
+    "failed",
+    "cancelled",
+}
 EVENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 EVENT_PROPERTY_KEYS = {
     "correct_count",
@@ -1061,6 +1117,131 @@ class DatabaseStore:
                 )
             )
         return event_id
+
+    def claim_telegram_notifications(
+        self,
+        *,
+        limit: int = 10,
+        lease_seconds: int = 60,
+        now: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """Lease due notifications for at-least-once Telegram delivery."""
+        limit = max(1, min(int(limit), 50))
+        lease_seconds = max(10, min(int(lease_seconds), 300))
+        observed_at = now or utcnow()
+        statement = (
+            select(TelegramNotification)
+            .join(
+                User,
+                User.telegram_user_id == TelegramNotification.telegram_user_id,
+            )
+            .where(
+                User.access_status == "active",
+                User.privacy_status == "active",
+                TelegramNotification.available_at <= observed_at,
+                or_(
+                    TelegramNotification.status == "pending",
+                    and_(
+                        TelegramNotification.status == "processing",
+                        TelegramNotification.lease_until.is_not(None),
+                        TelegramNotification.lease_until <= observed_at,
+                    ),
+                ),
+            )
+            .order_by(
+                TelegramNotification.available_at,
+                TelegramNotification.created_at,
+            )
+            .limit(limit)
+        )
+        if self.engine.dialect.name == "postgresql":
+            statement = statement.with_for_update(
+                of=TelegramNotification,
+                skip_locked=True,
+            )
+        else:
+            statement = statement.with_for_update()
+        leased: list[dict[str, Any]] = []
+        with self.Session.begin() as session:
+            rows = session.execute(statement).scalars().all()
+            for row in rows:
+                row.status = "processing"
+                row.attempts += 1
+                row.lease_until = observed_at + timedelta(seconds=lease_seconds)
+                row.updated_at = observed_at
+                leased.append(
+                    {
+                        "notification_id": row.notification_id,
+                        "telegram_user_id": row.telegram_user_id,
+                        "kind": row.kind,
+                        "attempts": row.attempts,
+                    }
+                )
+        return leased
+
+    def complete_telegram_notification(
+        self, notification_id: str, *, now: datetime | None = None
+    ) -> bool:
+        observed_at = now or utcnow()
+        with self.Session.begin() as session:
+            row = session.execute(
+                select(TelegramNotification)
+                .where(TelegramNotification.notification_id == str(notification_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row is None or row.status != "processing":
+                return False
+            row.status = "sent"
+            row.sent_at = observed_at
+            row.lease_until = None
+            row.last_error_code = None
+            row.updated_at = observed_at
+            return True
+
+    def retry_telegram_notification(
+        self,
+        notification_id: str,
+        *,
+        error_code: str,
+        retry_seconds: int,
+        maximum_attempts: int = 5,
+        now: datetime | None = None,
+    ) -> str:
+        observed_at = now or utcnow()
+        retry_seconds = max(1, min(int(retry_seconds), 3600))
+        maximum_attempts = max(1, min(int(maximum_attempts), 20))
+        clean_error = re.sub(r"[^A-Za-z0-9_.-]", "_", str(error_code))[:64]
+        with self.Session.begin() as session:
+            row = session.execute(
+                select(TelegramNotification)
+                .where(TelegramNotification.notification_id == str(notification_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row is None or row.status != "processing":
+                raise ValueError("Telegram notification is not processing")
+            row.status = "failed" if row.attempts >= maximum_attempts else "pending"
+            row.available_at = observed_at + timedelta(seconds=retry_seconds)
+            row.lease_until = None
+            row.last_error_code = clean_error or "unknown"
+            row.updated_at = observed_at
+            return row.status
+
+    def cancel_telegram_notification(
+        self, notification_id: str, *, now: datetime | None = None
+    ) -> bool:
+        observed_at = now or utcnow()
+        with self.Session.begin() as session:
+            row = session.execute(
+                select(TelegramNotification)
+                .where(TelegramNotification.notification_id == str(notification_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row is None or row.status in {"sent", "failed", "cancelled"}:
+                return False
+            row.status = "cancelled"
+            row.lease_until = None
+            row.updated_at = observed_at
+            return True
 
     def grant_consent(
         self,

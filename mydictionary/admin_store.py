@@ -35,6 +35,7 @@ from mydictionary.storage import (
     RateLimitBucket,
     StarsPayment,
     StarsSubscription,
+    TelegramNotification,
     User,
     UserProgress,
     VoiceSession,
@@ -53,6 +54,39 @@ def _name(user: User) -> str:
         part for part in (user.first_name, user.last_name) if part
     ).strip()
     return full_name or (f"@{user.username}" if user.username else "Без имени")
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+PILOT_STAGE_LABELS = (
+    ("pilot_waitlist_joined", "Оставили заявку"),
+    ("pilot_access_approved", "Допущены"),
+    ("onboarding_completed", "Завершили настройку"),
+    ("block_started", "Открыли первый блок"),
+    ("block_completed", "Завершили первый блок"),
+)
+PILOT_ACTIVITY_EVENTS = {
+    "start_received",
+    "onboarding_started",
+    "onboarding_completed",
+    "language_switched",
+    "block_started",
+    "block_mode_started",
+    "word_audio_played",
+    "block_completed",
+}
+PILOT_USER_STAGES = {
+    "all",
+    "pending",
+    "onboarding",
+    "first_block",
+    "engaged",
+    "blocked",
+}
 
 
 class AdminStore:
@@ -232,12 +266,13 @@ class AdminStore:
             previous = user.access_status
             if previous == status:
                 return status
+            observed_at = utcnow()
             user.access_status = status
-            user.access_status_updated_at = utcnow()
+            user.access_status_updated_at = observed_at
             if status == "active" and user.privacy_status == "erased":
                 user.privacy_status = "active"
                 user.privacy_deleted_at = None
-            user.updated_at = utcnow()
+            user.updated_at = observed_at
             session.add(
                 AdminAuditLog(
                     actor=actor[:64],
@@ -249,6 +284,50 @@ class AdminStore:
                     ),
                 )
             )
+            event_name = {
+                "active": "pilot_access_approved",
+                "pending": "pilot_access_pending",
+                "blocked": "pilot_access_blocked",
+            }[status]
+            session.add(
+                AnalyticsEvent(
+                    event_id=str(uuid4()),
+                    telegram_user_id=user.telegram_user_id,
+                    event_name=event_name,
+                    source="admin",
+                    properties_json="{}",
+                    occurred_at=observed_at,
+                )
+            )
+            if status == "active":
+                session.add(
+                    TelegramNotification(
+                        notification_id=str(uuid4()),
+                        telegram_user_id=user.telegram_user_id,
+                        kind="pilot_access_approved",
+                        status="pending",
+                        idempotency_key=(
+                            f"pilot-access:{user.telegram_user_id}:"
+                            f"{observed_at.isoformat()}"
+                        ),
+                        available_at=observed_at,
+                        created_at=observed_at,
+                        updated_at=observed_at,
+                    )
+                )
+            else:
+                queued = session.execute(
+                    select(TelegramNotification).where(
+                        TelegramNotification.telegram_user_id
+                        == user.telegram_user_id,
+                        TelegramNotification.kind == "pilot_access_approved",
+                        TelegramNotification.status.in_({"pending", "processing"}),
+                    )
+                ).scalars().all()
+                for notification in queued:
+                    notification.status = "cancelled"
+                    notification.lease_until = None
+                    notification.updated_at = observed_at
         return status
 
     def dashboard(self) -> dict[str, Any]:
@@ -476,6 +555,213 @@ class AdminStore:
                     "updated_at": user.updated_at,
                 }
             )
+        return result
+
+    def pilot_overview(self, *, days: int = 30) -> dict[str, Any]:
+        days = max(1, min(int(days), 365))
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(days=days)
+        with self.store.Session() as session:
+            waitlist_rows = session.execute(
+                select(
+                    AnalyticsEvent.telegram_user_id,
+                    func.min(AnalyticsEvent.occurred_at),
+                )
+                .join(User, User.telegram_user_id == AnalyticsEvent.telegram_user_id)
+                .where(
+                    User.role == "learner",
+                    AnalyticsEvent.event_name == "pilot_waitlist_joined",
+                    AnalyticsEvent.occurred_at >= since,
+                )
+                .group_by(AnalyticsEvent.telegram_user_id)
+            ).all()
+            joined_at = {
+                int(user_id): _as_utc(observed_at)
+                for user_id, observed_at in waitlist_rows
+            }
+            cohort_ids = set(joined_at)
+            if cohort_ids:
+                tracked_names = {
+                    name for name, _ in PILOT_STAGE_LABELS
+                } | PILOT_ACTIVITY_EVENTS
+                event_rows = session.execute(
+                    select(
+                        AnalyticsEvent.telegram_user_id,
+                        AnalyticsEvent.event_name,
+                        AnalyticsEvent.occurred_at,
+                    ).where(
+                        AnalyticsEvent.telegram_user_id.in_(cohort_ids),
+                        AnalyticsEvent.event_name.in_(tracked_names),
+                        AnalyticsEvent.occurred_at >= since,
+                    )
+                ).all()
+                user_rows = session.execute(
+                    select(User, UserProgress)
+                    .outerjoin(
+                        UserProgress,
+                        UserProgress.telegram_user_id == User.telegram_user_id,
+                    )
+                    .where(User.telegram_user_id.in_(cohort_ids))
+                ).all()
+                notification_rows = session.execute(
+                    select(
+                        TelegramNotification.status,
+                        func.count(TelegramNotification.notification_id),
+                    )
+                    .where(TelegramNotification.telegram_user_id.in_(cohort_ids))
+                    .group_by(TelegramNotification.status)
+                ).all()
+            else:
+                event_rows = []
+                user_rows = []
+                notification_rows = []
+
+        first_events: dict[str, dict[int, datetime]] = {
+            name: {} for name, _ in PILOT_STAGE_LABELS
+        }
+        activity_by_user: dict[int, list[datetime]] = {
+            user_id: [] for user_id in cohort_ids
+        }
+        for user_id, event_name, occurred_at in event_rows:
+            user_id = int(user_id)
+            observed_at = _as_utc(occurred_at)
+            if event_name in first_events:
+                previous = first_events[event_name].get(user_id)
+                if previous is None or observed_at < previous:
+                    first_events[event_name][user_id] = observed_at
+            if event_name in PILOT_ACTIVITY_EVENTS:
+                activity_by_user[user_id].append(observed_at)
+        first_events["pilot_waitlist_joined"] = dict(joined_at)
+        cohort_size = len(cohort_ids)
+        stages = []
+        for event_name, label in PILOT_STAGE_LABELS:
+            users = len(first_events[event_name])
+            stages.append(
+                {
+                    "event_name": event_name,
+                    "label": label,
+                    "users": users,
+                    "conversion": users / cohort_size * 100 if cohort_size else 0,
+                }
+            )
+
+        def retention(day: int) -> dict[str, float | int]:
+            eligible = {
+                user_id
+                for user_id, joined in joined_at.items()
+                if joined <= now - timedelta(days=day)
+            }
+            retained = {
+                user_id
+                for user_id in eligible
+                if any(
+                    joined_at[user_id] + timedelta(days=day) <= observed
+                    < joined_at[user_id] + timedelta(days=day + 1)
+                    for observed in activity_by_user[user_id]
+                )
+            }
+            return {
+                "eligible": len(eligible),
+                "users": len(retained),
+                "rate": len(retained) / len(eligible) * 100 if eligible else 0,
+            }
+
+        access: dict[str, int] = {}
+        sources: dict[str, int] = {}
+        languages: dict[str, int] = {}
+        for user, progress in user_rows:
+            access[user.access_status] = access.get(user.access_status, 0) + 1
+            source = user.acquisition_source or "direct"
+            sources[source] = sources.get(source, 0) + 1
+            language = progress.active_lang if progress else "en"
+            languages[language] = languages.get(language, 0) + 1
+        return {
+            "days": days,
+            "cohort": cohort_size,
+            "stages": stages,
+            "retention": {"d1": retention(1), "d7": retention(7)},
+            "access": access,
+            "notifications": {
+                status: int(count) for status, count in notification_rows
+            },
+            "sources": [
+                {"source": key, "users": value}
+                for key, value in sorted(
+                    sources.items(), key=lambda item: (-item[1], item[0])
+                )
+            ],
+            "languages": [
+                {"language": key, "users": value}
+                for key, value in sorted(
+                    languages.items(), key=lambda item: (-item[1], item[0])
+                )
+            ],
+        }
+
+    def pilot_users(
+        self, *, stage: str = "all", limit: int = 250
+    ) -> list[dict[str, Any]]:
+        stage = str(stage).strip().lower()
+        if stage not in PILOT_USER_STAGES:
+            stage = "all"
+        with self.store.Session() as session:
+            waitlist_rows = session.execute(
+                select(
+                    AnalyticsEvent.telegram_user_id,
+                    func.min(AnalyticsEvent.occurred_at),
+                )
+                .join(
+                    User,
+                    User.telegram_user_id == AnalyticsEvent.telegram_user_id,
+                )
+                .where(
+                    User.role == "learner",
+                    AnalyticsEvent.event_name == "pilot_waitlist_joined",
+                )
+                .group_by(AnalyticsEvent.telegram_user_id)
+            ).all()
+            joined_at = {
+                int(user_id): _as_utc(observed_at)
+                for user_id, observed_at in waitlist_rows
+            }
+            cohort_ids = set(joined_at)
+            block_rows = (
+                session.execute(
+                    select(
+                        AnalyticsEvent.telegram_user_id,
+                        AnalyticsEvent.occurred_at,
+                    ).where(
+                        AnalyticsEvent.telegram_user_id.in_(cohort_ids),
+                        AnalyticsEvent.event_name == "block_started",
+                    )
+                ).all()
+                if cohort_ids
+                else []
+            )
+        activated_ids = {
+            int(user_id)
+            for user_id, observed_at in block_rows
+            if _as_utc(observed_at) >= joined_at[int(user_id)]
+        }
+        result = []
+        for user in self.users(limit=10000):
+            if user["id"] not in cohort_ids:
+                continue
+            if user["access_status"] == "blocked":
+                pilot_stage = "blocked"
+            elif user["access_status"] == "pending":
+                pilot_stage = "pending"
+            elif not user["onboarding_completed_at"]:
+                pilot_stage = "onboarding"
+            elif user["id"] not in activated_ids:
+                pilot_stage = "first_block"
+            else:
+                pilot_stage = "engaged"
+            if stage != "all" and pilot_stage != stage:
+                continue
+            result.append(dict(user, pilot_stage=pilot_stage))
+            if len(result) >= max(1, min(int(limit), 1000)):
+                break
         return result
 
     def product_funnel(self, *, days: int = 30) -> dict[str, Any]:
