@@ -84,13 +84,41 @@ class AdminConsoleTest(unittest.TestCase):
         self.assertEqual(dashboard.status_code, 200)
         self.assertIn("Обзор продукта", dashboard.get_data(as_text=True))
 
-    def test_all_post_routes_reject_missing_csrf(self):
+    def test_login_recovers_from_missing_csrf(self):
         self.client.get("/admin/login")
         response = self.client.post(
             "/admin/login",
             data={"username": "owner", "password": "test-password-123"},
         )
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["Location"], "/admin")
+
+        login_redirect = self.client.get(response.headers["Location"])
+        self.assertEqual(login_redirect.status_code, 302)
+        self.assertEqual(login_redirect.headers["Location"], "/admin/login")
+        fresh_login = self.client.get(login_redirect.headers["Location"])
+        self.assertEqual(fresh_login.status_code, 200)
+        self.assertTrue(self.csrf())
+
+    def test_duplicate_login_post_keeps_authenticated_session(self):
+        self.client.get("/admin/login")
+        stale_csrf = self.csrf()
+        credentials = {
+            "csrf_token": stale_csrf,
+            "username": "owner",
+            "password": "test-password-123",
+        }
+        first_response = self.client.post("/admin/login", data=credentials)
+        self.assertEqual(first_response.status_code, 302)
+
+        duplicate_response = self.client.post("/admin/login", data=credentials)
+        self.assertEqual(duplicate_response.status_code, 303)
+        self.assertEqual(duplicate_response.headers["Location"], "/admin")
+        dashboard = self.client.get(duplicate_response.headers["Location"])
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertIn("Обзор продукта", dashboard.get_data(as_text=True))
+
+    def test_state_changing_post_routes_reject_missing_csrf(self):
 
         user_id = 5400
         self.store.ensure_user_id(user_id)

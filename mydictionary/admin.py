@@ -301,6 +301,8 @@ def create_app(
         supplied = str(request.form.get("csrf_token") or "")
         expected = str(session.get("csrf_token") or "")
         if not supplied or not expected or not hmac.compare_digest(supplied, expected):
+            if request.endpoint == "admin_login":
+                return redirect(url_for("admin_index"), code=303)
             abort(400, description="Invalid CSRF token")
         return None
 
