@@ -18,12 +18,13 @@ from mydictionary.storage import AnalyticsEvent, DatabaseStore
 
 
 class BotProfileTest(unittest.TestCase):
-    def test_default_start_is_russian_first_and_explains_card_order(self):
+    def test_default_start_is_short_and_explains_daily_card_flow(self):
         text = render_start_text(BOT_PROFILE_DEFAULTS, "Макс")
         self.assertTrue(text.startswith("Привет, Макс!"))
-        self.assertIn("значение по-русски", text)
-        self.assertIn("латинская транскрипция", text)
-        self.assertIn("голосовое произношение", text)
+        self.assertIn("короткий урок", text)
+        self.assertIn("по одной карточке", text)
+        self.assertIn("произношение", text)
+        self.assertIn("повторение", text)
         self.assertLessEqual(len(text), 1024)
 
     def test_start_keyboard_routes_primary_workflows(self):
@@ -34,7 +35,17 @@ class BotProfileTest(unittest.TestCase):
         ]
         self.assertEqual(
             callbacks,
-            ["start:learn", "start:lang", "start:stats", "start:about"],
+            [
+                "start:daily",
+                "start:review",
+                "start:topics",
+                "start:stats",
+                "start:settings",
+            ],
+        )
+        self.assertEqual(
+            bot.start_keyboard().inline_keyboard[0][0].text,
+            "▶️ Урок на сегодня",
         )
 
 
@@ -60,7 +71,7 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["caption"], "Привет, Анна! Настраиваемый старт.")
         self.assertEqual(
             payload["reply_markup"].inline_keyboard[0][0].callback_data,
-            "start:learn",
+            "start:daily",
         )
         message.reply_text.assert_not_awaited()
 
@@ -110,7 +121,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             await bot.cmd_start(update, context)
 
         text = message.reply_text.await_args.args[0]
-        self.assertIn("Настрой обучение", text)
+        self.assertIn("Два коротких шага", text)
         self.assertEqual(
             message.reply_text.await_args.kwargs["reply_markup"]
             .inline_keyboard[0][0]
@@ -183,7 +194,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "LEGACY_USER_ID", None),
         ):
             await bot.cmd_start(update, context)
-        self.assertIn("Настрой обучение", message.reply_text.await_args.args[0])
+        self.assertIn("Два коротких шага", message.reply_text.await_args.args[0])
 
         AdminStore(self.store).set_user_access_status(
             user_id, status="blocked", actor="owner"
@@ -264,9 +275,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
         context = SimpleNamespace(user_data={})
         steps = (
             "onboarding:begin",
-            "onboarding:native:ru",
             "onboarding:pack:ja-basics-100",
-            "onboarding:goal:travel",
             "onboarding:pace:10",
         )
         with (
@@ -281,7 +290,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
 
         profile = self.store.product_profile(user_id)
         self.assertEqual(profile["native_language"], "ru")
-        self.assertEqual(profile["learning_goal"], "travel")
+        self.assertEqual(profile["learning_goal"], "basics")
         self.assertEqual(profile["daily_word_goal"], 10)
         self.assertEqual(profile["active_pack_id"], "ja-basics-100")
         self.assertIsNotNone(profile["onboarding_completed_at"])
@@ -302,6 +311,37 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             },
         )
         message.reply_photo.assert_awaited_once()
+
+    async def test_onboarding_begin_goes_directly_to_language_selection(self):
+        user_id = 9904
+        message = SimpleNamespace(chat_id=9)
+        query = SimpleNamespace(
+            data="onboarding:begin",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_message=message,
+            effective_user=SimpleNamespace(id=user_id, first_name="Лена"),
+        )
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "public"),
+            patch.object(bot, "LEGACY_USER_ID", None),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+        ):
+            await bot.onboarding_cb(update, SimpleNamespace(user_data={}))
+
+        text = query.edit_message_text.await_args.args[0]
+        keyboard = query.edit_message_text.await_args.kwargs["reply_markup"]
+        callbacks = [row[0].callback_data for row in keyboard.inline_keyboard]
+        self.assertIn("Шаг 1 из 2", text)
+        self.assertTrue(all(value.startswith("onboarding:pack:") for value in callbacks))
+        profile = self.store.product_profile(user_id)
+        self.assertEqual(profile["native_language"], "ru")
+        self.assertEqual(profile["learning_goal"], "basics")
 
 
 if __name__ == "__main__":
