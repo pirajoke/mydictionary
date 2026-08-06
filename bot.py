@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from functools import wraps
 import json
 import random
+import re
 import secrets
 import logging
 import os
@@ -522,15 +523,15 @@ XP_SESSION = 25       # completing a block
 XP_STREAK_BONUS = 15  # per streak day, awarded once daily
 
 LEVELS = [
-    (0,    "Novice"),
-    (100,  "Learner"),
-    (300,  "Student"),
-    (600,  "Scholar"),
-    (1000, "Linguist"),
-    (1500, "Polyglot"),
-    (2500, "Sage"),
-    (4000, "Master"),
-    (6000, "Legend"),
+    (0,    "Новичок"),
+    (100,  "Ученик"),
+    (300,  "Студент"),
+    (600,  "Знаток"),
+    (1000, "Лингвист"),
+    (1500, "Полиглот"),
+    (2500, "Мудрец"),
+    (4000, "Мастер"),
+    (6000, "Легенда"),
 ]
 
 def get_level(xp: int) -> tuple[int, str, int]:
@@ -583,9 +584,9 @@ def format_xp_line(xp_earned: int, streak_bonus: int = 0) -> str:
     """Format XP feedback line."""
     parts = [f"+{xp_earned} XP"]
     if streak_bonus > 0:
-        parts.append(f"+{streak_bonus} streak bonus")
+        parts.append(f"+{streak_bonus} за серию")
     lvl, title, _ = get_level(PROGRESS["xp"])
-    parts.append(f"[Lv.{lvl} {title}]")
+    parts.append(f"[Уровень {lvl} · {title}]")
     return " | ".join(parts)
 
 def get_example(idx: int) -> str:
@@ -652,6 +653,41 @@ def format_word_details(idx: int) -> str:
     return "\n".join(lines)
 
 
+def card_topic_visual(idx: int) -> str:
+    """Use the content taxonomy as a lightweight visual cue on every card."""
+    topics = topics_for_word(W()[idx], PROGRESS["active_lang"])
+    label = CATALOG.topic_labels.get(topics[0], "✨") if topics else "✨"
+    return label.split(" ", 1)[0]
+
+
+def card_progress_text(user_data: dict) -> str:
+    total = max(1, len(user_data.get("block_indices", [])))
+    current = min(total, int(user_data.get("block_pos", 0)) + 1)
+    filled = max(1, (current * 5 + total - 1) // total)
+    return f"{'▰' * filled}{'▱' * (5 - filled)}"
+
+
+def format_learning_card_front(user_data: dict, idx: int) -> str:
+    total = len(user_data.get("block_indices", []))
+    position = int(user_data.get("block_pos", 0)) + 1
+    return (
+        f"{card_topic_visual(idx)}\n\n"
+        f"*Карточка {position} из {total}*  ·  {card_progress_text(user_data)}\n\n"
+        f"{format_word_label(idx)}\n\n"
+        "Сначала вспомни значение."
+    )
+
+
+def format_learning_card_back(user_data: dict, idx: int) -> str:
+    total = len(user_data.get("block_indices", []))
+    position = int(user_data.get("block_pos", 0)) + 1
+    return (
+        f"{card_topic_visual(idx)}\n\n"
+        f"*Карточка {position} из {total}*  ·  {card_progress_text(user_data)}\n\n"
+        f"{format_word_details(idx)}{get_example(idx)}"
+    )
+
+
 def format_plain_word_prompt(idx: int) -> str:
     """Format a compact prompt for Telegram surfaces without Markdown."""
     word = W()[idx]
@@ -686,6 +722,9 @@ def language_picker_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 PACK_SWITCH_TEXTS = {pack.label: pack.pack_id for pack in CATALOG.packs}
+PACK_SWITCH_PATTERN = r"^(?:" + "|".join(
+    re.escape(label) for label in PACK_SWITCH_TEXTS
+) + r")$"
 
 def forvo_button(idx: int) -> InlineKeyboardButton:
     """Return an inline button linking to Forvo pronunciation page."""
@@ -964,16 +1003,17 @@ def start_source(args) -> str:
 
 def onboarding_intro_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Начать бесплатно", callback_data="onboarding:begin")]]
+        [[InlineKeyboardButton(
+            "Попробовать бесплатно ✨", callback_data="onboarding:begin"
+        )]]
     )
 
 
 async def send_onboarding_intro(message) -> None:
     await message.reply_text(
-        "MY DICTIONARY помогает учить связанные слова блоками: сначала русский "
-        "смысл, затем написание и латинская транскрипция, ниже — голосовое "
-        "произношение. Базовые наборы бесплатны.\n\n"
-        "Настрой обучение за четыре коротких шага.",
+        "MY DICTIONARY — короткие уроки со словами, карточками и "
+        "произношением прямо в Telegram. Базовые наборы бесплатны.\n\n"
+        "Два коротких шага — и первый урок готов.",
         reply_markup=onboarding_intro_keyboard(),
     )
 
@@ -984,6 +1024,34 @@ ONBOARDING_GOALS = {
     "conversation": "Разговорная речь",
     "work": "Работа и учёба",
 }
+
+
+def onboarding_pack_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                f"{pack.label} · {pack.entry_count} слов",
+                callback_data=f"onboarding:pack:{pack.pack_id}",
+            )]
+            for pack in CATALOG.visible_packs("learner")
+        ]
+    )
+
+
+def onboarding_pace_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                "5 карточек · легко", callback_data="onboarding:pace:5"
+            )],
+            [InlineKeyboardButton(
+                "10 карточек · обычно", callback_data="onboarding:pace:10"
+            )],
+            [InlineKeyboardButton(
+                "20 карточек · интенсивно", callback_data="onboarding:pace:20"
+            )],
+        ]
+    )
 
 
 @auth
@@ -997,34 +1065,39 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     if parts == ["onboarding", "begin"]:
         record_product_event("onboarding_started")
+        runtime.store.update_product_profile(
+            runtime.user_id,
+            native_language="ru",
+            learning_goal="basics",
+        )
+        record_product_event(
+            "onboarding_native_selected",
+            properties={"language": "ru"},
+            source="default",
+        )
+        record_product_event(
+            "onboarding_goal_selected",
+            properties={"goal": "basics"},
+            source="default",
+        )
         await query.edit_message_text(
-            "Шаг 1 из 4. Значения и интерфейс пока будут на русском.",
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton(
-                    "Продолжить", callback_data="onboarding:native:ru"
-                )]]
-            ),
+            "Шаг 1 из 2. Какой язык хочешь учить?",
+            reply_markup=onboarding_pack_keyboard(),
         )
         return
+    # Compatibility for buttons sent by the previous onboarding version.
     if len(parts) == 3 and parts[1] == "native" and parts[2] == "ru":
         runtime.store.update_product_profile(
-            runtime.user_id, native_language=parts[2]
+            runtime.user_id,
+            native_language=parts[2],
+            learning_goal="basics",
         )
         record_product_event(
             "onboarding_native_selected", properties={"language": parts[2]}
         )
-        public_packs = CATALOG.visible_packs("learner")
         await query.edit_message_text(
-            "Шаг 2 из 4. Какой язык хочешь изучать?",
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton(
-                        f"{pack.label} · {pack.entry_count} слов",
-                        callback_data=f"onboarding:pack:{pack.pack_id}",
-                    )]
-                    for pack in public_packs
-                ]
-            ),
+            "Шаг 1 из 2. Какой язык хочешь учить?",
+            reply_markup=onboarding_pack_keyboard(),
         )
         return
     if len(parts) == 3 and parts[1] == "pack":
@@ -1042,13 +1115,11 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
         )
         await query.edit_message_text(
-            "Шаг 3 из 4. Для чего ты учишь язык?",
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton(label, callback_data=f"onboarding:goal:{goal}")]
-                 for goal, label in ONBOARDING_GOALS.items()]
-            ),
+            "Шаг 2 из 2. Сколько карточек удобно проходить в день?",
+            reply_markup=onboarding_pace_keyboard(),
         )
         return
+    # Compatibility for an in-flight goal step from the previous version.
     if len(parts) == 3 and parts[1] == "goal" and parts[2] in ONBOARDING_GOALS:
         runtime.store.update_product_profile(
             runtime.user_id, learning_goal=parts[2]
@@ -1057,14 +1128,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "onboarding_goal_selected", properties={"goal": parts[2]}
         )
         await query.edit_message_text(
-            "Шаг 4 из 4. Сколько новых слов учить в день?",
-            reply_markup=InlineKeyboardMarkup(
-                [[
-                    InlineKeyboardButton("5", callback_data="onboarding:pace:5"),
-                    InlineKeyboardButton("10", callback_data="onboarding:pace:10"),
-                    InlineKeyboardButton("20", callback_data="onboarding:pace:20"),
-                ]]
-            ),
+            "Шаг 2 из 2. Сколько карточек удобно проходить в день?",
+            reply_markup=onboarding_pace_keyboard(),
         )
         return
     if len(parts) == 3 and parts[1] == "pace" and parts[2] in {"5", "10", "20"}:
@@ -1091,7 +1156,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
         )
         await query.edit_message_text(
-            f"Готово. Подключён набор «{pack.title}». Начни с темы и первого блока."
+            f"Готово ✨ Подключён набор «{pack.title}». "
+            "Первый урок уже ждёт тебя."
         )
         await send_start_message(
             query.message,
@@ -1105,16 +1171,40 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def start_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
+            [InlineKeyboardButton(
+                "▶️ Урок на сегодня", callback_data="start:daily"
+            )],
             [
-                InlineKeyboardButton("Начать обучение", callback_data="start:learn"),
-                InlineKeyboardButton("Выбрать язык", callback_data="start:lang"),
+                InlineKeyboardButton("🔁 Повторить", callback_data="start:review"),
+                InlineKeyboardButton("📚 Темы", callback_data="start:topics"),
             ],
             [
-                InlineKeyboardButton("Мой прогресс", callback_data="start:stats"),
-                InlineKeyboardButton("Как это работает", callback_data="start:about"),
+                InlineKeyboardButton("📊 Прогресс", callback_data="start:stats"),
+                InlineKeyboardButton("⚙️ Настройки", callback_data="start:settings"),
             ],
         ]
     )
+
+
+def settings_keyboard(product: dict) -> InlineKeyboardMarkup:
+    current_pack_id = PROGRESS.get("active_pack_id")
+    language_rows = []
+    for pack in visible_packs():
+        marker = " ✓" if pack.pack_id == current_pack_id else ""
+        language_rows.append([
+            InlineKeyboardButton(
+                f"{pack.label}{marker}", callback_data=f"lang:{pack.pack_id}"
+            )
+        ])
+    pace = int(product.get("daily_word_goal") or 10)
+    pace_row = [
+        InlineKeyboardButton(
+            f"{count}{' ✓' if count == pace else ''}",
+            callback_data=f"settings:pace:{count}",
+        )
+        for count in (5, 10, 20)
+    ]
+    return InlineKeyboardMarkup(language_rows + [pace_row])
 
 
 async def send_start_message(message, context, *, first_name: str | None) -> None:
@@ -1248,7 +1338,13 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     action = query.data.split(":", 1)[1]
     chat_id = query.message.chat_id
-    if action == "learn":
+    if action in {"daily"}:
+        await start_home_lesson(query, context, lesson_kind="daily")
+        return
+    if action == "review":
+        await start_home_lesson(query, context, lesson_kind="review")
+        return
+    if action in {"topics", "learn"}:
         invalidate_block_session(context.user_data)
         pack = active_content_pack()
         context.user_data["block_lang"] = pack.target_language
@@ -1260,12 +1356,19 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="Markdown",
         )
         return
-    if action == "lang":
+    if action in {"settings", "lang"}:
         current = active_content_pack()
+        runtime = _ACTIVE_RUNTIME.get()
+        product = runtime.store.product_profile(runtime.user_id)
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"Текущий набор: *{current.title}*\n\nВыбери язык:",
-            reply_markup=language_picker_keyboard(),
+            text=(
+                f"⚙️ *Настройки*\n\n"
+                f"Язык: *{current.title}*\n"
+                f"Карточек в уроке: *{product['daily_word_goal']}*\n\n"
+                "Выбери язык или ритм:"
+            ),
+            reply_markup=settings_keyboard(product),
             parse_mode="Markdown",
         )
         return
@@ -1281,18 +1384,47 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=chat_id,
             text=(
                 "Как проходит обучение\n\n"
-                "1. Выбери язык и тему.\n"
-                "2. Изучи связанный блок из 10 слов.\n"
-                "3. Открой каждое слово: сначала русский смысл, затем написание, "
-                "латинская транскрипция и голосовое произношение.\n"
-                "4. Закрепи именно этот блок тестом с четырьмя вариантами "
-                "или письменным режимом.\n"
-                "5. Возвращайся к словам, которые бот поставил на повторение."
+                "1. Нажми «Урок на сегодня».\n"
+                "2. Вспомни значение слова и открой карточку.\n"
+                "3. Отметь «Знаю» или «Не знаю».\n"
+                "4. Бот сохранит ответ и сам назначит повторение."
             ),
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("Начать обучение", callback_data="start:learn")]]
+                [[InlineKeyboardButton("▶️ Начать урок", callback_data="start:daily")]]
             ),
         )
+
+
+@auth
+async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    try:
+        _, setting, value = query.data.split(":")
+    except ValueError:
+        await query.answer("Настройка устарела.", show_alert=True)
+        return
+    if setting != "pace" or value not in {"5", "10", "20"}:
+        await query.answer("Настройка недоступна.", show_alert=True)
+        return
+    await query.answer("Ритм сохранён")
+    runtime = _ACTIVE_RUNTIME.get()
+    product = runtime.store.update_product_profile(
+        runtime.user_id, daily_word_goal=int(value)
+    )
+    record_product_event(
+        "daily_goal_updated", properties={"daily_word_goal": int(value)}
+    )
+    current = active_content_pack()
+    await query.edit_message_text(
+        (
+            f"⚙️ *Настройки*\n\n"
+            f"Язык: *{current.title}*\n"
+            f"Карточек в уроке: *{product['daily_word_goal']}*\n\n"
+            "Выбери язык или ритм:"
+        ),
+        reply_markup=settings_keyboard(product),
+        parse_mode="Markdown",
+    )
 
 
 def active_tutor_context(user_data: dict) -> TutorContext | None:
@@ -2265,7 +2397,7 @@ async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
 
     await update.message.reply_text(
-        f"{format_word_label(idx)}\n\nChoose the correct translation:",
+        f"{format_word_label(idx)}\n\nВыбери правильный перевод:",
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode="Markdown"
     )
@@ -2290,7 +2422,7 @@ async def quiz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = f"❌ Ошибка!\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
 
     next_btn = InlineKeyboardMarkup([
-        [forvo_button(idx), InlineKeyboardButton("Next ➡️", callback_data="next_quiz")]
+        [forvo_button(idx), InlineKeyboardButton("Дальше ➡️", callback_data="next_quiz")]
     ])
     await query.edit_message_text(text, reply_markup=next_btn, parse_mode="Markdown")
     await send_pronunciation(query.message.chat_id, idx, context)
@@ -2340,7 +2472,7 @@ async def cmd_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["type_idx"] = idx
     word = W()[idx]
     await update.message.reply_text(
-        f"{format_word_label(idx)}\n\nType the Russian translation:",
+        f"{format_word_label(idx)}\n\nНапиши перевод по-русски:",
         parse_mode="Markdown"
     )
     await send_pronunciation(update.message.chat_id, idx, context)
@@ -2422,7 +2554,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data["type_idx"] = None
 
     next_btn = InlineKeyboardMarkup([
-        [forvo_button(idx), InlineKeyboardButton("Next ➡️", callback_data="next_type")]
+        [forvo_button(idx), InlineKeyboardButton("Дальше ➡️", callback_data="next_type")]
     ])
     await update.message.reply_text(text, reply_markup=next_btn, parse_mode="Markdown")
     await send_pronunciation(update.message.chat_id, idx, context)
@@ -2437,7 +2569,7 @@ async def next_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["type_idx"] = idx
     word = W()[idx]
     await query.edit_message_text(
-        f"{format_word_label(idx)}\n\nType the Russian translation:",
+        f"{format_word_label(idx)}\n\nНапиши перевод по-русски:",
         parse_mode="Markdown"
     )
     await send_pronunciation(query.message.chat_id, idx, context)
@@ -2449,7 +2581,7 @@ async def cmd_flash(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     word = W()[idx]
     btn = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Show translation 👁", callback_data=f"flash_show:{idx}")]]
+        [[InlineKeyboardButton("👁 Показать значение", callback_data=f"flash_show:{idx}")]]
     )
     await update.message.reply_text(
         f"{format_word_label(idx)}",
@@ -2469,8 +2601,8 @@ async def flash_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
     buttons = InlineKeyboardMarkup([
         [forvo_button(idx)],
         [
-            InlineKeyboardButton("✅ Knew it", callback_data=f"flash_knew:{idx}"),
-            InlineKeyboardButton("❌ Didn't know", callback_data=f"flash_didnt:{idx}"),
+            InlineKeyboardButton("😵 Не знаю", callback_data=f"flash_didnt:{idx}"),
+            InlineKeyboardButton("✅ Знаю", callback_data=f"flash_knew:{idx}"),
         ]
     ])
     await query.edit_message_text(
@@ -2491,10 +2623,10 @@ async def flash_knew(update: Update, context: ContextTypes.DEFAULT_TYPE):
     new_idx = pick_word(exclude_idx=idx)
     word = W()[new_idx]
     btn = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Show translation 👁", callback_data=f"flash_show:{new_idx}")]]
+        [[InlineKeyboardButton("👁 Показать значение", callback_data=f"flash_show:{new_idx}")]]
     )
     await query.edit_message_text(
-        f"✅ Got it! {format_xp_line(xp, sb)}\n\n{format_word_label(new_idx)}",
+        f"✅ Отлично! {format_xp_line(xp, sb)}\n\n{format_word_label(new_idx)}",
         reply_markup=btn,
         parse_mode="Markdown"
     )
@@ -2510,10 +2642,10 @@ async def flash_didnt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     new_idx = pick_word(exclude_idx=idx)
     word = W()[new_idx]
     btn = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("Show translation 👁", callback_data=f"flash_show:{new_idx}")]]
+        [[InlineKeyboardButton("👁 Показать значение", callback_data=f"flash_show:{new_idx}")]]
     )
     await query.edit_message_text(
-        f"❌ Will repeat! {format_xp_line(xp, sb)}\n\n{format_word_label(new_idx)}",
+        f"🔁 Ещё повторим! {format_xp_line(xp, sb)}\n\n{format_word_label(new_idx)}",
         reply_markup=btn,
         parse_mode="Markdown"
     )
@@ -2552,16 +2684,16 @@ def format_stats_text() -> str:
     lvl, title, next_xp = get_level(PROGRESS["xp"])
     xp_line = f"{PROGRESS['xp']} XP"
     if next_xp:
-        xp_line += f" ({next_xp - PROGRESS['xp']} to Lv.{lvl + 1})"
+        xp_line += f" ({next_xp - PROGRESS['xp']} до уровня {lvl + 1})"
     streak = PROGRESS.get("streak", 0)
     streak_best = PROGRESS.get("streak_best", 0)
     today_xp = PROGRESS.get("today_xp", 0)
 
     return (
         f"📊 *Статистика* ({active_content_pack().label})\n\n"
-        f"📈 *Lv.{lvl} {title}* — {xp_line}\n"
-        f"🔥 Streak: {streak} дн. (рекорд: {streak_best})\n"
-        f"💰 Сегодня: +{today_xp} XP\n\n"
+        f"📈 *Уровень {lvl} · {title}* — {xp_line}\n"
+        f"🔥 Серия: {streak} дн. (рекорд: {streak_best})\n"
+        f"⭐ Сегодня: +{today_xp} XP\n\n"
         f"📚 Слов: {total} | Изучено: {seen} | Выучено (3+): {learned}\n"
         f"⏰ На повторение: {overdue}\n\n"
         f"✅ Правильных: {tc} | ❌ Ошибок: {tw}\n"
@@ -2801,6 +2933,100 @@ def pick_block(
     return pool[:size]
 
 
+def due_word_indices(size: int = 20) -> list[int]:
+    """Return words whose spaced-repetition date has arrived."""
+    now = datetime.now().isoformat()
+    due = [
+        (index, word["next_review"])
+        for index, word in enumerate(W())
+        if word.get("next_review") and word["next_review"] <= now
+    ]
+    due.sort(key=lambda item: item[1])
+    return [index for index, _ in due[:size]]
+
+
+def daily_lesson_size() -> int:
+    runtime = _ACTIVE_RUNTIME.get()
+    if runtime is None:
+        return 5
+    product = runtime.store.product_profile(runtime.user_id)
+    size = int(product.get("daily_word_goal") or 5)
+    return size if size in {5, 10, 20} else 5
+
+
+async def start_home_lesson(query, context, *, lesson_kind: str) -> None:
+    """Start the primary daily or due-only lesson from the home screen."""
+    invalidate_block_session(context.user_data)
+    pack = active_content_pack()
+    size = daily_lesson_size()
+    if lesson_kind == "review":
+        indices = due_word_indices(size)
+        if not indices:
+            record_product_event(
+                "review_empty",
+                properties={
+                    "pack_id": pack.pack_id,
+                    "language": pack.target_language,
+                },
+            )
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text=(
+                    "🎉 На сегодня всё повторено.\n\n"
+                    "Можно пройти новый урок — бот сам добавит свежие слова."
+                ),
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton(
+                        "▶️ Начать новый урок", callback_data="start:daily"
+                    )
+                ]]),
+            )
+            return
+    else:
+        indices = pick_block(size=size)
+    if not indices:
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text="В этом наборе пока нет доступных слов.",
+        )
+        return
+
+    reset_block_state(
+        context.user_data,
+        indices,
+        pack.target_language,
+        None,
+        pack.pack_id,
+        lesson_kind=lesson_kind,
+    )
+    start_block_attempt(context.user_data, "flash")
+    event_properties = {
+        "pack_id": pack.pack_id,
+        "language": pack.target_language,
+        "lesson_kind": lesson_kind,
+        "word_count": len(indices),
+    }
+    record_product_event(
+        "lesson_started",
+        properties=event_properties,
+        session_id=context.user_data["block_session"],
+        source="home",
+    )
+    record_product_event(
+        "block_started",
+        properties={**event_properties, "topic": "all"},
+        session_id=context.user_data["block_session"],
+        source="home",
+    )
+    record_product_event(
+        "block_mode_started",
+        properties={**event_properties, "mode": "flash"},
+        session_id=context.user_data["block_session"],
+        source="home",
+    )
+    await block_send_question_msg(query.message, context)
+
+
 def format_study_list(indices: list[int]) -> str:
     lines = []
     pack = active_content_pack()
@@ -2839,7 +3065,10 @@ def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardM
         )
         for topic, count in counts.items()
     ]
-    rows.extend([button] for button in topic_buttons)
+    rows.extend(
+        topic_buttons[index:index + 2]
+        for index in range(0, len(topic_buttons), 2)
+    )
     return InlineKeyboardMarkup(rows)
 
 
@@ -2871,6 +3100,8 @@ def reset_block_state(
     lang: str,
     topic: str | None,
     pack_id: str | None = None,
+    *,
+    lesson_kind: str | None = None,
 ):
     user_data["block_all_indices"] = list(indices)
     user_data["block_indices"] = list(indices)
@@ -2890,6 +3121,8 @@ def reset_block_state(
     user_data["block_topic"] = topic
     user_data["block_session"] = new_block_session_id()
     user_data["block_completion_tracked"] = False
+    user_data["lesson_kind"] = lesson_kind
+    user_data["lesson_completion_tracked"] = False
 
 
 def start_block_attempt(user_data: dict, mode: str, indices: list[int] | None = None):
@@ -2976,6 +3209,26 @@ def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup
         callback_data = f"bquiz:{session_id}:{idx}:{is_right}"
         buttons.append([InlineKeyboardButton(option, callback_data=callback_data)])
     return InlineKeyboardMarkup(buttons)
+
+
+def card_event_properties(user_data: dict, idx: int) -> dict:
+    return {
+        "pack_id": active_content_pack().pack_id,
+        "language": PROGRESS["active_lang"],
+        "lesson_kind": user_data.get("lesson_kind") or "topic_block",
+        "mode": user_data.get("block_mode") or "unknown",
+        "position": int(user_data.get("block_pos", 0)) + 1,
+        "word_count": len(user_data.get("block_indices", [])),
+        "word_index": idx,
+    }
+
+
+def track_card_shown(user_data: dict, idx: int) -> None:
+    record_product_event(
+        "card_shown",
+        properties=card_event_properties(user_data, idx),
+        session_id=user_data.get("block_session"),
+    )
 
 
 def format_block_intro(indices: list[int], topic: str | None) -> str:
@@ -3205,6 +3458,7 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
     idx = indices[pos]
     mode = ud["block_mode"]
     progress_text = f"({pos + 1}/{len(indices)})"
+    track_card_shown(ud, idx)
 
     if mode == "quiz":
         await query.edit_message_text(
@@ -3227,12 +3481,12 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
         session_id = ud["block_session"]
         btn = InlineKeyboardMarkup(
             [[InlineKeyboardButton(
-                "Показать 👁",
+                "👁 Показать значение",
                 callback_data=f"bflash_show:{session_id}:{idx}",
             )]]
         )
         await query.edit_message_text(
-            f"{progress_text} {format_word_label(idx)}",
+            format_learning_card_front(ud, idx),
             reply_markup=btn,
             parse_mode="Markdown"
         )
@@ -3271,7 +3525,7 @@ async def block_advance(query_or_msg, context: ContextTypes.DEFAULT_TYPE, idx: i
 
 
 async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
-    """Send next block question as a new message (for type mode)."""
+    """Send a block question as a new message."""
     ud = context.user_data
     activate_block_language(ud)
     indices = ud["block_indices"]
@@ -3284,6 +3538,7 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
     idx = indices[pos]
     mode = ud["block_mode"]
     progress_text = f"({pos + 1}/{len(indices)})"
+    track_card_shown(ud, idx)
 
     if mode == "quiz":
         await message.reply_text(
@@ -3306,12 +3561,12 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
         session_id = ud["block_session"]
         btn = InlineKeyboardMarkup(
             [[InlineKeyboardButton(
-                "Показать 👁",
+                "👁 Показать значение",
                 callback_data=f"bflash_show:{session_id}:{idx}",
             )]]
         )
         await message.reply_text(
-            f"{progress_text} {format_word_label(idx)}",
+            format_learning_card_front(ud, idx),
             reply_markup=btn,
             parse_mode="Markdown"
         )
@@ -3346,12 +3601,12 @@ def format_block_summary(ud) -> str:
     else:
         text += "\n\n🎉 Без ошибок!"
 
-    text += f"\n\n💰 +{xp_earned} XP за блок | Всего: {PROGRESS['xp']} XP"
-    text += f"\n📈 Lv.{lvl} {title}"
+    text += f"\n\n⭐ +{xp_earned} XP за урок | Всего: {PROGRESS['xp']} XP"
+    text += f"\n📈 Уровень {lvl} · {title}"
     if next_xp:
-        text += f" ({next_xp - PROGRESS['xp']} XP до след.)"
+        text += f" ({next_xp - PROGRESS['xp']} XP до следующего)"
     if PROGRESS["streak"] > 0:
-        text += f"\n🔥 Streak: {PROGRESS['streak']} дн."
+        text += f"\n🔥 Серия: {PROGRESS['streak']} дн."
     return text
 
 
@@ -3373,37 +3628,70 @@ def track_block_completion(user_data: dict) -> None:
     )
 
 
+def track_lesson_completion(user_data: dict) -> None:
+    lesson_kind = user_data.get("lesson_kind")
+    if not lesson_kind or user_data.get("lesson_completion_tracked"):
+        return
+    user_data["lesson_completion_tracked"] = True
+    record_product_event(
+        "lesson_completed",
+        properties={
+            "pack_id": active_content_pack().pack_id,
+            "language": PROGRESS["active_lang"],
+            "lesson_kind": lesson_kind,
+            "word_count": len(user_data.get("block_indices", [])),
+            "correct_count": user_data.get("block_correct", 0),
+            "wrong_count": len(user_data.get("block_wrong", [])),
+        },
+        session_id=user_data.get("block_session"),
+    )
+
+
+def build_block_summary_keyboard(user_data: dict) -> InlineKeyboardMarkup:
+    rows = []
+    session_id = user_data["block_session"]
+    if user_data["block_wrong"]:
+        rows.append([InlineKeyboardButton(
+            "🔄 Повторить ошибки", callback_data=f"bretry:{session_id}"
+        )])
+    if AI_SETTINGS.enabled:
+        rows.append([
+            InlineKeyboardButton("✨ AI-репетитор", callback_data=f"bai:{session_id}")
+        ])
+    if VOICE_SETTINGS.enabled:
+        rows.append([
+            InlineKeyboardButton(
+                "🗣 Произношение", callback_data=f"bvoice:{session_id}"
+            ),
+            InlineKeyboardButton(
+                "💬 Фразы", callback_data=f"bconversation:{session_id}"
+            ),
+        ])
+    if user_data.get("lesson_kind"):
+        rows.append([InlineKeyboardButton(
+            "▶️ Ещё урок", callback_data="start:daily"
+        )])
+        rows.append([
+            InlineKeyboardButton("📚 Темы", callback_data=f"btopics:{session_id}"),
+            InlineKeyboardButton("⚙️ Настройки", callback_data="start:settings"),
+        ])
+    else:
+        rows.append([
+            InlineKeyboardButton("➡️ Следующий блок", callback_data=f"bnext:{session_id}"),
+            InlineKeyboardButton("📚 Темы", callback_data=f"btopics:{session_id}"),
+        ])
+    return InlineKeyboardMarkup(rows)
+
+
 async def block_summary(query, context: ContextTypes.DEFAULT_TYPE):
     ud = context.user_data
     activate_block_language(ud)
     text = format_block_summary(ud)
     track_block_completion(ud)
-    rows = []
-    session_id = ud["block_session"]
-    if ud["block_wrong"]:
-        rows.append([InlineKeyboardButton(
-            "Повторить ошибки 🔄", callback_data=f"bretry:{session_id}"
-        )])
-    if AI_SETTINGS.enabled:
-        rows.append([
-            InlineKeyboardButton("AI-репетитор", callback_data=f"bai:{session_id}")
-        ])
-    if VOICE_SETTINGS.enabled:
-        rows.append([
-            InlineKeyboardButton(
-                "Произношение", callback_data=f"bvoice:{session_id}"
-            ),
-            InlineKeyboardButton(
-                "Фразы", callback_data=f"bconversation:{session_id}"
-            ),
-        ])
-    rows.append([
-        InlineKeyboardButton("Следующий блок ➡️", callback_data=f"bnext:{session_id}"),
-        InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}"),
-    ])
+    track_lesson_completion(ud)
     await query.edit_message_text(
         text,
-        reply_markup=InlineKeyboardMarkup(rows),
+        reply_markup=build_block_summary_keyboard(ud),
         parse_mode="Markdown"
     )
 
@@ -3413,25 +3701,12 @@ async def block_summary_msg(message, context: ContextTypes.DEFAULT_TYPE):
     activate_block_language(ud)
     text = format_block_summary(ud)
     track_block_completion(ud)
-    rows = []
-    session_id = ud["block_session"]
-    if ud["block_wrong"]:
-        rows.append([InlineKeyboardButton(
-            "Повторить ошибки 🔄", callback_data=f"bretry:{session_id}"
-        )])
-    if AI_SETTINGS.enabled:
-        rows.append([
-            InlineKeyboardButton("AI-репетитор", callback_data=f"bai:{session_id}")
-        ])
-    rows.append([
-        InlineKeyboardButton("Следующий блок ➡️", callback_data=f"bnext:{session_id}"),
-        InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}"),
-    ])
+    track_lesson_completion(ud)
     ud["block_typing"] = False
     ud["type_idx"] = None
     await message.reply_text(
         text,
-        reply_markup=InlineKeyboardMarkup(rows),
+        reply_markup=build_block_summary_keyboard(ud),
         parse_mode="Markdown"
     )
 
@@ -3477,22 +3752,58 @@ async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
         current_idx=idx,
     ):
         return
-    activate_block_language(context.user_data)
+    user_data = context.user_data
+    activate_block_language(user_data)
+    record_product_event(
+        "card_revealed",
+        properties=card_event_properties(user_data, idx),
+        session_id=session_id,
+    )
     buttons = InlineKeyboardMarkup([
-        [forvo_button(idx)],
         [
             InlineKeyboardButton(
-                "Знал ✅", callback_data=f"bflash_knew:{session_id}:{idx}"
+                "🔊 Слушать ещё", callback_data=f"bplay:{session_id}:{idx}"
+            ),
+            forvo_button(idx),
+        ],
+        [
+            InlineKeyboardButton(
+                "😵 Не знаю", callback_data=f"bflash_didnt:{session_id}:{idx}"
             ),
             InlineKeyboardButton(
-                "Не знал ❌", callback_data=f"bflash_didnt:{session_id}:{idx}"
+                "✅ Знаю", callback_data=f"bflash_knew:{session_id}:{idx}"
             ),
         ]
     ])
     await query.edit_message_text(
-        format_word_details(idx),
+        format_learning_card_back(user_data, idx),
         reply_markup=buttons,
         parse_mode="Markdown"
+    )
+
+
+@auth
+async def block_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    try:
+        _, session_id, idx_text = query.data.split(":")
+        idx = int(idx_text)
+    except ValueError:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(
+        query,
+        context.user_data,
+        session_id,
+        mode="flash",
+        current_idx=idx,
+    ):
+        return
+    activate_block_language(context.user_data)
+    record_product_event(
+        "card_audio_replayed",
+        properties=card_event_properties(context.user_data, idx),
+        session_id=session_id,
     )
     await send_pronunciation(query.message.chat_id, idx, context)
 
@@ -3516,6 +3827,14 @@ async def block_flash_rate_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
     ):
         return
     correct = action == "bflash_knew"
+    record_product_event(
+        "card_rated",
+        properties={
+            **card_event_properties(context.user_data, idx),
+            "rating": "known" if correct else "unknown",
+        },
+        session_id=session_id,
+    )
     await block_advance(query, context, idx, correct)
 
 
@@ -3594,9 +3913,9 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def build_bot_commands(*, ai_enabled: bool) -> list[BotCommand]:
     """Return a stable, compact command menu; legacy handlers stay callable."""
     commands = [
-        BotCommand("start", "Главное меню"),
-        BotCommand("learn", "Блок: тест или письменно"),
-        BotCommand("lang", "Выбрать язык"),
+        BotCommand("start", "Урок на сегодня"),
+        BotCommand("learn", "Выбрать тему"),
+        BotCommand("lang", "Сменить язык"),
         BotCommand("stats", "Мой прогресс"),
     ]
     if ai_enabled:
@@ -3764,6 +4083,7 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(buy_product_cb, pattern=r"^buy:"))
     app.add_handler(CallbackQueryHandler(subscription_cb, pattern=r"^sub:"))
     app.add_handler(CallbackQueryHandler(privacy_cb, pattern=r"^privacy:"))
+    app.add_handler(CallbackQueryHandler(settings_cb, pattern=r"^settings:"))
 
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))
@@ -3786,6 +4106,7 @@ async def manual_polling():
     )
     app.add_handler(CallbackQueryHandler(block_mode_cb, pattern=r"^bmode:"))
     app.add_handler(CallbackQueryHandler(block_quiz_cb, pattern=r"^bquiz:"))
+    app.add_handler(CallbackQueryHandler(block_play_cb, pattern=r"^bplay:"))
     app.add_handler(CallbackQueryHandler(block_flash_show_cb, pattern=r"^bflash_show:"))
     app.add_handler(CallbackQueryHandler(block_flash_rate_cb, pattern=r"^bflash_knew:"))
     app.add_handler(CallbackQueryHandler(block_flash_rate_cb, pattern=r"^bflash_didnt:"))
@@ -3806,8 +4127,8 @@ async def manual_polling():
 
     # Language switch via persistent keyboard buttons
     app.add_handler(MessageHandler(
-        filters.TEXT & filters.Regex(r"^(🇬🇧 English|🇻🇳 Tiếng Việt|🇯🇵 日本語)$"),
-        handle_lang_switch
+        filters.TEXT & filters.Regex(PACK_SWITCH_PATTERN),
+        handle_lang_switch,
     ))
 
     # Text handler for type-in mode (must be last)
