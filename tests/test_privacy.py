@@ -18,6 +18,7 @@ from mydictionary.storage import (
     AnalyticsEvent,
     BillingCreditLedger,
     DatabaseStore,
+    TelegramNotification,
     User,
     UserConsent,
     UserProgress,
@@ -144,6 +145,15 @@ class PrivacyTest(unittest.TestCase):
         )
         with self.store.Session.begin() as session:
             session.add(
+                TelegramNotification(
+                    notification_id="privacy-notification",
+                    telegram_user_id=self.user_id,
+                    kind="pilot_access_approved",
+                    status="pending",
+                    idempotency_key="privacy-notification",
+                )
+            )
+            session.add(
                 BillingCreditLedger(
                     entry_id="financial-entry",
                     telegram_user_id=self.user_id,
@@ -171,6 +181,9 @@ class PrivacyTest(unittest.TestCase):
             self.assertEqual(user.access_status, "blocked")
             self.assertIsNone(user.username)
             self.assertIsNone(session.get(UserProgress, self.user_id))
+            self.assertIsNone(
+                session.get(TelegramNotification, "privacy-notification")
+            )
             self.assertEqual(
                 session.scalar(
                     select(func.count()).select_from(BillingCreditLedger)

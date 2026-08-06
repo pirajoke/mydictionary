@@ -3643,6 +3643,67 @@ async def sync_telegram_profile(telegram_bot) -> None:
             )
 
 
+TELEGRAM_NOTIFICATION_TEXTS = {
+    "pilot_access_approved": (
+        "Доступ к бесплатному пилоту MY DICTIONARY открыт. "
+        "Отправь /start, выбери язык и начни первый блок."
+    )
+}
+
+
+def _notification_retry_seconds(exc: Exception, attempts: int) -> int:
+    retry_after = getattr(exc, "retry_after", None)
+    if isinstance(retry_after, timedelta):
+        return max(1, min(int(retry_after.total_seconds()) + 1, 3600))
+    if isinstance(retry_after, (int, float)):
+        return max(1, min(int(retry_after) + 1, 3600))
+    return min(30 * (2 ** max(0, int(attempts) - 1)), 3600)
+
+
+async def deliver_telegram_notifications(
+    telegram_bot,
+    store: DatabaseStore,
+    *,
+    limit: int = 10,
+) -> int:
+    """Deliver one leased outbox batch without exposing recipient data in logs."""
+    claim = getattr(store, "claim_telegram_notifications", None)
+    if not callable(claim):
+        return 0
+    notifications = claim(limit=limit)
+    delivered = 0
+    for notification in notifications:
+        notification_id = notification["notification_id"]
+        profile = store.access_profile(notification["telegram_user_id"])
+        text = TELEGRAM_NOTIFICATION_TEXTS.get(notification["kind"])
+        if not profile or profile["access_status"] != "active" or not text:
+            store.cancel_telegram_notification(notification_id)
+            continue
+        try:
+            await telegram_bot.send_message(
+                chat_id=notification["telegram_user_id"],
+                text=text,
+            )
+        except Exception as exc:
+            status = store.retry_telegram_notification(
+                notification_id,
+                error_code=type(exc).__name__,
+                retry_seconds=_notification_retry_seconds(
+                    exc, notification["attempts"]
+                ),
+            )
+            logger.warning(
+                "Telegram notification delivery deferred: "
+                "error_type=%s status=%s",
+                type(exc).__name__,
+                status,
+            )
+        else:
+            if store.complete_telegram_notification(notification_id):
+                delivered += 1
+    return delivered
+
+
 async def manual_polling():
     """Manual polling loop that handles Conflict gracefully."""
     BOT_HEARTBEAT.mark_starting()
@@ -3772,6 +3833,21 @@ async def manual_polling():
                 for update in updates:
                     offset = update.update_id + 1
                     await app.process_update(update)
+                try:
+                    delivered = await deliver_telegram_notifications(
+                        app.bot,
+                        store,
+                    )
+                    if delivered:
+                        logger.info(
+                            "Telegram notifications delivered: count=%s",
+                            delivered,
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "Telegram notification delivery skipped: error_type=%s",
+                        type(exc).__name__,
+                    )
             except Conflict:
                 BOT_HEARTBEAT.mark_starting()
                 logger.warning("Conflict — another instance polling. Waiting 30s...")

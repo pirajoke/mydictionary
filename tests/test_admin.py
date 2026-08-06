@@ -16,7 +16,11 @@ from mydictionary.storage import (
     AIUsage,
     BillingCreditLedger,
     AdminAuditLog,
+    AnalyticsEvent,
     DatabaseStore,
+    TelegramNotification,
+    User,
+    UserProgress,
 )
 
 
@@ -112,6 +116,7 @@ class AdminConsoleTest(unittest.TestCase):
         for tab in (
             "dashboard",
             "users",
+            "pilot",
             "funnel",
             "learning",
             "ai",
@@ -255,7 +260,20 @@ class AdminConsoleTest(unittest.TestCase):
                     AdminAuditLog.action == "user_access_updated"
                 )
             ).scalar_one()
+            access_event = database_session.execute(
+                select(AnalyticsEvent).where(
+                    AnalyticsEvent.telegram_user_id == user_id,
+                    AnalyticsEvent.event_name == "pilot_access_approved",
+                )
+            ).scalar_one()
+            notification = database_session.execute(
+                select(TelegramNotification).where(
+                    TelegramNotification.telegram_user_id == user_id
+                )
+            ).scalar_one()
         self.assertEqual(audit.target_id, str(user_id))
+        self.assertEqual(access_event.source, "admin")
+        self.assertEqual(notification.status, "pending")
         self.assertEqual(
             json.loads(audit.details_json),
             {"previous": "pending", "current": "active"},
@@ -284,7 +302,119 @@ class AdminConsoleTest(unittest.TestCase):
                     AdminAuditLog.action == "user_access_updated"
                 )
             ).scalars().all()
+            events = database_session.execute(
+                select(AnalyticsEvent.event_name).where(
+                    AnalyticsEvent.telegram_user_id == user_id
+                )
+            ).scalars().all()
+            notification = database_session.execute(
+                select(TelegramNotification).where(
+                    TelegramNotification.telegram_user_id == user_id
+                )
+            ).scalar_one()
         self.assertEqual(len(audits), 2)
+        self.assertEqual(
+            events,
+            ["pilot_access_approved", "pilot_access_blocked"],
+        )
+        self.assertEqual(notification.status, "cancelled")
+
+    def test_pilot_dashboard_tracks_funnel_retention_and_stage_filters(self):
+        user_id = 5510
+        now = datetime.now(timezone.utc)
+        joined_at = now - timedelta(days=8, hours=2)
+        self.store.ensure_user(
+            SimpleNamespace(
+                id=user_id,
+                username="pilot_student",
+                first_name="Pilot",
+                last_name=None,
+                language_code="ru",
+            )
+        )
+        waitlist_id = self.store.record_event(
+            user_id,
+            "pilot_waitlist_joined",
+            source="referral",
+        )
+        AdminStore(self.store).set_user_access_status(
+            user_id,
+            status="active",
+            actor="owner",
+        )
+        onboarding_id = self.store.record_event(
+            user_id, "onboarding_completed"
+        )
+        block_started_id = self.store.record_event(user_id, "block_started")
+        block_completed_id = self.store.record_event(
+            user_id, "block_completed"
+        )
+        d7_activity_id = self.store.record_event(
+            user_id, "language_switched"
+        )
+        with self.store.Session.begin() as session:
+            session.get(AnalyticsEvent, waitlist_id).occurred_at = joined_at
+            session.get(AnalyticsEvent, onboarding_id).occurred_at = (
+                joined_at + timedelta(hours=1)
+            )
+            session.get(AnalyticsEvent, block_started_id).occurred_at = (
+                joined_at + timedelta(days=1, hours=1)
+            )
+            session.get(AnalyticsEvent, block_completed_id).occurred_at = (
+                joined_at + timedelta(days=1, hours=2)
+            )
+            session.get(AnalyticsEvent, d7_activity_id).occurred_at = (
+                joined_at + timedelta(days=7, hours=1)
+            )
+            user = session.get(User, user_id)
+            user.acquisition_source = "referral"
+            user.onboarding_completed_at = joined_at + timedelta(hours=1)
+            progress = session.get(UserProgress, user_id)
+            progress.active_lang = "fr"
+            progress.sessions = 1
+
+        admin_store = AdminStore(self.store)
+        pilot = admin_store.pilot_overview(days=30)
+        stages = {stage["event_name"]: stage for stage in pilot["stages"]}
+        self.assertEqual(pilot["cohort"], 1)
+        self.assertTrue(all(stage["users"] == 1 for stage in stages.values()))
+        self.assertEqual(pilot["retention"]["d1"]["rate"], 100)
+        self.assertEqual(pilot["retention"]["d7"]["rate"], 100)
+        self.assertEqual(pilot["sources"], [{"source": "referral", "users": 1}])
+        self.assertEqual(pilot["languages"], [{"language": "fr", "users": 1}])
+        self.assertEqual(
+            [user["id"] for user in admin_store.pilot_users(stage="engaged")],
+            [user_id],
+        )
+        self.assertEqual(admin_store.pilot_users(stage="pending"), [])
+
+        legacy_user_id = 5511
+        self.store.ensure_user_id(legacy_user_id)
+        self.store.record_event(legacy_user_id, "pilot_waitlist_joined")
+        admin_store.set_user_access_status(
+            legacy_user_id,
+            status="active",
+            actor="owner",
+        )
+        with self.store.Session.begin() as session:
+            legacy_user = session.get(User, legacy_user_id)
+            legacy_user.onboarding_completed_at = joined_at
+            legacy_progress = session.get(UserProgress, legacy_user_id)
+            legacy_progress.sessions = 9
+        self.assertEqual(
+            [
+                user["id"]
+                for user in admin_store.pilot_users(stage="first_block")
+            ],
+            [legacy_user_id],
+        )
+
+        self.login()
+        page = self.client.get(
+            "/admin?tab=pilot&pilot_stage=engaged"
+        ).get_data(as_text=True)
+        self.assertIn("Воронка когорты", page)
+        self.assertIn("pilot_student", page)
 
     def test_administrator_access_cannot_be_restricted(self):
         user_id = 5503

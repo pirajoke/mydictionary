@@ -14,7 +14,7 @@
       </a>
       <nav aria-label="Разделы">
         {% for id, label in [
-          ('dashboard','Обзор'),('users','Пользователи'),('funnel','Воронка'),('learning','Обучение'),
+          ('dashboard','Обзор'),('users','Пользователи'),('pilot','Пилот'),('funnel','Воронка'),('learning','Обучение'),
           ('ai','AI и кредиты'),('billing','Stars и платежи'),('voice','Голос'),('safety','Безопасность'),('content','Контент'),('profile','Профиль бота'),
           ('diagnostics','Диагностика'),('audit','Аудит')
         ] %}
@@ -30,7 +30,7 @@
     <main class="workspace">
       <header class="topbar">
         <div><p class="eyebrow">MY DICTIONARY</p><h1>{{ {
-          'dashboard':'Обзор продукта','users':'Пользователи','funnel':'Продуктовая воронка','learning':'Обучение',
+          'dashboard':'Обзор продукта','users':'Пользователи','pilot':'Управление пилотом','funnel':'Продуктовая воронка','learning':'Обучение',
           'ai':'AI и кредиты','billing':'Stars и платежи','voice':'Голосовая практика','safety':'Безопасность продукта','content':'Словари и темы','profile':'Профиль бота',
           'diagnostics':'Диагностика','audit':'Журнал аудита'
         }[tab] }}</h1></div>
@@ -74,6 +74,45 @@
         <section class="panel">
           <div class="section-heading"><div><p class="eyebrow">Последние</p><h2>Пользователи</h2></div><a href="{{ url_for('admin_index', tab='users') }}">Открыть список</a></div>
           {% set compact = true %}{% include 'admin/users_table.html' %}
+        </section>
+      {% endif %}
+
+      {% if tab == 'pilot' %}
+        <section class="metric-grid" aria-label="Показатели пилота за 30 дней">
+          <article><span>Заявки</span><strong>{{ pilot.cohort|number }}</strong><small>{{ pilot.access.get('pending', 0) }} ожидают</small></article>
+          <article><span>Допущены</span><strong>{{ pilot.stages[1].users|number }}</strong><small>{{ pilot.stages[1].conversion|round(1) }}% от заявок</small></article>
+          <article><span>Завершили блок</span><strong>{{ pilot.stages[4].users|number }}</strong><small>{{ pilot.stages[4].conversion|round(1) }}% от заявок</small></article>
+          <article><span>Retention D1</span><strong>{{ pilot.retention.d1.rate|round(1) }}%</strong><small>{{ pilot.retention.d1.users }}/{{ pilot.retention.d1.eligible }} eligible</small></article>
+          <article><span>Retention D7</span><strong>{{ pilot.retention.d7.rate|round(1) }}%</strong><small>{{ pilot.retention.d7.users }}/{{ pilot.retention.d7.eligible }} eligible</small></article>
+          <article><span>Уведомления</span><strong>{{ pilot.notifications.get('pending', 0)|number }}</strong><small>{{ pilot.notifications.get('failed', 0) }} не доставлено</small></article>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">30 дней</p><h2>Воронка когорты</h2></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Этап</th><th>Пользователи</th><th>Конверсия</th></tr></thead><tbody>
+            {% for step in pilot.stages %}<tr><td>{{ step.label }}</td><td>{{ step.users }}</td><td>{{ step.conversion|round(1) }}%</td></tr>{% endfor %}
+          </tbody></table></div>
+        </section>
+
+        <section class="split-layout">
+          <div class="panel">
+            <div class="section-heading"><div><p class="eyebrow">Каналы</p><h2>Источники заявок</h2></div></div>
+            <dl class="key-values">{% for row in pilot.sources %}<div><dt>{{ row.source }}</dt><dd>{{ row.users }}</dd></div>{% else %}<div><dt>Нет данных</dt><dd>0</dd></div>{% endfor %}</dl>
+          </div>
+          <div class="panel">
+            <div class="section-heading"><div><p class="eyebrow">Контент</p><h2>Языки когорты</h2></div></div>
+            <dl class="key-values">{% for row in pilot.languages %}<div><dt>{{ language_labels.get(row.language, row.language) }}</dt><dd>{{ row.users }}</dd></div>{% else %}<div><dt>Нет данных</dt><dd>0</dd></div>{% endfor %}</dl>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">{{ users|length }} записей</p><h2>Участники</h2></div></div>
+          <nav class="segmented" aria-label="Этап пилота">
+            {% for id, label in [('all','Все'),('pending','Ожидают'),('onboarding','Не настроили'),('first_block','Нет блока'),('engaged','Учатся'),('blocked','Заблокированы')] %}
+              <a href="{{ url_for('admin_index', tab='pilot', pilot_stage=id) }}" class="{{ 'active' if pilot_stage == id else '' }}">{{ label }}</a>
+            {% endfor %}
+          </nav>
+          {% set compact = false %}{% include 'admin/users_table.html' %}
         </section>
       {% endif %}
 
