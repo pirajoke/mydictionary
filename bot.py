@@ -760,18 +760,21 @@ async def replace_previous_pronunciation(
         user_data[LAST_PRONUNCIATION_MESSAGES_KEY] = messages
     chat_key = str(chat_id)
     previous_message_id = messages.get(chat_key)
-    messages[chat_key] = message_id
     if (
         not isinstance(previous_message_id, int)
         or isinstance(previous_message_id, bool)
         or previous_message_id <= 0
         or previous_message_id == message_id
     ):
+        messages[chat_key] = message_id
         return
+    newest_message_id = max(previous_message_id, message_id)
+    obsolete_message_id = min(previous_message_id, message_id)
+    messages[chat_key] = newest_message_id
     try:
         await context.bot.delete_message(
             chat_id=chat_id,
-            message_id=previous_message_id,
+            message_id=obsolete_message_id,
         )
     except TelegramError as exc:
         logger.info(

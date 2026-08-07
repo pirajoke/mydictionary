@@ -1,3 +1,4 @@
+import asyncio
 import os
 from io import BytesIO
 from datetime import datetime, timedelta
@@ -339,6 +340,54 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             context.user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY],
             {"123": 102},
+        )
+
+    async def test_concurrent_pronunciations_keep_newest_message(self):
+        first_send_started = asyncio.Event()
+        release_first_send = asyncio.Event()
+        send_count = 0
+
+        async def send_voice(**kwargs):
+            nonlocal send_count
+            send_count += 1
+            if send_count == 1:
+                first_send_started.set()
+                await release_first_send.wait()
+                return SimpleNamespace(message_id=101)
+            return SimpleNamespace(message_id=102)
+
+        client = SimpleNamespace(
+            send_voice=AsyncMock(side_effect=send_voice),
+            send_audio=AsyncMock(),
+            delete_message=AsyncMock(),
+        )
+        context = SimpleNamespace(bot=client, user_data={})
+
+        first = asyncio.create_task(
+            bot.send_pronunciation_audio(
+                chat_id=123,
+                audio=BytesIO(b"first"),
+                title="first",
+                context=context,
+            )
+        )
+        await first_send_started.wait()
+        await bot.send_pronunciation_audio(
+            chat_id=123,
+            audio=BytesIO(b"second"),
+            title="second",
+            context=context,
+        )
+        release_first_send.set()
+        await first
+
+        self.assertEqual(
+            context.user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY],
+            {"123": 102},
+        )
+        client.delete_message.assert_awaited_once_with(
+            chat_id=123,
+            message_id=101,
         )
 
     async def test_pronunciation_tracking_is_isolated_by_chat_and_user(self):
