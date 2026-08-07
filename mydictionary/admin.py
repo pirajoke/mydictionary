@@ -36,6 +36,7 @@ from mydictionary.admin_store import AdminStore
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
 from mydictionary.content import example_target_text
+from mydictionary.economics import review_is_current
 from mydictionary.readiness import (
     configured_max_age_seconds,
     heartbeat_path,
@@ -74,6 +75,16 @@ def _positive_decimal_setting(name: str) -> bool:
     except (InvalidOperation, ValueError):
         return False
     return value.is_finite() and value > 0
+
+
+def _review_setting_current(date_name: str, age_name: str) -> bool:
+    try:
+        max_age_days = int(os.environ.get(age_name, "30"))
+    except ValueError:
+        return False
+    return review_is_current(
+        os.environ.get(date_name, ""), max_age_days=max_age_days
+    )
 
 
 def database_url_from_env() -> str:
@@ -481,6 +492,18 @@ def create_app(
                         "AI_OUTPUT_USD_PER_MILLION",
                     )
                 ),
+                "ai_pricing_reviewed_on": os.environ.get(
+                    "AI_PRICING_REVIEWED_ON", "missing"
+                ),
+                "ai_pricing_review_current": _review_setting_current(
+                    "AI_PRICING_REVIEWED_ON", "AI_PRICING_MAX_AGE_DAYS"
+                ),
+                "ai_daily_request_limit": os.environ.get(
+                    "AI_MAX_DAILY_REQUESTS_PER_USER", "5"
+                ),
+                "ai_cost_ceiling_micro_usd": os.environ.get(
+                    "AI_MAX_COST_MICRO_USD_PER_REQUEST", "5000"
+                ),
                 "stars_enabled": admin_store.billing_settings.enabled,
                 "stars_unit_economics": (
                     admin_store.billing_settings.net_micro_usd_per_xtr > 0
@@ -490,6 +513,21 @@ def create_app(
                     "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
                 ),
                 "billing_terms_version": admin_store.billing_settings.terms_version,
+                "billing_terms_approved": (
+                    admin_store.billing_settings.terms_approved
+                ),
+                "billing_economics_reviewed_on": (
+                    admin_store.billing_settings.economics_reviewed_on or "missing"
+                ),
+                "billing_economics_review_current": review_is_current(
+                    admin_store.billing_settings.economics_reviewed_on or "",
+                    max_age_days=(
+                        admin_store.billing_settings.economics_max_age_days
+                    ),
+                ),
+                "billing_private_chat_topics": (
+                    admin_store.billing_settings.private_chat_topics_enabled
+                ),
                 "voice_consent_version": os.environ.get(
                     "VOICE_CONSENT_VERSION", "unversioned"
                 ),

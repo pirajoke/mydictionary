@@ -817,7 +817,7 @@ class RefundRequest(Base):
 
 
 class AIQuotaExceeded(RuntimeError):
-    """Raised when a learner has no pilot AI credits available."""
+    """Raised when credits, request limits, or the cost breaker block AI use."""
 
 
 class AIUsageStateError(RuntimeError):
@@ -1610,11 +1610,17 @@ class DatabaseStore:
         credits: int,
         initial_credits: int,
         context_fingerprint: str,
+        max_daily_requests: int | None = None,
+        max_cost_micro_usd: int | None = None,
         request_id: str | None = None,
     ) -> str:
         """Atomically reserve wallet credits and create a metered request."""
         if credits <= 0 or initial_credits < 0:
             raise ValueError("AI credits must be positive and allowance non-negative")
+        if max_daily_requests is not None and max_daily_requests <= 0:
+            raise ValueError("AI daily request limit must be positive")
+        if max_cost_micro_usd is not None and max_cost_micro_usd <= 0:
+            raise ValueError("AI request cost ceiling must be positive")
         self.ensure_user_id(user_id)
         usage_id = request_id or str(uuid4())
         with self.Session.begin() as session:
@@ -1623,6 +1629,29 @@ class DatabaseStore:
             wallet = self._ensure_ai_wallet(
                 session, user_id, initial_credits=initial_credits
             )
+            if max_daily_requests is not None:
+                attempts = session.execute(
+                    select(func.count(AIUsage.request_id)).where(
+                        AIUsage.telegram_user_id == int(user_id),
+                        AIUsage.action == str(action),
+                        AIUsage.created_at >= utcnow() - timedelta(hours=24),
+                    )
+                ).scalar_one()
+                if int(attempts) >= int(max_daily_requests):
+                    raise AIQuotaExceeded("AI daily request limit reached")
+            if max_cost_micro_usd is not None:
+                over_ceiling = session.execute(
+                    select(AIUsage.request_id)
+                    .where(
+                        AIUsage.action == str(action),
+                        AIUsage.provider == str(provider),
+                        AIUsage.status == "completed",
+                        AIUsage.cost_micro_usd > int(max_cost_micro_usd),
+                    )
+                    .limit(1)
+                ).scalar_one_or_none()
+                if over_ceiling is not None:
+                    raise AIQuotaExceeded("AI cost circuit breaker is open")
             if wallet.balance_credits - wallet.reserved_credits < credits:
                 raise AIQuotaExceeded("AI credit allowance exhausted")
             wallet.reserved_credits += credits

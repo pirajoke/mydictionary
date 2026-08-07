@@ -39,9 +39,13 @@ All settings are disabled by default. Enabling checkout requires:
 | `BILLING_PAYLOAD_SECRET` | random value of at least 32 characters |
 | `BILLING_SUPPORT_CONTACT` | monitored payment-support contact |
 | `BILLING_NET_MICRO_USD_PER_XTR` | conservative net value after platform reserves |
+| `BILLING_ECONOMICS_REVIEWED_ON` | current `YYYY-MM-DD` review date |
+| `BILLING_ECONOMICS_MAX_AGE_DAYS` | 1-90; default 30 |
+| `BILLING_PRIVATE_CHAT_TOPICS_ENABLED` | must match the BotFather topics setting; topics currently reduce Stars proceeds by 15% |
 | `BILLING_ORDER_TTL_SECONDS` | 300-86400; default 1800 |
 | `BILLING_TERMS_TEXT` | learner-visible terms, at most 3500 characters |
 | `BILLING_TERMS_VERSION` | immutable safe identifier for the reviewed text |
+| `BILLING_TERMS_APPROVED` | explicit `true` only after legal/privacy review of the exact text |
 
 Disabling checkout stops new orders. Do not remove or rotate the payload secret
 until every issued order is expired and payment reconciliation is complete.
@@ -59,6 +63,10 @@ Activation is rejected unless estimated cost and the target margin floor are
 positive, net XTR economics are configured, and estimated margin meets the
 floor. Public package prices therefore remain an operator decision based on
 closed-alpha usage, speech, infrastructure, support, and refund data.
+
+The current draft formulas and official-source snapshot live in
+[`ai-stars-economics.md`](ai-stars-economics.md). The renderer keeps checkout
+disabled and cannot activate the draft products.
 
 ## Refunds
 

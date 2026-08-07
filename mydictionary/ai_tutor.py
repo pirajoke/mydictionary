@@ -11,6 +11,7 @@ import os
 from time import perf_counter
 from typing import Any, Mapping, Protocol
 
+from .economics import parse_reviewed_on, require_current_review
 from .storage import DatabaseStore
 
 
@@ -219,6 +220,12 @@ class AITutorSettings:
     safety_salt: str | None
     pricing: ModelPricing
     reservation_timeout_seconds: int = 300
+    pricing_reviewed_on: str | None = None
+    pricing_max_age_days: int = 30
+    max_daily_requests_per_user: int = 5
+    max_cost_micro_usd_per_request: int = 5000
+    max_provider_input_chars: int = 12000
+    max_output_tokens: int = 1000
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "AITutorSettings":
@@ -230,10 +237,45 @@ class AITutorSettings:
         try:
             initial_credits = int(env.get("AI_INITIAL_CREDITS", "0"))
             credits_per_request = int(env.get("AI_CREDITS_PER_REQUEST", "1"))
+            pricing_max_age_days = int(
+                env.get("AI_PRICING_MAX_AGE_DAYS", "30")
+            )
+            max_daily_requests_per_user = int(
+                env.get("AI_MAX_DAILY_REQUESTS_PER_USER", "5")
+            )
+            max_cost_micro_usd_per_request = int(
+                env.get("AI_MAX_COST_MICRO_USD_PER_REQUEST", "5000")
+            )
+            max_provider_input_chars = int(
+                env.get("AI_MAX_PROVIDER_INPUT_CHARS", "12000")
+            )
+            max_output_tokens = int(env.get("AI_MAX_OUTPUT_TOKENS", "1000"))
         except ValueError as exc:
-            raise AIConfigurationError("AI credit settings must be integers") from exc
+            raise AIConfigurationError(
+                "AI credit, pricing review, and request limits must be integers"
+            ) from exc
         if initial_credits < 0 or credits_per_request <= 0:
             raise AIConfigurationError("AI credit settings are outside valid bounds")
+        if not 1 <= pricing_max_age_days <= 90:
+            raise AIConfigurationError(
+                "AI_PRICING_MAX_AGE_DAYS must be between 1 and 90"
+            )
+        if not 1 <= max_daily_requests_per_user <= 100:
+            raise AIConfigurationError(
+                "AI_MAX_DAILY_REQUESTS_PER_USER must be between 1 and 100"
+            )
+        if not 1 <= max_cost_micro_usd_per_request <= 1_000_000:
+            raise AIConfigurationError(
+                "AI_MAX_COST_MICRO_USD_PER_REQUEST must be between 1 and 1000000"
+            )
+        if not 1000 <= max_provider_input_chars <= 50000:
+            raise AIConfigurationError(
+                "AI_MAX_PROVIDER_INPUT_CHARS must be between 1000 and 50000"
+            )
+        if not 256 <= max_output_tokens <= 4000:
+            raise AIConfigurationError(
+                "AI_MAX_OUTPUT_TOKENS must be between 256 and 4000"
+            )
         try:
             reservation_timeout_seconds = int(
                 env.get("AI_RESERVATION_TIMEOUT_SECONDS", "300")
@@ -287,6 +329,24 @@ class AITutorSettings:
                 "Enabled AI tutor requires positive input, cached input, "
                 "cache write, and output pricing"
             )
+        pricing_reviewed_on = env.get("AI_PRICING_REVIEWED_ON", "").strip()
+        if pricing_reviewed_on:
+            try:
+                parse_reviewed_on(
+                    pricing_reviewed_on,
+                    setting_name="AI_PRICING_REVIEWED_ON",
+                )
+            except ValueError as exc:
+                raise AIConfigurationError(str(exc)) from exc
+        if enabled:
+            try:
+                require_current_review(
+                    pricing_reviewed_on,
+                    max_age_days=pricing_max_age_days,
+                    setting_name="AI_PRICING_REVIEWED_ON",
+                )
+            except ValueError as exc:
+                raise AIConfigurationError(str(exc)) from exc
         return cls(
             enabled=enabled,
             provider=provider,
@@ -297,6 +357,12 @@ class AITutorSettings:
             safety_salt=safety_salt,
             pricing=pricing,
             reservation_timeout_seconds=reservation_timeout_seconds,
+            pricing_reviewed_on=pricing_reviewed_on or None,
+            pricing_max_age_days=pricing_max_age_days,
+            max_daily_requests_per_user=max_daily_requests_per_user,
+            max_cost_micro_usd_per_request=max_cost_micro_usd_per_request,
+            max_provider_input_chars=max_provider_input_chars,
+            max_output_tokens=max_output_tokens,
         )
 
 
@@ -422,6 +488,8 @@ class OpenAIResponsesProvider:
         api_key: str,
         model: str,
         safety_salt: str,
+        max_provider_input_chars: int = 12000,
+        max_output_tokens: int = 1000,
         client: Any | None = None,
     ):
         if not api_key or not safety_salt or len(safety_salt) < 16:
@@ -430,6 +498,12 @@ class OpenAIResponsesProvider:
             )
         self.model = model
         self.safety_salt = safety_salt.encode("utf-8")
+        if not 1000 <= int(max_provider_input_chars) <= 50000:
+            raise AIConfigurationError("OpenAI input character limit is invalid")
+        if not 256 <= int(max_output_tokens) <= 4000:
+            raise AIConfigurationError("OpenAI output token limit is invalid")
+        self.max_provider_input_chars = int(max_provider_input_chars)
+        self.max_output_tokens = int(max_output_tokens)
         if client is None:
             from openai import AsyncOpenAI
 
@@ -458,11 +532,16 @@ class OpenAIResponsesProvider:
                 for word in request.context.words
             ],
         }
+        serialized_input = json.dumps(provider_input, ensure_ascii=False)
+        if len(serialized_input) > self.max_provider_input_chars:
+            raise AIProviderError(
+                "Tutor provider input exceeds the configured character ceiling"
+            )
         response = await self.client.responses.create(
             model=self.model,
             instructions=TUTOR_INSTRUCTIONS,
-            input=json.dumps(provider_input, ensure_ascii=False),
-            max_output_tokens=1000,
+            input=serialized_input,
+            max_output_tokens=self.max_output_tokens,
             reasoning={"effort": "low"},
             text={
                 "format": {
@@ -540,6 +619,8 @@ class AITutorService:
             credits=self.settings.credits_per_request,
             initial_credits=self.settings.initial_credits,
             context_fingerprint=context_fingerprint(context),
+            max_daily_requests=self.settings.max_daily_requests_per_user,
+            max_cost_micro_usd=self.settings.max_cost_micro_usd_per_request,
         )
         started = perf_counter()
         try:
@@ -594,5 +675,7 @@ def build_openai_tutor_service(
         api_key=settings.openai_api_key or "",
         model=settings.model,
         safety_salt=settings.safety_salt or "",
+        max_provider_input_chars=settings.max_provider_input_chars,
+        max_output_tokens=settings.max_output_tokens,
     )
     return AITutorService(store=store, provider=provider, settings=settings)
