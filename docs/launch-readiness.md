@@ -11,7 +11,7 @@ release.
 |---|---|
 | Stars checkout | The learner must accept the current `BILLING_TERMS_VERSION` before products, order creation, and pre-checkout. Each order snapshots that version. |
 | Voice processing | The learner must accept the current `VOICE_CONSENT_VERSION` before a session and again before Telegram audio is downloaded. The consent can be revoked in `/privacy`. |
-| AI cost accounting | Enabling text AI requires positive input, cached-input, cache-write, and output prices, a current pricing-review date, a daily request limit, and a positive cost circuit breaker. Zero-cost or stale accounting cannot start. |
+| AI cost accounting | Enabling text AI requires an exact approved snapshot, current review, default service tier, positive prices, preflight/day/month/in-flight budgets, zero SDK retries, and durable response metering before validation. |
 | Voice cost accounting | Enabling voice requires a positive per-minute estimate, consent version, and processing notice. |
 | Stars reconciliation | Refund direction is compared with local state. A bounded, incomplete remote history is reported as truncated and cannot mark old local payments missing. |
 | Product analytics | Intent remains a privacy-safe event; orders, payments, completed AI use, repeat purchases, and Stars totals are derived from durable ledgers. |
@@ -25,7 +25,7 @@ processing.
 
 ## Required runtime review
 
-Keep all feature flags off while deploying migration `0010_launch_readiness`.
+Keep all feature flags off while deploying migration `0012_ai_runtime_gates`.
 Before any later activation, an operator must review and set:
 
 ```text
@@ -35,10 +35,19 @@ AI_CACHE_WRITE_USD_PER_MILLION=<positive conservative rate>
 AI_OUTPUT_USD_PER_MILLION=<positive reviewed rate>
 AI_PRICING_REVIEWED_ON=<YYYY-MM-DD>
 AI_PRICING_MAX_AGE_DAYS=<1-90; default 30>
+AI_SERVICE_TIER=default
+AI_ECONOMICS_SNAPSHOT_PATH=<approved immutable snapshot copy>
+AI_ECONOMICS_SNAPSHOT_ID=<exact snapshot identifier>
+AI_ECONOMICS_SNAPSHOT_SHA256=<canonical lowercase SHA-256>
 AI_MAX_DAILY_REQUESTS_PER_USER=<1-100; draft 5>
-AI_MAX_COST_MICRO_USD_PER_REQUEST=<positive ceiling; draft 5000>
+AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST=<draft 5000>
+AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE=<draft 5000; not a hard cap>
+AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY=<draft 25000>
+AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH=<draft 100000>
+AI_MAX_IN_FLIGHT_COST_MICRO_USD=<draft 5000>
 AI_MAX_PROVIDER_INPUT_CHARS=<1000-50000; draft 12000>
 AI_MAX_OUTPUT_TOKENS=<256-4000; draft 1000>
+AI_METERING_JOURNAL_PATH=<private mode-0600 fallback path>
 
 VOICE_COST_MICRO_USD_PER_MINUTE=<positive conservative estimate>
 VOICE_CONSENT_VERSION=<immutable version identifier>
@@ -85,6 +94,8 @@ Do not enable paid AI when any of these is true:
 
 - the admin diagnostics show missing/stale pricing, unapproved terms, or
   unversioned consent documents;
+- the AI breaker is open, a provider attempt has unknown outcome, the fallback
+  metering journal is non-empty, or the runtime differs from its snapshot;
 - a reconciliation issue is unresolved, including remote history truncation;
 - a product has no positive measured cost or misses its margin floor;
 - any launch-language deterministic evaluation fails;

@@ -33,10 +33,16 @@ from sqlalchemy import text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mydictionary.admin_store import AdminStore
+from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
 from mydictionary.content import example_target_text
-from mydictionary.economics import review_is_current
+from mydictionary.economics import (
+    EconomicsSnapshotError,
+    load_ai_economics_contract,
+    require_current_review,
+    review_is_current,
+)
 from mydictionary.readiness import (
     configured_max_age_seconds,
     heartbeat_path,
@@ -85,6 +91,49 @@ def _review_setting_current(date_name: str, age_name: str) -> bool:
     return review_is_current(
         os.environ.get(date_name, ""), max_age_days=max_age_days
     )
+
+
+def _ai_metering_journal() -> AIMeteringJournal:
+    configured = os.environ.get("AI_METERING_JOURNAL_PATH", "").strip()
+    data_dir = Path(os.environ.get("DATA_DIR", str(BASE_DIR))).expanduser()
+    return AIMeteringJournal(
+        Path(configured).expanduser()
+        if configured
+        else data_dir / "ai-metering-fallback.jsonl"
+    )
+
+
+def _ai_snapshot_diagnostics() -> dict[str, Any]:
+    path = os.environ.get("AI_ECONOMICS_SNAPSHOT_PATH", "").strip()
+    snapshot_id = os.environ.get("AI_ECONOMICS_SNAPSHOT_ID", "").strip()
+    digest = os.environ.get("AI_ECONOMICS_SNAPSHOT_SHA256", "").strip()
+    result = {
+        "valid": False,
+        "approved": False,
+        "current": False,
+        "status": "missing",
+    }
+    if not path or not snapshot_id or not digest:
+        return result
+    try:
+        contract = load_ai_economics_contract(
+            path,
+            expected_snapshot_id=snapshot_id,
+            expected_snapshot_sha256=digest,
+        )
+        require_current_review(
+            contract.reviewed_on,
+            max_age_days=contract.max_age_days,
+            setting_name="AI economics snapshot",
+        )
+    except (EconomicsSnapshotError, OSError, TypeError, ValueError):
+        return result
+    return {
+        "valid": True,
+        "approved": contract.status == "approved",
+        "current": True,
+        "status": contract.status,
+    }
 
 
 def database_url_from_env() -> str:
@@ -478,11 +527,18 @@ def create_app(
                     app.config["BOT_HEARTBEAT_MAX_AGE_SECONDS"]
                 ),
             )
+            ai_budget = store.ai_budget_status()
+            metering_journal_pending = _ai_metering_journal().pending_count()
+            ai_snapshot = _ai_snapshot_diagnostics()
             context["diagnostics"] = {
                 "database": store.engine.dialect.name,
                 "migration": revision,
                 "ai_enabled": os.environ.get("AI_TUTOR_ENABLED", "false"),
-                "ai_provider_configured": bool(os.environ.get("OPENAI_API_KEY")),
+                "ai_provider_configured": (
+                    os.environ.get("AI_PROVIDER_CONFIGURED", "false").lower()
+                    in {"1", "true", "yes", "on"}
+                    or bool(os.environ.get("OPENAI_API_KEY"))
+                ),
                 "ai_pricing_configured": all(
                     _positive_decimal_setting(name)
                     for name in (
@@ -501,9 +557,31 @@ def create_app(
                 "ai_daily_request_limit": os.environ.get(
                     "AI_MAX_DAILY_REQUESTS_PER_USER", "5"
                 ),
-                "ai_cost_ceiling_micro_usd": os.environ.get(
-                    "AI_MAX_COST_MICRO_USD_PER_REQUEST", "5000"
+                "ai_service_tier": os.environ.get("AI_SERVICE_TIER", "default"),
+                "ai_snapshot_id": os.environ.get(
+                    "AI_ECONOMICS_SNAPSHOT_ID", "missing"
                 ),
+                "ai_snapshot_sha256": os.environ.get(
+                    "AI_ECONOMICS_SNAPSHOT_SHA256", "missing"
+                ),
+                "ai_snapshot": ai_snapshot,
+                "ai_preflight_budget_micro_usd": os.environ.get(
+                    "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST", "5000"
+                ),
+                "ai_retrospective_breaker_micro_usd": os.environ.get(
+                    "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE", "5000"
+                ),
+                "ai_project_daily_budget_micro_usd": os.environ.get(
+                    "AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY", "25000"
+                ),
+                "ai_project_monthly_budget_micro_usd": os.environ.get(
+                    "AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH", "100000"
+                ),
+                "ai_in_flight_budget_micro_usd": os.environ.get(
+                    "AI_MAX_IN_FLIGHT_COST_MICRO_USD", "5000"
+                ),
+                "ai_budget": ai_budget,
+                "ai_metering_journal_pending": metering_journal_pending,
                 "stars_enabled": admin_store.billing_settings.enabled,
                 "stars_unit_economics": (
                     admin_store.billing_settings.net_micro_usd_per_xtr > 0
@@ -542,9 +620,30 @@ def create_app(
                 "bot_release_sha": bot_readiness.release_sha,
                 "bot_access_mode": bot_readiness.access_mode,
             }
+
         elif tab == "audit":
             context["audit"] = admin_store.audit_log(limit=250)
         return render_template("admin/index.html", **context)
+
+    @app.post("/admin/ai/breaker/reset")
+    @login_required
+    def reset_ai_breaker():
+        try:
+            if _ai_metering_journal().pending_count():
+                raise RuntimeError(
+                    "Нельзя сбросить breaker: metering journal не reconciled."
+                )
+            changed = store.reset_ai_breaker(
+                actor=current_actor(),
+                reason=str(request.form.get("reason") or ""),
+            )
+            flash(
+                "AI breaker сброшен." if changed else "AI breaker уже закрыт.",
+                "success",
+            )
+        except (TypeError, ValueError, RuntimeError) as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("admin_index", tab="diagnostics"))
 
     @app.post("/admin/settings/profile")
     @login_required

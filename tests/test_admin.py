@@ -1,14 +1,17 @@
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from sqlalchemy import select
 
 from mydictionary.admin import LoginLimiter, create_app
 from mydictionary.admin_store import AdminStore
+from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.billing import BillingService, BillingSettings
 from mydictionary.readiness import BotHeartbeat
 from mydictionary.storage import (
@@ -656,6 +659,65 @@ class AdminConsoleTest(unittest.TestCase):
         unavailable = self.client.get("/health")
         self.assertEqual(unavailable.status_code, 503)
         self.assertEqual(unavailable.json, {"status": "unavailable"})
+
+    def test_ai_breaker_diagnostics_reset_and_journal_guard(self):
+        journal_path = Path(self.temp_dir.name) / "ai-metering.jsonl"
+        self.store.open_ai_breaker(reason="returned_model_mismatch")
+        self.login()
+        with patch.dict(
+            os.environ,
+            {"AI_METERING_JOURNAL_PATH": str(journal_path)},
+        ):
+            diagnostics = self.client.get("/admin?tab=diagnostics")
+            body = diagnostics.get_data(as_text=True)
+            self.assertEqual(diagnostics.status_code, 200)
+            self.assertIn("returned_model_mismatch", body)
+            self.assertIn("Сброс AI breaker", body)
+
+            rejected = self.client.post(
+                "/admin/ai/breaker/reset",
+                data={"reason": "missing csrf"},
+            )
+            self.assertEqual(rejected.status_code, 400)
+            self.assertTrue(self.store.ai_budget_status()["breaker_open"])
+
+            reset = self.client.post(
+                "/admin/ai/breaker/reset",
+                data={
+                    "csrf_token": self.csrf(),
+                    "reason": "verified provider telemetry",
+                },
+                follow_redirects=True,
+            )
+            self.assertEqual(reset.status_code, 200)
+            self.assertIn("AI breaker сброшен", reset.get_data(as_text=True))
+            self.assertFalse(self.store.ai_budget_status()["breaker_open"])
+
+            self.store.open_ai_breaker(reason="storage_failure")
+            AIMeteringJournal(journal_path).append(
+                {"request_id": "pending-test", "error_code": "storage_failure"}
+            )
+            blocked = self.client.post(
+                "/admin/ai/breaker/reset",
+                data={
+                    "csrf_token": self.csrf(),
+                    "reason": "must not reset",
+                },
+                follow_redirects=True,
+            )
+            self.assertIn(
+                "metering journal не reconciled",
+                blocked.get_data(as_text=True),
+            )
+            self.assertTrue(self.store.ai_budget_status()["breaker_open"])
+
+        with self.store.Session() as database_session:
+            resets = database_session.execute(
+                select(AdminAuditLog).where(
+                    AdminAuditLog.action == "ai_breaker_reset"
+                )
+            ).scalars().all()
+        self.assertEqual(len(resets), 1)
 
 
 class LoginLimiterTest(unittest.TestCase):

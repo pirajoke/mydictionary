@@ -91,6 +91,9 @@ def build_process(
             ).strip(),
             "AI_TUTOR_ENABLED": source.get("AI_TUTOR_ENABLED", "false").strip(),
             "AI_INITIAL_CREDITS": source.get("AI_INITIAL_CREDITS", "0").strip(),
+            "AI_PROVIDER_CONFIGURED": str(
+                bool(source.get("OPENAI_API_KEY", "").strip())
+            ).lower(),
             "VOICE_TUTOR_ENABLED": source.get(
                 "VOICE_TUTOR_ENABLED", "false"
             ).strip(),
@@ -116,6 +119,7 @@ def build_process(
         "BILLING_PRIVATE_CHAT_TOPICS_ENABLED",
         "AI_PROVIDER",
         "AI_MODEL",
+        "AI_SERVICE_TIER",
         "AI_CREDITS_PER_REQUEST",
         "AI_INPUT_USD_PER_MILLION",
         "AI_CACHED_INPUT_USD_PER_MILLION",
@@ -123,10 +127,18 @@ def build_process(
         "AI_OUTPUT_USD_PER_MILLION",
         "AI_PRICING_REVIEWED_ON",
         "AI_PRICING_MAX_AGE_DAYS",
+        "AI_ECONOMICS_SNAPSHOT_PATH",
+        "AI_ECONOMICS_SNAPSHOT_ID",
+        "AI_ECONOMICS_SNAPSHOT_SHA256",
         "AI_MAX_DAILY_REQUESTS_PER_USER",
-        "AI_MAX_COST_MICRO_USD_PER_REQUEST",
+        "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST",
+        "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE",
+        "AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY",
+        "AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH",
+        "AI_MAX_IN_FLIGHT_COST_MICRO_USD",
         "AI_MAX_PROVIDER_INPUT_CHARS",
         "AI_MAX_OUTPUT_TOKENS",
+        "AI_METERING_JOURNAL_PATH",
         "VOICE_CONSENT_VERSION",
     ):
         if source.get(name):

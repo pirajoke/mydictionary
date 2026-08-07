@@ -44,21 +44,43 @@ changes either rule.
 | --- | ---: | --- |
 | Credit cost | 1 credit/request | Stable learner-facing unit |
 | Daily limit | 5 attempts/user/rolling 24h | Bounded pilot exposure, including failed attempts |
-| Cost circuit breaker | 5,000 microUSD/request | Blocks later requests after a completed outlier |
+| Preflight request budget | 5,000 microUSD | Rejects a request before reservation from a conservative token upper bound |
+| Retrospective response breaker | 5,000 microUSD | Opens the breaker after a billable response exceeds the threshold |
+| Project daily budget | 25,000 microUSD | Bounds actual plus currently reserved exposure |
+| Project monthly budget | 100,000 microUSD | Bounds actual plus currently reserved exposure |
+| Concurrent in-flight budget | 5,000 microUSD | Serializes cross-user provider exposure in PostgreSQL |
 | Provider input | 12,000 characters | Prevents unexpected context expansion before API call |
 | Provider output | 1,000 tokens | Bounds response cost and latency |
 
-The rolling limit is serialized by the learner wallet lock. The global cost
-breaker reads completed usage for the same action/provider, including provider
-aliases that return a different snapshot model name. A small
-cross-user race remains possible before the first outlier is completed; public
-activation therefore still requires provider budget alerts and a bounded pilot.
+The preflight estimate includes system instructions, serialized learner input,
+the strict JSON schema, protocol overhead, and the full configured output
+limit. It intentionally treats every UTF-8 byte as a possible token and prices
+input at the more expensive input/cache-write rate. It is a local conservative
+admission estimate, not the provider invoice.
+
+Cross-user reservations lock one PostgreSQL budget row and count actual spend
+plus all in-flight estimates. The provider client uses `max_retries=0` and
+requests `service_tier="default"`, so one application attempt permits one SDK
+provider attempt. Every returned response is metered before parsing, schema, or
+grounding validation. An unknown attempted outcome, model/tier mismatch,
+storage failure, or response-cost outlier opens the breaker. The authenticated
+admin shows the state; reset requires a reason, no in-flight attempts, an empty
+fallback journal, CSRF protection, and an audit entry.
+
+The 5,000 microUSD response threshold is not a guaranteed per-request hard
+cap. It is retrospective. Provider-side project limits and alerts remain
+mandatory before any real call.
+
+Runtime activation is bound to the exact approved snapshot ID and canonical
+SHA-256. Model, tier, rates, limits, and review age are reloaded and checked on
+every request, so a process running across the review-expiry boundary fails
+closed without a restart. The returned model and tier must match the snapshot.
 
 ## Draft package hypotheses
 
-The cost model uses the worst-case $0.005 provider ceiling per credit, $0.10
-support overhead per purchase, and a 10% refund reserve on estimated net
-revenue.
+The package model uses a modelled $0.005 provider cost per credit, $0.10 support
+overhead per purchase, and a 10% refund reserve on estimated net revenue. The
+$0.005 value is a pricing hypothesis, not a guaranteed provider ceiling.
 
 | Product | Credits | Price | Net revenue | Estimated cost | Margin |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -75,8 +97,10 @@ test-environment payment must replace these hypotheses before activation.
 1. Review and approve a final legal/privacy text; replace the draft terms
    version and set `BILLING_TERMS_APPROVED=true` only for that exact text.
 2. Under explicit approval, grant one test learner a bounded credit balance and
-   perform one real AI call. Record tokens, cache categories, latency, output
-   validation, cost, and wallet settlement; turn AI off immediately afterward.
+   perform exactly one real AI call from a separate API project with one worker,
+   one credit, daily limit one, `max_retries=0`, and `service_tier="default"`.
+   Record returned model/tier, every token category, local cost, dashboard
+   charge, latency, validation, and wallet settlement; turn AI off immediately.
 3. Recalculate package cost from the measured call and keep products draft if
    any target margin is missed.
 4. Under separate approval, use Telegram's test environment for purchase,

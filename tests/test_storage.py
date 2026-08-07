@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import stat
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -12,6 +13,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from mydictionary.content import target_text
+from mydictionary.ai_metering import AIMeteringJournal
 
 from alembic import command
 from alembic.config import Config
@@ -21,6 +23,8 @@ from mydictionary.legacy import import_legacy_user
 from mydictionary.storage import (
     AIQuotaExceeded,
     AIUsage,
+    AIUsageStateError,
+    AdminAuditLog,
     AnalyticsEvent,
     BillingCreditLedger,
     DatabaseStore,
@@ -69,6 +73,7 @@ class DatabaseStoreTest(unittest.TestCase):
                 "data_imports",
                 "ai_allowances",
                 "ai_usage",
+                "ai_budget_state",
                 "app_settings",
                 "admin_credentials",
                 "admin_audit_log",
@@ -106,7 +111,24 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-            self.assertEqual(revision, "0011_pilot_operations")
+            self.assertEqual(revision, "0012_ai_runtime_gates")
+
+        ai_usage_columns = {
+            column["name"] for column in inspector.get_columns("ai_usage")
+        }
+        self.assertTrue(
+            {
+                "requested_service_tier",
+                "returned_service_tier",
+                "economics_snapshot_id",
+                "economics_snapshot_sha256",
+                "provider_attempts",
+                "provider_response_received",
+                "cost_is_estimate",
+                "projected_cost_micro_usd",
+                "provider_completed_at",
+            }.issubset(ai_usage_columns)
+        )
 
     def test_notification_outbox_leases_retries_and_completes(self):
         user_id = 221
@@ -491,6 +513,263 @@ class DatabaseStoreTest(unittest.TestCase):
         self.assertEqual(summary["available_credits"], 1)
         self.assertEqual(summary["reserved_credits"], 1)
 
+    def test_project_budget_reservation_is_released_on_failure(self):
+        request_id = self.store.reserve_ai_usage(
+            306,
+            action="block_tutor",
+            provider="openai",
+            model="test-model",
+            credits=1,
+            initial_credits=2,
+            context_fingerprint="e" * 64,
+            projected_cost_micro_usd=100,
+            max_project_cost_micro_usd_per_day=1000,
+            max_project_cost_micro_usd_per_month=2000,
+            max_in_flight_cost_micro_usd=100,
+        )
+        self.assertEqual(
+            self.store.ai_budget_status()["in_flight_micro_usd"], 100
+        )
+        with self.assertRaisesRegex(AIQuotaExceeded, "in-flight"):
+            self.store.reserve_ai_usage(
+                307,
+                action="block_tutor",
+                provider="openai",
+                model="test-model",
+                credits=1,
+                initial_credits=2,
+                context_fingerprint="f" * 64,
+                projected_cost_micro_usd=1,
+                max_project_cost_micro_usd_per_day=1000,
+                max_project_cost_micro_usd_per_month=2000,
+                max_in_flight_cost_micro_usd=100,
+            )
+
+        self.assertTrue(
+            self.store.fail_ai_usage(request_id, error_code="known_failure")
+        )
+        self.assertEqual(
+            self.store.ai_budget_status()["in_flight_micro_usd"], 0
+        )
+
+    def test_billable_failure_telemetry_survives_credit_refund(self):
+        request_id = self.store.reserve_ai_usage(
+            308,
+            action="block_tutor",
+            provider="openai",
+            model="test-model",
+            credits=1,
+            initial_credits=2,
+            context_fingerprint="a" * 64,
+            requested_service_tier="default",
+            economics_snapshot_id="snapshot-test",
+            economics_snapshot_sha256="1" * 64,
+            projected_cost_micro_usd=100,
+            max_project_cost_micro_usd_per_day=1000,
+            max_project_cost_micro_usd_per_month=2000,
+            max_in_flight_cost_micro_usd=100,
+        )
+        self.store.mark_ai_provider_attempt_started(request_id)
+        self.store.record_ai_provider_response(
+            request_id,
+            provider_response_id="response-invalid",
+            model="test-model",
+            service_tier="default",
+            provider_status="incomplete",
+            usage={"input_tokens": 10, "output_tokens": 3, "total_tokens": 13},
+            cost_micro_usd=27,
+            latency_ms=14,
+            expected_model="test-model",
+            expected_service_tier="default",
+            retrospective_breaker_micro_usd=100,
+        )
+        self.assertTrue(
+            self.store.fail_ai_usage(request_id, error_code="invalid_output")
+        )
+
+        usage = self.store.get_ai_usage(request_id)
+        self.assertEqual(usage["status"], "failed")
+        self.assertEqual(usage["provider_status"], "incomplete")
+        self.assertEqual(usage["provider_response_id"], "response-invalid")
+        self.assertEqual(usage["cost_micro_usd"], 27)
+        self.assertFalse(usage["cost_is_estimate"])
+        self.assertEqual(self.store.ai_usage_summary(308)["available_credits"], 2)
+
+    def test_ai_tutor_settlement_cannot_overwrite_provider_telemetry(self):
+        request_id = self.store.reserve_ai_usage(
+            310,
+            action="block_tutor",
+            provider="openai",
+            model="test-model",
+            credits=1,
+            initial_credits=2,
+            context_fingerprint="c" * 64,
+            requested_service_tier="default",
+            economics_snapshot_id="snapshot-test",
+            economics_snapshot_sha256="2" * 64,
+            projected_cost_micro_usd=100,
+            max_project_cost_micro_usd_per_day=1000,
+            max_project_cost_micro_usd_per_month=2000,
+            max_in_flight_cost_micro_usd=100,
+        )
+        self.store.mark_ai_provider_attempt_started(request_id)
+        usage = {"input_tokens": 10, "output_tokens": 3, "total_tokens": 13}
+        self.store.record_ai_provider_response(
+            request_id,
+            provider_response_id="response-original",
+            model="test-model",
+            service_tier="default",
+            provider_status="completed",
+            usage=usage,
+            cost_micro_usd=27,
+            latency_ms=14,
+            expected_model="test-model",
+            expected_service_tier="default",
+            retrospective_breaker_micro_usd=100,
+        )
+
+        with self.assertRaisesRegex(AIUsageStateError, "cannot alter"):
+            self.store.complete_ai_usage(
+                request_id,
+                billed_credits=1,
+                provider_response_id="response-original",
+                model="test-model",
+                usage={**usage, "output_tokens": 4},
+                cost_micro_usd=28,
+                latency_ms=14,
+                returned_service_tier="default",
+                provider_status="completed",
+            )
+
+        stored = self.store.get_ai_usage(request_id)
+        self.assertEqual(stored["status"], "reserved")
+        self.assertEqual(stored["output_tokens"], 3)
+        self.assertEqual(stored["cost_micro_usd"], 27)
+        self.assertTrue(
+            self.store.fail_ai_usage(request_id, error_code="test_cleanup")
+        )
+
+    def test_breaker_reset_is_visible_and_audited(self):
+        self.store.open_ai_breaker(reason="returned_model_mismatch")
+        status = self.store.ai_budget_status()
+        self.assertTrue(status["breaker_open"])
+        self.assertEqual(status["breaker_reason"], "returned_model_mismatch")
+
+        self.assertTrue(
+            self.store.reset_ai_breaker(
+                actor="owner",
+                reason="verified dashboard and provider telemetry",
+            )
+        )
+        status = self.store.ai_budget_status()
+        self.assertFalse(status["breaker_open"])
+        self.assertEqual(status["breaker_acknowledged_by"], "owner")
+        with self.store.Session() as session:
+            audit = session.execute(
+                select(AdminAuditLog).where(
+                    AdminAuditLog.action == "ai_breaker_reset"
+                )
+            ).scalar_one()
+        self.assertIn("returned_model_mismatch", audit.details_json)
+
+    def test_breaker_cannot_reset_with_in_flight_request(self):
+        request_id = self.store.reserve_ai_usage(
+            310,
+            action="block_tutor",
+            provider="openai",
+            model="test-model",
+            credits=1,
+            initial_credits=1,
+            context_fingerprint="c" * 64,
+            projected_cost_micro_usd=100,
+            max_project_cost_micro_usd_per_day=1000,
+            max_project_cost_micro_usd_per_month=2000,
+            max_in_flight_cost_micro_usd=100,
+        )
+        self.store.open_ai_breaker(reason="operator_hold")
+
+        with self.assertRaisesRegex(RuntimeError, "in flight"):
+            self.store.reset_ai_breaker(
+                actor="owner",
+                reason="must wait for active request",
+            )
+
+        self.store.fail_ai_usage(request_id, error_code="test_cleanup")
+        self.assertTrue(
+            self.store.reset_ai_breaker(
+                actor="owner",
+                reason="active request released",
+            )
+        )
+
+    def test_fallback_journal_reconciliation_is_private_and_audited(self):
+        request_id = self.store.reserve_ai_usage(
+            309,
+            action="block_tutor",
+            provider="openai",
+            model="test-model",
+            credits=1,
+            initial_credits=2,
+            context_fingerprint="b" * 64,
+            projected_cost_micro_usd=100,
+            max_project_cost_micro_usd_per_day=1000,
+            max_project_cost_micro_usd_per_month=2000,
+            max_in_flight_cost_micro_usd=100,
+        )
+        self.store.mark_ai_provider_attempt_started(request_id)
+        self.store.fail_ai_usage(
+            request_id,
+            error_code="provider_telemetry_storage_failure",
+            open_breaker_reason="provider_telemetry_storage_failure",
+        )
+        journal_path = Path(self.temp_dir.name) / "metering.jsonl"
+        journal = AIMeteringJournal(journal_path)
+        journal.append(
+            {
+                "request_id": request_id,
+                "provider_response_id": "response-recovered",
+                "model": "test-model",
+                "service_tier": "default",
+                "provider_status": "completed",
+                "input_tokens": 10,
+                "output_tokens": 3,
+                "total_tokens": 13,
+                "cost_micro_usd": 27,
+                "latency_ms": 14,
+                "error_code": "provider_telemetry_storage_failure",
+            }
+        )
+        self.assertEqual(stat.S_IMODE(journal_path.stat().st_mode), 0o600)
+
+        def reject_record(record):
+            raise RuntimeError("review failed")
+
+        with self.assertRaisesRegex(RuntimeError, "review failed"):
+            journal.reconcile(reject_record)
+        self.assertEqual(journal.pending_count(), 1)
+
+        processed = journal.reconcile(
+            lambda record: self.store.reconcile_ai_provider_response(
+                record,
+                actor="owner",
+            )
+        )
+
+        self.assertEqual(processed, 1)
+        self.assertEqual(journal.pending_count(), 0)
+        usage = self.store.get_ai_usage(request_id)
+        self.assertTrue(usage["provider_response_received"])
+        self.assertFalse(usage["cost_is_estimate"])
+        self.assertEqual(usage["cost_micro_usd"], 27)
+        self.assertTrue(self.store.ai_budget_status()["breaker_open"])
+        with self.store.Session() as session:
+            audit = session.execute(
+                select(AdminAuditLog).where(
+                    AdminAuditLog.action == "ai_metering_reconciled"
+                )
+            ).scalar_one()
+        self.assertEqual(audit.target_id, request_id)
+
 
 class BotRuntimeIsolationTest(unittest.TestCase):
     @classmethod
@@ -705,6 +984,56 @@ class PostgresStoreTest(unittest.TestCase):
         finally:
             store.close()
 
+    def test_concurrent_users_cannot_oversubscribe_in_flight_budget(self):
+        store = DatabaseStore(os.environ["TEST_POSTGRES_URL"])
+        user_ids = [
+            1_000_000 + (uuid4().int % 1_000_000_000)
+            for _ in range(2)
+        ]
+        for user_id in user_ids:
+            store.ensure_user_id(user_id)
+        current = store.ai_budget_status()["in_flight_micro_usd"]
+        projected = 4000
+        barrier = Barrier(2)
+
+        def reserve(user_id):
+            barrier.wait()
+            try:
+                return store.reserve_ai_usage(
+                    user_id,
+                    action="block_tutor",
+                    provider="openai",
+                    model="test-model",
+                    credits=1,
+                    initial_credits=1,
+                    context_fingerprint="c" * 64,
+                    projected_cost_micro_usd=projected,
+                    max_project_cost_micro_usd_per_day=100_000_000,
+                    max_project_cost_micro_usd_per_month=1_000_000_000,
+                    max_in_flight_cost_micro_usd=current + projected,
+                )
+            except AIQuotaExceeded:
+                return None
+
+        try:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                request_ids = list(executor.map(reserve, user_ids))
+
+            accepted = [request_id for request_id in request_ids if request_id]
+            self.assertEqual(len(accepted), 1)
+            self.assertEqual(
+                store.ai_budget_status()["in_flight_micro_usd"],
+                current + projected,
+            )
+            self.assertTrue(
+                store.fail_ai_usage(accepted[0], error_code="test_cleanup")
+            )
+            self.assertEqual(
+                store.ai_budget_status()["in_flight_micro_usd"], current
+            )
+        finally:
+            store.close()
+
     def test_migrations_and_isolated_round_trip(self):
         store = DatabaseStore(os.environ["TEST_POSTGRES_URL"])
         try:
@@ -734,6 +1063,20 @@ class PostgresStoreTest(unittest.TestCase):
                 credits=1,
                 initial_credits=2,
                 context_fingerprint="a" * 64,
+            )
+            store.mark_ai_provider_attempt_started(request_id)
+            store.record_ai_provider_response(
+                request_id,
+                provider_response_id="response-1",
+                model="test-model",
+                service_tier="default",
+                provider_status="completed",
+                usage={"input_tokens": 5, "output_tokens": 3, "total_tokens": 8},
+                cost_micro_usd=7,
+                latency_ms=10,
+                expected_model="test-model",
+                expected_service_tier="default",
+                retrospective_breaker_micro_usd=100,
             )
             store.complete_ai_usage(
                 request_id,
