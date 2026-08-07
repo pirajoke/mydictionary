@@ -74,6 +74,7 @@ from mydictionary.content import (
 )
 from mydictionary.legacy import import_legacy_user
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
+from mydictionary.runtime_secrets import load_runtime_secret_files
 from mydictionary.privacy import erase_user_learning_data
 from mydictionary.safety import PersistentRateLimiter, SafetySettings
 from mydictionary.storage import (
@@ -106,7 +107,14 @@ BASE_DIR = Path(__file__).parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 WELCOME_BANNER_PATH = BASE_DIR / "assets" / "mydictionary-welcome.jpg"
 
-# Config: env vars first, then config.yaml fallback
+# Config: owner-only token file, then env vars, then config.yaml fallback.
+_runtime_environment = load_runtime_secret_files(os.environ)
+for _secret_name in ("BOT_TOKEN", "TELEGRAM_TEST_USER_ID"):
+    if (
+        _runtime_environment.get(_secret_name)
+        and not os.environ.get(_secret_name)
+    ):
+        os.environ[_secret_name] = _runtime_environment[_secret_name]
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 LEGACY_USER_ID_RAW = os.environ.get("ALLOWED_USER_ID")
 

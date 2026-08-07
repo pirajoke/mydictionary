@@ -93,6 +93,10 @@ Required settings are `MYDICTIONARY_BACKUP_AGE_RECIPIENT` and
 `MYDICTIONARY_BACKUP_RCLONE_REMOTE`. The age private identity is deliberately
 not present on the production host contract.
 
+Run `ops/mydictionary_offsite_backup.py --check` before an upload. It checks the
+local `age` and `rclone` executables and confirms that the named rclone remote
+exists in local configuration. It does not read a backup or contact the remote.
+
 ### Isolated restore drill
 
 Run `ops/mydictionary_restore_drill.py` only on an approved recovery host with

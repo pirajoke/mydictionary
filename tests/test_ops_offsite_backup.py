@@ -104,3 +104,35 @@ class OffsiteBackupTest(unittest.TestCase):
                     "MYDICTIONARY_BACKUP_RCLONE_REMOTE": "private:../escape",
                 }
             )
+
+    def test_preflight_checks_local_tools_and_configured_remote_without_upload(self):
+        commands = []
+
+        def preflight_runner(command, **kwargs):
+            commands.append((command, kwargs))
+            if command[0] == "rclone" and command[1] == "listremotes":
+                return MagicMock(stdout="private:\narchive:\n")
+            return MagicMock(stdout="version output\n")
+
+        result = offsite.preflight(self.config, runner=preflight_runner)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["remote_name"], "private:")
+        self.assertEqual(
+            [command[:2] for command, _ in commands],
+            [
+                ["age", "--version"],
+                ["rclone", "version"],
+                ["rclone", "listremotes"],
+            ],
+        )
+        self.assertNotIn("copyto", repr(commands))
+
+    def test_preflight_rejects_missing_remote(self):
+        def runner(command, **kwargs):
+            if command[0] == "rclone" and command[1] == "listremotes":
+                return MagicMock(stdout="other:\n")
+            return MagicMock(stdout="version output\n")
+
+        with self.assertRaisesRegex(offsite.OffsiteBackupError, "not configured"):
+            offsite.preflight(self.config, runner=runner)

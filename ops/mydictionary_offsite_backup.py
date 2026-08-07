@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 import hashlib
+import json
 import logging
 import os
 from pathlib import Path
@@ -189,17 +190,73 @@ def upload_latest(
     )
 
 
+def preflight(
+    config: Config,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess] = run,
+) -> dict[str, str | bool]:
+    remote_name = config.remote_prefix.split(":", 1)[0] + ":"
+    try:
+        runner(
+            [config.age_binary, "--version"],
+            timeout=config.timeout_seconds,
+        )
+        runner(
+            [config.rclone_binary, "version"],
+            timeout=config.timeout_seconds,
+        )
+        configured = runner(
+            [config.rclone_binary, "listremotes"],
+            timeout=config.timeout_seconds,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise OffsiteBackupError(
+            "Off-site backup tools are unavailable or failed local preflight"
+        ) from exc
+    remotes = {
+        line.strip() for line in configured.stdout.splitlines() if line.strip()
+    }
+    if remote_name not in remotes:
+        raise OffsiteBackupError(f"rclone remote {remote_name} is not configured")
+    return {
+        "ok": True,
+        "age_available": True,
+        "rclone_available": True,
+        "remote_name": remote_name,
+    }
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
-    result.add_argument("--execute", action="store_true")
+    mode = result.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true")
+    mode.add_argument("--execute", action="store_true")
     return result
 
 
 def main() -> int:
     args = parser().parse_args()
+    config = Config.from_env()
+    if args.check:
+        try:
+            result = preflight(config)
+        except OffsiteBackupError as exc:
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                        "error_type": type(exc).__name__,
+                    },
+                    sort_keys=True,
+                )
+            )
+            return 1
+        print(json.dumps(result, sort_keys=True))
+        return 0
     result = upload_latest(
         backup.Config.from_env(),
-        Config.from_env(),
+        config,
         execute=args.execute,
     )
     print(f"mode={'execute' if result.executed else 'preview'}")
