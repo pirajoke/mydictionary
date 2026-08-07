@@ -83,6 +83,7 @@ from mydictionary.storage import (
     WORD_PROGRESS_DEFAULTS,
     vocabulary_id_for,
 )
+from mydictionary.telegram_runtime import TelegramRuntimeSettings
 from mydictionary.voice_tutor import (
     VoiceConfigurationError,
     VoiceProviderError,
@@ -157,10 +158,11 @@ AI_SETTINGS = AITutorSettings.from_env()
 BILLING_SETTINGS = BillingSettings.from_env()
 SAFETY_SETTINGS = SafetySettings.from_env()
 VOICE_SETTINGS = VoiceTutorSettings.from_env()
-if BILLING_SETTINGS.enabled and not AI_SETTINGS.enabled:
-    raise BillingConfigurationError(
-        "Telegram Stars checkout requires AI_TUTOR_ENABLED=true"
-    )
+TELEGRAM_RUNTIME = TelegramRuntimeSettings.from_env()
+TELEGRAM_RUNTIME.validate_billing_process(
+    billing_enabled=BILLING_SETTINGS.enabled,
+    terms_version=BILLING_SETTINGS.terms_version,
+)
 BOT_HEARTBEAT = BotHeartbeat(
     heartbeat_path(DATA_DIR),
     release_sha=os.environ.get("RELEASE_SHA", BASE_DIR.resolve().name),
@@ -2116,7 +2118,12 @@ async def send_billing_products(message) -> None:
             for product in products
         ]
     )
-    await message.reply_text("Выбери пакет AI-кредитов:", reply_markup=keyboard)
+    heading = (
+        "Тестовая среда Telegram Stars. Выбери тестовый пакет AI-кредитов:"
+        if TELEGRAM_RUNTIME.is_test
+        else "Выбери пакет AI-кредитов:"
+    )
+    await message.reply_text(heading, reply_markup=keyboard)
 
 
 @auth
@@ -2173,7 +2180,11 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         **{
             "chat_id": query.message.chat_id,
             "title": order.title,
-            "description": order.description,
+            "description": (
+                f"[TEST] {order.description}"[:255]
+                if TELEGRAM_RUNTIME.is_test
+                else order.description
+            ),
             "payload": order.payload,
             "currency": "XTR",
             "prices": [
@@ -2246,8 +2257,10 @@ async def successful_payment_handler(
         )
         return
     if result.created:
+        prefix = "Тестовая " if TELEGRAM_RUNTIME.is_test else ""
         await update.message.reply_text(
-            f"Оплата подтверждена. Начислено {result.credits} AI-кредитов.\n"
+            f"{prefix}оплата подтверждена. "
+            f"Начислено {result.credits} AI-кредитов.\n"
             f"Доступно: {result.available_credits}."
         )
     else:
@@ -4043,7 +4056,8 @@ async def manual_polling():
         storage_mode,
         BOT_ACCESS_MODE,
     )
-    app = Application.builder().token(BOT_TOKEN).build()
+    builder = Application.builder().token(BOT_TOKEN)
+    app = TELEGRAM_RUNTIME.configure_builder(builder).build()
 
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))

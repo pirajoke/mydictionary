@@ -210,6 +210,18 @@ invoice payloads, Telegram charge IDs, or learner identities. Keep it on the
 loopback production host and run it only after the corresponding admin record
 and support decision have been reviewed.
 
+Before a Telegram Stars test, validate the separate test-bot, test-user,
+database, data-directory, and test-terms binding without making a Bot API call:
+
+```bash
+python ops/mydictionary_stars_test.py --check
+```
+
+The complete test-only environment contract is documented in
+`docs/telegram-stars-billing.md`. Production launchd configuration must keep
+`TELEGRAM_API_ENVIRONMENT=production` (or omit it) and must never receive the
+test bot token.
+
 ## Product safety operations
 
 The safety wrappers are preview-only unless `--execute` is supplied:

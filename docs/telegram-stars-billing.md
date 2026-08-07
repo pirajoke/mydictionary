@@ -107,3 +107,50 @@ The gateway uses only official Bot API methods:
 [`editUserStarSubscription`](https://core.telegram.org/bots/api#edituserstarsubscription).
 No charge ID, bot token, invoice payload, or learner identity is printed by the
 operator wrapper.
+
+## Dedicated Telegram test environment
+
+Stars tests must run through Telegram's separate test Bot API. Create a test
+account and a separate bot with `@BotFather` while logged into Telegram's test
+server. Never reuse the production bot token. The application selects the
+official test route only when all isolation checks pass:
+
+```text
+TELEGRAM_API_ENVIRONMENT=test
+TELEGRAM_TEST_RUN_ID=stars-gate4-YYYYMMDD
+TELEGRAM_TEST_USER_ID=<single test-server user ID>
+TELEGRAM_TEST_DATABASE_NAME=mydictionary_stars_test
+TELEGRAM_TEST_DATA_DIR=<absolute private test data directory>
+BOT_TOKEN=<test-server bot token>
+BOT_ACCESS_MODE=allowlist
+ALLOWED_USER_ID=<same single test-server user ID>
+DATABASE_URL=<URL whose database is exactly mydictionary_stars_test>
+DATA_DIR=<same path as TELEGRAM_TEST_DATA_DIR>
+AI_TUTOR_ENABLED=false
+VOICE_TUTOR_ENABLED=false
+TELEGRAM_STARS_ENABLED=true
+BILLING_PAYLOAD_SECRET=<test-only random secret, at least 32 characters>
+BILLING_SUPPORT_CONTACT=<monitored test contact>
+BILLING_TERMS_TEXT=<exact text from the approved test-only terms>
+BILLING_TERMS_VERSION=stars-test-YYYY-MM-DD
+BILLING_TERMS_APPROVED=true
+BILLING_NET_MICRO_USD_PER_XTR=<reviewed test assumption>
+BILLING_ECONOMICS_REVIEWED_ON=<YYYY-MM-DD>
+```
+
+The test runtime refuses production or pilot access modes, extra allowlisted
+users, the production database, a shared data directory, production terms, a
+token inherited from `config.yaml`, or enabled AI/voice providers. It builds
+Bot API requests under `https://api.telegram.org/bot<token>/test/METHOD_NAME`.
+
+Validate the environment without contacting Telegram or creating an invoice:
+
+```bash
+python ops/mydictionary_stars_test.py --check
+```
+
+The checked-in test terms are
+[`legal/telegram-stars-terms-ru-test.md`](legal/telegram-stars-terms-ru-test.md).
+Use a dedicated test process and database; do not add these variables to the
+production launchd service. A real test-environment purchase, refund, or
+subscription mutation remains separately gated by `APPROVE_TELEGRAM_TEST_ENV`.

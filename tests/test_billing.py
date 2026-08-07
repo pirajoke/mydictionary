@@ -24,6 +24,7 @@ from mydictionary.storage import (
     AIWallet,
     BillingCreditLedger,
     DatabaseStore,
+    PaymentOrder,
     RefundRequest,
     StarsPayment,
     StarsSubscription,
@@ -295,6 +296,67 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
                 )
             ).scalars().all()
             self.assertEqual(len(grants), 1)
+
+    def test_duplicate_delivery_after_restart_does_not_grant_twice(self):
+        order = self.service.create_order(user_id=7001, product_id="ai-starter")
+        first = self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=100,
+            telegram_payment_charge_id="charge-after-restart",
+        )
+
+        database_url = self.store.database_url
+        self.store.close()
+        self.store = DatabaseStore(database_url, migrate=False)
+        self.service = BillingService(self.store, self.settings)
+        replay = self.service.fulfill_successful_payment(
+            user_id=7001,
+            payload=order.payload,
+            currency="XTR",
+            total_amount=100,
+            telegram_payment_charge_id="charge-after-restart",
+        )
+
+        self.assertTrue(first.created)
+        self.assertFalse(replay.created)
+        self.assertEqual(replay.available_credits, 50)
+        with self.store.Session() as session:
+            wallet = session.get(AIWallet, 7001)
+            payments = session.scalar(select(func.count(StarsPayment.payment_id)))
+            grants = session.scalar(
+                select(func.count(BillingCreditLedger.entry_id)).where(
+                    BillingCreditLedger.entry_type == "stars_purchase"
+                )
+            )
+            self.assertEqual(wallet.balance_credits, 50)
+            self.assertEqual(payments, 1)
+            self.assertEqual(grants, 1)
+
+    def test_expired_abandoned_invoice_never_grants_credits(self):
+        order = self.service.create_order(user_id=7001, product_id="ai-starter")
+        with self.store.Session.begin() as session:
+            payment_order = session.get(PaymentOrder, order.order_id)
+            payment_order.expires_at = datetime.now(timezone.utc) - timedelta(
+                seconds=1
+            )
+
+        with self.assertRaisesRegex(BillingStateError, "expired"):
+            self.service.validate_pre_checkout(
+                user_id=7001,
+                payload=order.payload,
+                currency="XTR",
+                total_amount=100,
+            )
+
+        with self.store.Session() as session:
+            wallet = session.get(AIWallet, 7001)
+            payments = session.scalar(select(func.count(StarsPayment.payment_id)))
+            grants = session.scalar(select(func.count(BillingCreditLedger.entry_id)))
+            self.assertIsNone(wallet)
+            self.assertEqual(payments, 0)
+            self.assertEqual(grants, 0)
 
     def test_paid_order_is_fulfilled_after_checkout_flag_is_disabled(self):
         order = self.service.create_order(user_id=7001, product_id="ai-starter")
