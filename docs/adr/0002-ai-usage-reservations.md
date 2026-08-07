@@ -2,6 +2,8 @@
 
 Status: accepted for stage 2
 
+The runtime spend and provider-attempt portions are extended by ADR 0007.
+
 ## Context
 
 AI requests create variable provider cost and can fail after a learner starts an

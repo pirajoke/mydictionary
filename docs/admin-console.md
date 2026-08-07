@@ -17,6 +17,8 @@ polling. The default binding is loopback-only on the Mac mini.
 - payment orders, Stars payments, refund holds, and local reconciliation
 - editable Telegram profile, `/start`, and `/help` text
 - database, migration, feature-flag, release, asset, and Telegram polling readiness
+- AI snapshot/tier/budget diagnostics plus audited breaker reset, blocked while
+  provider telemetry remains in the fallback journal
 - append-only administration audit log
 
 The admin can request a refund hold but cannot call Telegram's refund API. Live

@@ -3,16 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal, ROUND_CEILING
 import hashlib
 import hmac
 import json
 import os
+from pathlib import Path
 from time import perf_counter
 from typing import Any, Mapping, Protocol
+from uuid import uuid4
 
-from .economics import parse_reviewed_on, require_current_review
-from .storage import DatabaseStore
+from .ai_metering import AIMeteringJournal
+from .economics import (
+    AIEconomicsContract,
+    EconomicsSnapshotError,
+    load_ai_economics_contract,
+    parse_reviewed_on,
+    require_current_review,
+)
+from .storage import AIQuotaExceeded, DatabaseStore
 
 
 TUTOR_RESPONSE_SCHEMA = {
@@ -139,10 +149,13 @@ class ProviderUsage:
 
 @dataclass(frozen=True)
 class ProviderResult:
-    answer: TutorAnswer
+    answer: TutorAnswer | None
     response_id: str | None
     model: str
     usage: ProviderUsage
+    service_tier: str = "default"
+    status: str = "completed"
+    output_text: str = ""
 
 
 @dataclass(frozen=True)
@@ -192,19 +205,37 @@ class ModelPricing:
     output_usd_per_million: Decimal = Decimal("0")
 
     def cost_micro_usd(self, usage: ProviderUsage) -> int:
+        values = usage.as_dict()
         uncached = max(
             0,
-            usage.input_tokens
-            - usage.cached_input_tokens
-            - usage.cache_write_tokens,
+            values["input_tokens"]
+            - values["cached_input_tokens"]
+            - values["cache_write_tokens"],
         )
         cost = (
             Decimal(uncached) * self.input_usd_per_million
-            + Decimal(usage.cached_input_tokens)
+            + Decimal(values["cached_input_tokens"])
             * self.cached_input_usd_per_million
-            + Decimal(usage.cache_write_tokens)
+            + Decimal(values["cache_write_tokens"])
             * self.cache_write_usd_per_million
-            + Decimal(usage.output_tokens) * self.output_usd_per_million
+            + Decimal(values["output_tokens"]) * self.output_usd_per_million
+        )
+        return int(cost.to_integral_value(rounding=ROUND_CEILING))
+
+    def worst_case_cost_micro_usd(
+        self,
+        *,
+        input_tokens: int,
+        output_tokens: int,
+    ) -> int:
+        input_rate = max(
+            self.input_usd_per_million,
+            self.cache_write_usd_per_million,
+        )
+        cost = (
+            Decimal(max(0, int(input_tokens))) * input_rate
+            + Decimal(max(0, int(output_tokens)))
+            * self.output_usd_per_million
         )
         return int(cost.to_integral_value(rounding=ROUND_CEILING))
 
@@ -214,6 +245,7 @@ class AITutorSettings:
     enabled: bool
     provider: str
     model: str
+    service_tier: str
     initial_credits: int
     credits_per_request: int
     openai_api_key: str | None
@@ -223,9 +255,109 @@ class AITutorSettings:
     pricing_reviewed_on: str | None = None
     pricing_max_age_days: int = 30
     max_daily_requests_per_user: int = 5
-    max_cost_micro_usd_per_request: int = 5000
+    max_preflight_cost_micro_usd_per_request: int = 5000
+    retrospective_breaker_micro_usd_per_response: int = 5000
+    max_project_cost_micro_usd_per_day: int = 25000
+    max_project_cost_micro_usd_per_month: int = 100000
+    max_in_flight_cost_micro_usd: int = 5000
     max_provider_input_chars: int = 12000
     max_output_tokens: int = 1000
+    economics_contract: AIEconomicsContract | None = None
+    metering_journal_path: str | None = None
+
+    def assert_runtime_ready(
+        self, *, today: date | None = None
+    ) -> AIEconomicsContract:
+        if not self.enabled:
+            raise AIConfigurationError("AI tutor feature is disabled")
+        if (
+            self.provider != "openai"
+            or not self.openai_api_key
+            or not self.safety_salt
+            or len(self.safety_salt) < 16
+        ):
+            raise AIConfigurationError(
+                "Enabled AI tutor requires the OpenAI provider, API key, and salt"
+            )
+        if self.economics_contract is None:
+            raise AIConfigurationError(
+                "Enabled AI tutor requires an approved economics snapshot"
+            )
+        try:
+            contract = self.economics_contract.assert_current(today=today)
+        except (EconomicsSnapshotError, ValueError) as exc:
+            raise AIConfigurationError(str(exc)) from exc
+        expected = {
+            "provider": self.provider,
+            "model": self.model,
+            "service_tier": self.service_tier,
+            "initial_credits": self.initial_credits,
+            "credits_per_request": self.credits_per_request,
+            "pricing_reviewed_on": self.pricing_reviewed_on,
+            "pricing_max_age_days": self.pricing_max_age_days,
+            "max_daily_requests_per_user": self.max_daily_requests_per_user,
+            "max_preflight_cost_micro_usd_per_request": (
+                self.max_preflight_cost_micro_usd_per_request
+            ),
+            "retrospective_breaker_micro_usd_per_response": (
+                self.retrospective_breaker_micro_usd_per_response
+            ),
+            "max_project_cost_micro_usd_per_day": (
+                self.max_project_cost_micro_usd_per_day
+            ),
+            "max_project_cost_micro_usd_per_month": (
+                self.max_project_cost_micro_usd_per_month
+            ),
+            "max_in_flight_cost_micro_usd": self.max_in_flight_cost_micro_usd,
+            "max_provider_input_chars": self.max_provider_input_chars,
+            "max_output_tokens": self.max_output_tokens,
+        }
+        actual = {
+            "provider": contract.provider,
+            "model": contract.model,
+            "service_tier": contract.service_tier,
+            "initial_credits": contract.initial_credits,
+            "credits_per_request": contract.credits_per_request,
+            "pricing_reviewed_on": contract.reviewed_on,
+            "pricing_max_age_days": contract.max_age_days,
+            "max_daily_requests_per_user": contract.max_daily_requests_per_user,
+            "max_preflight_cost_micro_usd_per_request": (
+                contract.max_preflight_cost_micro_usd_per_request
+            ),
+            "retrospective_breaker_micro_usd_per_response": (
+                contract.retrospective_breaker_micro_usd_per_response
+            ),
+            "max_project_cost_micro_usd_per_day": (
+                contract.max_project_cost_micro_usd_per_day
+            ),
+            "max_project_cost_micro_usd_per_month": (
+                contract.max_project_cost_micro_usd_per_month
+            ),
+            "max_in_flight_cost_micro_usd": contract.max_in_flight_cost_micro_usd,
+            "max_provider_input_chars": contract.max_provider_input_chars,
+            "max_output_tokens": contract.max_output_tokens,
+        }
+        if expected != actual:
+            raise AIConfigurationError(
+                "AI runtime settings drift from the approved economics snapshot"
+            )
+        contract_pricing = (
+            contract.input_usd_per_million,
+            contract.cached_input_usd_per_million,
+            contract.cache_write_usd_per_million,
+            contract.output_usd_per_million,
+        )
+        runtime_pricing = (
+            self.pricing.input_usd_per_million,
+            self.pricing.cached_input_usd_per_million,
+            self.pricing.cache_write_usd_per_million,
+            self.pricing.output_usd_per_million,
+        )
+        if runtime_pricing != contract_pricing:
+            raise AIConfigurationError(
+                "AI runtime pricing drifts from the approved economics snapshot"
+            )
+        return contract
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "AITutorSettings":
@@ -234,6 +366,9 @@ class AITutorSettings:
         provider = env.get("AI_PROVIDER", "openai").strip().lower()
         if provider != "openai":
             raise AIConfigurationError("AI_PROVIDER must be 'openai'")
+        service_tier = env.get("AI_SERVICE_TIER", "default").strip().lower()
+        if service_tier != "default":
+            raise AIConfigurationError("AI_SERVICE_TIER must be 'default'")
         try:
             initial_credits = int(env.get("AI_INITIAL_CREDITS", "0"))
             credits_per_request = int(env.get("AI_CREDITS_PER_REQUEST", "1"))
@@ -243,8 +378,23 @@ class AITutorSettings:
             max_daily_requests_per_user = int(
                 env.get("AI_MAX_DAILY_REQUESTS_PER_USER", "5")
             )
-            max_cost_micro_usd_per_request = int(
-                env.get("AI_MAX_COST_MICRO_USD_PER_REQUEST", "5000")
+            max_preflight_cost_micro_usd_per_request = int(
+                env.get("AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST", "5000")
+            )
+            retrospective_breaker_micro_usd_per_response = int(
+                env.get(
+                    "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE",
+                    "5000",
+                )
+            )
+            max_project_cost_micro_usd_per_day = int(
+                env.get("AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY", "25000")
+            )
+            max_project_cost_micro_usd_per_month = int(
+                env.get("AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH", "100000")
+            )
+            max_in_flight_cost_micro_usd = int(
+                env.get("AI_MAX_IN_FLIGHT_COST_MICRO_USD", "5000")
             )
             max_provider_input_chars = int(
                 env.get("AI_MAX_PROVIDER_INPUT_CHARS", "12000")
@@ -264,9 +414,25 @@ class AITutorSettings:
             raise AIConfigurationError(
                 "AI_MAX_DAILY_REQUESTS_PER_USER must be between 1 and 100"
             )
-        if not 1 <= max_cost_micro_usd_per_request <= 1_000_000:
+        if not 1 <= max_preflight_cost_micro_usd_per_request <= 1_000_000:
             raise AIConfigurationError(
-                "AI_MAX_COST_MICRO_USD_PER_REQUEST must be between 1 and 1000000"
+                "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST must be between 1 and 1000000"
+            )
+        if not 1 <= retrospective_breaker_micro_usd_per_response <= 1_000_000:
+            raise AIConfigurationError(
+                "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE is invalid"
+            )
+        if not 1 <= max_project_cost_micro_usd_per_day <= 100_000_000:
+            raise AIConfigurationError("AI daily project budget is invalid")
+        if not 1 <= max_project_cost_micro_usd_per_month <= 1_000_000_000:
+            raise AIConfigurationError("AI monthly project budget is invalid")
+        if max_project_cost_micro_usd_per_month < max_project_cost_micro_usd_per_day:
+            raise AIConfigurationError("AI monthly budget cannot be below daily budget")
+        if not 1 <= max_in_flight_cost_micro_usd <= 100_000_000:
+            raise AIConfigurationError("AI in-flight budget is invalid")
+        if max_in_flight_cost_micro_usd < max_preflight_cost_micro_usd_per_request:
+            raise AIConfigurationError(
+                "AI in-flight budget cannot be below one request budget"
             )
         if not 1000 <= max_provider_input_chars <= 50000:
             raise AIConfigurationError(
@@ -347,10 +513,36 @@ class AITutorSettings:
                 )
             except ValueError as exc:
                 raise AIConfigurationError(str(exc)) from exc
-        return cls(
+        snapshot_path = env.get("AI_ECONOMICS_SNAPSHOT_PATH", "").strip()
+        snapshot_id = env.get("AI_ECONOMICS_SNAPSHOT_ID", "").strip()
+        snapshot_digest = env.get("AI_ECONOMICS_SNAPSHOT_SHA256", "").strip()
+        snapshot_values = (snapshot_path, snapshot_id, snapshot_digest)
+        if any(snapshot_values) and not all(snapshot_values):
+            raise AIConfigurationError(
+                "AI economics snapshot path, id, and hash must be configured together"
+            )
+        economics_contract = None
+        if all(snapshot_values):
+            try:
+                economics_contract = load_ai_economics_contract(
+                    snapshot_path,
+                    expected_snapshot_id=snapshot_id,
+                    expected_snapshot_sha256=snapshot_digest,
+                    require_approved=enabled,
+                )
+            except (EconomicsSnapshotError, ValueError) as exc:
+                raise AIConfigurationError(str(exc)) from exc
+        if enabled and economics_contract is None:
+            raise AIConfigurationError(
+                "Enabled AI tutor requires an approved economics snapshot"
+            )
+        data_dir = Path(env.get("DATA_DIR", ".")).expanduser()
+        journal_path = env.get("AI_METERING_JOURNAL_PATH", "").strip()
+        configured = cls(
             enabled=enabled,
             provider=provider,
             model=model,
+            service_tier=service_tier,
             initial_credits=initial_credits,
             credits_per_request=credits_per_request,
             openai_api_key=api_key,
@@ -360,10 +552,29 @@ class AITutorSettings:
             pricing_reviewed_on=pricing_reviewed_on or None,
             pricing_max_age_days=pricing_max_age_days,
             max_daily_requests_per_user=max_daily_requests_per_user,
-            max_cost_micro_usd_per_request=max_cost_micro_usd_per_request,
+            max_preflight_cost_micro_usd_per_request=(
+                max_preflight_cost_micro_usd_per_request
+            ),
+            retrospective_breaker_micro_usd_per_response=(
+                retrospective_breaker_micro_usd_per_response
+            ),
+            max_project_cost_micro_usd_per_day=max_project_cost_micro_usd_per_day,
+            max_project_cost_micro_usd_per_month=(
+                max_project_cost_micro_usd_per_month
+            ),
+            max_in_flight_cost_micro_usd=max_in_flight_cost_micro_usd,
             max_provider_input_chars=max_provider_input_chars,
             max_output_tokens=max_output_tokens,
+            economics_contract=economics_contract,
+            metering_journal_path=str(
+                Path(journal_path).expanduser()
+                if journal_path
+                else data_dir / "ai-metering-fallback.jsonl"
+            ),
         )
+        if enabled:
+            configured.assert_runtime_ready()
+        return configured
 
 
 def parse_tutor_answer(payload: Mapping[str, Any]) -> TutorAnswer:
@@ -444,6 +655,60 @@ def context_fingerprint(context: TutorContext) -> str:
     return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
 
+def serialize_tutor_provider_input(question: str, context: TutorContext) -> str:
+    provider_input = {
+        "question_ru": question,
+        "language": context.language,
+        "topic": context.topic,
+        "active_block": [
+            {
+                "term": word.term,
+                "transcription": word.transcription,
+                "meaning_ru": word.meaning_ru,
+                "dictionary_example": word.example_target,
+            }
+            for word in context.words
+        ],
+    }
+    return json.dumps(provider_input, ensure_ascii=False, separators=(",", ":"))
+
+
+@dataclass(frozen=True)
+class ProviderBudget:
+    input_tokens_upper_bound: int
+    output_tokens_upper_bound: int
+    projected_cost_micro_usd: int
+
+
+def estimate_tutor_provider_budget(
+    *,
+    serialized_input: str,
+    pricing: ModelPricing,
+    max_output_tokens: int,
+) -> ProviderBudget:
+    schema_text = json.dumps(
+        TUTOR_RESPONSE_SCHEMA,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    # A valid UTF-8 token consumes at least one byte. Counting every byte as one
+    # token plus protocol overhead intentionally overestimates local preflight.
+    input_upper_bound = sum(
+        len(value.encode("utf-8"))
+        for value in (TUTOR_INSTRUCTIONS, serialized_input, schema_text)
+    ) + 256
+    output_upper_bound = max(0, int(max_output_tokens))
+    return ProviderBudget(
+        input_tokens_upper_bound=input_upper_bound,
+        output_tokens_upper_bound=output_upper_bound,
+        projected_cost_micro_usd=pricing.worst_case_cost_micro_usd(
+            input_tokens=input_upper_bound,
+            output_tokens=output_upper_bound,
+        ),
+    )
+
+
 def render_tutor_answer(result: TutorResult) -> str:
     words = {word.term: word for word in result.context.words}
     lines = [f"🇷🇺 {result.answer.summary_ru}"]
@@ -479,6 +744,13 @@ def _attr(value: Any, name: str, default: Any = 0) -> Any:
     return getattr(value, name, default)
 
 
+def _non_negative_int_attr(value: Any, name: str) -> int:
+    try:
+        return max(0, int(_attr(value, name, 0) or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
 class OpenAIResponsesProvider:
     """OpenAI Responses API adapter behind the provider-neutral protocol."""
 
@@ -487,6 +759,7 @@ class OpenAIResponsesProvider:
         *,
         api_key: str,
         model: str,
+        service_tier: str,
         safety_salt: str,
         max_provider_input_chars: int = 12000,
         max_output_tokens: int = 1000,
@@ -497,6 +770,9 @@ class OpenAIResponsesProvider:
                 "OpenAI key and AI_SAFETY_SALT of at least 16 characters are required"
             )
         self.model = model
+        if service_tier != "default":
+            raise AIConfigurationError("OpenAI service tier must be default")
+        self.service_tier = service_tier
         self.safety_salt = safety_salt.encode("utf-8")
         if not 1000 <= int(max_provider_input_chars) <= 50000:
             raise AIConfigurationError("OpenAI input character limit is invalid")
@@ -507,7 +783,7 @@ class OpenAIResponsesProvider:
         if client is None:
             from openai import AsyncOpenAI
 
-            client = AsyncOpenAI(api_key=api_key, timeout=25.0, max_retries=1)
+            client = AsyncOpenAI(api_key=api_key, timeout=25.0, max_retries=0)
         self.client = client
 
     def _safety_identifier(self, user_id: int) -> str:
@@ -518,21 +794,9 @@ class OpenAIResponsesProvider:
         ).hexdigest()
 
     async def generate(self, request: TutorRequest) -> ProviderResult:
-        provider_input = {
-            "question_ru": request.question,
-            "language": request.context.language,
-            "topic": request.context.topic,
-            "active_block": [
-                {
-                    "term": word.term,
-                    "transcription": word.transcription,
-                    "meaning_ru": word.meaning_ru,
-                    "dictionary_example": word.example_target,
-                }
-                for word in request.context.words
-            ],
-        }
-        serialized_input = json.dumps(provider_input, ensure_ascii=False)
+        serialized_input = serialize_tutor_provider_input(
+            request.question, request.context
+        )
         if len(serialized_input) > self.max_provider_input_chars:
             raise AIProviderError(
                 "Tutor provider input exceeds the configured character ceiling"
@@ -542,6 +806,7 @@ class OpenAIResponsesProvider:
             instructions=TUTOR_INSTRUCTIONS,
             input=serialized_input,
             max_output_tokens=self.max_output_tokens,
+            service_tier=self.service_tier,
             reasoning={"effort": "low"},
             text={
                 "format": {
@@ -557,28 +822,31 @@ class OpenAIResponsesProvider:
             store=False,
         )
         output_text = str(_attr(response, "output_text", "")).strip()
-        if not output_text:
-            raise AIProviderError("OpenAI returned no tutor output")
-        try:
-            payload = json.loads(output_text)
-        except json.JSONDecodeError as exc:
-            raise AIProviderError("OpenAI returned invalid JSON") from exc
         usage = _attr(response, "usage", None)
         input_details = _attr(usage, "input_tokens_details", None)
         output_details = _attr(usage, "output_tokens_details", None)
         provider_usage = ProviderUsage(
-            input_tokens=int(_attr(usage, "input_tokens", 0)),
-            cached_input_tokens=int(_attr(input_details, "cached_tokens", 0)),
-            cache_write_tokens=int(_attr(input_details, "cache_write_tokens", 0)),
-            output_tokens=int(_attr(usage, "output_tokens", 0)),
-            reasoning_tokens=int(_attr(output_details, "reasoning_tokens", 0)),
-            total_tokens=int(_attr(usage, "total_tokens", 0)),
+            input_tokens=_non_negative_int_attr(usage, "input_tokens"),
+            cached_input_tokens=_non_negative_int_attr(
+                input_details, "cached_tokens"
+            ),
+            cache_write_tokens=_non_negative_int_attr(
+                input_details, "cache_write_tokens"
+            ),
+            output_tokens=_non_negative_int_attr(usage, "output_tokens"),
+            reasoning_tokens=_non_negative_int_attr(
+                output_details, "reasoning_tokens"
+            ),
+            total_tokens=_non_negative_int_attr(usage, "total_tokens"),
         )
         return ProviderResult(
-            answer=parse_tutor_answer(payload),
+            answer=None,
             response_id=str(_attr(response, "id", "")) or None,
-            model=str(_attr(response, "model", self.model)),
+            model=str(_attr(response, "model", "")),
             usage=provider_usage,
+            service_tier=str(_attr(response, "service_tier", "")),
+            status=str(_attr(response, "status", "")),
+            output_text=output_text,
         )
 
 
@@ -589,10 +857,14 @@ class AITutorService:
         store: DatabaseStore,
         provider: AIProvider,
         settings: AITutorSettings,
+        metering_journal: AIMeteringJournal | None = None,
     ):
         self.store = store
         self.provider = provider
         self.settings = settings
+        self.metering_journal = metering_journal or AIMeteringJournal(
+            settings.metering_journal_path or "ai-metering-fallback.jsonl"
+        )
 
     async def ask(
         self, *, user_id: int, question: str, context: TutorContext
@@ -602,6 +874,26 @@ class AITutorService:
             raise ValueError("AI question must contain 1-500 characters")
         if not 1 <= len(context.words) <= 10:
             raise ValueError("AI tutor context must contain 1-10 block words")
+        contract = self.settings.assert_runtime_ready()
+        if self.metering_journal.pending_count():
+            raise AIUsageRecoveryError(
+                "Unreconciled AI metering journal blocks provider calls"
+            )
+        serialized_input = serialize_tutor_provider_input(question, context)
+        if len(serialized_input) > self.settings.max_provider_input_chars:
+            raise AIProviderError(
+                "Tutor provider input exceeds the configured character ceiling"
+            )
+        budget = estimate_tutor_provider_budget(
+            serialized_input=serialized_input,
+            pricing=self.settings.pricing,
+            max_output_tokens=self.settings.max_output_tokens,
+        )
+        if (
+            budget.projected_cost_micro_usd
+            > self.settings.max_preflight_cost_micro_usd_per_request
+        ):
+            raise AIQuotaExceeded("AI preflight request cost budget exceeded")
         try:
             self.store.recover_stale_ai_usage(
                 timeout_seconds=self.settings.reservation_timeout_seconds,
@@ -611,6 +903,7 @@ class AITutorService:
             raise AIUsageRecoveryError(
                 "Stale AI reservation recovery failed before a new request"
             ) from exc
+        request_id = str(uuid4())
         request_id = self.store.reserve_ai_usage(
             user_id,
             action="block_tutor",
@@ -620,10 +913,28 @@ class AITutorService:
             initial_credits=self.settings.initial_credits,
             context_fingerprint=context_fingerprint(context),
             max_daily_requests=self.settings.max_daily_requests_per_user,
-            max_cost_micro_usd=self.settings.max_cost_micro_usd_per_request,
+            requested_service_tier=self.settings.service_tier,
+            economics_snapshot_id=contract.snapshot_id,
+            economics_snapshot_sha256=contract.snapshot_sha256,
+            projected_cost_micro_usd=budget.projected_cost_micro_usd,
+            max_project_cost_micro_usd_per_day=(
+                self.settings.max_project_cost_micro_usd_per_day
+            ),
+            max_project_cost_micro_usd_per_month=(
+                self.settings.max_project_cost_micro_usd_per_month
+            ),
+            max_in_flight_cost_micro_usd=(
+                self.settings.max_in_flight_cost_micro_usd
+            ),
+            request_id=request_id,
         )
         started = perf_counter()
+        provider_attempt_started = False
+        provider_result: ProviderResult | None = None
+        settlement_started = False
         try:
+            self.store.mark_ai_provider_attempt_started(request_id)
+            provider_attempt_started = True
             provider_result = await self.provider.generate(
                 TutorRequest(
                     request_id=request_id,
@@ -632,28 +943,103 @@ class AITutorService:
                     context=context,
                 )
             )
-            validate_tutor_answer(provider_result.answer, context)
+            latency_ms = int((perf_counter() - started) * 1000)
+            response_cost = self.settings.pricing.cost_micro_usd(
+                provider_result.usage
+            )
+            telemetry = {
+                "request_id": request_id,
+                "provider_response_id": provider_result.response_id,
+                "model": provider_result.model,
+                "service_tier": provider_result.service_tier,
+                "provider_status": provider_result.status,
+                **provider_result.usage.as_dict(),
+                "cost_micro_usd": response_cost,
+                "latency_ms": latency_ms,
+            }
+            try:
+                self.store.record_ai_provider_response(
+                    request_id,
+                    provider_response_id=provider_result.response_id,
+                    model=provider_result.model,
+                    service_tier=provider_result.service_tier,
+                    provider_status=provider_result.status,
+                    usage=provider_result.usage.as_dict(),
+                    cost_micro_usd=response_cost,
+                    latency_ms=latency_ms,
+                    expected_model=self.settings.model,
+                    expected_service_tier=self.settings.service_tier,
+                    retrospective_breaker_micro_usd=(
+                        self.settings.retrospective_breaker_micro_usd_per_response
+                    ),
+                )
+            except Exception as storage_error:
+                self.metering_journal.append(
+                    {
+                        **telemetry,
+                        "error_code": "provider_telemetry_storage_failure",
+                    }
+                )
+                try:
+                    self.store.open_ai_breaker(
+                        reason="provider_telemetry_storage_failure"
+                    )
+                except Exception:
+                    pass
+                raise AIUsageRecoveryError(
+                    "Provider telemetry was journaled after database failure"
+                ) from storage_error
+            if provider_result.model != self.settings.model:
+                raise AIProviderError("OpenAI returned an unapproved model")
+            if provider_result.service_tier != self.settings.service_tier:
+                raise AIProviderError("OpenAI returned an unapproved service tier")
+            if provider_result.status != "completed":
+                raise AIProviderError("OpenAI response did not complete")
+            answer = provider_result.answer
+            if answer is None:
+                if not provider_result.output_text:
+                    raise AIProviderError("OpenAI returned no tutor output")
+                try:
+                    payload = json.loads(provider_result.output_text)
+                except json.JSONDecodeError as exc:
+                    raise AIProviderError("OpenAI returned invalid JSON") from exc
+                answer = parse_tutor_answer(payload)
+            validate_tutor_answer(answer, context)
+            settlement_started = True
             allowance = self.store.complete_ai_usage(
                 request_id,
                 billed_credits=self.settings.credits_per_request,
                 provider_response_id=provider_result.response_id,
                 model=provider_result.model,
                 usage=provider_result.usage.as_dict(),
-                cost_micro_usd=self.settings.pricing.cost_micro_usd(
-                    provider_result.usage
-                ),
-                latency_ms=int((perf_counter() - started) * 1000),
+                cost_micro_usd=response_cost,
+                latency_ms=latency_ms,
+                returned_service_tier=provider_result.service_tier,
+                provider_status=provider_result.status,
             )
             return TutorResult(
-                answer=provider_result.answer,
+                answer=answer,
                 context=context,
                 usage=provider_result.usage,
                 allowance=allowance,
             )
         except BaseException as exc:
+            if settlement_started:
+                try:
+                    self.store.open_ai_breaker(
+                        reason="ai_settlement_storage_failure"
+                    )
+                except Exception:
+                    pass
             try:
                 released = self.store.fail_ai_usage(
-                    request_id, error_code=type(exc).__name__
+                    request_id,
+                    error_code=type(exc).__name__,
+                    open_breaker_reason=(
+                        "provider_attempt_outcome_unknown"
+                        if provider_attempt_started and provider_result is None
+                        else None
+                    ),
                 )
             except Exception as recovery_error:
                 raise AIUsageRecoveryError(
@@ -674,6 +1060,7 @@ def build_openai_tutor_service(
     provider = OpenAIResponsesProvider(
         api_key=settings.openai_api_key or "",
         model=settings.model,
+        service_tier=settings.service_tier,
         safety_salt=settings.safety_salt or "",
         max_provider_input_chars=settings.max_provider_input_chars,
         max_output_tokens=settings.max_output_tokens,

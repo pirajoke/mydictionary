@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from decimal import Decimal, InvalidOperation
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -32,6 +33,16 @@ TERMS_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 class EconomicsContractError(RuntimeError):
     """Raised when the versioned economics snapshot is unsafe or inconsistent."""
+
+
+def _snapshot_sha256(snapshot: Mapping[str, Any]) -> str:
+    encoded = json.dumps(
+        snapshot,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _object(value: Any, name: str) -> Mapping[str, Any]:
@@ -71,7 +82,7 @@ def load_snapshot(path: Path = DEFAULT_SNAPSHOT) -> Mapping[str, Any]:
 def validate_snapshot(
     snapshot: Mapping[str, Any], *, root: Path = ROOT
 ) -> dict[str, int | str]:
-    if snapshot.get("schema_version") != 1:
+    if snapshot.get("schema_version") != 2:
         raise EconomicsContractError("Unsupported economics schema_version")
     if snapshot.get("status") != "draft":
         raise EconomicsContractError("Economics snapshot must remain draft")
@@ -100,12 +111,12 @@ def validate_snapshot(
             raise EconomicsContractError(f"Unapproved economics source: {source}")
 
     ai = _object(snapshot.get("ai"), "ai")
-    if ai.get("status") != "draft":
-        raise EconomicsContractError("AI economics must remain draft")
+    if ai.get("status") not in {"draft", "approved"}:
+        raise EconomicsContractError("AI economics status must be draft or approved")
     if ai.get("provider") != "openai" or ai.get("model") != "gpt-5.6-luna":
         raise EconomicsContractError("AI provider/model does not match the review")
-    if ai.get("service_tier") != "standard":
-        raise EconomicsContractError("AI pricing is reviewed only for Standard tier")
+    if ai.get("service_tier") != "default":
+        raise EconomicsContractError("AI pricing is reviewed only for default tier")
     rates = _object(
         ai.get("short_context_usd_per_million"), "AI short-context pricing"
     )
@@ -142,12 +153,42 @@ def validate_snapshot(
         minimum=1,
         maximum=100,
     )
-    cost_ceiling = _integer(
-        limits.get("max_cost_micro_usd_per_request"),
-        "AI cost ceiling",
+    preflight_budget = _integer(
+        limits.get("max_preflight_cost_micro_usd_per_request"),
+        "AI preflight request budget",
         minimum=1,
         maximum=1_000_000,
     )
+    retrospective_breaker = _integer(
+        limits.get("retrospective_breaker_micro_usd_per_response"),
+        "AI retrospective response breaker",
+        minimum=1,
+        maximum=1_000_000,
+    )
+    project_daily_budget = _integer(
+        limits.get("max_project_cost_micro_usd_per_day"),
+        "AI project daily budget",
+        minimum=1,
+        maximum=100_000_000,
+    )
+    project_monthly_budget = _integer(
+        limits.get("max_project_cost_micro_usd_per_month"),
+        "AI project monthly budget",
+        minimum=1,
+        maximum=1_000_000_000,
+    )
+    in_flight_budget = _integer(
+        limits.get("max_in_flight_cost_micro_usd"),
+        "AI in-flight budget",
+        minimum=1,
+        maximum=100_000_000,
+    )
+    if project_monthly_budget < project_daily_budget:
+        raise EconomicsContractError("AI monthly budget cannot be below daily budget")
+    if in_flight_budget < preflight_budget:
+        raise EconomicsContractError(
+            "AI in-flight budget cannot be below one preflight request budget"
+        )
     input_chars = _integer(
         limits.get("max_provider_input_chars"),
         "AI input character limit",
@@ -270,12 +311,12 @@ def validate_snapshot(
             maximum=1_000_000,
         )
         net_revenue = price_xtr * net_per_xtr
-        provider_cost = credits * cost_ceiling
+        provider_cost = credits * preflight_budget
         reserve = (net_revenue * refund_reserve_bps + 9999) // 10000
         estimated_cost = provider_cost + reserve + support_overhead
         margin_bps = (net_revenue - estimated_cost) * 10000 // net_revenue
         expected_values = {
-            "provider_cost_ceiling_micro_usd": provider_cost,
+            "modelled_provider_cost_micro_usd": provider_cost,
             "refund_reserve_micro_usd": reserve,
             "estimated_cost_micro_usd": estimated_cost,
             "net_revenue_micro_usd": net_revenue,
@@ -299,11 +340,17 @@ def validate_snapshot(
 
     return {
         "snapshot_id": str(snapshot.get("snapshot_id", "")),
+        "snapshot_sha256": _snapshot_sha256(snapshot),
         "packages": len(packages),
         "credits_per_request": credits_per_request,
         "daily_limit": daily_limit,
         "input_chars": input_chars,
         "output_tokens": output_tokens,
+        "preflight_budget": preflight_budget,
+        "retrospective_breaker": retrospective_breaker,
+        "project_daily_budget": project_daily_budget,
+        "project_monthly_budget": project_monthly_budget,
+        "in_flight_budget": in_flight_budget,
         "net_micro_usd_per_xtr": net_per_xtr,
         "max_age_days": max_age_days,
     }
@@ -320,6 +367,10 @@ def render_environment(snapshot: Mapping[str, Any]) -> str:
         "AI_TUTOR_ENABLED": "false",
         "AI_PROVIDER": ai["provider"],
         "AI_MODEL": ai["model"],
+        "AI_SERVICE_TIER": ai["service_tier"],
+        "AI_ECONOMICS_SNAPSHOT_PATH": "config/launch-economics.json",
+        "AI_ECONOMICS_SNAPSHOT_ID": snapshot["snapshot_id"],
+        "AI_ECONOMICS_SNAPSHOT_SHA256": validated["snapshot_sha256"],
         "AI_INITIAL_CREDITS": credit_policy["initial_credits"],
         "AI_CREDITS_PER_REQUEST": credit_policy["credits_per_request"],
         "AI_INPUT_USD_PER_MILLION": rates["input"],
@@ -329,8 +380,20 @@ def render_environment(snapshot: Mapping[str, Any]) -> str:
         "AI_PRICING_REVIEWED_ON": snapshot["reviewed_on"],
         "AI_PRICING_MAX_AGE_DAYS": snapshot["max_age_days"],
         "AI_MAX_DAILY_REQUESTS_PER_USER": limits["max_daily_requests_per_user"],
-        "AI_MAX_COST_MICRO_USD_PER_REQUEST": limits[
-            "max_cost_micro_usd_per_request"
+        "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST": limits[
+            "max_preflight_cost_micro_usd_per_request"
+        ],
+        "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE": limits[
+            "retrospective_breaker_micro_usd_per_response"
+        ],
+        "AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY": limits[
+            "max_project_cost_micro_usd_per_day"
+        ],
+        "AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH": limits[
+            "max_project_cost_micro_usd_per_month"
+        ],
+        "AI_MAX_IN_FLIGHT_COST_MICRO_USD": limits[
+            "max_in_flight_cost_micro_usd"
         ],
         "AI_MAX_PROVIDER_INPUT_CHARS": limits["max_provider_input_chars"],
         "AI_MAX_OUTPUT_TOKENS": limits["max_output_tokens"],

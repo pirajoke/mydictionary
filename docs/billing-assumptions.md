@@ -19,9 +19,15 @@ These are implemented Stage 4 constraints, not launch prices.
   speech, infrastructure, refund, and support costs.
 - The checked-in package table is a dated draft hypothesis, validated by
   `ops/mydictionary_economics.py`; it does not create active catalog products.
-- AI requests have both a rolling per-user attempt limit and a post-settlement
-  cost circuit breaker. Provider failures count toward the daily limit because
-  an upstream request may still incur cost.
+- AI requests have a rolling per-user attempt limit, conservative preflight
+  budget, project day/month budgets, serialized in-flight exposure, and a
+  retrospective response breaker. Provider failures count toward the daily
+  limit because an upstream request may still incur cost.
+- The provider SDK uses zero automatic retries. A response is metered before
+  output validation; an unknown attempted outcome fails closed and opens the
+  breaker. The response threshold is not represented as a hard cost cap.
+- Enabled runtime configuration must match an exact approved economics
+  snapshot ID/hash and pass a freshness check on every request.
 - Unlimited AI usage is excluded from the first launch.
 - Product activation requires measured package cost, a configured conservative
   net value per XTR, current economics review, approved terms, and an estimated

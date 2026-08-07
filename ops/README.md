@@ -182,6 +182,20 @@ The renderer never includes provider keys, payload secrets, safety salts,
 support contacts, or terms text. Its output is a review aid, not an activation
 command; AI, Stars, and terms approval remain false.
 
+AI provider telemetry that could not reach PostgreSQL is written to a private
+fallback journal. Inspect it without revealing contents and reconcile it only
+after reviewing the storage incident:
+
+```bash
+python ops/mydictionary_ai_metering.py status
+python ops/mydictionary_ai_metering.py reconcile --actor <operator> --execute
+```
+
+Reconciliation is idempotent, writes an audit entry, and leaves the persistent
+breaker open. Verify the imported model, tier, token fields, and cost in the
+admin before using the separate audited breaker reset. Never edit or truncate
+the journal by hand.
+
 `mydictionary_billing.py reconcile` is read-only and compares bounded Bot API
 transaction pages with the local Stars ledger. Refund and subscription changes
 require the exact local UUID plus `--execute`; the wrapper never prints tokens,
