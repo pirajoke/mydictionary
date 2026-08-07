@@ -20,6 +20,7 @@ from mydictionary.billing import (
     TelegramStarsGateway,
 )
 from mydictionary.storage import DatabaseStore
+from mydictionary.telegram_runtime import TelegramRuntimeSettings
 
 
 def _required(name: str) -> str:
@@ -45,8 +46,16 @@ def _reference(value: str) -> str:
 async def run(args: argparse.Namespace) -> int:
     store = DatabaseStore(_database_url(), migrate=False)
     try:
-        service = BillingService(store, BillingSettings.from_env())
-        gateway = TelegramStarsGateway(Bot(token=_required("BOT_TOKEN")))
+        settings = BillingSettings.from_env()
+        runtime = TelegramRuntimeSettings.from_env()
+        runtime.validate_billing_process(
+            billing_enabled=settings.enabled,
+            terms_version=settings.terms_version,
+        )
+        service = BillingService(store, settings)
+        gateway = TelegramStarsGateway(
+            Bot(token=_required("BOT_TOKEN"), **runtime.bot_kwargs())
+        )
         if args.command == "reconcile":
             issues = await service.reconcile_gateway(
                 gateway, maximum_transactions=args.maximum_transactions

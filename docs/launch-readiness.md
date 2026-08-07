@@ -83,8 +83,10 @@ terms file is explicitly a draft and cannot satisfy the approval gate by itself.
 6. Admit a bounded pilot through the existing access control.
 7. Under separate approval, run one consented test account through all eight
    languages without enabling public access.
-8. Under separate approval, run a low-value Stars purchase, reconciliation,
-   refund, and subscription-cancel test.
+8. Under the exact `APPROVE_TELEGRAM_TEST_ENV` approval, use the dedicated
+   Telegram test Bot API, test bot/user, isolated database, test-only terms, and
+   test-only payload secret for purchase, duplicate delivery, restart,
+   reconciliation, refund, and subscription-cancel checks.
 9. Enable paid access only after measured provider cost, support load, refund
    rate, and package margin satisfy the configured product floor.
 
