@@ -216,6 +216,7 @@ _STORE: DatabaseStore | None = None
 _AI_TUTOR: AITutorService | None = None
 _BILLING: BillingService | None = None
 _VOICE_TUTOR: VoiceTutorService | None = None
+LAST_PRONUNCIATION_MESSAGES_KEY = "last_pronunciation_messages"
 
 
 def database_url() -> str:
@@ -736,6 +737,71 @@ def forvo_button(idx: int) -> InlineKeyboardButton:
     url = f"https://forvo.com/word/{encoded_word}/#{pack.target_language}"
     return InlineKeyboardButton("🔊 Forvo", url=url)
 
+
+async def replace_previous_pronunciation(
+    chat_id: int,
+    sent_message,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Keep at most one bot pronunciation message per user and chat."""
+    message_id = getattr(sent_message, "message_id", None)
+    if (
+        not isinstance(message_id, int)
+        or isinstance(message_id, bool)
+        or message_id <= 0
+    ):
+        return
+    user_data = getattr(context, "user_data", None)
+    if not isinstance(user_data, MutableMapping):
+        return
+    messages = user_data.get(LAST_PRONUNCIATION_MESSAGES_KEY)
+    if not isinstance(messages, MutableMapping):
+        messages = {}
+        user_data[LAST_PRONUNCIATION_MESSAGES_KEY] = messages
+    chat_key = str(chat_id)
+    previous_message_id = messages.get(chat_key)
+    messages[chat_key] = message_id
+    if (
+        not isinstance(previous_message_id, int)
+        or isinstance(previous_message_id, bool)
+        or previous_message_id <= 0
+        or previous_message_id == message_id
+    ):
+        return
+    try:
+        await context.bot.delete_message(
+            chat_id=chat_id,
+            message_id=previous_message_id,
+        )
+    except TelegramError as exc:
+        logger.info(
+            "Previous pronunciation could not be deleted: error_type=%s",
+            type(exc).__name__,
+        )
+
+
+async def send_pronunciation_audio(
+    *,
+    chat_id: int,
+    audio,
+    title: str,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    """Send TTS as voice/audio and retire the preceding pronunciation."""
+    try:
+        sent_message = await context.bot.send_voice(chat_id=chat_id, voice=audio)
+    except Exception:
+        if hasattr(audio, "seek"):
+            audio.seek(0)
+        sent_message = await context.bot.send_audio(
+            chat_id=chat_id,
+            audio=audio,
+            title=title,
+        )
+    await replace_previous_pronunciation(chat_id, sent_message, context)
+    return sent_message
+
+
 async def send_pronunciation(chat_id: int, idx: int, context: ContextTypes.DEFAULT_TYPE):
     """Generate and send voice pronunciation for the word at idx."""
     try:
@@ -747,15 +813,12 @@ async def send_pronunciation(chat_id: int, idx: int, context: ContextTypes.DEFAU
             rate=pack.pronunciation.tts_rate,
             cache_namespace=f"{pack.pack_id}:v{pack.content_version}",
         )
-        try:
-            await context.bot.send_voice(chat_id=chat_id, voice=audio)
-        except Exception:
-            audio.seek(0)
-            await context.bot.send_audio(
-                chat_id=chat_id,
-                audio=audio,
-                title=target_text(word),
-            )
+        await send_pronunciation_audio(
+            chat_id=chat_id,
+            audio=audio,
+            title=target_text(word),
+            context=context,
+        )
     except Exception as exc:
         logger.warning(
             "TTS failed for word %s: error_type=%s", idx, type(exc).__name__
@@ -1612,16 +1675,12 @@ async def send_voice_reference(
             rate=pack.pronunciation.tts_rate,
             cache_namespace=f"{pack.pack_id}:conversation:v{pack.content_version}",
         )
-        try:
-            await context.bot.send_voice(chat_id=chat_id, voice=audio)
-        except Exception:
-            if hasattr(audio, "seek"):
-                audio.seek(0)
-            await context.bot.send_audio(
-                chat_id=chat_id,
-                audio=audio,
-                title=word.target,
-            )
+        await send_pronunciation_audio(
+            chat_id=chat_id,
+            audio=audio,
+            title=word.target,
+            context=context,
+        )
     except Exception as exc:
         logger.warning(
             "Conversation TTS failed: error_type=%s", type(exc).__name__

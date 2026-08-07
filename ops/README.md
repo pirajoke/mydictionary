@@ -13,6 +13,9 @@ approved production change. Render is not part of this deployment model.
   runtime directory and a release SHA derived from the `current` symlink.
 - `mydictionary_backup.py` creates and verifies private PostgreSQL
   custom-format backups independently of a deployment.
+- `mydictionary_restore_drill.py` retrieves one exact encrypted off-site object,
+  restores it into a generated disposable PostgreSQL database, verifies the
+  Alembic revision, removes the database, and writes a private drill receipt.
 
 All scripts are standalone entrypoints and use only the standard library in
 their bootstrap environment. Each candidate release installs its own
@@ -233,10 +236,14 @@ python ops/mydictionary_monitor.py
 python ops/mydictionary_monitor.py --execute
 python ops/mydictionary_offsite_backup.py
 python ops/mydictionary_offsite_backup.py --execute
+python ops/mydictionary_restore_drill.py --encrypted-name <exact.dump.age>
+python ops/mydictionary_restore_drill.py --encrypted-name <exact.dump.age> \
+  --execute --confirm-isolated-database
 ```
 
 Retention previews candidate row counts. Monitoring sends no alert and writes
 no state in preview mode. Off-site backup verifies the local dump in preview
 mode and invokes `age` and `rclone` only with `--execute`. See
-`docs/product-safety.md` for required settings, retention boundaries, and the
-restore contract.
+`docs/product-safety.md` for required settings, retention boundaries, the
+recovery-host separation, and the exact restore-drill contract. Never copy the
+private age identity to the production host.
