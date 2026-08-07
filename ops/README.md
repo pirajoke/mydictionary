@@ -114,6 +114,13 @@ root). It must contain `username`, `password_hash`, and `session_secret` string
 values. `ADMIN_COOKIE_SECURE` defaults to `true` for the public HTTPS tunnel;
 the service itself still binds only to loopback.
 
+The admin launcher can expose the authenticated one-time OpenAI key enrollment
+form without receiving `OPENAI_API_KEY` in its environment. Set
+`AI_KEY_ENROLLMENT_ENABLED`, `AI_KEY_ENROLLMENT_PATH`, and
+`AI_KEY_ENROLLMENT_EXPIRES_AT` together. The target must be directly under the
+owner-only `local-config` directory and the window cannot exceed one hour. See
+`docs/admin-console.md` for the lifecycle and cleanup procedure.
+
 Operator migration deploys also require:
 
 ```text

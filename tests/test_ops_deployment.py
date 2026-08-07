@@ -1,6 +1,7 @@
 import io
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tarfile
 import tempfile
@@ -166,6 +167,9 @@ class AdminLauncherTest(OpsTestCase):
             encoding="utf-8",
         )
         os.chmod(secrets_file, 0o600)
+        local_config = self.root / "local-config"
+        local_config.mkdir(exist_ok=True)
+        os.chmod(local_config, 0o700)
         return {
             "MYDICTIONARY_APP_ROOT": str(self.root),
             "DATABASE_URL": self.config.database_url,
@@ -241,6 +245,42 @@ class AdminLauncherTest(OpsTestCase):
         self.assertEqual(environment["BILLING_TERMS_APPROVED"], "false")
         self.assertNotIn("OPENAI_API_KEY", environment)
         self.assertNotIn("AI_SAFETY_SALT", environment)
+
+    def test_launcher_forwards_bounded_one_time_key_enrollment(self):
+        source = self.launcher_environment()
+        target = self.root / "local-config" / "openai-gate2.key"
+        expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
+        source.update(
+            {
+                "AI_KEY_ENROLLMENT_ENABLED": "true",
+                "AI_KEY_ENROLLMENT_PATH": str(target),
+                "AI_KEY_ENROLLMENT_EXPIRES_AT": expiry.isoformat(),
+            }
+        )
+
+        _, _, environment, _ = admin_launcher.build_process(source)
+
+        self.assertEqual(environment["AI_KEY_ENROLLMENT_ENABLED"], "true")
+        self.assertEqual(environment["AI_KEY_ENROLLMENT_PATH"], str(target))
+        self.assertEqual(
+            environment["AI_KEY_ENROLLMENT_EXPIRES_AT"], expiry.isoformat()
+        )
+        self.assertNotIn("OPENAI_API_KEY", environment)
+
+    def test_launcher_rejects_key_enrollment_outside_local_config(self):
+        source = self.launcher_environment()
+        source.update(
+            {
+                "AI_KEY_ENROLLMENT_ENABLED": "true",
+                "AI_KEY_ENROLLMENT_PATH": str(self.root / "openai.key"),
+                "AI_KEY_ENROLLMENT_EXPIRES_AT": (
+                    datetime.now(timezone.utc) + timedelta(minutes=30)
+                ).isoformat(),
+            }
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "must stay in local-config"):
+            admin_launcher.build_process(source)
 
     def test_launcher_rejects_release_outside_versioned_tree(self):
         environment = self.launcher_environment()
