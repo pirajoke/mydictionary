@@ -193,7 +193,17 @@ class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
             pronunciation=SimpleNamespace(tts_voice="fr-FR", tts_rate="-10%"),
         )
         context = SimpleNamespace(
-            bot=SimpleNamespace(send_message=AsyncMock(), send_voice=AsyncMock())
+            user_data={
+                bot.LAST_PRONUNCIATION_MESSAGES_KEY: {"9": 200},
+            },
+            bot=SimpleNamespace(
+                send_message=AsyncMock(),
+                send_voice=AsyncMock(
+                    return_value=SimpleNamespace(message_id=201)
+                ),
+                send_audio=AsyncMock(),
+                delete_message=AsyncMock(),
+            ),
         )
 
         with (
@@ -216,6 +226,10 @@ class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("bonjour bon-zhoor", text)
         get_audio.assert_awaited_once()
         context.bot.send_voice.assert_awaited_once_with(chat_id=9, voice="audio")
+        context.bot.delete_message.assert_awaited_once_with(
+            chat_id=9,
+            message_id=200,
+        )
         word_audio.assert_not_awaited()
 
     async def test_success_shows_transcript_then_reference_audio(self):

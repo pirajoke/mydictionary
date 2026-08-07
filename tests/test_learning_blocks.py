@@ -306,6 +306,127 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
         )
         send_voice.assert_awaited_once_with(chat_id=123, voice=audio)
 
+    async def test_new_pronunciation_deletes_previous_message_in_same_chat(self):
+        client = SimpleNamespace(
+            send_voice=AsyncMock(
+                side_effect=[
+                    SimpleNamespace(message_id=101),
+                    SimpleNamespace(message_id=102),
+                ]
+            ),
+            send_audio=AsyncMock(),
+            delete_message=AsyncMock(),
+        )
+        context = SimpleNamespace(bot=client, user_data={})
+
+        await bot.send_pronunciation_audio(
+            chat_id=123,
+            audio=BytesIO(b"first"),
+            title="first",
+            context=context,
+        )
+        await bot.send_pronunciation_audio(
+            chat_id=123,
+            audio=BytesIO(b"second"),
+            title="second",
+            context=context,
+        )
+
+        client.delete_message.assert_awaited_once_with(
+            chat_id=123,
+            message_id=101,
+        )
+        self.assertEqual(
+            context.user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY],
+            {"123": 102},
+        )
+
+    async def test_pronunciation_tracking_is_isolated_by_chat_and_user(self):
+        client = SimpleNamespace(delete_message=AsyncMock())
+        first_user = SimpleNamespace(bot=client, user_data={})
+        second_user = SimpleNamespace(bot=client, user_data={})
+
+        await bot.replace_previous_pronunciation(
+            123, SimpleNamespace(message_id=101), first_user
+        )
+        await bot.replace_previous_pronunciation(
+            456, SimpleNamespace(message_id=201), first_user
+        )
+        await bot.replace_previous_pronunciation(
+            123, SimpleNamespace(message_id=301), second_user
+        )
+
+        client.delete_message.assert_not_awaited()
+        self.assertEqual(
+            first_user.user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY],
+            {"123": 101, "456": 201},
+        )
+        self.assertEqual(
+            second_user.user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY],
+            {"123": 301},
+        )
+
+    async def test_delete_failure_keeps_new_voice_and_does_not_send_audio(self):
+        client = SimpleNamespace(
+            send_voice=AsyncMock(
+                side_effect=[
+                    SimpleNamespace(message_id=101),
+                    SimpleNamespace(message_id=102),
+                ]
+            ),
+            send_audio=AsyncMock(),
+            delete_message=AsyncMock(
+                side_effect=bot.TelegramError("message cannot be deleted")
+            ),
+        )
+        context = SimpleNamespace(bot=client, user_data={})
+
+        await bot.send_pronunciation_audio(
+            chat_id=123,
+            audio=BytesIO(b"first"),
+            title="first",
+            context=context,
+        )
+        await bot.send_pronunciation_audio(
+            chat_id=123,
+            audio=BytesIO(b"second"),
+            title="second",
+            context=context,
+        )
+
+        client.delete_message.assert_awaited_once()
+        client.send_audio.assert_not_awaited()
+        self.assertEqual(
+            context.user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY]["123"],
+            102,
+        )
+
+    async def test_voice_send_fallback_replaces_previous_with_audio_message(self):
+        audio = BytesIO(b"audio")
+        audio.seek(3)
+        client = SimpleNamespace(
+            send_voice=AsyncMock(side_effect=bot.TelegramError("voice failed")),
+            send_audio=AsyncMock(return_value=SimpleNamespace(message_id=102)),
+            delete_message=AsyncMock(),
+        )
+        context = SimpleNamespace(
+            bot=client,
+            user_data={bot.LAST_PRONUNCIATION_MESSAGES_KEY: {"123": 101}},
+        )
+
+        await bot.send_pronunciation_audio(
+            chat_id=123,
+            audio=audio,
+            title="bonjour",
+            context=context,
+        )
+
+        self.assertEqual(client.send_audio.await_args.kwargs["audio"].tell(), 0)
+        client.delete_message.assert_awaited_once_with(
+            chat_id=123,
+            message_id=101,
+        )
+
 
 class DailyLessonTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
