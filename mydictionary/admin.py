@@ -33,15 +33,26 @@ from sqlalchemy import text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mydictionary.admin_store import AdminStore
+from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
 from mydictionary.content import example_target_text
+from mydictionary.economics import (
+    EconomicsSnapshotError,
+    load_ai_economics_contract,
+    require_current_review,
+    review_is_current,
+)
 from mydictionary.readiness import (
     configured_max_age_seconds,
     heartbeat_path,
     inspect_bot_heartbeat,
 )
 from mydictionary.privacy import RetentionPolicy
+from mydictionary.secret_enrollment import (
+    SecretEnrollmentError,
+    SecretEnrollmentSettings,
+)
 from mydictionary.storage import DatabaseStore
 from vocabulary_topics import topic_counts, transcription_for
 
@@ -74,6 +85,59 @@ def _positive_decimal_setting(name: str) -> bool:
     except (InvalidOperation, ValueError):
         return False
     return value.is_finite() and value > 0
+
+
+def _review_setting_current(date_name: str, age_name: str) -> bool:
+    try:
+        max_age_days = int(os.environ.get(age_name, "30"))
+    except ValueError:
+        return False
+    return review_is_current(
+        os.environ.get(date_name, ""), max_age_days=max_age_days
+    )
+
+
+def _ai_metering_journal() -> AIMeteringJournal:
+    configured = os.environ.get("AI_METERING_JOURNAL_PATH", "").strip()
+    data_dir = Path(os.environ.get("DATA_DIR", str(BASE_DIR))).expanduser()
+    return AIMeteringJournal(
+        Path(configured).expanduser()
+        if configured
+        else data_dir / "ai-metering-fallback.jsonl"
+    )
+
+
+def _ai_snapshot_diagnostics() -> dict[str, Any]:
+    path = os.environ.get("AI_ECONOMICS_SNAPSHOT_PATH", "").strip()
+    snapshot_id = os.environ.get("AI_ECONOMICS_SNAPSHOT_ID", "").strip()
+    digest = os.environ.get("AI_ECONOMICS_SNAPSHOT_SHA256", "").strip()
+    result = {
+        "valid": False,
+        "approved": False,
+        "current": False,
+        "status": "missing",
+    }
+    if not path or not snapshot_id or not digest:
+        return result
+    try:
+        contract = load_ai_economics_contract(
+            path,
+            expected_snapshot_id=snapshot_id,
+            expected_snapshot_sha256=digest,
+        )
+        require_current_review(
+            contract.reviewed_on,
+            max_age_days=contract.max_age_days,
+            setting_name="AI economics snapshot",
+        )
+    except (EconomicsSnapshotError, OSError, TypeError, ValueError):
+        return result
+    return {
+        "valid": True,
+        "approved": contract.status == "approved",
+        "current": True,
+        "status": contract.status,
+    }
 
 
 def database_url_from_env() -> str:
@@ -195,6 +259,7 @@ def create_app(
         ADMIN_PASSWORD_HASH=os.environ.get("ADMIN_PASSWORD_HASH", ""),
         ADMIN_HOST=os.environ.get("ADMIN_HOST", "127.0.0.1").strip(),
         ADMIN_PORT=int(os.environ.get("ADMIN_PORT", "8787")),
+        DATA_DIR=str(data_dir),
         BOT_HEARTBEAT_PATH=str(heartbeat_path(data_dir)),
         BOT_HEARTBEAT_MAX_AGE_SECONDS=configured_max_age_seconds(),
         SESSION_COOKIE_NAME="mydictionary_admin_session",
@@ -203,6 +268,13 @@ def create_app(
         SESSION_COOKIE_SECURE=(
             os.environ.get("ADMIN_COOKIE_SECURE", "false").strip().lower()
             in {"1", "true", "yes", "on"}
+        ),
+        AI_KEY_ENROLLMENT_ENABLED=os.environ.get(
+            "AI_KEY_ENROLLMENT_ENABLED", "false"
+        ),
+        AI_KEY_ENROLLMENT_PATH=os.environ.get("AI_KEY_ENROLLMENT_PATH", ""),
+        AI_KEY_ENROLLMENT_EXPIRES_AT=os.environ.get(
+            "AI_KEY_ENROLLMENT_EXPIRES_AT", ""
         ),
         MAX_CONTENT_LENGTH=64 * 1024,
     )
@@ -218,8 +290,13 @@ def create_app(
 
     store = database_store or DatabaseStore(database_url_from_env())
     admin_store = AdminStore(store)
+    key_enrollment = SecretEnrollmentSettings.from_mapping(
+        app.config,
+        allowed_directory=Path(app.config["DATA_DIR"]) / "local-config",
+    )
     app.extensions["database_store"] = store
     app.extensions["admin_store"] = admin_store
+    app.extensions["ai_key_enrollment"] = key_enrollment
     limiter = LoginLimiter()
 
     username = str(app.config.get("ADMIN_USERNAME") or "").strip()
@@ -301,6 +378,8 @@ def create_app(
         supplied = str(request.form.get("csrf_token") or "")
         expected = str(session.get("csrf_token") or "")
         if not supplied or not expected or not hmac.compare_digest(supplied, expected):
+            if request.endpoint == "admin_login":
+                return redirect(url_for("admin_index"), code=303)
             abort(400, description="Invalid CSRF token")
         return None
 
@@ -465,11 +544,18 @@ def create_app(
                     app.config["BOT_HEARTBEAT_MAX_AGE_SECONDS"]
                 ),
             )
+            ai_budget = store.ai_budget_status()
+            metering_journal_pending = _ai_metering_journal().pending_count()
+            ai_snapshot = _ai_snapshot_diagnostics()
             context["diagnostics"] = {
                 "database": store.engine.dialect.name,
                 "migration": revision,
                 "ai_enabled": os.environ.get("AI_TUTOR_ENABLED", "false"),
-                "ai_provider_configured": bool(os.environ.get("OPENAI_API_KEY")),
+                "ai_provider_configured": (
+                    os.environ.get("AI_PROVIDER_CONFIGURED", "false").lower()
+                    in {"1", "true", "yes", "on"}
+                    or bool(os.environ.get("OPENAI_API_KEY"))
+                ),
                 "ai_pricing_configured": all(
                     _positive_decimal_setting(name)
                     for name in (
@@ -478,6 +564,46 @@ def create_app(
                         "AI_CACHE_WRITE_USD_PER_MILLION",
                         "AI_OUTPUT_USD_PER_MILLION",
                     )
+                ),
+                "ai_pricing_reviewed_on": os.environ.get(
+                    "AI_PRICING_REVIEWED_ON", "missing"
+                ),
+                "ai_pricing_review_current": _review_setting_current(
+                    "AI_PRICING_REVIEWED_ON", "AI_PRICING_MAX_AGE_DAYS"
+                ),
+                "ai_daily_request_limit": os.environ.get(
+                    "AI_MAX_DAILY_REQUESTS_PER_USER", "5"
+                ),
+                "ai_service_tier": os.environ.get("AI_SERVICE_TIER", "default"),
+                "ai_snapshot_id": os.environ.get(
+                    "AI_ECONOMICS_SNAPSHOT_ID", "missing"
+                ),
+                "ai_snapshot_sha256": os.environ.get(
+                    "AI_ECONOMICS_SNAPSHOT_SHA256", "missing"
+                ),
+                "ai_snapshot": ai_snapshot,
+                "ai_preflight_budget_micro_usd": os.environ.get(
+                    "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST", "5000"
+                ),
+                "ai_retrospective_breaker_micro_usd": os.environ.get(
+                    "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE", "5000"
+                ),
+                "ai_project_daily_budget_micro_usd": os.environ.get(
+                    "AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY", "25000"
+                ),
+                "ai_project_monthly_budget_micro_usd": os.environ.get(
+                    "AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH", "100000"
+                ),
+                "ai_in_flight_budget_micro_usd": os.environ.get(
+                    "AI_MAX_IN_FLIGHT_COST_MICRO_USD", "5000"
+                ),
+                "ai_budget": ai_budget,
+                "ai_metering_journal_pending": metering_journal_pending,
+                "ai_key_enrollment_status": key_enrollment.status(),
+                "ai_key_enrollment_expires_at": (
+                    key_enrollment.expires_at.isoformat()
+                    if key_enrollment.expires_at
+                    else "not configured"
                 ),
                 "stars_enabled": admin_store.billing_settings.enabled,
                 "stars_unit_economics": (
@@ -488,6 +614,21 @@ def create_app(
                     "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
                 ),
                 "billing_terms_version": admin_store.billing_settings.terms_version,
+                "billing_terms_approved": (
+                    admin_store.billing_settings.terms_approved
+                ),
+                "billing_economics_reviewed_on": (
+                    admin_store.billing_settings.economics_reviewed_on or "missing"
+                ),
+                "billing_economics_review_current": review_is_current(
+                    admin_store.billing_settings.economics_reviewed_on or "",
+                    max_age_days=(
+                        admin_store.billing_settings.economics_max_age_days
+                    ),
+                ),
+                "billing_private_chat_topics": (
+                    admin_store.billing_settings.private_chat_topics_enabled
+                ),
                 "voice_consent_version": os.environ.get(
                     "VOICE_CONSENT_VERSION", "unversioned"
                 ),
@@ -502,9 +643,89 @@ def create_app(
                 "bot_release_sha": bot_readiness.release_sha,
                 "bot_access_mode": bot_readiness.access_mode,
             }
+
         elif tab == "audit":
             context["audit"] = admin_store.audit_log(limit=250)
         return render_template("admin/index.html", **context)
+
+    @app.get("/admin/ai-key")
+    @login_required
+    def ai_key_enrollment():
+        state = key_enrollment.status()
+        if state == "disabled":
+            abort(404)
+        return (
+            render_template(
+                "admin/ai_key.html",
+                state=state,
+                expires_at=key_enrollment.expires_at,
+            ),
+            410 if state == "expired" else 200,
+        )
+
+    @app.post("/admin/ai-key")
+    @login_required
+    def enroll_ai_key():
+        try:
+            fingerprint = key_enrollment.enroll(
+                str(request.form.get("api_key") or "")
+            )
+        except SecretEnrollmentError:
+            state = key_enrollment.status()
+            reason = "invalid_key" if state == "ready" else state
+            admin_store.record_audit(
+                actor=current_actor(),
+                action="ai_key_enrollment_rejected",
+                target_type="provider_credential",
+                target_id="openai",
+                details={"reason": reason},
+            )
+            messages = {
+                "ready": "Ключ не принят. Проверьте формат project API key.",
+                "consumed": "Одноразовое окно уже использовано.",
+                "expired": "Срок действия одноразового окна истёк.",
+                "disabled": "Одноразовое окно выключено.",
+            }
+            return (
+                render_template(
+                    "admin/ai_key.html",
+                    state=state,
+                    expires_at=key_enrollment.expires_at,
+                    error=messages.get(state, "Ключ не принят."),
+                ),
+                {"ready": 400, "consumed": 409, "expired": 410}.get(
+                    state, 404
+                ),
+            )
+        admin_store.record_audit(
+            actor=current_actor(),
+            action="ai_key_enrolled",
+            target_type="provider_credential",
+            target_id="openai",
+            details={"fingerprint_sha256_12": fingerprint},
+        )
+        session["csrf_token"] = secrets.token_urlsafe(32)
+        return redirect(url_for("ai_key_enrollment"), code=303)
+
+    @app.post("/admin/ai/breaker/reset")
+    @login_required
+    def reset_ai_breaker():
+        try:
+            if _ai_metering_journal().pending_count():
+                raise RuntimeError(
+                    "Нельзя сбросить breaker: metering journal не reconciled."
+                )
+            changed = store.reset_ai_breaker(
+                actor=current_actor(),
+                reason=str(request.form.get("reason") or ""),
+            )
+            flash(
+                "AI breaker сброшен." if changed else "AI breaker уже закрыт.",
+                "success",
+            )
+        except (TypeError, ValueError, RuntimeError) as exc:
+            flash(str(exc), "error")
+        return redirect(url_for("admin_index", tab="diagnostics"))
 
     @app.post("/admin/settings/profile")
     @login_required

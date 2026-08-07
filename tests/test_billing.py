@@ -38,6 +38,8 @@ def enabled_settings() -> BillingSettings:
         terms_text="Test terms",
         order_ttl_seconds=1800,
         net_micro_usd_per_xtr=1000,
+        terms_approved=True,
+        economics_reviewed_on=datetime.now(timezone.utc).date().isoformat(),
     )
 
 
@@ -101,9 +103,46 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
                 "BILLING_TERMS_TEXT": "Explicit test terms",
                 "BILLING_TERMS_VERSION": "test-1",
                 "BILLING_NET_MICRO_USD_PER_XTR": "1000",
+                "BILLING_TERMS_APPROVED": "true",
+                "BILLING_ECONOMICS_REVIEWED_ON": datetime.now(timezone.utc)
+                .date()
+                .isoformat(),
             }
         )
         self.assertTrue(enabled.enabled)
+
+    def test_enabled_billing_requires_current_review_and_approved_terms(self):
+        common = {
+            "TELEGRAM_STARS_ENABLED": "true",
+            "BILLING_PAYLOAD_SECRET": "s" * 40,
+            "BILLING_SUPPORT_CONTACT": "@support",
+            "BILLING_TERMS_TEXT": "Explicit test terms",
+            "BILLING_TERMS_VERSION": "test-1",
+            "BILLING_NET_MICRO_USD_PER_XTR": "1000",
+        }
+        with self.assertRaisesRegex(BillingConfigurationError, "TERMS_APPROVED"):
+            BillingSettings.from_env(common)
+        approved = {**common, "BILLING_TERMS_APPROVED": "true"}
+        with self.assertRaisesRegex(BillingConfigurationError, "REVIEWED_ON"):
+            BillingSettings.from_env(approved)
+        stale = (datetime.now(timezone.utc).date() - timedelta(days=31)).isoformat()
+        with self.assertRaisesRegex(BillingConfigurationError, "stale"):
+            BillingSettings.from_env(
+                {**approved, "BILLING_ECONOMICS_REVIEWED_ON": stale}
+            )
+
+    def test_private_chat_topics_fee_caps_net_star_value(self):
+        values = {
+            "BILLING_PRIVATE_CHAT_TOPICS_ENABLED": "true",
+            "BILLING_NET_MICRO_USD_PER_XTR": "8501",
+        }
+        with self.assertRaisesRegex(BillingConfigurationError, "topic fees"):
+            BillingSettings.from_env(values)
+
+        configured = BillingSettings.from_env(
+            {**values, "BILLING_NET_MICRO_USD_PER_XTR": "8500"}
+        )
+        self.assertTrue(configured.private_chat_topics_enabled)
 
     def test_order_and_precheckout_require_current_terms_version(self):
         self.store.revoke_consent(7001, consent_type="billing_terms")

@@ -363,7 +363,7 @@
           <dl class="diagnostic-list">
             {% for label, value, ok in [
               ('База данных', diagnostics.database, true),
-              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0010_launch_readiness'),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0012_ai_runtime_gates'),
               ('Telegram polling', diagnostics.bot_state ~ ' · ' ~ diagnostics.bot_reason, diagnostics.bot_ready),
               ('Heartbeat age', (diagnostics.bot_heartbeat_age_seconds|round(1)|string ~ ' s') if diagnostics.bot_heartbeat_age_seconds is not none else 'missing', diagnostics.bot_ready),
               ('Bot release', diagnostics.bot_release_sha, diagnostics.bot_release_sha != 'unknown'),
@@ -371,17 +371,52 @@
               ('AI tutor enabled', diagnostics.ai_enabled, diagnostics.ai_enabled|lower in ['1','true','yes','on']),
               ('AI provider configured', 'yes' if diagnostics.ai_provider_configured else 'no', diagnostics.ai_provider_configured),
               ('AI pricing', 'configured' if diagnostics.ai_pricing_configured else 'missing', diagnostics.ai_pricing_configured),
+              ('AI pricing review', diagnostics.ai_pricing_reviewed_on, diagnostics.ai_pricing_review_current),
+              ('AI service tier', diagnostics.ai_service_tier, diagnostics.ai_service_tier == 'default'),
+              ('AI economics snapshot', diagnostics.ai_snapshot_id ~ ' · ' ~ diagnostics.ai_snapshot.status, diagnostics.ai_snapshot.valid and diagnostics.ai_snapshot.approved and diagnostics.ai_snapshot.current),
+              ('AI snapshot SHA-256', diagnostics.ai_snapshot_sha256, diagnostics.ai_snapshot.valid),
+              ('AI daily limit', diagnostics.ai_daily_request_limit ~ ' requests', diagnostics.ai_daily_request_limit|int > 0),
+              ('AI preflight budget', diagnostics.ai_preflight_budget_micro_usd ~ ' microUSD', diagnostics.ai_preflight_budget_micro_usd|int > 0),
+              ('AI retrospective breaker threshold', diagnostics.ai_retrospective_breaker_micro_usd ~ ' microUSD', diagnostics.ai_retrospective_breaker_micro_usd|int > 0),
+              ('AI project daily budget', diagnostics.ai_project_daily_budget_micro_usd ~ ' microUSD', diagnostics.ai_project_daily_budget_micro_usd|int > 0),
+              ('AI project monthly budget', diagnostics.ai_project_monthly_budget_micro_usd ~ ' microUSD', diagnostics.ai_project_monthly_budget_micro_usd|int > 0),
+              ('AI in-flight budget', diagnostics.ai_in_flight_budget_micro_usd ~ ' microUSD', diagnostics.ai_in_flight_budget_micro_usd|int > 0),
+              ('AI breaker', diagnostics.ai_budget.breaker_reason if diagnostics.ai_budget.breaker_open else 'closed', not diagnostics.ai_budget.breaker_open),
+              ('AI spend today', diagnostics.ai_budget.spent_today_micro_usd ~ ' microUSD', true),
+              ('AI spend this month', diagnostics.ai_budget.spent_month_micro_usd ~ ' microUSD', true),
+              ('AI reserved in flight', diagnostics.ai_budget.in_flight_micro_usd ~ ' microUSD · ' ~ diagnostics.ai_budget.reserved_attempts ~ ' attempts', diagnostics.ai_budget.in_flight_micro_usd == 0),
+              ('AI fallback journal', diagnostics.ai_metering_journal_pending ~ ' pending', diagnostics.ai_metering_journal_pending == 0),
+              ('AI key enrollment', diagnostics.ai_key_enrollment_status ~ ' · ' ~ diagnostics.ai_key_enrollment_expires_at, diagnostics.ai_key_enrollment_status in ['ready','consumed']),
               ('Voice tutor', diagnostics.voice_enabled ~ ' · ' ~ diagnostics.voice_model, diagnostics.voice_enabled|lower in ['1','true','yes','on']),
               ('Voice consent', diagnostics.voice_consent_version, diagnostics.voice_consent_version != 'unversioned'),
               ('Telegram Stars', 'enabled' if diagnostics.stars_enabled else 'disabled', diagnostics.stars_enabled),
               ('Billing terms', diagnostics.billing_terms_version, diagnostics.billing_terms_version != 'unversioned'),
+              ('Billing terms approved', 'yes' if diagnostics.billing_terms_approved else 'no', diagnostics.billing_terms_approved),
               ('Stars unit economics', 'configured' if diagnostics.stars_unit_economics else 'missing', diagnostics.stars_unit_economics),
+              ('Stars economics review', diagnostics.billing_economics_reviewed_on, diagnostics.billing_economics_review_current),
+              ('Private-chat topics fee', '15% accounted' if diagnostics.billing_private_chat_topics else 'off', diagnostics.billing_economics_review_current),
               ('Admin binding', diagnostics.admin_host ~ ':' ~ diagnostics.admin_port, diagnostics.admin_host in ['127.0.0.1','localhost','::1']),
               ('Release SHA', diagnostics.release_sha, diagnostics.release_sha != 'not set'),
               ('Welcome banner', 'ready' if diagnostics.welcome_banner else 'missing', diagnostics.welcome_banner)
             ] %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd><span class="readiness {{ 'ok' if ok else 'off' }}">{{ 'ready' if ok else 'off' }}</span></div>{% endfor %}
           </dl>
         </section>
+        {% if diagnostics.ai_key_enrollment_status == 'ready' %}
+          <section class="panel action-panel">
+            <div class="section-heading"><div><p class="eyebrow">Gate 2</p><h2>Одноразовая передача OpenAI key</h2></div><a class="button-link" href="{{ url_for('ai_key_enrollment') }}">Открыть защищённую форму</a></div>
+          </section>
+        {% endif %}
+        {% if diagnostics.ai_budget.breaker_open %}
+          <section class="panel action-panel">
+            <div class="section-heading"><div><p class="eyebrow">Ручное подтверждение</p><h2>Сброс AI breaker</h2></div></div>
+            <p>Сброс доступен только без активных попыток и без записей в fallback journal.</p>
+            <form method="post" action="{{ url_for('reset_ai_breaker') }}" class="form-stack">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label>Причина<input name="reason" minlength="3" maxlength="255" required></label>
+              <button type="submit" class="danger">Подтвердить сброс</button>
+            </form>
+          </section>
+        {% endif %}
       {% endif %}
 
       {% if tab == 'audit' %}

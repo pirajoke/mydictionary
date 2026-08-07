@@ -113,6 +113,25 @@ disabled. After migration, the diagnostics tab must show revision
 `0010_launch_readiness`. Do not enable a feature until the corresponding
 versioned document and every required positive cost setting are configured.
 
+Migration `0012_ai_runtime_gates` adds exact AI economics snapshot binding,
+provider-attempt telemetry, project/in-flight budgets, and persistent breaker
+state. Deploy it only from a reviewed merge SHA with AI and Stars disabled and
+with a fresh PostgreSQL backup. After migration, diagnostics must show
+`0012_ai_runtime_gates`, a closed breaker, zero in-flight exposure, and zero
+fallback-journal rows. A breaker reset is an authenticated, CSRF-protected,
+audited operator action and must never be used to bypass unreconciled telemetry.
+If the journal is non-empty, keep AI disabled, inspect status and reconcile the
+technical records without making a provider call:
+
+```bash
+python ops/mydictionary_ai_metering.py status
+python ops/mydictionary_ai_metering.py reconcile --actor <operator> --execute
+```
+
+Reconciliation leaves the breaker open. Compare the imported model, service
+tier, token fields, local cost, and provider dashboard before recording a reset
+reason in the admin. Do not delete or truncate the journal manually.
+
 If checkout must be contained, set `TELEGRAM_STARS_ENABLED=false` and restart
 bot and admin. Keep `BILLING_PAYLOAD_SECRET` unchanged so a successful payment
 for an already-issued order can still be validated and fulfilled. Do not roll

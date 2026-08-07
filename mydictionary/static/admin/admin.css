@@ -101,7 +101,7 @@ tbody tr:hover { background: #f7faf8; }
 .diagnostic-list { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 .diagnostic-list div { display: grid; grid-template-columns: 220px 1fr 70px; gap: 16px; align-items: center; padding: 13px 16px; border-bottom: 1px solid var(--line); }
 .diagnostic-list div:last-child { border-bottom: 0; }
-.diagnostic-list dd { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.diagnostic-list dd { margin: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .readiness { text-align: right; font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .readiness.ok, .positive { color: var(--green); }
 .readiness.off { color: var(--yellow); }
@@ -127,6 +127,9 @@ tbody tr:hover { background: #f7faf8; }
 .login-panel { width: min(390px, 100%); padding: 30px; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 14px 40px rgba(23, 32, 28, .12); }
 .login-panel > img { display: block; margin-bottom: 18px; border-radius: 6px; object-fit: cover; }
 .login-panel h1 { margin-bottom: 24px; }
+.secret-enrollment-panel { width: min(520px, 100%); }
+.security-copy { margin-bottom: 22px; color: var(--muted); }
+.back-link { margin: 20px 0 0; text-align: center; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 
 @media (max-width: 1180px) {

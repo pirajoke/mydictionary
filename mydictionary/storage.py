@@ -435,6 +435,14 @@ class AIUsage(Base):
         ),
         CheckConstraint("reserved_credits >= 0", name="ck_ai_usage_reserved"),
         CheckConstraint("billed_credits >= 0", name="ck_ai_usage_billed"),
+        CheckConstraint(
+            "provider_attempts BETWEEN 0 AND 1",
+            name="ck_ai_usage_provider_attempts",
+        ),
+        CheckConstraint(
+            "projected_cost_micro_usd >= 0",
+            name="ck_ai_usage_projected_cost",
+        ),
     )
 
     request_id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -446,10 +454,27 @@ class AIUsage(Base):
     action: Mapped[str] = mapped_column(String(64), nullable=False)
     provider: Mapped[str] = mapped_column(String(32), nullable=False)
     model: Mapped[str] = mapped_column(String(128), nullable=False)
+    requested_service_tier: Mapped[str] = mapped_column(
+        String(32), default="default"
+    )
+    returned_service_tier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    economics_snapshot_id: Mapped[str] = mapped_column(
+        String(128), default="legacy"
+    )
+    economics_snapshot_sha256: Mapped[str] = mapped_column(
+        String(64), default="0" * 64
+    )
     status: Mapped[str] = mapped_column(String(16), nullable=False)
+    provider_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    provider_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    provider_response_received: Mapped[bool] = mapped_column(Boolean, default=False)
+    cost_is_estimate: Mapped[bool] = mapped_column(Boolean, default=True)
     context_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     reserved_credits: Mapped[int] = mapped_column(Integer, default=0)
     billed_credits: Mapped[int] = mapped_column(Integer, default=0)
+    projected_cost_micro_usd: Mapped[int] = mapped_column(BigInteger, default=0)
     provider_response_id: Mapped[str | None] = mapped_column(
         String(128), nullable=True
     )
@@ -465,6 +490,36 @@ class AIUsage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    provider_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class AIBudgetState(Base):
+    __tablename__ = "ai_budget_state"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_ai_budget_singleton"),
+        CheckConstraint(
+            "in_flight_micro_usd >= 0", name="ck_ai_budget_in_flight"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    in_flight_micro_usd: Mapped[int] = mapped_column(BigInteger, default=0)
+    breaker_open: Mapped[bool] = mapped_column(Boolean, default=False)
+    breaker_reason: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    breaker_opened_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    breaker_acknowledged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    breaker_acknowledged_by: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
 
 
@@ -817,7 +872,7 @@ class RefundRequest(Base):
 
 
 class AIQuotaExceeded(RuntimeError):
-    """Raised when a learner has no pilot AI credits available."""
+    """Raised when credits, request limits, or the cost breaker block AI use."""
 
 
 class AIUsageStateError(RuntimeError):
@@ -1529,6 +1584,82 @@ class DatabaseStore:
             "balance_credits": wallet.balance_credits,
         }
 
+    def _ensure_ai_budget_state(self, session: Any) -> AIBudgetState:
+        insert_for_dialect = (
+            postgresql_insert
+            if self.engine.dialect.name == "postgresql"
+            else sqlite_insert
+        )
+        session.execute(
+            insert_for_dialect(AIBudgetState)
+            .values(
+                id=1,
+                in_flight_micro_usd=0,
+                breaker_open=False,
+                updated_at=utcnow(),
+            )
+            .on_conflict_do_nothing(index_elements=[AIBudgetState.id])
+        )
+        return session.execute(
+            select(AIBudgetState)
+            .where(AIBudgetState.id == 1)
+            .with_for_update()
+        ).scalar_one()
+
+    @staticmethod
+    def _ai_period_start(now: datetime, *, month: bool) -> datetime:
+        return datetime(
+            now.year,
+            now.month,
+            1 if month else now.day,
+            tzinfo=timezone.utc,
+        )
+
+    @staticmethod
+    def _ai_actual_spend(session: Any, *, since: datetime) -> int:
+        value = session.execute(
+            select(func.sum(AIUsage.cost_micro_usd)).where(
+                AIUsage.action == "block_tutor",
+                or_(
+                    AIUsage.provider_response_received.is_(True),
+                    and_(
+                        AIUsage.provider_attempts == 1,
+                        AIUsage.status == "failed",
+                        AIUsage.cost_is_estimate.is_(True),
+                    ),
+                ),
+                AIUsage.provider_completed_at >= since,
+            )
+        ).scalar_one()
+        return int(value or 0)
+
+    @staticmethod
+    def _open_ai_breaker_locked(
+        state: AIBudgetState,
+        *,
+        reason: str,
+        now: datetime | None = None,
+    ) -> None:
+        opened_at = now or utcnow()
+        state.breaker_open = True
+        state.breaker_reason = str(reason)[:128]
+        state.breaker_opened_at = opened_at
+        state.breaker_acknowledged_at = None
+        state.breaker_acknowledged_by = None
+        state.updated_at = opened_at
+
+    @staticmethod
+    def _release_ai_budget_locked(
+        state: AIBudgetState,
+        *,
+        projected_cost_micro_usd: int,
+    ) -> None:
+        projected = max(0, int(projected_cost_micro_usd))
+        if state.in_flight_micro_usd < projected:
+            raise AIUsageStateError("AI in-flight budget cannot release reservation")
+        state.in_flight_micro_usd -= projected
+        state.updated_at = utcnow()
+
     def adjust_ai_wallet(
         self,
         user_id: int,
@@ -1610,23 +1741,83 @@ class DatabaseStore:
         credits: int,
         initial_credits: int,
         context_fingerprint: str,
+        max_daily_requests: int | None = None,
+        requested_service_tier: str = "default",
+        economics_snapshot_id: str = "legacy",
+        economics_snapshot_sha256: str = "0" * 64,
+        projected_cost_micro_usd: int = 0,
+        max_project_cost_micro_usd_per_day: int | None = None,
+        max_project_cost_micro_usd_per_month: int | None = None,
+        max_in_flight_cost_micro_usd: int | None = None,
         request_id: str | None = None,
     ) -> str:
         """Atomically reserve wallet credits and create a metered request."""
         if credits <= 0 or initial_credits < 0:
             raise ValueError("AI credits must be positive and allowance non-negative")
+        if max_daily_requests is not None and max_daily_requests <= 0:
+            raise ValueError("AI daily request limit must be positive")
+        projected_cost = int(projected_cost_micro_usd)
+        if projected_cost < 0:
+            raise ValueError("AI projected request cost cannot be negative")
+        budget_limits = (
+            max_project_cost_micro_usd_per_day,
+            max_project_cost_micro_usd_per_month,
+            max_in_flight_cost_micro_usd,
+        )
+        if projected_cost and any(value is None for value in budget_limits):
+            raise ValueError("AI project and in-flight budgets are required")
+        if any(value is not None and int(value) <= 0 for value in budget_limits):
+            raise ValueError("AI project and in-flight budgets must be positive")
         self.ensure_user_id(user_id)
         usage_id = request_id or str(uuid4())
         with self.Session.begin() as session:
             if session.get(AIUsage, usage_id) is not None:
                 raise AIUsageStateError("AI request id already exists")
+            budget_state = self._ensure_ai_budget_state(session)
+            if projected_cost:
+                if budget_state.breaker_open:
+                    raise AIQuotaExceeded("AI cost circuit breaker is open")
+                now = utcnow()
+                day_spend = self._ai_actual_spend(
+                    session,
+                    since=self._ai_period_start(now, month=False),
+                )
+                month_spend = self._ai_actual_spend(
+                    session,
+                    since=self._ai_period_start(now, month=True),
+                )
+                projected_total = budget_state.in_flight_micro_usd + projected_cost
+                if projected_total > int(max_in_flight_cost_micro_usd or 0):
+                    raise AIQuotaExceeded("AI in-flight project budget reached")
+                if (
+                    day_spend + projected_total
+                    > int(max_project_cost_micro_usd_per_day or 0)
+                ):
+                    raise AIQuotaExceeded("AI daily project budget reached")
+                if (
+                    month_spend + projected_total
+                    > int(max_project_cost_micro_usd_per_month or 0)
+                ):
+                    raise AIQuotaExceeded("AI monthly project budget reached")
             wallet = self._ensure_ai_wallet(
                 session, user_id, initial_credits=initial_credits
             )
+            if max_daily_requests is not None:
+                attempts = session.execute(
+                    select(func.count(AIUsage.request_id)).where(
+                        AIUsage.telegram_user_id == int(user_id),
+                        AIUsage.action == str(action),
+                        AIUsage.created_at >= utcnow() - timedelta(hours=24),
+                    )
+                ).scalar_one()
+                if int(attempts) >= int(max_daily_requests):
+                    raise AIQuotaExceeded("AI daily request limit reached")
             if wallet.balance_credits - wallet.reserved_credits < credits:
                 raise AIQuotaExceeded("AI credit allowance exhausted")
             wallet.reserved_credits += credits
             wallet.updated_at = utcnow()
+            budget_state.in_flight_micro_usd += projected_cost
+            budget_state.updated_at = utcnow()
             session.add(
                 AIUsage(
                     request_id=usage_id,
@@ -1634,12 +1825,195 @@ class DatabaseStore:
                     action=action,
                     provider=provider,
                     model=model,
+                    requested_service_tier=str(requested_service_tier)[:32],
+                    economics_snapshot_id=str(economics_snapshot_id)[:128],
+                    economics_snapshot_sha256=str(economics_snapshot_sha256)[:64],
                     status="reserved",
                     context_fingerprint=context_fingerprint,
                     reserved_credits=credits,
+                    projected_cost_micro_usd=projected_cost,
                 )
             )
         return usage_id
+
+    def mark_ai_provider_attempt_started(self, request_id: str) -> None:
+        """Persist the single provider attempt before network I/O begins."""
+        with self.Session.begin() as session:
+            row = session.execute(
+                select(AIUsage)
+                .where(AIUsage.request_id == str(request_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row is None or row.status != "reserved":
+                raise AIUsageStateError("AI request is not reserved")
+            if row.provider_attempts != 0:
+                raise AIUsageStateError("AI request already has a provider attempt")
+            row.provider_attempts = 1
+
+    def record_ai_provider_response(
+        self,
+        request_id: str,
+        *,
+        provider_response_id: str | None,
+        model: str,
+        service_tier: str,
+        provider_status: str,
+        usage: Mapping[str, int],
+        cost_micro_usd: int,
+        latency_ms: int,
+        expected_model: str,
+        expected_service_tier: str,
+        retrospective_breaker_micro_usd: int,
+    ) -> dict[str, Any]:
+        """Durably record billable response telemetry before output validation."""
+        if retrospective_breaker_micro_usd <= 0:
+            raise ValueError("AI retrospective breaker must be positive")
+        now = utcnow()
+        with self.Session.begin() as session:
+            state = self._ensure_ai_budget_state(session)
+            row = session.execute(
+                select(AIUsage)
+                .where(AIUsage.request_id == str(request_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row is None or row.status != "reserved":
+                raise AIUsageStateError("AI request is not reserved")
+            if row.provider_attempts != 1:
+                raise AIUsageStateError("AI provider attempt was not started")
+            if row.provider_response_received:
+                if row.provider_response_id != provider_response_id:
+                    raise AIUsageStateError("AI provider response already differs")
+                return {
+                    "breaker_open": bool(state.breaker_open),
+                    "breaker_reason": state.breaker_reason,
+                }
+            row.provider_response_received = True
+            row.provider_response_id = provider_response_id
+            row.model = str(model)[:128]
+            row.returned_service_tier = str(service_tier)[:32]
+            row.provider_status = str(provider_status)[:32]
+            for field in (
+                "input_tokens",
+                "cached_input_tokens",
+                "cache_write_tokens",
+                "output_tokens",
+                "reasoning_tokens",
+                "total_tokens",
+            ):
+                setattr(row, field, max(0, int(usage.get(field, 0))))
+            row.cost_micro_usd = max(0, int(cost_micro_usd))
+            row.cost_is_estimate = False
+            row.latency_ms = max(0, int(latency_ms))
+            row.provider_completed_at = now
+
+            breaker_reason = None
+            if str(model) != str(expected_model):
+                breaker_reason = "returned_model_mismatch"
+            elif str(service_tier) != str(expected_service_tier):
+                breaker_reason = "returned_service_tier_mismatch"
+            elif row.cost_micro_usd > int(retrospective_breaker_micro_usd):
+                breaker_reason = "provider_response_cost_outlier"
+            if breaker_reason:
+                self._open_ai_breaker_locked(
+                    state,
+                    reason=breaker_reason,
+                    now=now,
+                )
+            return {
+                "breaker_open": bool(state.breaker_open),
+                "breaker_reason": state.breaker_reason,
+            }
+
+    def reconcile_ai_provider_response(
+        self,
+        record: Mapping[str, Any],
+        *,
+        actor: str,
+    ) -> bool:
+        """Import one privacy-safe fallback record without closing the breaker."""
+        request_id = str(record.get("request_id") or "").strip()
+        actor = str(actor).strip()
+        if not request_id or not actor:
+            raise ValueError("AI metering reconciliation requires request and actor")
+        with self.Session.begin() as session:
+            state = self._ensure_ai_budget_state(session)
+            row = session.execute(
+                select(AIUsage)
+                .where(AIUsage.request_id == request_id)
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row is None or row.status not in {"reserved", "failed"}:
+                raise AIUsageStateError(
+                    "AI metering journal request cannot be reconciled"
+                )
+            response_id_value = record.get("provider_response_id")
+            response_id = (
+                str(response_id_value)[:128]
+                if response_id_value is not None
+                else None
+            )
+            model = str(record.get("model") or "")[:128]
+            service_tier = str(record.get("service_tier") or "")[:32]
+            provider_status = str(record.get("provider_status") or "")[:32]
+            cost_micro_usd = max(0, int(record.get("cost_micro_usd") or 0))
+            if not model or not service_tier or not provider_status:
+                raise ValueError("AI metering journal response identity is incomplete")
+            if row.provider_response_received:
+                if (
+                    row.provider_response_id != response_id
+                    or row.model != model
+                    or row.returned_service_tier != service_tier
+                    or row.cost_micro_usd != cost_micro_usd
+                ):
+                    raise AIUsageStateError(
+                        "AI metering journal conflicts with stored response"
+                    )
+                return False
+            if row.provider_attempts != 1:
+                raise AIUsageStateError(
+                    "AI metering journal request has no provider attempt"
+                )
+            row.provider_response_received = True
+            row.provider_response_id = response_id
+            row.model = model
+            row.returned_service_tier = service_tier
+            row.provider_status = provider_status
+            for field in (
+                "input_tokens",
+                "cached_input_tokens",
+                "cache_write_tokens",
+                "output_tokens",
+                "reasoning_tokens",
+                "total_tokens",
+            ):
+                setattr(row, field, max(0, int(record.get(field) or 0)))
+            row.cost_micro_usd = cost_micro_usd
+            row.cost_is_estimate = False
+            row.latency_ms = max(0, int(record.get("latency_ms") or 0))
+            row.provider_completed_at = utcnow()
+            self._open_ai_breaker_locked(
+                state,
+                reason="provider_telemetry_reconciled",
+            )
+            session.add(
+                AdminAuditLog(
+                    actor=actor[:64],
+                    action="ai_metering_reconciled",
+                    target_type="ai_usage",
+                    target_id=request_id,
+                    details_json=json.dumps(
+                        {
+                            "cost_micro_usd": cost_micro_usd,
+                            "model": model,
+                            "provider_status": provider_status,
+                            "service_tier": service_tier,
+                        },
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                )
+            )
+            return True
 
     def complete_ai_usage(
         self,
@@ -1651,9 +2025,12 @@ class DatabaseStore:
         usage: Mapping[str, int],
         cost_micro_usd: int,
         latency_ms: int,
+        returned_service_tier: str | None = None,
+        provider_status: str | None = None,
     ) -> dict[str, int]:
         """Settle a successful AI request and refund any unused reservation."""
         with self.Session.begin() as session:
+            budget_state = self._ensure_ai_budget_state(session)
             row = session.execute(
                 select(AIUsage)
                 .where(AIUsage.request_id == request_id)
@@ -1669,6 +2046,9 @@ class DatabaseStore:
                 usage=usage,
                 cost_micro_usd=cost_micro_usd,
                 latency_ms=latency_ms,
+                returned_service_tier=returned_service_tier,
+                provider_status=provider_status,
+                budget_state=budget_state,
             )
 
     def _settle_ai_usage_locked(
@@ -1683,9 +2063,52 @@ class DatabaseStore:
         usage: Mapping[str, int],
         cost_micro_usd: int,
         latency_ms: int,
+        budget_state: AIBudgetState,
+        returned_service_tier: str | None = None,
+        provider_status: str | None = None,
     ) -> dict[str, int]:
         if row is None or row.status != "reserved":
             raise AIUsageStateError("AI request is not reserved")
+        if row.action == "block_tutor" and (
+            row.provider_attempts != 1 or not row.provider_response_received
+        ):
+            raise AIUsageStateError(
+                "AI tutor response telemetry must be recorded before settlement"
+            )
+        if row.action == "block_tutor":
+            settled_usage = {
+                field: max(0, int(usage.get(field, 0)))
+                for field in (
+                    "input_tokens",
+                    "cached_input_tokens",
+                    "cache_write_tokens",
+                    "output_tokens",
+                    "reasoning_tokens",
+                    "total_tokens",
+                )
+            }
+            recorded_usage = {
+                field: int(getattr(row, field)) for field in settled_usage
+            }
+            telemetry_matches = (
+                row.provider_response_id == provider_response_id
+                and row.model == str(model)
+                and recorded_usage == settled_usage
+                and row.cost_micro_usd == max(0, int(cost_micro_usd))
+                and row.latency_ms == max(0, int(latency_ms))
+                and (
+                    returned_service_tier is None
+                    or row.returned_service_tier == str(returned_service_tier)
+                )
+                and (
+                    provider_status is None
+                    or row.provider_status == str(provider_status)
+                )
+            )
+            if not telemetry_matches:
+                raise AIUsageStateError(
+                    "AI tutor settlement cannot alter provider telemetry"
+                )
         if not 0 <= billed_credits <= row.reserved_credits:
             raise ValueError("Billed credits must fit the reservation")
         wallet = session.execute(
@@ -1695,6 +2118,10 @@ class DatabaseStore:
         ).scalar_one()
         if wallet.reserved_credits < row.reserved_credits:
             raise AIUsageStateError("AI wallet cannot settle reservation")
+        self._release_ai_budget_locked(
+            budget_state,
+            projected_cost_micro_usd=row.projected_cost_micro_usd,
+        )
         wallet.reserved_credits -= row.reserved_credits
         wallet.balance_credits -= billed_credits
         wallet.spent_credits += billed_credits
@@ -1718,6 +2145,10 @@ class DatabaseStore:
         row.billed_credits = billed_credits
         row.provider_response_id = provider_response_id
         row.model = model
+        if returned_service_tier is not None:
+            row.returned_service_tier = str(returned_service_tier)[:32]
+        if provider_status is not None:
+            row.provider_status = str(provider_status)[:32]
         for field in (
             "input_tokens",
             "cached_input_tokens",
@@ -1728,7 +2159,10 @@ class DatabaseStore:
         ):
             setattr(row, field, max(0, int(usage.get(field, 0))))
         row.cost_micro_usd = max(0, int(cost_micro_usd))
+        row.cost_is_estimate = False
         row.latency_ms = max(0, int(latency_ms))
+        row.provider_response_received = True
+        row.provider_completed_at = row.provider_completed_at or utcnow()
         row.completed_at = utcnow()
         return self._wallet_summary(wallet)
 
@@ -1761,6 +2195,7 @@ class DatabaseStore:
         if not 0 <= int(similarity_bps) <= 10000:
             raise ValueError("Voice similarity is outside valid bounds")
         with self.Session.begin() as session:
+            budget_state = self._ensure_ai_budget_state(session)
             usage_row = session.execute(
                 select(AIUsage)
                 .where(AIUsage.request_id == str(request_id))
@@ -1811,6 +2246,7 @@ class DatabaseStore:
                 usage=usage,
                 cost_micro_usd=cost_micro_usd,
                 latency_ms=latency_ms,
+                budget_state=budget_state,
             )
             session.add(
                 VoiceTurn(
@@ -1842,9 +2278,16 @@ class DatabaseStore:
                 "next_position": voice_session.next_position,
             }
 
-    def fail_ai_usage(self, request_id: str, *, error_code: str) -> bool:
+    def fail_ai_usage(
+        self,
+        request_id: str,
+        *,
+        error_code: str,
+        open_breaker_reason: str | None = None,
+    ) -> bool:
         """Release a reservation after provider, validation, or storage failure."""
         with self.Session.begin() as session:
+            budget_state = self._ensure_ai_budget_state(session)
             row = session.execute(
                 select(AIUsage)
                 .where(AIUsage.request_id == request_id)
@@ -1859,11 +2302,25 @@ class DatabaseStore:
             ).scalar_one()
             if wallet.reserved_credits < row.reserved_credits:
                 raise AIUsageStateError("AI wallet cannot release reservation")
+            self._release_ai_budget_locked(
+                budget_state,
+                projected_cost_micro_usd=row.projected_cost_micro_usd,
+            )
             wallet.reserved_credits -= row.reserved_credits
             wallet.updated_at = utcnow()
             row.status = "failed"
             row.error_code = error_code[:128]
             row.completed_at = utcnow()
+            if row.provider_attempts and not row.provider_response_received:
+                row.provider_status = "unknown_failure"
+                row.cost_micro_usd = row.projected_cost_micro_usd
+                row.cost_is_estimate = True
+                row.provider_completed_at = utcnow()
+            if open_breaker_reason:
+                self._open_ai_breaker_locked(
+                    budget_state,
+                    reason=open_breaker_reason,
+                )
             return True
 
     def recover_stale_ai_usage(
@@ -1874,6 +2331,7 @@ class DatabaseStore:
             raise ValueError("AI reservation timeout must be positive")
         cutoff = utcnow() - timedelta(seconds=int(timeout_seconds))
         with self.Session.begin() as session:
+            budget_state = self._ensure_ai_budget_state(session)
             conditions = [
                 AIUsage.status == "reserved",
                 AIUsage.created_at <= cutoff,
@@ -1906,10 +2364,101 @@ class DatabaseStore:
                     )
                 wallet.reserved_credits -= row.reserved_credits
                 wallet.updated_at = recovered_at
+                self._release_ai_budget_locked(
+                    budget_state,
+                    projected_cost_micro_usd=row.projected_cost_micro_usd,
+                )
                 row.status = "failed"
                 row.error_code = "stale_reservation_timeout"
                 row.completed_at = recovered_at
+                if row.provider_attempts and not row.provider_response_received:
+                    row.provider_status = "unknown_failure"
+                    row.cost_micro_usd = row.projected_cost_micro_usd
+                    row.cost_is_estimate = True
+                    row.provider_completed_at = recovered_at
+                    self._open_ai_breaker_locked(
+                        budget_state,
+                        reason="stale_provider_attempt_unknown",
+                        now=recovered_at,
+                    )
             return len(rows)
+
+    def open_ai_breaker(self, *, reason: str) -> None:
+        with self.Session.begin() as session:
+            state = self._ensure_ai_budget_state(session)
+            self._open_ai_breaker_locked(state, reason=reason)
+
+    def ai_budget_status(self) -> dict[str, Any]:
+        now = utcnow()
+        with self.Session.begin() as session:
+            state = self._ensure_ai_budget_state(session)
+            reserved_attempts = session.execute(
+                select(func.count(AIUsage.request_id)).where(
+                    AIUsage.action == "block_tutor",
+                    AIUsage.status == "reserved",
+                )
+            ).scalar_one()
+            return {
+                "in_flight_micro_usd": int(state.in_flight_micro_usd),
+                "spent_today_micro_usd": self._ai_actual_spend(
+                    session,
+                    since=self._ai_period_start(now, month=False),
+                ),
+                "spent_month_micro_usd": self._ai_actual_spend(
+                    session,
+                    since=self._ai_period_start(now, month=True),
+                ),
+                "reserved_attempts": int(reserved_attempts or 0),
+                "breaker_open": bool(state.breaker_open),
+                "breaker_reason": state.breaker_reason,
+                "breaker_opened_at": state.breaker_opened_at,
+                "breaker_acknowledged_at": state.breaker_acknowledged_at,
+                "breaker_acknowledged_by": state.breaker_acknowledged_by,
+            }
+
+    def reset_ai_breaker(self, *, actor: str, reason: str) -> bool:
+        actor = str(actor).strip()
+        reason = str(reason).strip()
+        if not actor or not 3 <= len(reason) <= 255:
+            raise ValueError("AI breaker reset requires actor and reason")
+        with self.Session.begin() as session:
+            state = self._ensure_ai_budget_state(session)
+            if not state.breaker_open:
+                return False
+            reserved_attempts = session.execute(
+                select(func.count(AIUsage.request_id)).where(
+                    AIUsage.action == "block_tutor",
+                    AIUsage.status == "reserved",
+                )
+            ).scalar_one()
+            if int(reserved_attempts or 0):
+                raise AIUsageStateError(
+                    "AI breaker cannot reset while attempts are in flight"
+                )
+            previous_reason = state.breaker_reason
+            now = utcnow()
+            state.breaker_open = False
+            state.breaker_reason = None
+            state.breaker_acknowledged_at = now
+            state.breaker_acknowledged_by = actor[:64]
+            state.updated_at = now
+            session.add(
+                AdminAuditLog(
+                    actor=actor[:64],
+                    action="ai_breaker_reset",
+                    target_type="ai_budget",
+                    target_id="1",
+                    details_json=json.dumps(
+                        {
+                            "previous_reason": previous_reason,
+                            "reset_reason": reason,
+                        },
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                )
+            )
+            return True
 
     def ai_usage_summary(
         self, user_id: int, *, initial_credits: int = 0

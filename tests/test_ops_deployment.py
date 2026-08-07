@@ -1,6 +1,7 @@
 import io
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import tarfile
 import tempfile
@@ -166,6 +167,9 @@ class AdminLauncherTest(OpsTestCase):
             encoding="utf-8",
         )
         os.chmod(secrets_file, 0o600)
+        local_config = self.root / "local-config"
+        local_config.mkdir(exist_ok=True)
+        os.chmod(local_config, 0o700)
         return {
             "MYDICTIONARY_APP_ROOT": str(self.root),
             "DATABASE_URL": self.config.database_url,
@@ -181,6 +185,7 @@ class AdminLauncherTest(OpsTestCase):
         self.assertEqual(environment["DATA_DIR"], str(self.root.resolve()))
         self.assertEqual(environment["RELEASE_SHA"], NEW_SHA)
         self.assertEqual(environment["AI_TUTOR_ENABLED"], "false")
+        self.assertEqual(environment["AI_PROVIDER_CONFIGURED"], "false")
         self.assertEqual(environment["VOICE_TUTOR_ENABLED"], "false")
         self.assertEqual(
             environment["VOICE_TRANSCRIPTION_MODEL"], "gpt-4o-transcribe"
@@ -195,6 +200,87 @@ class AdminLauncherTest(OpsTestCase):
     def test_launcher_refuses_to_enable_ai(self):
         with self.assertRaisesRegex(RuntimeError, "refuses to enable AI"):
             admin_launcher.build_process(self.launcher_environment(ai_enabled="true"))
+
+    def test_launcher_forwards_non_secret_economics_diagnostics(self):
+        source = self.launcher_environment()
+        source.update(
+            {
+                "AI_MODEL": "gpt-5.6-luna",
+                "AI_SERVICE_TIER": "default",
+                "AI_PRICING_REVIEWED_ON": "2026-08-06",
+                "AI_PRICING_MAX_AGE_DAYS": "30",
+                "AI_ECONOMICS_SNAPSHOT_PATH": "config/launch-economics.json",
+                "AI_ECONOMICS_SNAPSHOT_ID": "snapshot-test",
+                "AI_ECONOMICS_SNAPSHOT_SHA256": "a" * 64,
+                "AI_MAX_DAILY_REQUESTS_PER_USER": "5",
+                "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST": "5000",
+                "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE": "5000",
+                "AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY": "25000",
+                "AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH": "100000",
+                "AI_MAX_IN_FLIGHT_COST_MICRO_USD": "5000",
+                "AI_MAX_PROVIDER_INPUT_CHARS": "12000",
+                "AI_MAX_OUTPUT_TOKENS": "1000",
+                "AI_METERING_JOURNAL_PATH": "/tmp/ai-metering.jsonl",
+                "BILLING_ECONOMICS_REVIEWED_ON": "2026-08-06",
+                "BILLING_ECONOMICS_MAX_AGE_DAYS": "30",
+                "BILLING_PRIVATE_CHAT_TOPICS_ENABLED": "false",
+                "BILLING_TERMS_APPROVED": "false",
+                "OPENAI_API_KEY": "must-not-reach-admin",
+                "AI_SAFETY_SALT": "must-not-reach-admin-either",
+            }
+        )
+
+        _, _, environment, _ = admin_launcher.build_process(source)
+
+        self.assertEqual(environment["AI_MODEL"], "gpt-5.6-luna")
+        self.assertEqual(environment["AI_SERVICE_TIER"], "default")
+        self.assertEqual(environment["AI_PROVIDER_CONFIGURED"], "true")
+        self.assertEqual(environment["AI_MAX_DAILY_REQUESTS_PER_USER"], "5")
+        self.assertEqual(
+            environment["AI_ECONOMICS_SNAPSHOT_SHA256"], "a" * 64
+        )
+        self.assertEqual(
+            environment["AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH"], "100000"
+        )
+        self.assertEqual(environment["BILLING_TERMS_APPROVED"], "false")
+        self.assertNotIn("OPENAI_API_KEY", environment)
+        self.assertNotIn("AI_SAFETY_SALT", environment)
+
+    def test_launcher_forwards_bounded_one_time_key_enrollment(self):
+        source = self.launcher_environment()
+        target = self.root / "local-config" / "openai-gate2.key"
+        expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
+        source.update(
+            {
+                "AI_KEY_ENROLLMENT_ENABLED": "true",
+                "AI_KEY_ENROLLMENT_PATH": str(target),
+                "AI_KEY_ENROLLMENT_EXPIRES_AT": expiry.isoformat(),
+            }
+        )
+
+        _, _, environment, _ = admin_launcher.build_process(source)
+
+        self.assertEqual(environment["AI_KEY_ENROLLMENT_ENABLED"], "true")
+        self.assertEqual(environment["AI_KEY_ENROLLMENT_PATH"], str(target))
+        self.assertEqual(
+            environment["AI_KEY_ENROLLMENT_EXPIRES_AT"], expiry.isoformat()
+        )
+        self.assertNotIn("OPENAI_API_KEY", environment)
+
+    def test_launcher_rejects_key_enrollment_outside_local_config(self):
+        source = self.launcher_environment()
+        source.update(
+            {
+                "AI_KEY_ENROLLMENT_ENABLED": "true",
+                "AI_KEY_ENROLLMENT_PATH": str(self.root / "openai.key"),
+                "AI_KEY_ENROLLMENT_EXPIRES_AT": (
+                    datetime.now(timezone.utc) + timedelta(minutes=30)
+                ).isoformat(),
+            }
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "must stay in local-config"):
+            admin_launcher.build_process(source)
 
     def test_launcher_rejects_release_outside_versioned_tree(self):
         environment = self.launcher_environment()

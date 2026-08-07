@@ -117,6 +117,13 @@ root). It must contain `username`, `password_hash`, and `session_secret` string
 values. `ADMIN_COOKIE_SECURE` defaults to `true` for the public HTTPS tunnel;
 the service itself still binds only to loopback.
 
+The admin launcher can expose the authenticated one-time OpenAI key enrollment
+form without receiving `OPENAI_API_KEY` in its environment. Set
+`AI_KEY_ENROLLMENT_ENABLED`, `AI_KEY_ENROLLMENT_PATH`, and
+`AI_KEY_ENROLLMENT_EXPIRES_AT` together. The target must be directly under the
+owner-only `local-config` directory and the window cannot exceed one hour. See
+`docs/admin-console.md` for the lifecycle and cleanup procedure.
+
 Operator migration deploys also require:
 
 ```text
@@ -172,6 +179,32 @@ See [the production runbook](../docs/runbooks/mac-mini-deployment.md) before
 installing, enabling, clearing quarantine, or recovering a failed release.
 
 ## Billing operations
+
+Validate the checked-in draft AI/Stars assumptions and render only non-secret,
+disabled environment values with:
+
+```bash
+python ops/mydictionary_economics.py --check
+python ops/mydictionary_economics.py --render-env
+```
+
+The renderer never includes provider keys, payload secrets, safety salts,
+support contacts, or terms text. Its output is a review aid, not an activation
+command; AI, Stars, and terms approval remain false.
+
+AI provider telemetry that could not reach PostgreSQL is written to a private
+fallback journal. Inspect it without revealing contents and reconcile it only
+after reviewing the storage incident:
+
+```bash
+python ops/mydictionary_ai_metering.py status
+python ops/mydictionary_ai_metering.py reconcile --actor <operator> --execute
+```
+
+Reconciliation is idempotent, writes an audit entry, and leaves the persistent
+breaker open. Verify the imported model, tier, token fields, and cost in the
+admin before using the separate audited breaker reset. Never edit or truncate
+the journal by hand.
 
 `mydictionary_billing.py reconcile` is read-only and compares bounded Bot API
 transaction pages with the local Stars ledger. Refund and subscription changes

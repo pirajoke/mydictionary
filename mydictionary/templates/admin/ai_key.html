@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenAI key · MY DICTIONARY Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
+  </head>
+  <body class="login-page">
+    <main class="login-panel secret-enrollment-panel">
+      <img src="{{ url_for('static', filename='admin/brand-mark.png') }}" alt="" width="72" height="72">
+      <p class="eyebrow">MY DICTIONARY · Gate 2</p>
+      <h1>OpenAI project key</h1>
+
+      {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+
+      {% if state == 'ready' %}
+        <p class="security-copy">Введите ключ отдельного OpenAI-проекта. После отправки окно закроется навсегда, а значение больше не будет показано.</p>
+        <form method="post" action="{{ url_for('enroll_ai_key') }}" class="form-stack">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label>Project API key
+            <input type="password" name="api_key" autocomplete="off" autocapitalize="none" spellcheck="false" required autofocus>
+            <small>Окно действует до {{ expires_at|datetime }}.</small>
+          </label>
+          <button type="submit" class="primary">Передать ключ</button>
+        </form>
+      {% elif state == 'consumed' %}
+        <div class="notice">Ключ принят. Одноразовое окно закрыто.</div>
+      {% elif state == 'expired' %}
+        <div class="notice error">Срок действия одноразового окна истёк. Ключ не принимался.</div>
+      {% endif %}
+
+      <p class="back-link"><a href="{{ url_for('admin_index', tab='diagnostics') }}">Вернуться в диагностику</a></p>
+    </main>
+  </body>
+</html>
