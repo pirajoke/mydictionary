@@ -19,6 +19,7 @@ polling. The default binding is loopback-only on the Mac mini.
 - database, migration, feature-flag, release, asset, and Telegram polling readiness
 - AI snapshot/tier/budget diagnostics plus audited breaker reset, blocked while
   provider telemetry remains in the fallback journal
+- opt-in, time-limited, one-time enrollment of an isolated OpenAI project key
 - append-only administration audit log
 
 The admin can request a refund hold but cannot call Telegram's refund API. Live
@@ -38,6 +39,19 @@ DATA_DIR=<shared runtime directory>
 BOT_HEARTBEAT_MAX_AGE_SECONDS=45
 TELEGRAM_STARS_ENABLED=false
 ```
+
+Remote key enrollment is disabled unless all three settings are present:
+
+```text
+AI_KEY_ENROLLMENT_ENABLED=true
+AI_KEY_ENROLLMENT_PATH=/absolute/app-root/local-config/openai-gate2.key
+AI_KEY_ENROLLMENT_EXPIRES_AT=2026-08-07T12:30:00Z
+```
+
+The production launcher accepts a destination only directly under
+`MYDICTIONARY_APP_ROOT/local-config`. That directory must already exist and
+must not be group or world writable. The expiry must include a timezone and
+cannot be more than one hour in the future.
 
 The bot and admin processes must resolve the same heartbeat path. By default it
 is `DATA_DIR/bot-heartbeat.json`. `BOT_HEARTBEAT_PATH` can override the complete
@@ -87,6 +101,26 @@ ssh -L 8787:127.0.0.1:8787 <mac-mini-host>
 Then open `http://127.0.0.1:8787/admin`. A reverse proxy or remote binding must
 add HTTPS and an explicit network access policy before use.
 
+## One-time remote key enrollment
+
+Use this only for an isolated, short-lived provider key while AI remains
+disabled. Configure a window of at most one hour, restart only the admin
+service, authenticate normally, and open `/admin/ai-key` over the existing
+HTTPS admin endpoint. The form requires the signed admin session and CSRF
+token.
+
+The server creates the destination with `O_EXCL`, `O_NOFOLLOW` where available,
+and mode `0600`. It never stores the key in PostgreSQL, session data, audit
+details, command arguments, or a response. The audit log records only a
+12-character SHA-256 fingerprint. A successful write or a pre-existing target
+permanently consumes the window. Invalid, expired, duplicate, symlink, and
+unsafe-directory cases fail closed.
+
+After the controlled provider attempt, delete the local key file, set
+`AI_KEY_ENROLLMENT_ENABLED=false`, restart the admin service, and revoke the
+project key in OpenAI Platform. Never forward `OPENAI_API_KEY` to the admin
+process.
+
 ## Security properties
 
 - fail-closed setup when no admin credential or session secret exists
@@ -99,4 +133,4 @@ add HTTPS and an explicit network access policy before use.
 - transactional learner access changes with an administration audit entry
 - administrator accounts cannot be suspended through learner access controls
 - no destructive reset endpoint
-- no stored AI prompts, answers, vocabulary history exports, or secrets
+- no stored AI prompts, answers, vocabulary history exports, or database secrets

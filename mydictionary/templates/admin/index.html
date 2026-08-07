@@ -386,6 +386,7 @@
               ('AI spend this month', diagnostics.ai_budget.spent_month_micro_usd ~ ' microUSD', true),
               ('AI reserved in flight', diagnostics.ai_budget.in_flight_micro_usd ~ ' microUSD · ' ~ diagnostics.ai_budget.reserved_attempts ~ ' attempts', diagnostics.ai_budget.in_flight_micro_usd == 0),
               ('AI fallback journal', diagnostics.ai_metering_journal_pending ~ ' pending', diagnostics.ai_metering_journal_pending == 0),
+              ('AI key enrollment', diagnostics.ai_key_enrollment_status ~ ' · ' ~ diagnostics.ai_key_enrollment_expires_at, diagnostics.ai_key_enrollment_status in ['ready','consumed']),
               ('Voice tutor', diagnostics.voice_enabled ~ ' · ' ~ diagnostics.voice_model, diagnostics.voice_enabled|lower in ['1','true','yes','on']),
               ('Voice consent', diagnostics.voice_consent_version, diagnostics.voice_consent_version != 'unversioned'),
               ('Telegram Stars', 'enabled' if diagnostics.stars_enabled else 'disabled', diagnostics.stars_enabled),
@@ -400,6 +401,11 @@
             ] %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd><span class="readiness {{ 'ok' if ok else 'off' }}">{{ 'ready' if ok else 'off' }}</span></div>{% endfor %}
           </dl>
         </section>
+        {% if diagnostics.ai_key_enrollment_status == 'ready' %}
+          <section class="panel action-panel">
+            <div class="section-heading"><div><p class="eyebrow">Gate 2</p><h2>Одноразовая передача OpenAI key</h2></div><a class="button-link" href="{{ url_for('ai_key_enrollment') }}">Открыть защищённую форму</a></div>
+          </section>
+        {% endif %}
         {% if diagnostics.ai_budget.breaker_open %}
           <section class="panel action-panel">
             <div class="section-heading"><div><p class="eyebrow">Ручное подтверждение</p><h2>Сброс AI breaker</h2></div></div>

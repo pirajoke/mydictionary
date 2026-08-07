@@ -49,6 +49,10 @@ from mydictionary.readiness import (
     inspect_bot_heartbeat,
 )
 from mydictionary.privacy import RetentionPolicy
+from mydictionary.secret_enrollment import (
+    SecretEnrollmentError,
+    SecretEnrollmentSettings,
+)
 from mydictionary.storage import DatabaseStore
 from vocabulary_topics import topic_counts, transcription_for
 
@@ -255,6 +259,7 @@ def create_app(
         ADMIN_PASSWORD_HASH=os.environ.get("ADMIN_PASSWORD_HASH", ""),
         ADMIN_HOST=os.environ.get("ADMIN_HOST", "127.0.0.1").strip(),
         ADMIN_PORT=int(os.environ.get("ADMIN_PORT", "8787")),
+        DATA_DIR=str(data_dir),
         BOT_HEARTBEAT_PATH=str(heartbeat_path(data_dir)),
         BOT_HEARTBEAT_MAX_AGE_SECONDS=configured_max_age_seconds(),
         SESSION_COOKIE_NAME="mydictionary_admin_session",
@@ -263,6 +268,13 @@ def create_app(
         SESSION_COOKIE_SECURE=(
             os.environ.get("ADMIN_COOKIE_SECURE", "false").strip().lower()
             in {"1", "true", "yes", "on"}
+        ),
+        AI_KEY_ENROLLMENT_ENABLED=os.environ.get(
+            "AI_KEY_ENROLLMENT_ENABLED", "false"
+        ),
+        AI_KEY_ENROLLMENT_PATH=os.environ.get("AI_KEY_ENROLLMENT_PATH", ""),
+        AI_KEY_ENROLLMENT_EXPIRES_AT=os.environ.get(
+            "AI_KEY_ENROLLMENT_EXPIRES_AT", ""
         ),
         MAX_CONTENT_LENGTH=64 * 1024,
     )
@@ -278,8 +290,13 @@ def create_app(
 
     store = database_store or DatabaseStore(database_url_from_env())
     admin_store = AdminStore(store)
+    key_enrollment = SecretEnrollmentSettings.from_mapping(
+        app.config,
+        allowed_directory=Path(app.config["DATA_DIR"]) / "local-config",
+    )
     app.extensions["database_store"] = store
     app.extensions["admin_store"] = admin_store
+    app.extensions["ai_key_enrollment"] = key_enrollment
     limiter = LoginLimiter()
 
     username = str(app.config.get("ADMIN_USERNAME") or "").strip()
@@ -582,6 +599,12 @@ def create_app(
                 ),
                 "ai_budget": ai_budget,
                 "ai_metering_journal_pending": metering_journal_pending,
+                "ai_key_enrollment_status": key_enrollment.status(),
+                "ai_key_enrollment_expires_at": (
+                    key_enrollment.expires_at.isoformat()
+                    if key_enrollment.expires_at
+                    else "not configured"
+                ),
                 "stars_enabled": admin_store.billing_settings.enabled,
                 "stars_unit_economics": (
                     admin_store.billing_settings.net_micro_usd_per_xtr > 0
@@ -624,6 +647,65 @@ def create_app(
         elif tab == "audit":
             context["audit"] = admin_store.audit_log(limit=250)
         return render_template("admin/index.html", **context)
+
+    @app.get("/admin/ai-key")
+    @login_required
+    def ai_key_enrollment():
+        state = key_enrollment.status()
+        if state == "disabled":
+            abort(404)
+        return (
+            render_template(
+                "admin/ai_key.html",
+                state=state,
+                expires_at=key_enrollment.expires_at,
+            ),
+            410 if state == "expired" else 200,
+        )
+
+    @app.post("/admin/ai-key")
+    @login_required
+    def enroll_ai_key():
+        try:
+            fingerprint = key_enrollment.enroll(
+                str(request.form.get("api_key") or "")
+            )
+        except SecretEnrollmentError:
+            state = key_enrollment.status()
+            reason = "invalid_key" if state == "ready" else state
+            admin_store.record_audit(
+                actor=current_actor(),
+                action="ai_key_enrollment_rejected",
+                target_type="provider_credential",
+                target_id="openai",
+                details={"reason": reason},
+            )
+            messages = {
+                "ready": "Ключ не принят. Проверьте формат project API key.",
+                "consumed": "Одноразовое окно уже использовано.",
+                "expired": "Срок действия одноразового окна истёк.",
+                "disabled": "Одноразовое окно выключено.",
+            }
+            return (
+                render_template(
+                    "admin/ai_key.html",
+                    state=state,
+                    expires_at=key_enrollment.expires_at,
+                    error=messages.get(state, "Ключ не принят."),
+                ),
+                {"ready": 400, "consumed": 409, "expired": 410}.get(
+                    state, 404
+                ),
+            )
+        admin_store.record_audit(
+            actor=current_actor(),
+            action="ai_key_enrolled",
+            target_type="provider_credential",
+            target_id="openai",
+            details={"fingerprint_sha256_12": fingerprint},
+        )
+        session["csrf_token"] = secrets.token_urlsafe(32)
+        return redirect(url_for("ai_key_enrollment"), code=303)
 
     @app.post("/admin/ai/breaker/reset")
     @login_required

@@ -38,14 +38,24 @@ class AdminConsoleTest(unittest.TestCase):
             access_mode="pilot",
         ).mark_ready()
         self.store = DatabaseStore(f"sqlite:///{database_path}")
+        self.local_config_dir = Path(self.temp_dir.name) / "local-config"
+        self.local_config_dir.mkdir()
+        os.chmod(self.local_config_dir, 0o700)
+        self.ai_key_path = self.local_config_dir / "openai-gate2.key"
         self.app = create_app(
             {
                 "TESTING": True,
                 "SECRET_KEY": "test-session-secret-with-at-least-32-chars",
                 "ADMIN_USERNAME": "owner",
                 "ADMIN_PASSWORD": "test-password-123",
+                "DATA_DIR": self.temp_dir.name,
                 "BOT_HEARTBEAT_PATH": str(self.heartbeat_path),
                 "BOT_HEARTBEAT_MAX_AGE_SECONDS": 45,
+                "AI_KEY_ENROLLMENT_ENABLED": "true",
+                "AI_KEY_ENROLLMENT_PATH": str(self.ai_key_path),
+                "AI_KEY_ENROLLMENT_EXPIRES_AT": (
+                    datetime.now(timezone.utc) + timedelta(minutes=30)
+                ).isoformat(),
             },
             database_store=self.store,
         )
@@ -55,16 +65,18 @@ class AdminConsoleTest(unittest.TestCase):
         self.store.close()
         self.temp_dir.cleanup()
 
-    def csrf(self):
-        with self.client.session_transaction() as browser_session:
+    def csrf(self, client=None):
+        browser = client or self.client
+        with browser.session_transaction() as browser_session:
             return browser_session["csrf_token"]
 
-    def login(self):
-        self.client.get("/admin/login")
-        response = self.client.post(
+    def login(self, client=None):
+        browser = client or self.client
+        browser.get("/admin/login")
+        response = browser.post(
             "/admin/login",
             data={
-                "csrf_token": self.csrf(),
+                "csrf_token": self.csrf(browser),
                 "username": "owner",
                 "password": "test-password-123",
             },
@@ -102,6 +114,126 @@ class AdminConsoleTest(unittest.TestCase):
         fresh_login = self.client.get(login_redirect.headers["Location"])
         self.assertEqual(fresh_login.status_code, 200)
         self.assertTrue(self.csrf())
+
+    def test_remote_ai_key_enrollment_is_authenticated_one_time_and_private(self):
+        secret = "sk-proj-" + "A" * 48
+        anonymous = self.client.get("/admin/ai-key")
+        self.assertEqual(anonymous.status_code, 302)
+        self.assertEqual(anonymous.headers["Location"], "/admin/login")
+
+        self.login()
+        page = self.client.get("/admin/ai-key")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('type="password"', page.get_data(as_text=True))
+        self.assertEqual(page.headers["Cache-Control"], "no-store")
+
+        missing_csrf = self.client.post(
+            "/admin/ai-key", data={"api_key": secret}
+        )
+        self.assertEqual(missing_csrf.status_code, 400)
+        self.assertFalse(self.ai_key_path.exists())
+
+        invalid = self.client.post(
+            "/admin/ai-key",
+            data={"csrf_token": self.csrf(), "api_key": "not-a-key"},
+        )
+        self.assertEqual(invalid.status_code, 400)
+        self.assertNotIn("not-a-key", invalid.get_data(as_text=True))
+        self.assertFalse(self.ai_key_path.exists())
+
+        accepted = self.client.post(
+            "/admin/ai-key",
+            data={"csrf_token": self.csrf(), "api_key": secret},
+        )
+        self.assertEqual(accepted.status_code, 303)
+        self.assertNotIn(secret, accepted.get_data(as_text=True))
+        self.assertEqual(self.ai_key_path.read_text(encoding="ascii"), secret)
+        self.assertEqual(self.ai_key_path.stat().st_mode & 0o777, 0o600)
+
+        consumed = self.client.get("/admin/ai-key")
+        self.assertEqual(consumed.status_code, 200)
+        self.assertIn("Одноразовое окно закрыто", consumed.get_data(as_text=True))
+        self.assertNotIn(secret, consumed.get_data(as_text=True))
+
+        replay = self.client.post(
+            "/admin/ai-key",
+            data={"csrf_token": self.csrf(), "api_key": "sk-proj-" + "B" * 48},
+        )
+        self.assertEqual(replay.status_code, 409)
+        self.assertEqual(self.ai_key_path.read_text(encoding="ascii"), secret)
+
+        with self.store.Session() as database_session:
+            audit_rows = database_session.execute(
+                select(AdminAuditLog).where(
+                    AdminAuditLog.action.in_(
+                        {"ai_key_enrolled", "ai_key_enrollment_rejected"}
+                    )
+                )
+            ).scalars().all()
+        self.assertEqual(len(audit_rows), 3)
+        serialized_audit = "\n".join(row.details_json for row in audit_rows)
+        self.assertNotIn(secret, serialized_audit)
+        self.assertIn("fingerprint_sha256_12", serialized_audit)
+
+    def test_remote_ai_key_enrollment_disabled_and_expired_fail_closed(self):
+        disabled_app = create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "another-test-session-secret-at-least-32",
+                "AI_KEY_ENROLLMENT_ENABLED": "false",
+            },
+            database_store=self.store,
+        )
+        disabled_client = disabled_app.test_client()
+        self.login(disabled_client)
+        self.assertEqual(disabled_client.get("/admin/ai-key").status_code, 404)
+
+        expired_path = self.local_config_dir / "expired-gate2.key"
+        expired_app = create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "expired-test-session-secret-at-least-32",
+                "DATA_DIR": self.temp_dir.name,
+                "AI_KEY_ENROLLMENT_ENABLED": "true",
+                "AI_KEY_ENROLLMENT_PATH": str(expired_path),
+                "AI_KEY_ENROLLMENT_EXPIRES_AT": (
+                    datetime.now(timezone.utc) - timedelta(seconds=1)
+                ).isoformat(),
+            },
+            database_store=self.store,
+        )
+        expired_client = expired_app.test_client()
+        self.login(expired_client)
+        expired = expired_client.get("/admin/ai-key")
+        self.assertEqual(expired.status_code, 410)
+        rejected = expired_client.post(
+            "/admin/ai-key",
+            data={
+                "csrf_token": self.csrf(expired_client),
+                "api_key": "sk-proj-" + "C" * 48,
+            },
+        )
+        self.assertEqual(rejected.status_code, 410)
+        self.assertFalse(expired_path.exists())
+
+        with self.assertRaisesRegex(
+            RuntimeError, "must stay in local-config"
+        ):
+            create_app(
+                {
+                    "TESTING": True,
+                    "SECRET_KEY": "outside-test-session-secret-at-least-32",
+                    "DATA_DIR": self.temp_dir.name,
+                    "AI_KEY_ENROLLMENT_ENABLED": "true",
+                    "AI_KEY_ENROLLMENT_PATH": str(
+                        Path(self.temp_dir.name) / "outside.key"
+                    ),
+                    "AI_KEY_ENROLLMENT_EXPIRES_AT": (
+                        datetime.now(timezone.utc) + timedelta(minutes=30)
+                    ).isoformat(),
+                },
+                database_store=self.store,
+            )
 
     def test_duplicate_login_post_keeps_authenticated_session(self):
         self.client.get("/admin/login")

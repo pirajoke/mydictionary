@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 import stat
@@ -91,6 +92,9 @@ def build_process(
             ).strip(),
             "AI_TUTOR_ENABLED": source.get("AI_TUTOR_ENABLED", "false").strip(),
             "AI_INITIAL_CREDITS": source.get("AI_INITIAL_CREDITS", "0").strip(),
+            "AI_KEY_ENROLLMENT_ENABLED": source.get(
+                "AI_KEY_ENROLLMENT_ENABLED", "false"
+            ).strip(),
             "AI_PROVIDER_CONFIGURED": str(
                 bool(source.get("OPENAI_API_KEY", "").strip())
             ).lower(),
@@ -139,6 +143,8 @@ def build_process(
         "AI_MAX_PROVIDER_INPUT_CHARS",
         "AI_MAX_OUTPUT_TOKENS",
         "AI_METERING_JOURNAL_PATH",
+        "AI_KEY_ENROLLMENT_PATH",
+        "AI_KEY_ENROLLMENT_EXPIRES_AT",
         "VOICE_CONSENT_VERSION",
     ):
         if source.get(name):
@@ -149,6 +155,48 @@ def build_process(
         raise RuntimeError("Admin host must remain loopback")
     if environment["AI_TUTOR_ENABLED"].lower() not in {"0", "false", "no", "off"}:
         raise RuntimeError("Versioned admin launcher refuses to enable AI")
+    enrollment_enabled = environment["AI_KEY_ENROLLMENT_ENABLED"].lower()
+    if enrollment_enabled not in {
+        "0",
+        "1",
+        "false",
+        "true",
+        "no",
+        "yes",
+        "off",
+        "on",
+    }:
+        raise RuntimeError("AI_KEY_ENROLLMENT_ENABLED must be a boolean")
+    if enrollment_enabled in {"1", "true", "yes", "on"}:
+        raw_target = required(environment, "AI_KEY_ENROLLMENT_PATH")
+        target = Path(raw_target).expanduser()
+        if not target.is_absolute():
+            raise RuntimeError("AI key enrollment path must be absolute")
+        local_config = (app_root / "local-config").resolve()
+        if not local_config.is_dir() or local_config.is_symlink():
+            raise RuntimeError("AI key enrollment directory is unavailable")
+        if stat.S_IMODE(local_config.stat().st_mode) & 0o022:
+            raise RuntimeError("AI key enrollment directory permissions are unsafe")
+        if target.parent.resolve() != local_config:
+            raise RuntimeError("AI key enrollment path must stay in local-config")
+        raw_expiry = required(environment, "AI_KEY_ENROLLMENT_EXPIRES_AT")
+        normalized_expiry = (
+            raw_expiry[:-1] + "+00:00"
+            if raw_expiry.endswith("Z")
+            else raw_expiry
+        )
+        try:
+            expires_at = datetime.fromisoformat(normalized_expiry)
+        except ValueError as exc:
+            raise RuntimeError(
+                "AI key enrollment expiry must use ISO 8601"
+            ) from exc
+        if expires_at.tzinfo is None:
+            raise RuntimeError("AI key enrollment expiry must include timezone")
+        if expires_at.astimezone(timezone.utc) > datetime.now(
+            timezone.utc
+        ) + timedelta(hours=1):
+            raise RuntimeError("AI key enrollment window cannot exceed one hour")
     if environment["VOICE_TUTOR_ENABLED"].lower() not in {
         "0",
         "1",
