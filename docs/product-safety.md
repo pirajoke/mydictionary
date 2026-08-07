@@ -91,6 +91,47 @@ verification. In preview mode it performs no upload. With `--execute`, it:
 
 Required settings are `MYDICTIONARY_BACKUP_AGE_RECIPIENT` and
 `MYDICTIONARY_BACKUP_RCLONE_REMOTE`. The age private identity is deliberately
-not present on the production host contract. Restore drills must retrieve the
-encrypted object, verify the checksum, decrypt on an approved recovery host,
-and then use the existing restore verification procedure.
+not present on the production host contract.
+
+### Isolated restore drill
+
+Run `ops/mydictionary_restore_drill.py` only on an approved recovery host with
+PostgreSQL, `age`, `rclone`, and the private age identity. The command requires
+the exact encrypted filename reported by a successful upload; it never guesses
+or silently selects the newest remote object.
+
+```text
+MYDICTIONARY_BACKUP_RCLONE_REMOTE=<same immutable remote:path prefix>
+MYDICTIONARY_BACKUP_AGE_IDENTITY=<absolute private identity path>
+MYDICTIONARY_RESTORE_EXPECTED_REVISION=0011_pilot_operations
+MYDICTIONARY_RESTORE_DRILL_RECEIPT_DIR=<absolute private receipt directory>
+PGHOST=<recovery PostgreSQL host or socket>
+PGUSER=<role allowed to create and drop a disposable database>
+```
+
+Preview performs no download and creates no database:
+
+```bash
+python ops/mydictionary_restore_drill.py \
+  --encrypted-name mydictionary-YYYYMMDDTHHMMSS.ffffffZ-aaaaaaaaaaaa.dump.age
+```
+
+The execution form requires an explicit isolated-database confirmation:
+
+```bash
+python ops/mydictionary_restore_drill.py \
+  --encrypted-name mydictionary-YYYYMMDDTHHMMSS.ffffffZ-aaaaaaaaaaaa.dump.age \
+  --execute --confirm-isolated-database
+```
+
+Execution downloads the encrypted object and checksum, validates the checksum,
+decrypts into a mode-`0600` temporary file, verifies the custom archive, restores
+all objects into a generated `mydictionary_restore_drill_*` database, checks the
+exact Alembic revision, and drops that database in a `finally` block. It never
+reads `DATABASE_URL` and cannot select the production database name. A successful
+run writes a mode-`0600` JSON receipt containing the encrypted object name,
+encrypted checksum, restored revision, and completion time; it records no
+credentials, identity path, database connection, or restored learner data.
+
+The encrypted upload control is complete only after a scheduled upload has
+succeeded and a restore receipt from a separate recovery host has been reviewed.
