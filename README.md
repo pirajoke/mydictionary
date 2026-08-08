@@ -70,6 +70,7 @@ migrations, isolated persistence, and concurrent credit reservations.
 
 | Path | Purpose |
 |---|---|
+| `AGENTS.md` | Repository agent boundaries, canonical sources, and owner gates |
 | `bot.py` | Telegram adapter and polling entry point |
 | `mydictionary/` | Storage, catalog, learning, billing, privacy, AI, voice, and admin services |
 | `migrations/` | Alembic database migrations |
@@ -77,8 +78,11 @@ migrations, isolated persistence, and concurrent credit reservations.
 | `ops/` | Mac mini deploy, backup, monitoring, retention, and billing wrappers |
 | `tests/` | Product, storage, operations, safety, and provider-contract tests |
 | `docs/product-foundation.md` | Product principles and rollout boundary |
+| `docs/product-metrics.md` | NSM, OMTM, metric formulas, freshness, and weekly check-in |
 | `docs/pilot-operations.md` | Controlled cohort and D1/D7 measurement |
 | `docs/launch-readiness.md` | Paid and voice release gates |
+| `docs/ownership.md` | Responsibility matrix and escalation rules |
+| `docs/incidents.md` | Privacy-safe append-only incident history |
 | `docs/runbooks/mac-mini-deployment.md` | Production deployment and recovery runbook |
 
 Production runs on an owner-controlled Mac mini. `render.yaml` is an obsolete
