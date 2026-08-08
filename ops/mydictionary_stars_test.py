@@ -12,11 +12,24 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mydictionary.billing import BillingSettings
+from mydictionary.runtime_secrets import (
+    RuntimeSecretError,
+    load_telegram_test_credentials_file,
+)
 from mydictionary.telegram_runtime import TelegramRuntimeSettings
 
 
+def load_test_credentials(values: dict[str, str]) -> dict[str, str]:
+    try:
+        return load_telegram_test_credentials_file(values)
+    except RuntimeSecretError as exc:
+        raise RuntimeError(str(exc)) from exc
+
+
 def check(values: dict[str, str] | None = None) -> dict[str, str | bool]:
-    env = values if values is not None else dict(os.environ)
+    env = load_test_credentials(
+        values if values is not None else dict(os.environ)
+    )
     runtime = TelegramRuntimeSettings.from_env(env)
     billing = BillingSettings.from_env(env)
     runtime.validate_billing_process(

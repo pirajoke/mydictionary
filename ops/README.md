@@ -175,6 +175,22 @@ The plain PostgreSQL database name is passed to `pg_dump` through `PGDATABASE`,
 not the process argument list. Credentials, admin secrets, local paths, logs,
 backup files, heartbeat files, and release state never belong in the repository.
 
+Keep the production Telegram token out of launchd environment values. Create an
+owner-only regular token file with mode `0600`, set `BOT_TOKEN_FILE` to its
+absolute path, and remove `BOT_TOKEN` from the plist. The bot refuses relative,
+symlinked, group/world-readable, malformed, or conflicting token sources.
+
+Before rotating a historically exposed token, audit the private log without
+printing its contents. The execution form creates a separate verified mode-
+`0600` copy and never replaces or deletes the source:
+
+```bash
+python ops/mydictionary_telegram_security.py --log /absolute/private/bot.log
+python ops/mydictionary_telegram_security.py \
+  --log /absolute/private/bot.log \
+  --sanitize-to /absolute/private/bot.sanitized.log --execute
+```
+
 See [the production runbook](../docs/runbooks/mac-mini-deployment.md) before
 installing, enabling, clearing quarantine, or recovering a failed release.
 
@@ -220,6 +236,16 @@ database, data-directory, and test-terms binding without making a Bot API call:
 python ops/mydictionary_stars_test.py --check
 ```
 
+Store the dedicated test token and test user ID in an owner-only mode-`0600`
+JSON file instead of a plist or shell history:
+
+```json
+{"bot_token":"<test-server-token>","test_user_id":123456789}
+```
+
+Set only `TELEGRAM_TEST_CREDENTIALS_FILE` to its absolute path. The preflight
+refuses inline `BOT_TOKEN` or `TELEGRAM_TEST_USER_ID` when the bundle is used.
+
 The complete test-only environment contract is documented in
 `docs/telegram-stars-billing.md`. Production launchd configuration must keep
 `TELEGRAM_API_ENVIRONMENT=production` (or omit it) and must never receive the
@@ -235,6 +261,7 @@ python ops/mydictionary_retention.py retention --execute
 python ops/mydictionary_monitor.py
 python ops/mydictionary_monitor.py --execute
 python ops/mydictionary_offsite_backup.py
+python ops/mydictionary_offsite_backup.py --check
 python ops/mydictionary_offsite_backup.py --execute
 python ops/mydictionary_restore_drill.py --encrypted-name <exact.dump.age>
 python ops/mydictionary_restore_drill.py --encrypted-name <exact.dump.age> \

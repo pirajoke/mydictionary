@@ -1,6 +1,9 @@
 import importlib.util
 from datetime import datetime, timezone
+import json
+import os
 from pathlib import Path
+import tempfile
 import unittest
 
 
@@ -42,6 +45,9 @@ def environment():
     }
 
 
+VALID_TOKEN = "123456789:" + "C" * 35
+
+
 class StarsTestPreflightTest(unittest.TestCase):
     def test_check_returns_only_safe_test_metadata(self):
         result = stars_test.check(environment())
@@ -56,6 +62,48 @@ class StarsTestPreflightTest(unittest.TestCase):
     def test_check_rejects_production_runtime(self):
         with self.assertRaisesRegex(RuntimeError, "requires TELEGRAM_API_ENVIRONMENT"):
             stars_test.check({})
+
+    def test_private_credential_bundle_is_loaded_without_safe_output_leakage(self):
+        with tempfile.TemporaryDirectory(prefix="mydictionary-stars-creds-") as raw:
+            root = Path(raw)
+            os.chmod(root, 0o700)
+            credentials = root / "credentials.json"
+            credentials.write_text(
+                json.dumps({"bot_token": VALID_TOKEN, "test_user_id": 7001}),
+                encoding="utf-8",
+            )
+            os.chmod(credentials, 0o600)
+            values = environment()
+            values.pop("BOT_TOKEN")
+            values.pop("TELEGRAM_TEST_USER_ID")
+            values["TELEGRAM_TEST_CREDENTIALS_FILE"] = str(credentials)
+
+            result = stars_test.check(values)
+
+        self.assertTrue(result["ok"])
+        self.assertNotIn(VALID_TOKEN, repr(result))
+        self.assertNotIn("7001", repr(result))
+
+    def test_credential_bundle_rejects_inline_conflicts_and_unsafe_file(self):
+        with tempfile.TemporaryDirectory(prefix="mydictionary-stars-creds-") as raw:
+            root = Path(raw)
+            os.chmod(root, 0o700)
+            credentials = root / "credentials.json"
+            credentials.write_text(
+                json.dumps({"bot_token": VALID_TOKEN, "test_user_id": 7001}),
+                encoding="utf-8",
+            )
+            os.chmod(credentials, 0o600)
+            values = environment()
+            values["TELEGRAM_TEST_CREDENTIALS_FILE"] = str(credentials)
+            with self.assertRaisesRegex(RuntimeError, "inline"):
+                stars_test.check(values)
+
+            values.pop("BOT_TOKEN")
+            values.pop("TELEGRAM_TEST_USER_ID")
+            os.chmod(credentials, 0o640)
+            with self.assertRaisesRegex(RuntimeError, "permissions"):
+                stars_test.check(values)
 
 
 if __name__ == "__main__":

@@ -50,6 +50,30 @@ Record without exposing secrets:
 Do not continue when production is already unhealthy. Contain the incident
 first and preserve the last known-good release.
 
+## Telegram token rotation
+
+Token-file support must be deployed before rotating a production token. While
+the current token is still valid:
+
+1. Create an owner-only regular token file outside every release directory,
+   with mode `0600`. Do not place the token in a command argument or shell
+   history.
+2. Set `BOT_TOKEN_FILE` in the private launchd configuration, remove the inline
+   `BOT_TOKEN` and any legacy `config.yaml` token after file-based startup is
+   proven, restart the bot, and prove polling plus local/public health.
+3. In `@BotFather`, revoke the historically exposed token and create its
+   replacement. Atomically replace only the owner-only token file, restart the
+   bot, and prove polling again.
+4. Run `mydictionary_telegram_security.py` in preview mode against the private
+   historical log. Create a separate sanitized copy and verify its occurrence
+   count is zero. The tool never replaces or deletes the source.
+5. Archive or delete the original log only under a separately reviewed cleanup
+   action after the replacement token is healthy.
+
+Rollback before BotFather revocation is the prior plist plus the still-valid
+token source. After revocation, never roll back to the old token; fix forward
+with the replacement token file.
+
 ## Code-only release
 
 The unattended command builds an isolated release, installs dependencies,

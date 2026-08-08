@@ -118,10 +118,9 @@ official test route only when all isolation checks pass:
 ```text
 TELEGRAM_API_ENVIRONMENT=test
 TELEGRAM_TEST_RUN_ID=stars-gate4-YYYYMMDD
-TELEGRAM_TEST_USER_ID=<single test-server user ID>
+TELEGRAM_TEST_CREDENTIALS_FILE=<absolute owner-only credentials JSON>
 TELEGRAM_TEST_DATABASE_NAME=mydictionary_stars_test
 TELEGRAM_TEST_DATA_DIR=<absolute private test data directory>
-BOT_TOKEN=<test-server bot token>
 BOT_ACCESS_MODE=allowlist
 ALLOWED_USER_ID=<same single test-server user ID>
 DATABASE_URL=<URL whose database is exactly mydictionary_stars_test>
@@ -137,6 +136,16 @@ BILLING_TERMS_APPROVED=true
 BILLING_NET_MICRO_USD_PER_XTR=<reviewed test assumption>
 BILLING_ECONOMICS_REVIEWED_ON=<YYYY-MM-DD>
 ```
+
+The mode-`0600` credential file contains exactly two fields and is loaded by
+both the bot runtime and the no-network preflight:
+
+```json
+{"bot_token":"<test-server-token>","test_user_id":123456789}
+```
+
+Do not also set inline `BOT_TOKEN` or `TELEGRAM_TEST_USER_ID`; conflicting
+sources fail closed.
 
 The test runtime refuses production or pilot access modes, extra allowlisted
 users, the production database, a shared data directory, production terms, a
