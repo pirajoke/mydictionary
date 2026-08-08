@@ -25,6 +25,18 @@
       "source": "research/product-data-audit.html",
       "repo_commit": "d7bca5b7319c07bb44846d471306a48d47334635",
       "repo_dirty": true
+    },
+    {
+      "id": "2026-08-08T10-23-48Z--6df278cde8fe",
+      "captured_at": "2026-08-08T10:23:48Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — аудит готовности продукта",
+      "snapshot": "2026-08-08T10-23-48Z--mydictionary--6df278cde8fe.html",
+      "sha256": "6df278cde8fe1c43d9a9cdbf8d3297202deaf0afddbf1e773544530792e85207",
+      "bytes": 51499,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "944726fe659c3326b84f76d1465862899e637c86",
+      "repo_dirty": true
     }
   ]
 }
