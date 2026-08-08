@@ -1,6 +1,6 @@
 # AI and Telegram Stars Economics
 
-This is a dated, fail-closed launch hypothesis. It is not an approval to enable
+This is a dated, fail-closed commercial launch candidate. It is not an approval to enable
 AI, publish terms, activate products, send an invoice, or accept a payment. The
 machine-readable source is `config/launch-economics.json`; validate it with:
 
@@ -16,7 +16,7 @@ text.
 
 ## Reviewed external assumptions
 
-Snapshot date: 2026-08-06. Maximum runtime age: 30 days.
+Snapshot date: 2026-08-08. Maximum runtime age: 30 days.
 
 - OpenAI Standard short-context pricing for `gpt-5.6-luna` is $0.20 input,
   $0.02 cached input, $0.25 cache writes, and $1.20 output per one million
@@ -76,7 +76,18 @@ SHA-256. Model, tier, rates, limits, and review age are reloaded and checked on
 every request, so a process running across the review-expiry boundary fails
 closed without a restart. The returned model and tier must match the snapshot.
 
-## Draft package hypotheses
+## Measured Gate-2 call
+
+The snapshot pins the SHA-256 of
+`config/measurements/ai-gate2-2026-08-07.json`. The report contains only
+aggregate metering: one provider attempt, returned `gpt-5.6-luna`, default
+service tier, 313 input tokens, 340 output tokens, 653 total tokens, 2,353
+microUSD local settled cost, 4,674 ms latency, and a passed response validation.
+It contains no learner ID, request ID, prompt, response, credential, or provider
+charge identifier. The provider-dashboard charge was not captured in durable
+telemetry and remains explicitly `not_recorded`.
+
+## Commercial package candidate
 
 The package model uses a modelled $0.005 provider cost per credit, $0.10 support
 overhead per purchase, and a 10% refund reserve on estimated net revenue. The
@@ -84,25 +95,31 @@ $0.005 value is a pricing hypothesis, not a guaranteed provider ceiling.
 
 | Product | Credits | Price | Net revenue | Estimated cost | Margin |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `ai-starter` | 50 | 60 XTR | $0.6000 | $0.4100 | 31.66% |
-| `ai-value` | 150 | 160 XTR | $1.6000 | $1.0100 | 36.87% |
-| `ai-monthly` | 100 / 30 days | 110 XTR | $1.1000 | $0.7100 | 35.45% |
+| `ai-starter` | 50 | 100 XTR | $1.0000 | $0.4500 | 55.00% |
+| `ai-value` | 150 | 240 XTR | $2.4000 | $1.0900 | 54.58% |
+| `ai-monthly` | 100 / 30 days | 180 XTR | $1.8000 | $0.7800 | 56.66% |
 
-All three products remain `draft`. Real measured token cost, response quality,
-support time, refund rate, applicable taxes, withdrawal availability, and one
-test-environment payment must replace these hypotheses before activation.
+The manifest labels all three packages `candidate`; the seeding CLI stores them
+as `draft` and has no activation action. Each package has a 50% nominal margin
+floor. The dashboard also applies the reviewed 8,500 microUSD/XTR deterioration
+scenario while keeping the nominal cost envelope fixed: 47.05%, 46.56%, and
+49.01%. Each package therefore fails closed under that scenario; an average
+margin cannot hide the individual failure. Support time, refund rate, taxes,
+withdrawal availability, dashboard charge, and test-environment payment still
+need evidence before activation.
 
 ## Separate approval gates
 
-1. Review and approve a final legal/privacy text; replace the draft terms
-   version and set `BILLING_TERMS_APPROVED=true` only for that exact text.
+1. Complete seller identity, review the candidate legal/privacy text, and set
+   `BILLING_TERMS_APPROVED=true` only with its exact version and SHA-256.
 2. Under explicit approval, grant one test learner a bounded credit balance and
    perform exactly one real AI call from a separate API project with one worker,
    one credit, daily limit one, `max_retries=0`, and `service_tier="default"`.
    Record returned model/tier, every token category, local cost, dashboard
    charge, latency, validation, and wallet settlement; turn AI off immediately.
-3. Recalculate package cost from the measured call and keep products draft if
-   any target margin is missed.
+3. Validate and seed the exact candidate catalog with
+   `ops/mydictionary_commercial_launch.py`; keep every product draft if any
+   target or stress margin is missed.
 4. Under separate approval, use Telegram's test environment for purchase,
    duplicate-update idempotency, reconciliation, full refund, and subscription
    cancellation. A production payment remains a later decision.

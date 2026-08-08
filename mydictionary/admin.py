@@ -10,6 +10,7 @@ from functools import wraps
 import getpass
 import hmac
 import io
+import json
 import os
 from pathlib import Path
 import secrets
@@ -37,6 +38,10 @@ from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
 from mydictionary.content import example_target_text
+from mydictionary.commercial_launch import (
+    CommercialLaunchError,
+    commercial_launch_overview,
+)
 from mydictionary.economics import (
     EconomicsSnapshotError,
     load_ai_economics_contract,
@@ -138,6 +143,36 @@ def _ai_snapshot_diagnostics() -> dict[str, Any]:
         "current": True,
         "status": contract.status,
     }
+
+
+def _commercial_launch_diagnostics(
+    products: list[dict[str, Any]], admin_store: AdminStore
+) -> dict[str, Any]:
+    fallback = {
+        "status": "invalid",
+        "snapshot_id": "missing",
+        "snapshot_sha256": "missing",
+        "contract_ready": False,
+        "catalog_status": "missing",
+        "seller_complete": False,
+        "terms_approved": False,
+        "checkout_enabled": False,
+        "measurement": {},
+        "packages": [],
+    }
+    path = BASE_DIR / "config" / "launch-economics.json"
+    try:
+        snapshot = json.loads(path.read_text(encoding="utf-8"))
+        return commercial_launch_overview(
+            snapshot,
+            products=products,
+            seller_complete=admin_store.billing_settings.seller_identity_complete,
+            terms_approved=admin_store.billing_settings.terms_approved,
+            checkout_enabled=admin_store.billing_settings.enabled,
+            root=BASE_DIR,
+        )
+    except (CommercialLaunchError, OSError, TypeError, ValueError, json.JSONDecodeError):
+        return fallback
 
 
 def database_url_from_env() -> str:
@@ -512,6 +547,9 @@ def create_app(
         elif tab == "billing":
             context["billing"] = admin_store.billing_overview()
             context["products"] = admin_store.billing_products()
+            context["commercial_launch"] = _commercial_launch_diagnostics(
+                context["products"], admin_store
+            )
             context["orders"] = admin_store.recent_payment_orders(limit=100)
             context["payments"] = admin_store.stars_payments(limit=100)
             context["subscriptions"] = admin_store.stars_subscriptions(limit=100)
