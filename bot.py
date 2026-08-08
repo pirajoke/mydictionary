@@ -2150,7 +2150,7 @@ def billing_terms_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [[
             InlineKeyboardButton(
-                "Принимаю условия",
+                "Принимаю и начать сразу",
                 callback_data="billing:accept_terms",
             )
         ]]
@@ -2163,10 +2163,30 @@ async def send_billing_terms(message) -> None:
         if BILLING_SETTINGS.enabled
         else "Покупка AI-кредитов сейчас выключена."
     )
+    seller = (
+        "\n".join(
+            (
+                f"Продавец: {BILLING_SETTINGS.seller_legal_name}",
+                f"Адрес: {BILLING_SETTINGS.seller_address}",
+                f"Email: {BILLING_SETTINGS.seller_email}",
+                f"Телефон: {BILLING_SETTINGS.seller_phone}",
+                f"Поддержка платежей: {BILLING_SETTINGS.support_contact}",
+            )
+        )
+        if BILLING_SETTINGS.seller_legal_name
+        else "Реквизиты продавца ещё не опубликованы."
+    )
+    consent = (
+        "Я принимаю условия и прошу начать оказание цифровой услуги сразу "
+        "после оплаты. Я понимаю, что после полного предоставления услуги "
+        "право на отказ может быть утрачено в предусмотренных законом случаях."
+    )
     await message.reply_text(
         "Условия покупки AI-кредитов\n\n"
         f"{BILLING_SETTINGS.terms_text}\n\n"
+        f"{seller}\n\n"
         f"Версия: {BILLING_SETTINGS.terms_version}\n"
+        f"{consent}\n\n"
         f"{instruction}",
         reply_markup=(billing_terms_keyboard() if BILLING_SETTINGS.enabled else None),
     )
@@ -2346,7 +2366,13 @@ async def cmd_terms(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_paysupport(update: Update, context: ContextTypes.DEFAULT_TYPE):
     contact = BILLING_SETTINGS.support_contact
     if contact:
-        await update.message.reply_text(f"Поддержка по платежам: {contact}")
+        await update.message.reply_text(
+            "Поддержка по платежам\n\n"
+            f"Контакт: {contact}\n"
+            f"Продавец: {BILLING_SETTINGS.seller_legal_name}\n"
+            f"Email: {BILLING_SETTINGS.seller_email}\n"
+            f"Телефон: {BILLING_SETTINGS.seller_phone}"
+        )
     else:
         await update.message.reply_text("Платежи пока выключены.")
 

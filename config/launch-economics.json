@@ -1,14 +1,16 @@
 {
-  "schema_version": 2,
-  "snapshot_id": "mydictionary-economics-2026-08-06",
-  "status": "draft",
-  "reviewed_on": "2026-08-06",
+  "schema_version": 3,
+  "snapshot_id": "mydictionary-commercial-v1-2026-08-08",
+  "status": "candidate",
+  "reviewed_on": "2026-08-08",
   "max_age_days": 30,
   "sources": [
     "https://developers.openai.com/api/docs/pricing",
     "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
     "https://core.telegram.org/bots/payments-stars",
-    "https://telegram.org/tos/bot-developers?setln=en"
+    "https://telegram.org/tos/bot-developers?setln=en",
+    "https://europa.eu/youreurope/citizens/consumers/shopping/contract-information/index_en.htm",
+    "https://www.economie.gouv.fr/particuliers/mes-droits-conso/bien-consommer/vente-distance-tout-savoir-sur-votre-droit-de-retractation"
   ],
   "ai": {
     "status": "draft",
@@ -39,10 +41,14 @@
       "max_in_flight_cost_micro_usd": 5000,
       "max_provider_input_chars": 12000,
       "max_output_tokens": 1000
+    },
+    "measurement": {
+      "report": "config/measurements/ai-gate2-2026-08-07.json",
+      "sha256": "237d5105fba67358bace756985667be5438ae1eba939ec29a1de0d150dd2bc32"
     }
   },
   "stars": {
-    "status": "draft",
+    "status": "candidate",
     "currency": "XTR",
     "reward_micro_usd_per_xtr": 13000,
     "assumed_net_micro_usd_per_xtr": 10000,
@@ -52,48 +58,63 @@
     "earned_stars_expiry_years": 3,
     "refund_reserve_bps": 1000,
     "support_overhead_micro_usd_per_purchase": 100000,
-    "terms_document": "docs/legal/telegram-stars-terms-ru-draft.md",
-    "terms_version": "stars-ru-draft-2026-08-06",
+    "minimum_margin_bps": 5000,
+    "stress_net_micro_usd_per_xtr": 8500,
+    "terms_document": "docs/legal/telegram-stars-terms-ru-v1.md",
+    "terms_sha256": "b3b4159f8ee82e73f690e55525d804ee61b37bee921fc28457146c36c29f9b63",
+    "terms_version": "stars-ru-v1-2026-08-08",
     "packages": [
       {
         "product_id": "ai-starter",
-        "status": "draft",
+        "status": "candidate",
+        "title": "Старт",
+        "description": "50 AI-кредитов для запросов к репетитору",
         "billing_mode": "one_time",
         "credits": 50,
-        "price_xtr": 60,
+        "price_xtr": 100,
         "modelled_provider_cost_micro_usd": 250000,
-        "refund_reserve_micro_usd": 60000,
-        "estimated_cost_micro_usd": 410000,
-        "net_revenue_micro_usd": 600000,
-        "estimated_margin_bps": 3166,
-        "target_margin_bps": 3000
+        "refund_reserve_micro_usd": 100000,
+        "estimated_cost_micro_usd": 450000,
+        "net_revenue_micro_usd": 1000000,
+        "estimated_margin_bps": 5500,
+        "stress_margin_bps": 4705,
+        "target_margin_bps": 5000,
+        "display_order": 10
       },
       {
         "product_id": "ai-value",
-        "status": "draft",
+        "status": "candidate",
+        "title": "Выгодно",
+        "description": "150 AI-кредитов для регулярной практики",
         "billing_mode": "one_time",
         "credits": 150,
-        "price_xtr": 160,
+        "price_xtr": 240,
         "modelled_provider_cost_micro_usd": 750000,
-        "refund_reserve_micro_usd": 160000,
-        "estimated_cost_micro_usd": 1010000,
-        "net_revenue_micro_usd": 1600000,
-        "estimated_margin_bps": 3687,
-        "target_margin_bps": 3500
+        "refund_reserve_micro_usd": 240000,
+        "estimated_cost_micro_usd": 1090000,
+        "net_revenue_micro_usd": 2400000,
+        "estimated_margin_bps": 5458,
+        "stress_margin_bps": 4656,
+        "target_margin_bps": 5000,
+        "display_order": 20
       },
       {
         "product_id": "ai-monthly",
-        "status": "draft",
+        "status": "candidate",
+        "title": "Месяц",
+        "description": "100 AI-кредитов каждые 30 дней",
         "billing_mode": "subscription",
         "subscription_period_seconds": 2592000,
         "credits": 100,
-        "price_xtr": 110,
+        "price_xtr": 180,
         "modelled_provider_cost_micro_usd": 500000,
-        "refund_reserve_micro_usd": 110000,
-        "estimated_cost_micro_usd": 710000,
-        "net_revenue_micro_usd": 1100000,
-        "estimated_margin_bps": 3545,
-        "target_margin_bps": 3500
+        "refund_reserve_micro_usd": 180000,
+        "estimated_cost_micro_usd": 780000,
+        "net_revenue_micro_usd": 1800000,
+        "estimated_margin_bps": 5666,
+        "stress_margin_bps": 4901,
+        "target_margin_bps": 5000,
+        "display_order": 30
       }
     ]
   }

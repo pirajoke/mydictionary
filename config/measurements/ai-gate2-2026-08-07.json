@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "measurement_id": "ai-gate2-production-2026-08-07-single-call",
+  "completed_on": "2026-08-07",
+  "environment": "production_gate2_single_call",
+  "source": "durable_ai_usage_metering",
+  "action": "block_tutor",
+  "provider": "openai",
+  "model": "gpt-5.6-luna",
+  "requested_service_tier": "default",
+  "returned_service_tier": "default",
+  "provider_attempts": 1,
+  "tokens": {
+    "input": 313,
+    "cached_input": 0,
+    "cache_write": 0,
+    "output": 340,
+    "total": 653
+  },
+  "metering_rates_usd_per_million": {
+    "input": "1.00",
+    "cached_input": "0.10",
+    "cache_write": "1.25",
+    "output": "6.00"
+  },
+  "local_cost_micro_usd": 2353,
+  "cost_is_estimate": false,
+  "preflight_projected_cost_micro_usd": 8724,
+  "latency_ms": 4674,
+  "validation_status": "passed",
+  "provider_status": "completed",
+  "dashboard_charge": {
+    "verified": false,
+    "micro_usd": null,
+    "status": "not_recorded"
+  },
+  "privacy": {
+    "personal_data_included": false,
+    "raw_prompt_included": false,
+    "raw_response_included": false,
+    "credentials_included": false,
+    "provider_identifiers_included": false
+  }
+}

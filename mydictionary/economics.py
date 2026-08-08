@@ -181,8 +181,8 @@ def load_ai_economics_contract(
     except (OSError, json.JSONDecodeError) as exc:
         raise EconomicsSnapshotError("AI economics snapshot cannot be loaded") from exc
     snapshot = _snapshot_object(raw_snapshot, "economics snapshot")
-    if snapshot.get("schema_version") != 2:
-        raise EconomicsSnapshotError("AI economics snapshot schema must be version 2")
+    if snapshot.get("schema_version") not in {2, 3}:
+        raise EconomicsSnapshotError("AI economics snapshot schema must be version 2 or 3")
     snapshot_id = str(snapshot.get("snapshot_id", "")).strip()
     if not 1 <= len(snapshot_id) <= 128:
         raise EconomicsSnapshotError("AI economics snapshot_id is invalid")
