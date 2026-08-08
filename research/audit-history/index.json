@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "project": "mydictionary",
+  "entries": [
+    {
+      "id": "2026-08-08T10-00-36Z--163fe838d8e8",
+      "captured_at": "2026-08-08T10:00:36Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — продуктовый аудит Telegram-бота",
+      "snapshot": "2026-08-08T10-00-36Z--mydictionary--163fe838d8e8.html",
+      "sha256": "163fe838d8e8b3ad1b7caa4a5d2fe02b0121944afef9f98604f3d2171239d143",
+      "bytes": 64839,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "d7bca5b7319c07bb44846d471306a48d47334635",
+      "repo_dirty": false
+    },
+    {
+      "id": "2026-08-08T10-19-19Z--cf175c3bd40f",
+      "captured_at": "2026-08-08T10:19:19Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — аудит готовности продукта",
+      "snapshot": "2026-08-08T10-19-19Z--mydictionary--cf175c3bd40f.html",
+      "sha256": "cf175c3bd40f1a32246a820d0c530f548cb487f00ef86e2792f5ef2d2cabcbf3",
+      "bytes": 51346,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "d7bca5b7319c07bb44846d471306a48d47334635",
+      "repo_dirty": true
+    },
+    {
+      "id": "2026-08-08T10-23-48Z--6df278cde8fe",
+      "captured_at": "2026-08-08T10:23:48Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — аудит готовности продукта",
+      "snapshot": "2026-08-08T10-23-48Z--mydictionary--6df278cde8fe.html",
+      "sha256": "6df278cde8fe1c43d9a9cdbf8d3297202deaf0afddbf1e773544530792e85207",
+      "bytes": 51499,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "944726fe659c3326b84f76d1465862899e637c86",
+      "repo_dirty": true
+    }
+  ]
+}

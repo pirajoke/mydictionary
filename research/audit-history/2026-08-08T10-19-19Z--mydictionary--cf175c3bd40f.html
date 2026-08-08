@@ -101,14 +101,14 @@
     <section id="s4" class="reveal"><div class="wrap">
       <div class="section-head"><div class="section-n">04</div><div><h2>Карта данных и систем</h2><p class="intro">Инвентаризация источников правды. Качество production-контура высокое, но roadmap и off-site evidence заметно отстают.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Система</th><th>Что хранит</th><th>Кто использует</th><th>Качество</th><th>Ограничение</th></tr></thead><tbody>
-        <tr><td>GitHub main</td><td>Код, 12 migrations, 25 docs, CI</td><td>Разработка/релиз</td><td class="good">Высокое · d7bca5b</td><td>Draft PR #37 ещё не merged</td></tr>
+        <tr><td>GitHub main</td><td>Код, 12 migrations, 25 docs, CI</td><td>Разработка/релиз</td><td class="good">Высокое · d7bca5b</td><td>Issue #6 body устарел</td></tr>
         <tr><td>PostgreSQL production</td><td>Users, progress, events, AI/billing ledgers</td><td>Bot/admin</td><td class="good">Высокое · 0012</td><td>Очень маленький N</td></tr>
         <tr><td>Telegram bot</td><td>Учебный интерфейс</td><td>Участники пилота</td><td class="good">Heartbeat ready</td><td>Access mode pilot</td></tr>
         <tr><td>Admin console</td><td>Воронка, D1/D7, доступ, диагностика</td><td>Владелец</td><td class="good">Local/public 200</td><td>Нужен ритуал решений</td></tr>
         <tr><td>Local backup</td><td>PostgreSQL dump + checksum</td><td>Оператор</td><td class="good">Verified</td><td>Не защищает от потери Mac mini</td></tr>
         <tr><td>Off-site tooling</td><td>Encryption, upload, restore drill</td><td>Recovery operator</td><td class="warn">Код готов</td><td>Remote/key custody отсутствуют</td></tr>
         <tr><td>Launchd</td><td>Bot/admin/autodeploy scheduling</td><td>Mac mini</td><td class="warn">Bot/admin active</td><td>Autodeploy unloaded, plist RunAtLoad + 300 s</td></tr>
-        <tr><td>Roadmap #6</td><td>Outcome, стадии, gates, история</td><td>Владелец/агенты</td><td class="good">Синхронизирован 2026-08-08</td><td>Остаётся open до закрытия gates</td></tr>
+        <tr><td>Roadmap #6</td><td>Outcome, стадии, gates, история</td><td>Владелец/агенты</td><td class="warn">История полезна</td><td>Body указывает 71fdc/0011</td></tr>
       </tbody></table></div>
     </div></section>
 
@@ -134,7 +134,7 @@
         <article class="bottleneck"><div class="big">4</div><span class="severity high">ВЫСОКИЙ</span><h3>Stars не прошёл test loop</h3><p><b>ФАКТ.</b> 0 products, 0 orders, 0 payments, 0 subscriptions; test bot/user отсутствуют.</p><div class="source">production aggregate; stars billing docs</div></article>
         <article class="bottleneck"><div class="big">5</div><span class="severity high">ВЫСОКИЙ</span><h3>Пилот слишком мал</h3><p><b>ФАКТ.</b> 2 участника дают D1=0/2, но не устойчивую оценку по языкам и темам.</p><div class="source">production aggregate, 2026-08-08</div></article>
         <article class="bottleneck"><div class="big">6</div><span class="severity high">ВЫСОКИЙ</span><h3>AI cost измерен, ценность — нет</h3><p><b>ФАКТ.</b> Один completed call стоил $0.002353; willingness-to-pay не проверен.</p><div class="source">GitHub roadmap #6, 2026-08-07</div></article>
-        <article class="bottleneck"><div class="big">7</div><span class="severity high">ВЫСОКИЙ</span><h3>Terms и support не одобрены</h3><p><b>ФАКТ.</b> Три package hypotheses остаются draft; активных billing products и monitored production support evidence нет.</p><div class="source">docs/ai-stars-economics.md; production aggregate</div></article>
+        <article class="bottleneck"><div class="big">7</div><span class="severity high">ВЫСОКИЙ</span><h3>Roadmap body устарел</h3><p><b>ФАКТ.</b> Issue #6 пишет 71fdc/0011, active release d7bca5b/0012, open PR=0.</p><div class="source">GitHub issue #6 + main</div></article>
         <article class="bottleneck"><div class="big">8</div><span class="severity high">ВЫСОКИЙ</span><h3>Autodeploy выключен не навсегда</h3><p><b>ФАКТ.</b> Agent не зарегистрирован, но plist содержит RunAtLoad=true и StartInterval=300.</p><div class="source">production launchd audit, 2026-08-08</div></article>
       </div>
     </div></section>
@@ -167,11 +167,11 @@
     <section id="s8" class="reveal"><div class="wrap">
       <div class="section-head"><div class="section-n">08</div><div><h2>Приоритеты</h2><p class="intro">Порядок, который уменьшает необратимый риск и не подменяет удержание новым объёмом функций.</p></div></div>
       <div class="timeline">
-        <div class="phase now"><h3>Сейчас · 1–2 недели</h3><p><b>1.</b> BOT_TOKEN_FILE со старым токеном → health → отдельная rotation. <b>2.</b> Off-site remote/key custody → restore receipt. <b>3.</b> Дождаться D7 и увеличить пилот выше N=2. <b>4.</b> Review и отдельно решить судьбу draft PR #37.</p></div>
+        <div class="phase now"><h3>Сейчас · 1–2 недели</h3><p><b>1.</b> BOT_TOKEN_FILE со старым токеном → health → отдельная rotation. <b>2.</b> Off-site remote/key custody → restore receipt. <b>3.</b> Дождаться D7 и увеличить пилот выше N=2. <b>4.</b> Синхронизировать roadmap #6.</p></div>
         <div class="phase next"><h3>Потом · 1–2 месяца</h3><p>Изолированный Stars test; consented Voice test; пилотная проверка AI value. Никакого production billing до purchase/refund/reconcile evidence.</p></div>
         <div class="phase"><h3>Позже · квартал+</h3><p>Public access, subscription и autodeploy — только после D7, support, incident process, off-site recovery и owner decision.</p></div>
       </div>
-      <div class="hour"><ol><li>Просмотреть draft PR #37.</li><li>Зафиксировать token-source preflight.</li><li>Подготовить rollback receipt.</li><li>Выбрать remote и age key custody.</li><li>Определить целевой N пилота.</li><li>Оставить AI/Voice/Stars off.</li></ol></div>
+      <div class="hour"><ol><li>Обновить issue #6 до d7bca5b/0012.</li><li>Зафиксировать token-source preflight.</li><li>Подготовить rollback receipt.</li><li>Выбрать remote и age key custody.</li><li>Определить целевой N пилота.</li><li>Оставить AI/Voice/Stars off.</li></ol></div>
     </div></section>
 
     <section id="s9" class="reveal"><div class="wrap">
@@ -199,7 +199,7 @@
       <div class="section-head"><div class="section-n">11</div><div><h2>Приложение: источники и уверенность</h2><p class="intro">Проверяемые источники, использованные для выводов. Production-агрегаты не содержат identities, messages или credentials.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Вывод</th><th>Источник</th><th>Проверяемый факт</th><th>Уверенность</th></tr></thead><tbody>
         <tr><td>Release healthy</td><td>Production SSH audit</td><td>d7bca5b, 0012, heartbeat ready, health 200, backup verified</td><td class="good">Высокая</td></tr>
-        <tr><td>GitHub синхронизирован</td><td>GitHub main / PR list</td><td>main d7bca5b; draft PR #37; issue #6 current/open</td><td class="good">Высокая</td></tr>
+        <tr><td>GitHub синхронизирован</td><td>GitHub main / PR list</td><td>main d7bca5b; 0 open PR; issue #6 open</td><td class="good">Высокая</td></tr>
         <tr><td>Учебное ядро</td><td>content/catalog.json:48–279</td><td>9 public packs, 801 entries, 9 languages</td><td class="good">Высокая</td></tr>
         <tr><td>Карточный путь</td><td>docs/product-foundation.md:37–72</td><td>1 CTA, pace 5/10/20, 6 events</td><td class="good">Высокая</td></tr>
         <tr><td>Пилот</td><td>pilot_overview(days=30)</td><td>cohort 2; D1 0/2; D7 eligible 0; sent 1</td><td class="good">Высокая для N</td></tr>
