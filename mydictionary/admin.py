@@ -780,6 +780,24 @@ def create_app(
             flash(str(exc), "error")
         return redirect(url_for("admin_index", tab="profile"))
 
+    @app.post("/admin/settings/mirror")
+    @login_required
+    def update_mirror_settings():
+        values = {
+            key: str(request.form.get(key) or "")
+            for key in (
+                "mirror_capabilities_version",
+                "mirror_capabilities_text",
+                "mirror_persona_guidance",
+            )
+        }
+        try:
+            admin_store.update_mirror_settings(values, actor=current_actor())
+        except ValueError:
+            return "Mirror settings rejected.", 400
+        flash("Настройки Mirror Assistant сохранены.", "success")
+        return redirect(url_for("admin_index", tab="profile"))
+
     @app.post("/admin/credits")
     @login_required
     def adjust_credits():

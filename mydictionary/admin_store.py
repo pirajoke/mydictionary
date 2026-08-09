@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 from typing import Any, Mapping
 from uuid import uuid4
@@ -18,6 +19,10 @@ from mydictionary.billing import (
     SUBSCRIPTION_PERIOD_SECONDS,
 )
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS
+from mydictionary.mirror_assistant import (
+    MIRROR_ADMIN_DEFAULTS,
+    validate_mirror_admin_settings,
+)
 from mydictionary.storage import (
     ACCESS_STATUSES,
     AIWallet,
@@ -102,9 +107,51 @@ class AdminStore:
     def get_settings(self) -> dict[str, str]:
         with self.store.Session() as session:
             rows = session.execute(select(AppSetting)).scalars().all()
-        result = dict(BOT_PROFILE_DEFAULTS)
+        result = {**BOT_PROFILE_DEFAULTS, **MIRROR_ADMIN_DEFAULTS}
         result.update({row.key: row.value for row in rows})
+        result["mirror_safety_envelope_checksum"] = MIRROR_ADMIN_DEFAULTS[
+            "mirror_safety_envelope_checksum"
+        ]
         return result
+
+    def update_mirror_settings(
+        self, values: Mapping[str, str], *, actor: str
+    ) -> dict[str, str]:
+        validated = validate_mirror_admin_settings(values)
+        changed: list[str] = []
+        with self.store.Session.begin() as session:
+            for key, value in validated.items():
+                row = session.get(AppSetting, key)
+                if row is None:
+                    row = AppSetting(key=key, value=value, updated_by=actor)
+                    session.add(row)
+                    changed.append(key)
+                elif row.value != value:
+                    row.value = value
+                    row.updated_by = actor
+                    row.updated_at = utcnow()
+                    changed.append(key)
+            if changed:
+                session.add(
+                    AdminAuditLog(
+                        actor=actor[:64],
+                        action="mirror_settings_updated",
+                        target_type="settings",
+                        target_id=validated["mirror_capabilities_version"],
+                        details_json=_json(
+                            {
+                                "fields": changed,
+                                "capabilities_sha256": hashlib.sha256(
+                                    validated["mirror_capabilities_text"].encode("utf-8")
+                                ).hexdigest(),
+                                "persona_sha256": hashlib.sha256(
+                                    validated["mirror_persona_guidance"].encode("utf-8")
+                                ).hexdigest(),
+                            }
+                        ),
+                    )
+                )
+        return self.get_settings()
 
     def update_settings(
         self, values: Mapping[str, str], *, actor: str

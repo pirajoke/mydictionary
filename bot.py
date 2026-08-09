@@ -54,6 +54,7 @@ from mydictionary.ai_tutor import (
     render_tutor_answer,
 )
 from mydictionary.admin_store import AdminStore
+from mydictionary.assistant_speech import build_mirror_speech_renderer
 from mydictionary.billing import (
     BillingConfigurationError,
     BillingService,
@@ -72,7 +73,16 @@ from mydictionary.content import (
     speech_text,
     target_text,
 )
+from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
+from mydictionary.mirror_assistant import (
+    MIRROR_ADMIN_DEFAULTS,
+    build_mirror_progress_summary,
+    build_mirror_provider_payload,
+    classify_mirror_intent,
+    grounded_progress_snapshot,
+    render_mirror_capabilities,
+)
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.runtime_secrets import load_runtime_secret_files
 from mydictionary.privacy import erase_user_learning_data
@@ -815,6 +825,8 @@ async def send_pronunciation_audio(
 
 async def send_pronunciation(chat_id: int, idx: int, context: ContextTypes.DEFAULT_TYPE):
     """Generate and send voice pronunciation for the word at idx."""
+    if not callable(getattr(context.bot, "send_voice", None)):
+        return
     try:
         word = W()[idx]
         pack = active_content_pack()
@@ -2194,6 +2206,207 @@ async def request_ai_tutor_answer(
                 InlineKeyboardButton("Отмена", callback_data="aiconsent:cancel"),
             ]]
         ),
+    )
+
+
+async def send_mirror_response(
+    message,
+    text: str,
+    *,
+    mode: str,
+    voice_enabled: bool,
+    speech_consented: bool,
+    voice_renderer=None,
+) -> None:
+    """Deliver Mirror text/audio without touching the pronunciation cache."""
+    safe_text = str(text).strip()
+    selected = mode if mode in {"text", "voice", "both"} else "text"
+    if selected == "text":
+        await message.reply_text(safe_text)
+        return
+    if not voice_enabled or not speech_consented or voice_renderer is None:
+        if selected == "both":
+            await message.reply_text(safe_text)
+            await message.reply_text("Голосовой ответ сейчас недоступен.")
+        else:
+            await message.reply_text(
+                f"{safe_text}\n\nГолосовой ответ сейчас недоступен."
+            )
+        return
+    if selected == "both":
+        await message.reply_text(safe_text)
+    try:
+        audio = await voice_renderer(safe_text)
+        if hasattr(audio, "seek"):
+            audio.seek(0)
+        await message.reply_voice(audio)
+    except Exception as exc:
+        logger.warning(
+            "Mirror voice delivery failed: error_type=%s", type(exc).__name__
+        )
+        if selected == "voice":
+            await message.reply_text(
+                f"{safe_text}\n\nГолосовой ответ сейчас недоступен."
+            )
+        else:
+            await message.reply_text("Голосовой ответ сейчас недоступен.")
+
+
+def _mirror_mode(store, user_id: int) -> str:
+    try:
+        mode = store.get_mirror_response_mode(user_id)
+    except Exception:
+        return "text"
+    return mode if mode in {"text", "voice", "both"} else "text"
+
+
+@auth
+async def cmd_mirror_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    mode = " ".join(getattr(context, "args", [])).strip().lower()
+    try:
+        saved = get_store().set_mirror_response_mode(
+            int(update.effective_user.id), mode
+        )
+    except ValueError:
+        await update.message.reply_text(
+            "Выбери формат ответа: /response text, /response voice или /response both."
+        )
+        return
+    await update.message.reply_text(f"Формат ответов Mirror: {saved}.")
+
+
+@auth
+async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Route free text after every existing exercise-answer state."""
+    type_idx = context.user_data.get("type_idx")
+    active_type_answer = type_idx is not None and (
+        not context.user_data.get("block_typing")
+        or (
+            context.user_data.get("block_mode") == "type"
+            and bool(context.user_data.get("block_session"))
+            and current_block_index(context.user_data) == type_idx
+        )
+    )
+    if active_type_answer:
+        if not hasattr(update.message, "chat_id"):
+            update.message.chat_id = int(update.effective_chat.id)
+        handler = getattr(handle_type_answer, "__wrapped__", handle_type_answer)
+        await handler(update, context)
+        return
+
+    store = get_store()
+    user_id = int(update.effective_user.id)
+    profile = store.product_profile(user_id)
+    if profile.get("access_status") != "active":
+        await update.message.reply_text("Доступ к Mirror сейчас недоступен.")
+        return
+    if not profile.get("onboarding_completed_at"):
+        await update.message.reply_text("Сначала заверши настройку через /start.")
+        return
+
+    question = str(update.message.text or "").strip()
+    mirror_profile = get_bot_profile()
+    intent = classify_mirror_intent(question)
+    if intent == "capabilities":
+        response = render_mirror_capabilities(
+            mirror_profile.get(
+                "mirror_capabilities_text",
+                MIRROR_ADMIN_DEFAULTS["mirror_capabilities_text"],
+            ),
+            locale=getattr(update.effective_user, "language_code", None),
+        )
+    elif intent == "progress":
+        response = build_mirror_progress_summary(store, user_id)
+    else:
+        consent_version = AI_SETTINGS.consent_version or "unversioned"
+        try:
+            consented = store.has_consent(
+                user_id,
+                consent_type="ai_processing",
+                document_version=consent_version,
+            )
+        except (TypeError, ValueError):
+            consented = False
+        if not consented:
+            await update.message.reply_text(
+                "Для объясняющего AI-ответа нужно актуальное согласие через /ai."
+            )
+            return
+        try:
+            snapshot = (
+                grounded_progress_snapshot(store, user_id)
+                if isinstance(store, DatabaseStore)
+                else {
+                    "language": profile.get("active_lang"),
+                    "active_pack_id": profile.get("active_pack_id"),
+                    "accuracy_percent": None,
+                    "due_count": None,
+                    "weak_terms": [],
+                }
+            )
+            payload = build_mirror_provider_payload(
+                question=question,
+                admin_guidance=mirror_profile.get(
+                    "mirror_persona_guidance",
+                    MIRROR_ADMIN_DEFAULTS["mirror_persona_guidance"],
+                ),
+                grounded_snapshot=snapshot,
+            )
+            service = get_ai_tutor_service()
+            if isinstance(service, AITutorService) and hasattr(service, "ask_mirror"):
+                result = await service.ask_mirror(user_id=user_id, payload=payload)
+            else:
+                result = await service.ask(
+                    user_id=user_id,
+                    question=question,
+                    mirror_payload=payload,
+                )
+            response = str(result).strip()
+            if not response:
+                raise ValueError("Empty Mirror response")
+        except AIQuotaExceeded:
+            await update.message.reply_text(
+                "AI-кредиты закончились. Проверь баланс через /ai_stats."
+            )
+            return
+        except Exception as exc:
+            logger.warning("Mirror AI failed: error_type=%s", type(exc).__name__)
+            await update.message.reply_text(
+                "Не удалось подготовить безопасный ответ. Учебный ответ не был придуман."
+            )
+            return
+
+    mode = _mirror_mode(store, user_id)
+    try:
+        voice_enabled = mirror_voice_output_enabled()
+    except ValueError:
+        voice_enabled = False
+    speech_consented = False
+    voice_renderer = None
+    if voice_enabled and mode in {"voice", "both"}:
+        try:
+            speech_consented = store.has_consent(
+                user_id,
+                consent_type="voice_processing",
+                document_version=VOICE_SETTINGS.consent_version,
+            )
+        except (TypeError, ValueError):
+            speech_consented = False
+        if speech_consented:
+            try:
+                voice_renderer = build_mirror_speech_renderer()
+            except Exception as exc:
+                logger.warning(
+                    "Mirror speech renderer unavailable: error_type=%s",
+                    type(exc).__name__,
+                )
+    await send_mirror_response(
+        update.message,
+        response,
+        mode=mode,
+        voice_enabled=voice_enabled,
+        speech_consented=speech_consented,
+        voice_renderer=voice_renderer,
     )
 
 
@@ -4364,6 +4577,7 @@ async def manual_polling():
     app.add_handler(CommandHandler("terms", cmd_terms))
     app.add_handler(CommandHandler("paysupport", cmd_paysupport))
     app.add_handler(CommandHandler("privacy", cmd_privacy))
+    app.add_handler(CommandHandler("response", cmd_mirror_response))
     app.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
     app.add_handler(
         MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler)
@@ -4431,8 +4645,8 @@ async def manual_polling():
         handle_lang_switch,
     ))
 
-    # Text handler for type-in mode (must be last)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_type_answer))
+    # Mirror delegates to every active exercise-answer state before free text.
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, mirror_text_handler))
 
     # Initialize without starting the built-in updater
     await app.initialize()
