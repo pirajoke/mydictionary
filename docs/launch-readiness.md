@@ -11,6 +11,7 @@ release.
 |---|---|
 | Stars checkout | The learner must accept the current `BILLING_TERMS_VERSION` before products, order creation, and pre-checkout. Each order snapshots that version. |
 | Voice processing | The learner must accept the current `VOICE_CONSENT_VERSION` before a session and again before Telegram audio is downloaded. The consent can be revoked in `/privacy`. |
+| AI processing | The learner must accept the current `AI_CONSENT_VERSION` before any provider call or credit reservation. The consent can be revoked in `/privacy`, and a changed version requires acceptance again. |
 | AI cost accounting | Enabling text AI requires an exact approved snapshot, current review, default service tier, positive prices, preflight/day/month/in-flight budgets, zero SDK retries, and durable response metering before validation. |
 | Voice cost accounting | Enabling voice requires a positive per-minute estimate, consent version, and processing notice. |
 | Stars reconciliation | Refund direction is compared with local state. A bounded, incomplete remote history is reported as truncated and cannot mark old local payments missing. |
@@ -19,13 +20,14 @@ release.
 | Dependencies | CI and the Mac mini release builder install the exact `requirements.lock` resolution. |
 
 Billing acceptance is retained with the mandatory financial record after a
-learning-data erasure. Voice consent is learning-product data and is deleted.
-Changing a consent version makes the previous acceptance insufficient for new
-processing.
+learning-data erasure. Voice and AI-processing consent are learning-product
+data and are deleted. Changing a consent version makes the previous acceptance
+insufficient for new processing.
 
 ## Required runtime review
 
-Keep all feature flags off while deploying migration `0012_ai_runtime_gates`.
+Keep all feature flags off while deploying migrations `0012_ai_runtime_gates`
+and `0013_ai_processing_consent`.
 Before any later activation, an operator must review and set:
 
 ```text
@@ -36,6 +38,9 @@ AI_OUTPUT_USD_PER_MILLION=<positive reviewed rate>
 AI_PRICING_REVIEWED_ON=<YYYY-MM-DD>
 AI_PRICING_MAX_AGE_DAYS=<1-90; default 30>
 AI_SERVICE_TIER=default
+AI_SDK_MAX_RETRIES=0
+AI_CONSENT_VERSION=<immutable version identifier>
+AI_PROCESSING_NOTICE=<reviewed learner disclosure>
 AI_ECONOMICS_SNAPSHOT_PATH=<approved immutable snapshot copy>
 AI_ECONOMICS_SNAPSHOT_ID=<exact snapshot identifier>
 AI_ECONOMICS_SNAPSHOT_SHA256=<canonical lowercase SHA-256>
@@ -81,8 +86,9 @@ terms file is explicitly a draft and cannot satisfy the approval gate by itself.
 5. Restart with AI, voice, and Stars still disabled; prove local/public health,
    Telegram heartbeat, admin diagnostics, content checks, and privacy erasure.
 6. Admit a bounded pilot through the existing access control.
-7. Under separate approval, run one consented test account through all eight
-   languages without enabling public access.
+7. Under separate approval, execute the one-shot anonymous synthetic provider
+   smoke, review its private aggregate receipt, then run one consented test
+   account through all eight languages without enabling public access.
 8. Under the exact `APPROVE_TELEGRAM_TEST_ENV` approval, use the dedicated
    Telegram test Bot API, test bot/user, isolated database, test-only terms, and
    test-only payload secret for purchase, duplicate delivery, restart,

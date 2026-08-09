@@ -394,7 +394,7 @@ class AdminConsoleTest(unittest.TestCase):
         page = self.client.get("/admin?tab=billing").get_data(as_text=True)
 
         self.assertIn("Commercial Launch v1", page)
-        self.assertIn("mydictionary-commercial-v1-2026-08-08", page)
+        self.assertIn("mydictionary-commercial-v1-2026-08-09", page)
         self.assertIn("Измеренный AI-вызов", page)
         self.assertIn("2 353 microUSD", page)
         self.assertIn("Реквизиты продавца", page)

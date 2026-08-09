@@ -247,7 +247,7 @@ class UserConsent(Base):
     __tablename__ = "user_consents"
     __table_args__ = (
         CheckConstraint(
-            "consent_type IN ('billing_terms', 'voice_processing')",
+            "consent_type IN ('billing_terms', 'voice_processing', 'ai_processing')",
             name="ck_user_consent_type",
         ),
         UniqueConstraint(
@@ -908,7 +908,7 @@ EVENT_PROPERTY_KEYS = {
     "wrong_count",
 }
 EVENT_DIMENSION_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
-CONSENT_TYPES = {"billing_terms", "voice_processing"}
+CONSENT_TYPES = {"billing_terms", "voice_processing", "ai_processing"}
 
 
 def run_migrations(database_url: str) -> None:

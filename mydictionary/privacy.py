@@ -305,7 +305,9 @@ def erase_user_learning_data(
             session.execute(
                 delete(UserConsent).where(
                     UserConsent.telegram_user_id == int(user_id),
-                    UserConsent.consent_type == "voice_processing",
+                    UserConsent.consent_type.in_(
+                        ("voice_processing", "ai_processing")
+                    ),
                 )
             ).rowcount
             or 0

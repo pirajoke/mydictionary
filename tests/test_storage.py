@@ -61,7 +61,7 @@ class DatabaseStoreTest(unittest.TestCase):
         self.store.close()
         self.temp_dir.cleanup()
 
-    def test_migration_creates_versioned_multiuser_schema(self):
+    def test_ac_02_migration_creates_ai_processing_consent_schema(self):
         inspector = inspect(self.store.engine)
         tables = set(inspector.get_table_names())
         self.assertTrue(
@@ -111,7 +111,7 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-            self.assertEqual(revision, "0012_ai_runtime_gates")
+            self.assertEqual(revision, "0013_ai_processing_consent")
 
         ai_usage_columns = {
             column["name"] for column in inspector.get_columns("ai_usage")
@@ -313,7 +313,110 @@ class DatabaseStoreTest(unittest.TestCase):
                 properties={"prompt_text": "private learner content"},
             )
 
-    def test_versioned_consent_can_be_replaced_and_revoked(self):
+    def test_ac_02_ec_01_versioned_ai_consent_is_supported_and_replaced(self):
+        self.assertTrue(
+            self.store.grant_consent(
+                213,
+                consent_type="ai_processing",
+                document_version="ai-processing-2026-08-09",
+                source="telegram",
+            )
+        )
+        self.assertTrue(
+            self.store.has_consent(
+                213,
+                consent_type="ai_processing",
+                document_version="ai-processing-2026-08-09",
+            )
+        )
+        self.assertFalse(
+            self.store.has_consent(
+                213,
+                consent_type="ai_processing",
+                document_version="ai-processing-2026-09-01",
+            )
+        )
+        self.assertEqual(
+            self.store.revoke_consent(213, consent_type="ai_processing"), 1
+        )
+
+        with self.assertRaisesRegex(ValueError, "consent"):
+            self.store.grant_consent(
+                213,
+                consent_type="unreviewed_processing",
+                document_version="v1",
+                source="telegram",
+            )
+
+    def test_ec_02_migration_round_trip_preserves_billing_and_voice_consents(self):
+        self.store.close()
+        root = Path(__file__).resolve().parents[1]
+        config = Config(str(root / "alembic.ini"))
+        config.attributes["configure_logging"] = False
+        config.set_main_option("script_location", str(root / "migrations"))
+        config.set_main_option(
+            "sqlalchemy.url", f"sqlite:///{self.database_path}"
+        )
+        command.downgrade(config, "0012_ai_runtime_gates")
+        legacy = DatabaseStore(f"sqlite:///{self.database_path}", migrate=False)
+        try:
+            for consent_type, version in (
+                ("billing_terms", "billing-v1"),
+                ("voice_processing", "voice-v1"),
+            ):
+                legacy.grant_consent(
+                    214,
+                    consent_type=consent_type,
+                    document_version=version,
+                    source="telegram",
+                )
+        finally:
+            legacy.close()
+
+        command.upgrade(config, "head")
+        migrated = DatabaseStore(f"sqlite:///{self.database_path}", migrate=False)
+        try:
+            self.assertTrue(
+                migrated.grant_consent(
+                    214,
+                    consent_type="ai_processing",
+                    document_version="ai-processing-2026-08-09",
+                    source="telegram",
+                )
+            )
+            with migrated.Session.begin() as session:
+                ai_row = session.execute(
+                    select(UserConsent).where(
+                        UserConsent.telegram_user_id == 214,
+                        UserConsent.consent_type == "ai_processing",
+                    )
+                ).scalar_one()
+                session.delete(ai_row)
+            with migrated.Session() as session:
+                before = {
+                    (row.consent_type, row.document_version, row.revoked_at)
+                    for row in session.execute(
+                        select(UserConsent).where(
+                            UserConsent.telegram_user_id == 214
+                        )
+                    ).scalars()
+                }
+        finally:
+            migrated.close()
+
+        command.downgrade(config, "0012_ai_runtime_gates")
+        downgraded = DatabaseStore(f"sqlite:///{self.database_path}", migrate=False)
+        self.store = downgraded
+        with downgraded.Session() as session:
+            after = {
+                (row.consent_type, row.document_version, row.revoked_at)
+                for row in session.execute(
+                    select(UserConsent).where(UserConsent.telegram_user_id == 214)
+                ).scalars()
+            }
+        self.assertEqual(after, before)
+
+    def test_versioned_voice_consent_can_be_replaced_and_revoked(self):
         self.assertTrue(
             self.store.grant_consent(
                 213,

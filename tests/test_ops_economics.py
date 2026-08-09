@@ -10,11 +10,13 @@ class EconomicsContractTest(unittest.TestCase):
     def setUp(self):
         self.snapshot = economics.load_snapshot()
 
-    def test_checked_in_snapshot_is_candidate_and_formula_consistent(self):
+    def test_checked_in_snapshot_has_approved_ai_and_candidate_stars(self):
         result = economics.validate_snapshot(self.snapshot)
 
         self.assertEqual(result["packages"], 3)
-        self.assertEqual(result["snapshot_id"], "mydictionary-commercial-v1-2026-08-08")
+        self.assertEqual(result["snapshot_id"], "mydictionary-commercial-v1-2026-08-09")
+        self.assertEqual(self.snapshot["ai"]["status"], "approved")
+        self.assertEqual(self.snapshot["status"], "candidate")
         self.assertEqual(result["minimum_margin_bps"], 5000)
         self.assertEqual(result["stress_net_micro_usd_per_xtr"], 8500)
         self.assertFalse(result["stress_launchable"])
@@ -96,11 +98,8 @@ class EconomicsContractTest(unittest.TestCase):
         ):
             economics.validate_snapshot(tampered)
 
-    def test_approved_ai_copy_can_render_an_exact_disabled_environment(self):
-        approved = copy.deepcopy(self.snapshot)
-        approved["ai"]["status"] = "approved"
-
-        rendered = economics.render_environment(approved)
+    def test_approved_ai_snapshot_renders_an_exact_disabled_environment(self):
+        rendered = economics.render_environment(self.snapshot)
         environment = dict(line.split("=", 1) for line in rendered.splitlines())
 
         self.assertEqual(environment["AI_TUTOR_ENABLED"], "false")
@@ -108,7 +107,7 @@ class EconomicsContractTest(unittest.TestCase):
         self.assertEqual(
             len(environment["AI_ECONOMICS_SNAPSHOT_SHA256"]), 64
         )
-        self.assertNotEqual(
+        self.assertEqual(
             environment["AI_ECONOMICS_SNAPSHOT_SHA256"],
             economics.validate_snapshot(self.snapshot)["snapshot_sha256"],
         )

@@ -210,7 +210,22 @@ python ops/mydictionary_economics.py --render-env
 
 The renderer never includes provider keys, payload secrets, safety salts,
 support contacts, or terms text. Its output is a review aid, not an activation
-command; AI, Stars, and terms approval remain false.
+command. The snapshot approves only the bounded free AI-pilot economics; all
+feature flags, Stars, and billing terms remain disabled.
+
+Preview the fixed eight-language synthetic smoke without a provider call:
+
+```bash
+python ops/mydictionary_ai_smoke.py
+```
+
+The `--execute` form is a separate owner-approved operation. It requires the
+exact `AI_SYNTHETIC_SMOKE_APPROVAL=synthetic-ai-pilot-v1` gate, the reviewed
+model/rates, a non-production key and safety salt, a private runs directory,
+an unused run ID, and an explicit receipt path. It performs at most one
+anonymous provider attempt, never mutates production feature flags or learner
+credits, and writes a mode-`0600` aggregate receipt with no prompt, response,
+provider ID, Telegram ID, credential, or local path.
 
 Validate Commercial Launch v1 and idempotently seed only the three reviewed
 database drafts with:

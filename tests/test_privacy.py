@@ -130,7 +130,7 @@ class PrivacyTest(unittest.TestCase):
             self.assertIsNone(session.get(VoiceTurn, "voice-turn-old"))
             self.assertIsNone(session.get(VoiceSession, "voice-old"))
 
-    def test_erasure_removes_learning_data_and_preserves_financial_ledger(self):
+    def test_ac_04_erasure_removes_ai_consent_and_preserves_billing_consent(self):
         self.store.grant_consent(
             self.user_id,
             consent_type="billing_terms",
@@ -141,6 +141,12 @@ class PrivacyTest(unittest.TestCase):
             self.user_id,
             consent_type="voice_processing",
             document_version="voice-1",
+            source="telegram",
+        )
+        self.store.grant_consent(
+            self.user_id,
+            consent_type="ai_processing",
+            document_version="ai-processing-2026-08-09",
             source="telegram",
         )
         with self.store.Session.begin() as session:
