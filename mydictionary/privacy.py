@@ -9,7 +9,7 @@ import json
 import os
 from typing import Mapping
 
-from sqlalchemy import delete, exists, func, select
+from sqlalchemy import delete, exists, func, select, text
 
 from mydictionary.storage import (
     AIAllowance,
@@ -330,6 +330,13 @@ def erase_user_learning_data(
         user.acquisition_source = None
         user.onboarding_completed_at = None
         user.daily_word_goal = 10
+        session.execute(
+            text(
+                "UPDATE users SET mirror_response_mode = NULL "
+                "WHERE telegram_user_id = :user_id"
+            ),
+            {"user_id": int(user_id)},
+        )
         user.access_status = "blocked"
         user.access_status_updated_at = utcnow()
         user.privacy_status = "erased"

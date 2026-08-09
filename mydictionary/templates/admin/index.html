@@ -311,6 +311,17 @@
 
       {% if tab == 'profile' %}
         <section class="panel form-panel">
+          <div class="section-heading"><div><p class="eyebrow">Mirror Assistant</p><h2>Безопасные ответы</h2></div><span>Системная граница безопасности неизменяема</span></div>
+          <form method="post" action="{{ url_for('update_mirror_settings') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>Версия возможностей<input name="mirror_capabilities_version" maxlength="64" value="{{ profile.mirror_capabilities_version }}" required></label>
+            <label>Checksum safety envelope<input value="{{ profile.mirror_safety_envelope_checksum }}" readonly></label>
+            <label class="span-2">Текст возможностей<textarea name="mirror_capabilities_text" maxlength="1000" rows="4" required>{{ profile.mirror_capabilities_text }}</textarea></label>
+            <label class="span-2">Рекомендации по тону<textarea name="mirror_persona_guidance" maxlength="1000" rows="4" required>{{ profile.mirror_persona_guidance }}</textarea></label>
+            <div class="span-2"><button type="submit" class="primary">Сохранить Mirror</button></div>
+          </form>
+        </section>
+        <section class="panel form-panel">
           <div class="section-heading"><div><p class="eyebrow">Telegram</p><h2>Название, описание и /start</h2></div><span>Изменения применяются без перезапуска к /start и /help</span></div>
           <form method="post" action="{{ url_for('update_profile') }}" class="form-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

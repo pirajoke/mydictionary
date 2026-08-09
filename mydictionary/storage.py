@@ -27,6 +27,7 @@ from sqlalchemy import (
     func,
     or_,
     select,
+    text,
 )
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -998,6 +999,49 @@ class DatabaseStore:
     def ensure_user_id(self, user_id: int) -> None:
         telegram_user = type("TelegramUser", (), {"id": int(user_id)})()
         self.ensure_user(telegram_user)
+
+    def get_mirror_response_mode(self, user_id: int) -> str:
+        self.ensure_user_id(user_id)
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                text(
+                    "SELECT privacy_status, mirror_response_mode FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).mappings().one()
+        if row["privacy_status"] != "active":
+            return "text"
+        mode = str(row["mirror_response_mode"] or "text")
+        return mode if mode in {"text", "voice", "both"} else "text"
+
+    def set_mirror_response_mode(self, user_id: int, mode: str) -> str:
+        normalized = str(mode).strip().lower()
+        if normalized not in {"text", "voice", "both"}:
+            raise ValueError("Mirror response mode must be text, voice, or both")
+        self.ensure_user_id(user_id)
+        with self.engine.begin() as connection:
+            privacy_status = connection.execute(
+                text(
+                    "SELECT privacy_status FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).scalar_one()
+            if privacy_status != "active":
+                raise ValueError("Erased users cannot change response preferences")
+            connection.execute(
+                text(
+                    "UPDATE users SET mirror_response_mode = :mode, "
+                    "updated_at = :updated_at WHERE telegram_user_id = :user_id"
+                ),
+                {
+                    "mode": normalized,
+                    "updated_at": utcnow(),
+                    "user_id": int(user_id),
+                },
+            )
+        return normalized
 
     def product_profile(self, user_id: int) -> dict[str, Any]:
         self.ensure_user_id(user_id)
