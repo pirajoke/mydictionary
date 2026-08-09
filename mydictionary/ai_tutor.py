@@ -10,6 +10,7 @@ import hmac
 import json
 import os
 from pathlib import Path
+import re
 from time import perf_counter
 from typing import Any, Mapping, Protocol
 from uuid import uuid4
@@ -264,6 +265,8 @@ class AITutorSettings:
     max_output_tokens: int = 1000
     economics_contract: AIEconomicsContract | None = None
     metering_journal_path: str | None = None
+    consent_version: str | None = None
+    processing_notice: str | None = None
 
     def assert_runtime_ready(
         self, *, today: date | None = None
@@ -457,6 +460,8 @@ class AITutorSettings:
         model = env.get("AI_MODEL", "gpt-5.6-luna").strip()
         api_key = env.get("OPENAI_API_KEY")
         safety_salt = env.get("AI_SAFETY_SALT")
+        consent_version = env.get("AI_CONSENT_VERSION", "").strip()
+        processing_notice = env.get("AI_PROCESSING_NOTICE", "").strip()
         if not model:
             raise AIConfigurationError("AI_MODEL cannot be empty")
         if enabled and (not api_key or not safety_salt or len(safety_salt) < 16):
@@ -464,6 +469,20 @@ class AITutorSettings:
                 "Enabled AI tutor requires OPENAI_API_KEY and AI_SAFETY_SALT "
                 "of at least 16 characters"
             )
+        if enabled:
+            if (
+                not re.fullmatch(
+                    r"[A-Za-z0-9][A-Za-z0-9_-]{7,63}", consent_version
+                )
+                or consent_version.casefold() in {"current", "latest"}
+            ):
+                raise AIConfigurationError(
+                    "AI consent version must be a safe immutable identifier"
+                )
+            if not 40 <= len(processing_notice) <= 1000:
+                raise AIConfigurationError(
+                    "AI processing notice must contain 40-1000 characters"
+                )
         pricing = ModelPricing(
             input_usd_per_million=_non_negative_decimal(
                 env.get("AI_INPUT_USD_PER_MILLION", "0"),
@@ -571,6 +590,8 @@ class AITutorSettings:
                 if journal_path
                 else data_dir / "ai-metering-fallback.jsonl"
             ),
+            consent_version=consent_version or None,
+            processing_notice=processing_notice or None,
         )
         if enabled:
             configured.assert_runtime_ready()

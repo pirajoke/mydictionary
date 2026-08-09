@@ -105,3 +105,59 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("pending_voice_consent", context.user_data)
         with self.store.Session() as session:
             self.assertEqual(session.get(User, self.user.id).privacy_status, "active")
+
+    async def test_ac_04_privacy_shows_and_revokes_ai_processing_consent(self):
+        version = "ai-processing-2026-08-09"
+        self.store.grant_consent(
+            self.user.id,
+            consent_type="ai_processing",
+            document_version=version,
+            source="telegram",
+        )
+        message = SimpleNamespace(reply_text=AsyncMock())
+        command_update = SimpleNamespace(
+            effective_message=message,
+            effective_user=SimpleNamespace(id=self.user.id),
+        )
+        settings = SimpleNamespace(enabled=True, consent_version=version)
+        with (
+            patch.object(bot, "get_store", return_value=self.store),
+            patch.object(bot, "AI_SETTINGS", settings),
+            bot.learner_scope(self.user),
+        ):
+            await bot.cmd_privacy.__wrapped__(command_update, SimpleNamespace())
+
+        rendered = message.reply_text.await_args.args[0]
+        self.assertIn("AI", rendered)
+        self.assertIn("принято", rendered.lower())
+
+        query = SimpleNamespace(
+            data="privacy:ai_revoke",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+        )
+        callback_update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=self.user.id),
+        )
+        context = SimpleNamespace(
+            user_data={"pending_ai_consent": {"request_kind": "command"}}
+        )
+        with (
+            patch.object(bot, "get_store", return_value=self.store),
+            patch.object(bot, "AI_SETTINGS", settings),
+            patch.object(bot, "record_product_event"),
+            bot.learner_scope(self.user),
+        ):
+            await bot.privacy_cb.__wrapped__(callback_update, context)
+
+        self.assertFalse(
+            self.store.has_consent(
+                self.user.id,
+                consent_type="ai_processing",
+                document_version=version,
+            )
+        )
+        self.assertNotIn("pending_ai_consent", context.user_data)
+        with self.store.Session() as session:
+            self.assertEqual(session.get(User, self.user.id).privacy_status, "active")

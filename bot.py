@@ -1307,17 +1307,31 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    voice_consent = get_store().has_consent(
+    store = get_store()
+    voice_consent = store.has_consent(
         int(update.effective_user.id),
         consent_type="voice_processing",
         document_version=VOICE_SETTINGS.consent_version,
     )
-    await update.message.reply_text(
+    ai_consent = bool(
+        AI_SETTINGS.consent_version
+        and store.has_consent(
+            int(update.effective_user.id),
+            consent_type="ai_processing",
+            document_version=AI_SETTINGS.consent_version,
+        )
+    )
+    await update.effective_message.reply_text(
         "Приватность MY DICTIONARY\n\n"
         "Учебная история, события продукта и AI-запросы удаляются по "
         "ограниченным срокам хранения. Ты можешь стереть свои учебные данные "
         "сразу. Платёжные и аудиторские записи сохраняются для возвратов, "
-        "сверки и защиты от мошенничества. После удаления доступ будет заблокирован.",
+        "сверки и защиты от мошенничества. После удаления доступ будет заблокирован.\n\n"
+        + (
+            "AI-согласие: принято."
+            if ai_consent
+            else "AI-согласие: не выдано."
+        ),
         reply_markup=InlineKeyboardMarkup(
             [
                 [
@@ -1337,6 +1351,20 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             "privacy:voice_revoke"
                             if voice_consent
                             else "privacy:voice_status"
+                        ),
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        (
+                            "AI-согласие принято — отозвать"
+                            if ai_consent
+                            else "AI-согласие не выдано"
+                        ),
+                        callback_data=(
+                            "privacy:ai_revoke"
+                            if ai_consent
+                            else "privacy:ai_status"
                         ),
                     )
                 ],
@@ -1369,6 +1397,26 @@ async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "Согласие на обработку голоса отозвано. Активная голосовая "
             f"сессия остановлена. Изменено записей: {changed}."
+        )
+        return
+    if action == "ai_status":
+        await query.answer(
+            "Согласие можно выдать при запуске /ai.", show_alert=True
+        )
+        return
+    if action == "ai_revoke":
+        changed = get_store().revoke_consent(
+            int(update.effective_user.id), consent_type="ai_processing"
+        )
+        context.user_data.pop("pending_ai_consent", None)
+        record_product_event(
+            "ai_consent_revoked",
+            properties={"consent_type": "ai_processing"},
+        )
+        await query.answer("Согласие отозвано.")
+        await query.edit_message_text(
+            "Согласие на обработку AI отозвано. Новые AI-запросы не будут "
+            f"отправлены до повторного согласия. Изменено записей: {changed}."
         )
         return
     if action == "request":
@@ -2101,16 +2149,113 @@ async def send_ai_tutor_answer(
         await message.reply_text(chunk)
 
 
+async def request_ai_tutor_answer(
+    message,
+    context,
+    question: str,
+    *,
+    user_id: int,
+    request_kind: str,
+) -> None:
+    """Require current, versioned processing consent before any AI work."""
+    if not AI_SETTINGS.enabled:
+        await message.reply_text("AI-репетитор пока выключен.")
+        return
+    consent_version = AI_SETTINGS.consent_version
+    processing_notice = AI_SETTINGS.processing_notice
+    if not consent_version or not processing_notice:
+        await message.reply_text("AI-репетитор временно недоступен.")
+        return
+    if get_store().has_consent(
+        int(user_id),
+        consent_type="ai_processing",
+        document_version=consent_version,
+    ):
+        await send_ai_tutor_answer(
+            message, context, question, user_id=int(user_id)
+        )
+        return
+    context.user_data["pending_ai_consent"] = {
+        "request_kind": request_kind,
+        "question": question,
+        "block_session": context.user_data.get("block_session"),
+        "expires_at": int(time.time()) + 600,
+    }
+    await message.reply_text(
+        "Согласие на обработку AI\n\n"
+        f"{processing_notice}\n\n"
+        f"Версия: {consent_version}",
+        reply_markup=InlineKeyboardMarkup(
+            [[
+                InlineKeyboardButton(
+                    "Согласен и продолжить",
+                    callback_data="aiconsent:accept",
+                ),
+                InlineKeyboardButton("Отмена", callback_data="aiconsent:cancel"),
+            ]]
+        ),
+    )
+
+
+@auth
+async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not AI_SETTINGS.enabled:
+        context.user_data.pop("pending_ai_consent", None)
+        await query.answer("AI-репетитор пока выключен.", show_alert=True)
+        return
+    parts = str(query.data).split(":", 1)
+    action = parts[1] if len(parts) == 2 else ""
+    if action == "cancel":
+        context.user_data.pop("pending_ai_consent", None)
+        await query.answer("AI-запрос отменён.")
+        await query.edit_message_reply_markup(reply_markup=None)
+        return
+    pending = context.user_data.pop("pending_ai_consent", None)
+    try:
+        expires_at = int(pending.get("expires_at", 0)) if isinstance(pending, dict) else 0
+    except (TypeError, ValueError):
+        expires_at = 0
+    if (
+        action != "accept"
+        or not isinstance(pending, dict)
+        or expires_at < int(time.time())
+        or pending.get("block_session") != context.user_data.get("block_session")
+        or pending.get("request_kind") not in {"command", "active_block"}
+    ):
+        await query.answer("Запрос устарел. Запусти /ai снова.", show_alert=True)
+        return
+    user_id = int(update.effective_user.id)
+    get_store().grant_consent(
+        user_id,
+        consent_type="ai_processing",
+        document_version=AI_SETTINGS.consent_version,
+        source="telegram",
+    )
+    await query.answer("Согласие сохранено.")
+    await query.edit_message_reply_markup(reply_markup=None)
+    question = str(pending.get("question") or "").strip()
+    if not question:
+        question = "Объясни главные связи между словами этого блока."
+    await send_ai_tutor_answer(
+        query.message,
+        context,
+        question,
+        user_id=user_id,
+    )
+
+
 @auth
 async def cmd_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     question = " ".join(getattr(context, "args", [])).strip()
     if not question:
         question = "Объясни главные связи между словами этого блока."
-    await send_ai_tutor_answer(
+    await request_ai_tutor_answer(
         update.message,
         context,
         question,
         user_id=int(update.effective_user.id),
+        request_kind="command",
     )
 
 
@@ -3492,20 +3637,62 @@ async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def block_ai_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Consent preflight that cannot call AI before normal access control."""
     query = update.callback_query
     parts = query.data.split(":")
-    if len(parts) != 2:
+    if (
+        len(parts) != 2
+        or parts[1] != context.user_data.get("block_session")
+    ):
         await reject_block_callback(query)
         return
+    user_id = int(update.effective_user.id)
+    if (
+        AI_SETTINGS.enabled
+        and AI_SETTINGS.consent_version
+        and not get_store().has_consent(
+            user_id,
+            consent_type="ai_processing",
+            document_version=AI_SETTINGS.consent_version,
+        )
+    ):
+        await query.answer()
+        await request_ai_tutor_answer(
+            query.message,
+            context,
+            "Объясни главные связи между словами этого блока.",
+            user_id=user_id,
+            request_kind="active_block",
+        )
+        return
+    await _authorized_block_ai_cb.__wrapped__(update, context)
+
+
+@auth
+async def _authorized_block_ai_cb(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    parts = query.data.split(":")
     if not await validate_block_callback(query, context.user_data, parts[1]):
         return
     activate_block_language(context.user_data)
-    await send_ai_tutor_answer(
-        query.message,
-        context,
-        "Объясни главные связи между словами этого блока.",
-        user_id=int(update.effective_user.id),
-    )
+    question = "Объясни главные связи между словами этого блока."
+    if AI_SETTINGS.enabled:
+        await request_ai_tutor_answer(
+            query.message,
+            context,
+            question,
+            user_id=int(update.effective_user.id),
+            request_kind="active_block",
+        )
+    else:
+        await send_ai_tutor_answer(
+            query.message,
+            context,
+            question,
+            user_id=int(update.effective_user.id),
+        )
 
 
 @auth
@@ -4189,6 +4376,9 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(billing_consent_cb, pattern=r"^billing:"))
     app.add_handler(
         CallbackQueryHandler(voice_consent_cb, pattern=r"^voiceconsent:")
+    )
+    app.add_handler(
+        CallbackQueryHandler(ai_consent_cb, pattern=r"^aiconsent:")
     )
     app.add_handler(CallbackQueryHandler(buy_product_cb, pattern=r"^buy:"))
     app.add_handler(CallbackQueryHandler(subscription_cb, pattern=r"^sub:"))

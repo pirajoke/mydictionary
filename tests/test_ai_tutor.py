@@ -72,6 +72,11 @@ def answer_for(term="私"):
 
 
 ROOT = Path(__file__).resolve().parents[1]
+AI_CONSENT_VERSION = "ai-processing-2026-08-09"
+AI_PROCESSING_NOTICE = (
+    "AI Tutor sends only the learner's current question and active learning "
+    "block to the configured AI provider after explicit consent."
+)
 
 
 def settings(
@@ -187,6 +192,8 @@ def environment_for(configured: AITutorSettings) -> dict[str, str]:
         "AI_ECONOMICS_SNAPSHOT_ID": contract.snapshot_id,
         "AI_ECONOMICS_SNAPSHOT_SHA256": contract.snapshot_sha256,
         "AI_METERING_JOURNAL_PATH": str(configured.metering_journal_path),
+        "AI_CONSENT_VERSION": AI_CONSENT_VERSION,
+        "AI_PROCESSING_NOTICE": AI_PROCESSING_NOTICE,
     }
 
 
@@ -202,6 +209,46 @@ class AITutorSettingsTest(unittest.TestCase):
 
         self.assertFalse(configured.enabled)
         self.assertEqual(configured.initial_credits, 0)
+
+    def test_ac_01_err_01_enabled_ai_requires_safe_versioned_processing_notice(self):
+        valid = environment_for(settings(self.temp_dir.name))
+
+        configured = AITutorSettings.from_env(valid)
+
+        self.assertTrue(configured.enabled)
+        self.assertEqual(configured.consent_version, AI_CONSENT_VERSION)
+        self.assertEqual(configured.processing_notice, AI_PROCESSING_NOTICE)
+
+        unsafe_cases = {
+            "missing version": {"AI_CONSENT_VERSION": None},
+            "mutable version": {"AI_CONSENT_VERSION": "current"},
+            "unsafe version": {"AI_CONSENT_VERSION": "ai processing/v1"},
+            "missing notice": {"AI_PROCESSING_NOTICE": None},
+            "short notice": {"AI_PROCESSING_NOTICE": "too short"},
+            "long notice": {"AI_PROCESSING_NOTICE": "x" * 1001},
+        }
+        for label, overrides in unsafe_cases.items():
+            with self.subTest(case=label):
+                environment = dict(valid)
+                for key, value in overrides.items():
+                    if value is None:
+                        environment.pop(key, None)
+                    else:
+                        environment[key] = value
+                with self.assertRaisesRegex(
+                    AIConfigurationError, "consent|notice|version"
+                ):
+                    AITutorSettings.from_env(environment)
+
+        disabled = AITutorSettings.from_env(
+            {
+                "AI_TUTOR_ENABLED": "false",
+                "AI_CONSENT_VERSION": "current",
+                "AI_PROCESSING_NOTICE": "short",
+            }
+        )
+        self.assertFalse(disabled.enabled)
+        self.assertEqual(disabled.initial_credits, 0)
 
     def test_enabled_tutor_requires_safe_provider_configuration(self):
         with self.assertRaises(AIConfigurationError):

@@ -9,14 +9,15 @@ python ops/mydictionary_economics.py --check
 python ops/mydictionary_economics.py --render-env
 ```
 
-The rendered environment intentionally keeps `AI_TUTOR_ENABLED=false`,
+The snapshot approves only the bounded free AI-pilot assumptions; it does not
+activate a runtime. The rendered environment intentionally keeps
+`AI_TUTOR_ENABLED=false`, `VOICE_TUTOR_ENABLED=false`,
 `TELEGRAM_STARS_ENABLED=false`, and `BILLING_TERMS_APPROVED=false`. It never
-renders API keys, payload secrets, safety salts, support contacts, or terms
-text.
+renders API keys, payload secrets, safety salts, support contacts, or terms text.
 
 ## Reviewed external assumptions
 
-Snapshot date: 2026-08-08. Maximum runtime age: 30 days.
+Snapshot date: 2026-08-09. Maximum runtime age: 30 days.
 
 - OpenAI Standard short-context pricing for `gpt-5.6-luna` is $0.20 input,
   $0.02 cached input, $0.25 cache writes, and $1.20 output per one million
@@ -42,6 +43,7 @@ changes either rule.
 
 | Control | Draft value | Purpose |
 | --- | ---: | --- |
+| Initial free allowance | 5 credits once | Bounded pilot access without enabling Stars |
 | Credit cost | 1 credit/request | Stable learner-facing unit |
 | Daily limit | 5 attempts/user/rolling 24h | Bounded pilot exposure, including failed attempts |
 | Preflight request budget | 5,000 microUSD | Rejects a request before reservation from a conservative token upper bound |

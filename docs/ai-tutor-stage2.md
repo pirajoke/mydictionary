@@ -3,11 +3,13 @@
 ## User Flow
 
 1. The learner creates a valid topic block with `/learn`.
-2. `/ai <question>` or the block's `AI-репетитор` button submits only that
-   active block to the tutor.
-3. The application renders Russian explanation first, then target writing,
+2. `/ai <question>` or the block's `AI-репетитор` button first requires the
+   learner to accept the current versioned AI-processing notice.
+3. After current consent, the application submits only the learner's question
+   and active block to the tutor.
+4. The application renders Russian explanation first, then target writing,
    canonical transcription, Russian meaning, and examples.
-4. `/ai_stats` shows pilot allowance, completed/refunded requests, provider
+5. `/ai_stats` shows pilot allowance, completed/refunded requests, provider
    tokens, and configured estimated cost.
 
 The model cannot change learning progress, credits, payments, or roles. Terms,
@@ -25,8 +27,10 @@ AI_MODEL=gpt-5.6-luna
 AI_SERVICE_TIER=default
 OPENAI_API_KEY=...
 AI_SAFETY_SALT=...
-AI_INITIAL_CREDITS=0
+AI_INITIAL_CREDITS=5
 AI_CREDITS_PER_REQUEST=1
+AI_CONSENT_VERSION=ai-processing-2026-08-09
+AI_PROCESSING_NOTICE=<reviewed learner disclosure, 40-1000 characters>
 AI_RESERVATION_TIMEOUT_SECONDS=300
 AI_INPUT_USD_PER_MILLION=<positive reviewed rate>
 AI_CACHED_INPUT_USD_PER_MILLION=<positive reviewed rate>
@@ -44,9 +48,9 @@ AI_MAX_IN_FLIGHT_COST_MICRO_USD=5000
 
 `AI_SAFETY_SALT` is a secret random value of at least 16 characters and must
 not be committed. When the feature is enabled, the application fails fast if
-the API key, model, salt, any metered price category, exact approved snapshot,
-or project budget is missing or invalid. It reloads and validates snapshot
-freshness on every request.
+the API key, model, salt, immutable consent version, processing notice, any
+metered price category, exact approved snapshot, or project budget is missing
+or invalid. It reloads and validates snapshot freshness on every request.
 
 Provider prices are runtime configuration rather than product constants. The
 initial allowance is granted once when a user first reserves an AI request.
@@ -79,10 +83,18 @@ allows one provider attempt.
 `ai_allowances` stores pilot available, reserved, and spent units. It is an
 operational quota, not a paid wallet.
 
+`user_consents` stores only the AI consent type, immutable document version,
+source, and timestamps. A changed version requires a new acceptance. `/privacy`
+can revoke AI consent, and learning-data erasure removes it while preserving
+mandatory billing records.
+
 ## Rollout Gate
 
 - Keep the feature flag off in production.
 - Run deterministic contract tests for all eight launch languages.
-- Run a separate live-provider evaluation with a non-production test account.
+- Preview the anonymous synthetic smoke locally; preview never calls a provider.
+- Under a separate exact approval, run one one-shot provider smoke with a
+  non-production API project. It uses no Telegram learner, question, or history
+  and writes only a private aggregate receipt.
 - Compare quality, cost, latency, and grounding before granting pilot credits.
 - Production enablement requires a separate explicit deployment decision.
