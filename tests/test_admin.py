@@ -389,6 +389,18 @@ class AdminConsoleTest(unittest.TestCase):
             actions = session.execute(select(AdminAuditLog.action)).scalars().all()
         self.assertIn("billing_product_created", actions)
 
+    def test_billing_tab_shows_commercial_launch_contract_and_blockers(self):
+        self.login()
+        page = self.client.get("/admin?tab=billing").get_data(as_text=True)
+
+        self.assertIn("Commercial Launch v1", page)
+        self.assertIn("mydictionary-commercial-v1-2026-08-08", page)
+        self.assertIn("Измеренный AI-вызов", page)
+        self.assertIn("2 353 microUSD", page)
+        self.assertIn("Реквизиты продавца", page)
+        self.assertIn("Каталог БД", page)
+        self.assertNotIn("must-not-appear", page)
+
     def test_credit_adjustment_rejects_unknown_user(self):
         with self.assertRaisesRegex(ValueError, "does not exist"):
             AdminStore(self.store).adjust_credits(

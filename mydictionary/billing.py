@@ -82,6 +82,23 @@ class BillingSettings:
     economics_reviewed_on: str | None = None
     economics_max_age_days: int = 30
     private_chat_topics_enabled: bool = False
+    seller_legal_name: str = ""
+    seller_address: str = ""
+    seller_email: str = ""
+    seller_phone: str = ""
+    terms_sha256: str = ""
+
+    @property
+    def seller_identity_complete(self) -> bool:
+        return all(
+            (
+                self.seller_legal_name,
+                self.seller_address,
+                self.seller_email,
+                self.seller_phone,
+                self.support_contact,
+            )
+        )
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "BillingSettings":
@@ -99,6 +116,11 @@ class BillingSettings:
         support_contact = env.get("BILLING_SUPPORT_CONTACT", "").strip()
         configured_terms = env.get("BILLING_TERMS_TEXT", "").strip()
         configured_terms_version = env.get("BILLING_TERMS_VERSION", "").strip()
+        configured_terms_sha256 = env.get("BILLING_TERMS_SHA256", "").strip().lower()
+        seller_legal_name = env.get("BILLING_SELLER_LEGAL_NAME", "").strip()
+        seller_address = env.get("BILLING_SELLER_ADDRESS", "").strip()
+        seller_email = env.get("BILLING_SELLER_EMAIL", "").strip()
+        seller_phone = env.get("BILLING_SELLER_PHONE", "").strip()
         terms_text = configured_terms or (
             "AI-кредиты используются только для функций AI-репетитора. "
             "Базовые словари и обычные режимы обучения остаются бесплатными."
@@ -160,23 +182,68 @@ class BillingSettings:
                 )
             except ValueError as exc:
                 raise BillingConfigurationError(str(exc)) from exc
+        if terms_approved or enabled:
+            seller_requirements = (
+                ("BILLING_SELLER_LEGAL_NAME", seller_legal_name, 160),
+                ("BILLING_SELLER_ADDRESS", seller_address, 500),
+                ("BILLING_SELLER_EMAIL", seller_email, 254),
+                ("BILLING_SELLER_PHONE", seller_phone, 64),
+            )
+            for setting_name, value, maximum in seller_requirements:
+                if not value or len(value) > maximum:
+                    raise BillingConfigurationError(
+                        f"Approved Stars terms require {setting_name}"
+                    )
+            if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", seller_email):
+                raise BillingConfigurationError(
+                    "BILLING_SELLER_EMAIL must be a valid contact address"
+                )
+            if len(re.sub(r"\D", "", seller_phone)) < 6:
+                raise BillingConfigurationError(
+                    "BILLING_SELLER_PHONE must be a valid contact number"
+                )
+            if not support_contact or len(support_contact) > 256:
+                raise BillingConfigurationError(
+                    "Approved Stars terms require BILLING_SUPPORT_CONTACT"
+                )
+            if not configured_terms:
+                raise BillingConfigurationError(
+                    "Approved Stars terms require explicit BILLING_TERMS_TEXT"
+                )
+            if not configured_terms_version:
+                raise BillingConfigurationError(
+                    "Approved Stars terms require BILLING_TERMS_VERSION"
+                )
+            if not re.fullmatch(r"[a-f0-9]{64}", configured_terms_sha256):
+                raise BillingConfigurationError(
+                    "Approved Stars terms require BILLING_TERMS_SHA256"
+                )
+            if (
+                hashlib.sha256(configured_terms.encode("utf-8")).hexdigest()
+                != configured_terms_sha256
+            ):
+                raise BillingConfigurationError(
+                    "BILLING_TERMS_TEXT does not match BILLING_TERMS_SHA256"
+                )
+            legal_payload_length = len(configured_terms) + sum(
+                len(value)
+                for value in (
+                    seller_legal_name,
+                    seller_address,
+                    seller_email,
+                    seller_phone,
+                    support_contact,
+                )
+            )
+            if legal_payload_length > 3400:
+                raise BillingConfigurationError(
+                    "Billing terms and seller details exceed the Telegram message budget"
+                )
         if enabled:
             if not payload_secret or len(payload_secret) < 32:
                 raise BillingConfigurationError(
                     "Enabled Stars billing requires BILLING_PAYLOAD_SECRET "
                     "of at least 32 characters"
-                )
-            if not support_contact or len(support_contact) > 256:
-                raise BillingConfigurationError(
-                    "Enabled Stars billing requires BILLING_SUPPORT_CONTACT"
-                )
-            if not configured_terms:
-                raise BillingConfigurationError(
-                    "Enabled Stars billing requires explicit BILLING_TERMS_TEXT"
-                )
-            if not configured_terms_version:
-                raise BillingConfigurationError(
-                    "Enabled Stars billing requires BILLING_TERMS_VERSION"
                 )
             if not terms_approved:
                 raise BillingConfigurationError(
@@ -206,6 +273,11 @@ class BillingSettings:
             economics_reviewed_on=economics_reviewed_on or None,
             economics_max_age_days=economics_max_age_days,
             private_chat_topics_enabled=private_chat_topics_enabled,
+            seller_legal_name=seller_legal_name,
+            seller_address=seller_address,
+            seller_email=seller_email,
+            seller_phone=seller_phone,
+            terms_sha256=configured_terms_sha256,
         )
 
 

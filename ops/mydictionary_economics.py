@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate and render the draft AI/Stars economics contract."""
+"""Validate and render the disabled AI/Stars commercial contract."""
 
 from __future__ import annotations
 
@@ -9,8 +9,17 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import sys
 from typing import Any, Mapping
 from urllib.parse import urlparse
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from mydictionary.commercial_launch import (
+    CommercialLaunchError,
+    load_measurement_report,
+    validate_measurement_report,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +27,9 @@ DEFAULT_SNAPSHOT = ROOT / "config" / "launch-economics.json"
 ALLOWED_SOURCE_HOSTS = {
     "core.telegram.org",
     "developers.openai.com",
+    "europa.eu",
     "telegram.org",
+    "www.economie.gouv.fr",
 }
 EXPECTED_AI_PRICING = {
     "input": Decimal("0.20"),
@@ -82,10 +93,10 @@ def load_snapshot(path: Path = DEFAULT_SNAPSHOT) -> Mapping[str, Any]:
 def validate_snapshot(
     snapshot: Mapping[str, Any], *, root: Path = ROOT
 ) -> dict[str, int | str]:
-    if snapshot.get("schema_version") != 2:
+    if snapshot.get("schema_version") != 3:
         raise EconomicsContractError("Unsupported economics schema_version")
-    if snapshot.get("status") != "draft":
-        raise EconomicsContractError("Economics snapshot must remain draft")
+    if snapshot.get("status") != "candidate":
+        raise EconomicsContractError("Economics snapshot must remain candidate")
     reviewed_on = str(snapshot.get("reviewed_on", ""))
     try:
         from datetime import date
@@ -201,10 +212,24 @@ def validate_snapshot(
         minimum=256,
         maximum=4000,
     )
+    try:
+        measurement = validate_measurement_report(
+            load_measurement_report(
+                _object(ai.get("measurement"), "AI measurement"), root=root
+            )
+        )
+    except CommercialLaunchError as exc:
+        raise EconomicsContractError(f"Invalid AI measurement: {exc}") from exc
+    if measurement["model"] != ai["model"]:
+        raise EconomicsContractError("AI measurement model differs from snapshot")
+    if measurement["service_tier"] != ai["service_tier"]:
+        raise EconomicsContractError("AI measurement tier differs from snapshot")
 
     stars = _object(snapshot.get("stars"), "stars")
-    if stars.get("status") != "draft" or stars.get("currency") != "XTR":
-        raise EconomicsContractError("Stars economics must remain draft and XTR-only")
+    if stars.get("status") != "candidate" or stars.get("currency") != "XTR":
+        raise EconomicsContractError(
+            "Stars economics must remain candidate and XTR-only"
+        )
     reward = _integer(
         stars.get("reward_micro_usd_per_xtr"),
         "Star reward",
@@ -243,6 +268,22 @@ def validate_snapshot(
         minimum=0,
         maximum=10_000_000,
     )
+    minimum_margin_bps = _integer(
+        stars.get("minimum_margin_bps"),
+        "minimum commercial margin",
+        minimum=5000,
+        maximum=9000,
+    )
+    stress_net_per_xtr = _integer(
+        stars.get("stress_net_micro_usd_per_xtr"),
+        "stress net Star value",
+        minimum=1,
+        maximum=net_per_xtr,
+    )
+    if stress_net_per_xtr >= net_per_xtr:
+        raise EconomicsContractError(
+            "Stress net Star value must be below the nominal assumption"
+        )
     _integer(
         stars.get("funds_availability_delay_days"),
         "Stars availability delay",
@@ -266,12 +307,27 @@ def validate_snapshot(
     except ValueError as exc:
         raise EconomicsContractError("Terms document escapes the repository") from exc
     try:
-        terms_text = terms_path.read_text(encoding="utf-8").strip()
-    except OSError as exc:
+        terms_payload = terms_path.read_bytes()
+        terms_text = terms_payload.decode("utf-8").strip()
+    except (OSError, UnicodeDecodeError) as exc:
         raise EconomicsContractError("Draft terms document is missing") from exc
+    terms_digest = str(stars.get("terms_sha256", "")).strip().lower()
+    if (
+        not re.fullmatch(r"[a-f0-9]{64}", terms_digest)
+        or hashlib.sha256(terms_text.encode("utf-8")).hexdigest() != terms_digest
+    ):
+        raise EconomicsContractError("Candidate terms SHA-256 does not match")
     if not 1 <= len(terms_text) <= 3500:
         raise EconomicsContractError("Draft terms must contain 1-3500 characters")
-    for required_text in ("черновик", "/paysupport", "полный возврат", "XTR"):
+    for required_text in (
+        "кандидат",
+        "/paysupport",
+        "полный возврат",
+        "XTR",
+        "начать оказание",
+        "право на отказ",
+        "юридическое имя продавца",
+    ):
         if required_text.casefold() not in terms_text.casefold():
             raise EconomicsContractError(
                 f"Draft terms are missing required language: {required_text}"
@@ -279,7 +335,7 @@ def validate_snapshot(
 
     packages = stars.get("packages")
     if not isinstance(packages, list) or not packages:
-        raise EconomicsContractError("At least one draft Stars package is required")
+        raise EconomicsContractError("At least one candidate Stars package is required")
     product_ids: set[str] = set()
     for package_value in packages:
         package = _object(package_value, "Stars package")
@@ -287,8 +343,14 @@ def validate_snapshot(
         if not PRODUCT_ID_RE.fullmatch(product_id) or product_id in product_ids:
             raise EconomicsContractError("Stars package product_id is invalid or duplicate")
         product_ids.add(product_id)
-        if package.get("status") != "draft":
-            raise EconomicsContractError(f"Package {product_id} must remain draft")
+        if package.get("status") != "candidate":
+            raise EconomicsContractError(f"Package {product_id} must remain candidate")
+        title = str(package.get("title", "")).strip()
+        description = str(package.get("description", "")).strip()
+        if not 1 <= len(title) <= 32 or not 1 <= len(description) <= 255:
+            raise EconomicsContractError(
+                f"Package {product_id} title/description is invalid"
+            )
         billing_mode = package.get("billing_mode")
         if billing_mode not in {"one_time", "subscription"}:
             raise EconomicsContractError(f"Package {product_id} billing_mode is invalid")
@@ -322,6 +384,11 @@ def validate_snapshot(
             "net_revenue_micro_usd": net_revenue,
             "estimated_margin_bps": margin_bps,
         }
+        stress_revenue = price_xtr * stress_net_per_xtr
+        stress_margin_bps = (
+            (stress_revenue - estimated_cost) * 10000 // stress_revenue
+        )
+        expected_values["stress_margin_bps"] = stress_margin_bps
         for key, expected in expected_values.items():
             if package.get(key) != expected:
                 raise EconomicsContractError(
@@ -333,11 +400,20 @@ def validate_snapshot(
             minimum=0,
             maximum=9999,
         )
+        if target_margin < minimum_margin_bps:
+            raise EconomicsContractError(
+                f"Package {product_id} margin floor is below commercial policy"
+            )
         if margin_bps < target_margin:
             raise EconomicsContractError(
                 f"Package {product_id} is below its target margin"
             )
 
+    stress_launchable = all(
+        int(_object(value, "Stars package")["stress_margin_bps"])
+        >= int(_object(value, "Stars package")["target_margin_bps"])
+        for value in packages
+    )
     return {
         "snapshot_id": str(snapshot.get("snapshot_id", "")),
         "snapshot_sha256": _snapshot_sha256(snapshot),
@@ -353,6 +429,14 @@ def validate_snapshot(
         "in_flight_budget": in_flight_budget,
         "net_micro_usd_per_xtr": net_per_xtr,
         "max_age_days": max_age_days,
+        "minimum_margin_bps": minimum_margin_bps,
+        "stress_net_micro_usd_per_xtr": stress_net_per_xtr,
+        "stress_launchable": stress_launchable,
+        "measurement_provider_attempts": measurement["provider_attempts"],
+        "measurement_cost_micro_usd": measurement["cost_micro_usd"],
+        "measurement_dashboard_charge_verified": measurement[
+            "dashboard_charge_verified"
+        ],
     }
 
 
@@ -405,6 +489,7 @@ def render_environment(snapshot: Mapping[str, Any]) -> str:
             stars["private_chat_topics_enabled"]
         ).lower(),
         "BILLING_TERMS_VERSION": stars["terms_version"],
+        "BILLING_TERMS_SHA256": stars["terms_sha256"],
         "BILLING_TERMS_APPROVED": "false",
     }
     return "\n".join(f"{key}={value}" for key, value in values.items())

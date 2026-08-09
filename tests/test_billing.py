@@ -1,3 +1,4 @@
+import hashlib
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -101,8 +102,15 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
                 "TELEGRAM_STARS_ENABLED": "true",
                 "BILLING_PAYLOAD_SECRET": "s" * 40,
                 "BILLING_SUPPORT_CONTACT": "@support",
+                "BILLING_SELLER_LEGAL_NAME": "Test Seller SAS",
+                "BILLING_SELLER_ADDRESS": "1 Test Street, Paris",
+                "BILLING_SELLER_EMAIL": "billing@example.test",
+                "BILLING_SELLER_PHONE": "+33100000000",
                 "BILLING_TERMS_TEXT": "Explicit test terms",
                 "BILLING_TERMS_VERSION": "test-1",
+                "BILLING_TERMS_SHA256": hashlib.sha256(
+                    b"Explicit test terms"
+                ).hexdigest(),
                 "BILLING_NET_MICRO_USD_PER_XTR": "1000",
                 "BILLING_TERMS_APPROVED": "true",
                 "BILLING_ECONOMICS_REVIEWED_ON": datetime.now(timezone.utc)
@@ -117,8 +125,15 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
             "TELEGRAM_STARS_ENABLED": "true",
             "BILLING_PAYLOAD_SECRET": "s" * 40,
             "BILLING_SUPPORT_CONTACT": "@support",
+            "BILLING_SELLER_LEGAL_NAME": "Test Seller SAS",
+            "BILLING_SELLER_ADDRESS": "1 Test Street, Paris",
+            "BILLING_SELLER_EMAIL": "billing@example.test",
+            "BILLING_SELLER_PHONE": "+33100000000",
             "BILLING_TERMS_TEXT": "Explicit test terms",
             "BILLING_TERMS_VERSION": "test-1",
+            "BILLING_TERMS_SHA256": hashlib.sha256(
+                b"Explicit test terms"
+            ).hexdigest(),
             "BILLING_NET_MICRO_USD_PER_XTR": "1000",
         }
         with self.assertRaisesRegex(BillingConfigurationError, "TERMS_APPROVED"):
@@ -144,6 +159,30 @@ class BillingServiceTest(unittest.IsolatedAsyncioTestCase):
             {**values, "BILLING_NET_MICRO_USD_PER_XTR": "8500"}
         )
         self.assertTrue(configured.private_chat_topics_enabled)
+
+    def test_approved_or_enabled_billing_requires_complete_seller_identity(self):
+        common = {
+            "BILLING_TERMS_APPROVED": "true",
+            "BILLING_SUPPORT_CONTACT": "@mydictionary_support",
+            "BILLING_TERMS_TEXT": "Reviewed commercial terms",
+            "BILLING_TERMS_VERSION": "stars-ru-v1",
+            "BILLING_TERMS_SHA256": hashlib.sha256(
+                b"Reviewed commercial terms"
+            ).hexdigest(),
+        }
+        with self.assertRaisesRegex(BillingConfigurationError, "SELLER_LEGAL_NAME"):
+            BillingSettings.from_env(common)
+
+        complete = {
+            **common,
+            "BILLING_SELLER_LEGAL_NAME": "Test Seller SAS",
+            "BILLING_SELLER_ADDRESS": "1 Test Street, 75001 Paris, France",
+            "BILLING_SELLER_EMAIL": "billing@example.test",
+            "BILLING_SELLER_PHONE": "+33100000000",
+        }
+        settings = BillingSettings.from_env(complete)
+        self.assertTrue(settings.seller_identity_complete)
+        self.assertEqual(settings.seller_legal_name, "Test Seller SAS")
 
     def test_order_and_precheckout_require_current_terms_version(self):
         self.store.revoke_consent(7001, consent_type="billing_terms")

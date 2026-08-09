@@ -2,8 +2,10 @@
 
 ## User flow
 
-1. `/buy` presents the current versioned terms until the learner explicitly
-   accepts them; no product list or order is available before acceptance.
+1. `/buy` presents the current versioned terms, seller identity, support contact,
+   immediate-performance request, and withdrawal acknowledgment until the
+   learner explicitly accepts them; no product list or order is available before
+   acceptance.
 2. `/buy` lists only active products when `TELEGRAM_STARS_ENABLED=true`.
 3. The product callback creates a single-user signed order, snapshots the terms
    version, and sends an `XTR`
@@ -38,6 +40,10 @@ All settings are disabled by default. Enabling checkout requires:
 | `TELEGRAM_STARS_ENABLED` | `true` only after rollout approval |
 | `BILLING_PAYLOAD_SECRET` | random value of at least 32 characters |
 | `BILLING_SUPPORT_CONTACT` | monitored payment-support contact |
+| `BILLING_SELLER_LEGAL_NAME` | complete legal seller name shown before payment |
+| `BILLING_SELLER_ADDRESS` | postal seller address shown before payment |
+| `BILLING_SELLER_EMAIL` | monitored seller email shown before payment |
+| `BILLING_SELLER_PHONE` | monitored seller phone shown before payment |
 | `BILLING_NET_MICRO_USD_PER_XTR` | conservative net value after platform reserves |
 | `BILLING_ECONOMICS_REVIEWED_ON` | current `YYYY-MM-DD` review date |
 | `BILLING_ECONOMICS_MAX_AGE_DAYS` | 1-90; default 30 |
@@ -45,6 +51,7 @@ All settings are disabled by default. Enabling checkout requires:
 | `BILLING_ORDER_TTL_SECONDS` | 300-86400; default 1800 |
 | `BILLING_TERMS_TEXT` | learner-visible terms, at most 3500 characters |
 | `BILLING_TERMS_VERSION` | immutable safe identifier for the reviewed text |
+| `BILLING_TERMS_SHA256` | SHA-256 of the exact trimmed UTF-8 terms text |
 | `BILLING_TERMS_APPROVED` | explicit `true` only after legal/privacy review of the exact text |
 
 Disabling checkout stops new orders. Do not remove or rotate the payload secret
@@ -52,14 +59,24 @@ until every issued order is expired and payment reconciliation is complete.
 
 ## Unit economics
 
-Products are created as `draft`. Estimated package margin is:
+Commercial Launch v1 products are seeded as `draft`. Validate the immutable
+contract without a database write, then perform an explicit idempotent draft
+upsert only in the approved environment:
+
+```bash
+python ops/mydictionary_commercial_launch.py check
+python ops/mydictionary_commercial_launch.py seed-products --execute
+```
+
+The CLI has no activation mode and refuses to overwrite a non-draft product.
+Estimated package margin is:
 
 ```text
 net revenue = price_xtr * BILLING_NET_MICRO_USD_PER_XTR
 margin bps = (net revenue - estimated package cost) / net revenue * 10000
 ```
 
-Activation is rejected unless estimated cost and the target margin floor are
+Activation is rejected unless seller details, reviewed terms, estimated cost and the target margin floor are
 positive, net XTR economics are configured, and estimated margin meets the
 floor. Public package prices therefore remain an operator decision based on
 closed-alpha usage, speech, infrastructure, support, and refund data.
@@ -130,6 +147,10 @@ VOICE_TUTOR_ENABLED=false
 TELEGRAM_STARS_ENABLED=true
 BILLING_PAYLOAD_SECRET=<test-only random secret, at least 32 characters>
 BILLING_SUPPORT_CONTACT=<monitored test contact>
+BILLING_SELLER_LEGAL_NAME=<test seller identity>
+BILLING_SELLER_ADDRESS=<test seller address>
+BILLING_SELLER_EMAIL=<test seller email>
+BILLING_SELLER_PHONE=<test seller phone>
 BILLING_TERMS_TEXT=<exact text from the approved test-only terms>
 BILLING_TERMS_VERSION=stars-test-YYYY-MM-DD
 BILLING_TERMS_APPROVED=true

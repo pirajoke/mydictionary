@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 from datetime import datetime, timezone
 import json
 import os
@@ -35,8 +36,15 @@ def environment():
         "VOICE_TUTOR_ENABLED": "false",
         "BILLING_PAYLOAD_SECRET": "s" * 40,
         "BILLING_SUPPORT_CONTACT": "@test_support",
+        "BILLING_SELLER_LEGAL_NAME": "Test Seller SAS",
+        "BILLING_SELLER_ADDRESS": "1 Test Street, Paris",
+        "BILLING_SELLER_EMAIL": "billing@example.test",
+        "BILLING_SELLER_PHONE": "+33100000000",
         "BILLING_TERMS_TEXT": "Test-only Telegram Stars terms",
         "BILLING_TERMS_VERSION": "stars-test-2026-08-07",
+        "BILLING_TERMS_SHA256": hashlib.sha256(
+            b"Test-only Telegram Stars terms"
+        ).hexdigest(),
         "BILLING_TERMS_APPROVED": "true",
         "BILLING_NET_MICRO_USD_PER_XTR": "1000",
         "BILLING_ECONOMICS_REVIEWED_ON": datetime.now(timezone.utc)

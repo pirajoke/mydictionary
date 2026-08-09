@@ -141,10 +141,14 @@ connection string before stopping services or starting a backup.
 
 Telegram Stars settings are optional and default off. A reviewed billing rollout
 passes `TELEGRAM_STARS_ENABLED`, `BILLING_PAYLOAD_SECRET`,
-`BILLING_SUPPORT_CONTACT`, `BILLING_TERMS_TEXT`, `BILLING_TERMS_VERSION`,
-`BILLING_ORDER_TTL_SECONDS`, and `BILLING_NET_MICRO_USD_PER_XTR` to both bot and
-admin processes. Keep the payload secret out of plist files readable by other
-users and retain it while an issued invoice may still be paid.
+`BILLING_SUPPORT_CONTACT`, `BILLING_SELLER_LEGAL_NAME`,
+`BILLING_SELLER_ADDRESS`, `BILLING_SELLER_EMAIL`,
+`BILLING_SELLER_PHONE`, `BILLING_TERMS_TEXT`, `BILLING_TERMS_VERSION`,
+`BILLING_TERMS_SHA256`, `BILLING_TERMS_APPROVED`,
+`BILLING_ORDER_TTL_SECONDS`, `BILLING_NET_MICRO_USD_PER_XTR`, and the dated
+economics settings to both bot and admin processes. Keep the payload secret out
+of plist files readable by other users and retain it while an issued invoice
+may still be paid.
 
 Voice tutor settings remain optional and default off. The admin launcher passes
 the voice model and consent version for diagnostics, but it does not receive
@@ -196,7 +200,7 @@ installing, enabling, clearing quarantine, or recovering a failed release.
 
 ## Billing operations
 
-Validate the checked-in draft AI/Stars assumptions and render only non-secret,
+Validate the checked-in candidate AI/Stars assumptions and render only non-secret,
 disabled environment values with:
 
 ```bash
@@ -207,6 +211,17 @@ python ops/mydictionary_economics.py --render-env
 The renderer never includes provider keys, payload secrets, safety salts,
 support contacts, or terms text. Its output is a review aid, not an activation
 command; AI, Stars, and terms approval remain false.
+
+Validate Commercial Launch v1 and idempotently seed only the three reviewed
+database drafts with:
+
+```bash
+python ops/mydictionary_commercial_launch.py check
+python ops/mydictionary_commercial_launch.py seed-products --execute
+```
+
+The second command requires `DATABASE_URL`, refuses writes without `--execute`,
+never activates a product, and refuses to overwrite a non-draft catalog row.
 
 AI provider telemetry that could not reach PostgreSQL is written to a private
 fallback journal. Inspect it without revealing contents and reconcile it only

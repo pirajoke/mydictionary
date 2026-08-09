@@ -15,6 +15,66 @@ from mydictionary.billing import (
 
 
 class StarsHandlerTest(unittest.IsolatedAsyncioTestCase):
+    async def test_terms_show_seller_support_and_explicit_immediate_performance_consent(self):
+        message = SimpleNamespace(reply_text=AsyncMock())
+        settings = SimpleNamespace(
+            enabled=True,
+            terms_text="Commercial terms",
+            terms_version="stars-ru-v1",
+            support_contact="@mydictionary_support",
+            seller_legal_name="Test Seller SAS",
+            seller_address="1 Test Street, Paris",
+            seller_email="billing@example.test",
+            seller_phone="+33100000000",
+        )
+        with patch.object(bot, "BILLING_SETTINGS", settings):
+            await bot.send_billing_terms(message)
+
+        rendered = message.reply_text.await_args.args[0]
+        self.assertIn("Test Seller SAS", rendered)
+        self.assertIn("billing@example.test", rendered)
+        self.assertIn("@mydictionary_support", rendered)
+        self.assertIn("начать оказание цифровой услуги сразу", rendered)
+        self.assertIn("право на отказ", rendered)
+        button = message.reply_text.await_args.kwargs["reply_markup"].inline_keyboard[0][0]
+        self.assertIn("Принимаю", button.text)
+        self.assertIn("сразу", button.text)
+
+    async def test_payment_support_shows_monitored_contact_and_seller(self):
+        message = SimpleNamespace(reply_text=AsyncMock())
+        update = SimpleNamespace(message=message)
+        settings = SimpleNamespace(
+            support_contact="@mydictionary_support",
+            seller_legal_name="Test Seller SAS",
+            seller_email="billing@example.test",
+            seller_phone="+33100000000",
+        )
+        with patch.object(bot, "BILLING_SETTINGS", settings):
+            await bot.cmd_paysupport(update, SimpleNamespace())
+
+        rendered = message.reply_text.await_args.args[0]
+        self.assertIn("@mydictionary_support", rendered)
+        self.assertIn("Test Seller SAS", rendered)
+        self.assertIn("billing@example.test", rendered)
+
+    async def test_disabled_terms_have_no_acceptance_button(self):
+        message = SimpleNamespace(reply_text=AsyncMock())
+        settings = SimpleNamespace(
+            enabled=False,
+            terms_text="Preview terms",
+            terms_version="preview-1",
+            support_contact="",
+            seller_legal_name="",
+            seller_address="",
+            seller_email="",
+            seller_phone="",
+        )
+        with patch.object(bot, "BILLING_SETTINGS", settings):
+            await bot.send_billing_terms(message)
+
+        self.assertIsNone(message.reply_text.await_args.kwargs["reply_markup"])
+        self.assertIn("выключена", message.reply_text.await_args.args[0])
+
     async def test_terms_acceptance_is_persisted_before_products_are_shown(self):
         query = SimpleNamespace(
             data="billing:accept_terms",
