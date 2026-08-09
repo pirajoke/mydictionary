@@ -158,8 +158,17 @@ def build_process(
         raise RuntimeError("Admin session secret must contain at least 32 characters")
     if environment["ADMIN_HOST"] not in {"127.0.0.1", "localhost", "::1"}:
         raise RuntimeError("Admin host must remain loopback")
-    if environment["AI_TUTOR_ENABLED"].lower() not in {"0", "false", "no", "off"}:
-        raise RuntimeError("Versioned admin launcher refuses to enable AI")
+    if environment["AI_TUTOR_ENABLED"].lower() not in {
+        "0",
+        "1",
+        "false",
+        "true",
+        "no",
+        "yes",
+        "off",
+        "on",
+    }:
+        raise RuntimeError("AI_TUTOR_ENABLED must be a boolean")
     enrollment_enabled = environment["AI_KEY_ENROLLMENT_ENABLED"].lower()
     if enrollment_enabled not in {
         "0",

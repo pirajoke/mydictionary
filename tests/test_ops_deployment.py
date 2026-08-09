@@ -197,12 +197,38 @@ class AdminLauncherTest(OpsTestCase):
         self.assertNotIn("s" * 40, rendered_arguments)
         self.assertIn("127.0.0.1:8791", rendered_arguments)
 
-    def test_launcher_refuses_to_enable_ai(self):
-        with self.assertRaisesRegex(RuntimeError, "refuses to enable AI"):
-            admin_launcher.build_process(self.launcher_environment(ai_enabled="true"))
+    def test_launcher_passes_enabled_ai_to_admin_with_voice_and_stars_off(self):
+        source = self.launcher_environment(ai_enabled="true")
+        source.update(
+            {
+                "VOICE_TUTOR_ENABLED": "false",
+                "TELEGRAM_STARS_ENABLED": "false",
+            }
+        )
+
+        _, _, environment, _ = admin_launcher.build_process(source)
+
+        self.assertEqual(environment["AI_TUTOR_ENABLED"], "true")
+        self.assertEqual(environment["VOICE_TUTOR_ENABLED"], "false")
+        self.assertEqual(environment["TELEGRAM_STARS_ENABLED"], "false")
+
+    def test_launcher_rejects_invalid_ai_boolean(self):
+        with self.assertRaisesRegex(
+            RuntimeError, "AI_TUTOR_ENABLED must be a boolean"
+        ):
+            admin_launcher.build_process(
+                self.launcher_environment(ai_enabled="enabled")
+            )
+
+    def test_launcher_keeps_loopback_gate_when_ai_is_enabled(self):
+        source = self.launcher_environment(ai_enabled="true")
+        source["ADMIN_HOST"] = "0.0.0.0"
+
+        with self.assertRaisesRegex(RuntimeError, "must remain loopback"):
+            admin_launcher.build_process(source)
 
     def test_launcher_forwards_non_secret_economics_diagnostics(self):
-        source = self.launcher_environment()
+        source = self.launcher_environment(ai_enabled="true")
         source.update(
             {
                 "AI_MODEL": "gpt-5.6-luna",
@@ -232,6 +258,7 @@ class AdminLauncherTest(OpsTestCase):
 
         _, _, environment, _ = admin_launcher.build_process(source)
 
+        self.assertEqual(environment["AI_TUTOR_ENABLED"], "true")
         self.assertEqual(environment["AI_MODEL"], "gpt-5.6-luna")
         self.assertEqual(environment["AI_SERVICE_TIER"], "default")
         self.assertEqual(environment["AI_PROVIDER_CONFIGURED"], "true")
