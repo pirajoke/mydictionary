@@ -1,0 +1,58 @@
+[
+  {
+    "language": "en",
+    "answer_ru": "Hello - нейтральное приветствие.",
+    "language_items": [{"target": "hello", "transcription": "/həˈloʊ/", "meaning_ru": "здравствуйте; привет", "note_ru": "Подходит для большинства ситуаций."}],
+    "examples": [{"target": "Hello, Anna!", "transcription": "/həˈloʊ ˈænə/", "russian": "Привет, Анна!"}],
+    "next_step_ru": ""
+  },
+  {
+    "language": "fr",
+    "answer_ru": "Bonjour переводится как \"здравствуйте\" или \"добрый день\".",
+    "language_items": [{"target": "bonjour", "transcription": "/bɔ̃.ʒuʁ/", "meaning_ru": "здравствуйте; добрый день", "note_ru": "Нейтральное дневное приветствие."}],
+    "examples": [{"target": "Bonjour, madame !", "transcription": "/bɔ̃.ʒuʁ ma.dam/", "russian": "Здравствуйте, мадам!"}],
+    "next_step_ru": ""
+  },
+  {
+    "language": "de",
+    "answer_ru": "Guten Tag - вежливое приветствие днём.",
+    "language_items": [{"target": "Guten Tag", "transcription": "/ˈɡuːtn̩ taːk/", "meaning_ru": "добрый день; здравствуйте", "note_ru": "Нейтрально-вежливый вариант."}],
+    "examples": [{"target": "Guten Tag, Herr Klein.", "transcription": "/ˈɡuːtn̩ taːk hɛʁ klaɪn/", "russian": "Добрый день, господин Кляйн."}],
+    "next_step_ru": ""
+  },
+  {
+    "language": "ja",
+    "answer_ru": "こんにちは - обычное дневное приветствие.",
+    "language_items": [{"target": "こんにちは", "transcription": "konnichiwa", "meaning_ru": "здравствуйте; добрый день", "note_ru": "Последняя は произносится wa."}],
+    "examples": [{"target": "こんにちは、田中さん。", "transcription": "konnichiwa, Tanaka-san", "russian": "Здравствуйте, господин Танака."}],
+    "next_step_ru": ""
+  },
+  {
+    "language": "ar",
+    "answer_ru": "مرحبا - распространённое нейтральное приветствие.",
+    "language_items": [{"target": "مرحبا", "transcription": "marhaban", "meaning_ru": "здравствуйте; привет", "note_ru": "Подходит в формальной и неформальной речи."}],
+    "examples": [{"target": "مرحبا يا ليلى", "transcription": "marhaban ya Layla", "russian": "Привет, Лейла."}],
+    "next_step_ru": ""
+  },
+  {
+    "language": "zh",
+    "answer_ru": "你好 - стандартное приветствие.",
+    "language_items": [{"target": "你好", "transcription": "nǐ hǎo", "meaning_ru": "здравствуйте; привет", "note_ru": "Уместно в большинстве обычных ситуаций."}],
+    "examples": [{"target": "你好，王老师。", "transcription": "nǐ hǎo, Wáng lǎoshī", "russian": "Здравствуйте, учитель Ван."}],
+    "next_step_ru": ""
+  },
+  {
+    "language": "ru",
+    "answer_ru": "Здравствуйте - нейтральное вежливое приветствие.",
+    "language_items": [{"target": "здравствуйте", "transcription": "zdravstvuyte", "meaning_ru": "вежливое приветствие", "note_ru": "Подходит при обращении на \"вы\"."}],
+    "examples": [{"target": "Здравствуйте, Мария!", "transcription": "zdravstvuyte, Mariya", "russian": "Вежливое приветствие Марии."}],
+    "next_step_ru": ""
+  },
+  {
+    "language": "es",
+    "answer_ru": "Buenos días - приветствие в первой половине дня.",
+    "language_items": [{"target": "buenos días", "transcription": "/ˈbwenos ˈdi.as/", "meaning_ru": "доброе утро; добрый день", "note_ru": "Обычно используется до обеда."}],
+    "examples": [{"target": "Buenos días, señora.", "transcription": "/ˈbwenos ˈdi.as seˈɲoɾa/", "russian": "Доброе утро, сеньора."}],
+    "next_step_ru": ""
+  }
+]

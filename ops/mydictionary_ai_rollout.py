@@ -22,7 +22,7 @@ from mydictionary.economics import (
 )
 
 
-EXPECTED_MIGRATION = "0013_ai_processing_consent"
+EXPECTED_MIGRATION = "0014_mirror_assistant_v1"
 EXPECTED_LANGUAGES = {"en", "fr", "de", "ja", "ar", "zh", "ru", "es"}
 EXPECTED_RATES = {
     "AI_INPUT_USD_PER_MILLION": Decimal("0.20"),
@@ -113,7 +113,7 @@ def evaluate_ai_pilot_readiness(
         expected_contract = {
             "reviewed_on": "2026-08-09",
             "max_age_days": 30,
-            "initial_credits": 5,
+            "initial_credits": 40,
             "credits_per_request": 1,
             "max_daily_requests_per_user": 5,
             "max_preflight_cost_micro_usd_per_request": 5000,

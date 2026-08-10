@@ -18,7 +18,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "ai_tutor_eval.json"
-EXPECTED_MIGRATION = "0013_ai_processing_consent"
+EXPECTED_MIGRATION = "0014_mirror_assistant_v1"
 
 
 def parse_environment(rendered: str) -> dict[str, str]:
@@ -26,7 +26,7 @@ def parse_environment(rendered: str) -> dict[str, str]:
 
 
 class AIPilotEconomicsContractTest(unittest.TestCase):
-    def test_ac_05_only_ai_is_approved_with_five_free_pilot_credits(self):
+    def test_ac_05_only_ai_is_approved_with_forty_free_pilot_credits(self):
         snapshot = economics.load_snapshot()
         result = economics.validate_snapshot(snapshot)
 
@@ -34,7 +34,7 @@ class AIPilotEconomicsContractTest(unittest.TestCase):
         self.assertEqual(snapshot["ai"]["status"], "approved")
         self.assertNotEqual(snapshot.get("status"), "approved")
         self.assertEqual(result["pricing_max_age_days"], 30)
-        self.assertEqual(result["initial_credits"], 5)
+        self.assertEqual(result["initial_credits"], 40)
         self.assertEqual(result["credits_per_request"], 1)
         self.assertTrue(
             all(
@@ -65,7 +65,7 @@ class AIPilotEconomicsContractTest(unittest.TestCase):
             "AI_OUTPUT_USD_PER_MILLION": "1.20",
             "AI_PRICING_REVIEWED_ON": "2026-08-09",
             "AI_PRICING_MAX_AGE_DAYS": "30",
-            "AI_INITIAL_CREDITS": "5",
+            "AI_INITIAL_CREDITS": "40",
             "AI_CREDITS_PER_REQUEST": "1",
             "AI_MAX_DAILY_REQUESTS_PER_USER": "5",
             "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST": "5000",

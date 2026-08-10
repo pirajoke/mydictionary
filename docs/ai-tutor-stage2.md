@@ -12,6 +12,11 @@
 5. `/ai_stats` shows pilot allowance, completed/refunded requests, provider
    tokens, and configured estimated cost.
 
+Free text outside an active exercise is handled by Mirror. Its request includes
+at most 12 words from the active block or pack and at most 12 shortened recent
+Mirror turns. The dialogue window exists only in Telegram process memory and is
+cleared on restart; it is never written to the usage, audit, or event tables.
+
 The model cannot change learning progress, credits, payments, or roles. Terms,
 transcriptions, and meanings displayed to the learner come from dictionary
 content, not generated output.
@@ -27,7 +32,7 @@ AI_MODEL=gpt-5.6-luna
 AI_SERVICE_TIER=default
 OPENAI_API_KEY=...
 AI_SAFETY_SALT=...
-AI_INITIAL_CREDITS=5
+AI_INITIAL_CREDITS=40
 AI_CREDITS_PER_REQUEST=1
 AI_CONSENT_VERSION=ai-processing-2026-08-09
 AI_PROCESSING_NOTICE=<reviewed learner disclosure, 40-1000 characters>
@@ -60,6 +65,16 @@ startup and before that learner's next request. The allowed range is 60-86400
 seconds; it must remain longer than the provider's maximum request duration.
 An attempted provider call with no known response opens the persistent breaker
 because the refund does not prove that the provider incurred no cost.
+
+For existing active pilot learners, first preview the anonymous aggregate delta:
+
+```bash
+python ops/mydictionary_credit_rollout.py --target-credits 40
+```
+
+Execution is a separate operator action and requires `--execute`. The rollout
+uses a per-user idempotency key, preserves already spent credits, and reports
+only aggregate counts. Reusing the same rollout ID cannot grant credits twice.
 
 The default model is the cost-sensitive GPT-5.6 Luna tier. Model choice and
 rates must be validated with the evaluation set before any rollout. See the

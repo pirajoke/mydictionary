@@ -69,17 +69,23 @@ class MirrorResponsesAdapter:
         if self.failure is not None:
             raise self.failure
         payload = {
-            "summary_ru": "Краткое объяснение по сохранённому прогрессу.",
-            "entries": [
+            "answer_ru": "Это японское слово означает кошку и читается neko.",
+            "language_items": [
                 {
-                    "term": "猫",
-                    "explanation_ru": "Это слово означает кошку.",
-                    "examples": [
-                        {"target": "猫がいます。", "russian": "Есть кошка."},
-                        {"target": "猫が好きです。", "russian": "Я люблю кошек."},
-                    ],
+                    "target": "猫",
+                    "transcription": "neko",
+                    "meaning_ru": "кошка",
+                    "note_ru": "Нейтральное существительное.",
                 }
             ],
+            "examples": [
+                {
+                    "target": "猫が好きです。",
+                    "transcription": "neko ga suki desu",
+                    "russian": "Я люблю кошек.",
+                }
+            ],
+            "next_step_ru": "Попробуй произнести neko вслух.",
         }
         return SimpleNamespace(
             id="mirror-provider-response",
@@ -291,11 +297,19 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             set(payload),
-            {"safety_envelope", "admin_guidance", "question", "grounded_snapshot"},
+            {
+                "safety_envelope",
+                "admin_guidance",
+                "question",
+                "grounded_snapshot",
+                "learning_context",
+                "recent_dialogue",
+            },
         )
         self.assertEqual(payload["grounded_snapshot"], snapshot)
         self.assertIn("immutable", payload["safety_envelope"].lower())
-        self.assertNotIn("chat_history", serialized)
+        self.assertEqual(payload["recent_dialogue"], [])
+        self.assertEqual(payload["learning_context"], {})
         self.assertNotIn("telegram_user_id", serialized)
         self.assertNotIn("secret", serialized.lower())
 
@@ -568,7 +582,10 @@ class MirrorMeteredIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("猫", json.dumps(provider_input, ensure_ascii=False))
         self.assertIn("admin_guidance", provider_input)
         self.assertIn("safety_envelope", provider_input)
-        self.assertNotIn("chat_history", provider_input)
+        self.assertEqual(provider_input["learning_context"]["language"], "ja")
+        self.assertGreater(len(provider_input["learning_context"]["words"]), 0)
+        self.assertLessEqual(len(provider_input["learning_context"]["words"]), 12)
+        self.assertEqual(provider_input["recent_dialogue"], [])
         self.assertFalse(responses.kwargs["store"])
 
         summary = self.store.ai_usage_summary(
