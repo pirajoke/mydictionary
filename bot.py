@@ -17,6 +17,7 @@ import time
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Mapping
 from urllib.parse import quote
 
 import yaml
@@ -77,10 +78,12 @@ from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
 from mydictionary.mirror_assistant import (
     MIRROR_ADMIN_DEFAULTS,
+    append_mirror_turn,
     build_mirror_progress_summary,
     build_mirror_provider_payload,
     classify_mirror_intent,
     grounded_progress_snapshot,
+    recent_mirror_dialogue,
     render_mirror_capabilities,
 )
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
@@ -1598,6 +1601,65 @@ def active_tutor_context(user_data: dict) -> TutorContext | None:
     )
 
 
+def build_mirror_learning_context(
+    profile: Mapping[str, Any],
+    user_data: dict,
+    snapshot: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return bounded active vocabulary without persisting dialogue text."""
+    tutor_context = active_tutor_context(user_data)
+    if tutor_context is not None:
+        source_words = W(str(user_data.get("block_pack_id") or ""))
+        source_indices = user_data.get("block_all_indices", [])
+        return {
+            "language": tutor_context.language,
+            "pack_id": user_data.get("block_pack_id"),
+            "topic": tutor_context.topic,
+            "source": "active_block",
+            "words": [
+                {
+                    "target": word.term,
+                    "transcription": word.transcription,
+                    "meaning_ru": meaning_display_text(source_words[index]),
+                    "example": word.example_target or "",
+                }
+                for word, index in zip(
+                    tutor_context.words[:12], source_indices[:12], strict=True
+                )
+            ],
+        }
+
+    role = str(profile.get("role") or "learner")
+    language = str(profile.get("active_lang") or snapshot.get("language") or "")
+    pack = CATALOG.get(str(profile.get("active_pack_id") or ""))
+    if pack is None and language:
+        pack = CATALOG.pack_for_language(language, role)
+    if pack is None or not pack.visible_to(role):
+        return {"language": language, "source": "profile", "words": []}
+
+    weak = {
+        str(term).strip().casefold()
+        for term in snapshot.get("weak_terms", [])
+        if str(term).strip()
+    }
+    words = CATALOG.words(pack)
+    words.sort(key=lambda word: target_text(word).casefold() not in weak)
+    return {
+        "language": pack.target_language,
+        "pack_id": pack.pack_id,
+        "source": "active_pack",
+        "words": [
+            {
+                "target": target_text(word),
+                "transcription": transcription_for(word, pack.target_language),
+                "meaning_ru": meaning_display_text(word),
+                "example": example_target_text(word),
+            }
+            for word in words[:12]
+        ],
+    }
+
+
 def _voice_word(
     word: dict, language: str, *, mode: str = "pronunciation"
 ) -> VoiceWord:
@@ -2351,6 +2413,12 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                     MIRROR_ADMIN_DEFAULTS["mirror_persona_guidance"],
                 ),
                 grounded_snapshot=snapshot,
+                learning_context=build_mirror_learning_context(
+                    profile,
+                    context.user_data,
+                    snapshot,
+                ),
+                recent_dialogue=recent_mirror_dialogue(context.user_data),
             )
             service = get_ai_tutor_service()
             if isinstance(service, AITutorService) and hasattr(service, "ask_mirror"):
@@ -2408,6 +2476,8 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         speech_consented=speech_consented,
         voice_renderer=voice_renderer,
     )
+    append_mirror_turn(context.user_data, role="user", text=question)
+    append_mirror_turn(context.user_data, role="assistant", text=response)
 
 
 @auth

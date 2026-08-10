@@ -30,7 +30,7 @@
     },
     "credit_policy": {
       "credits_per_request": 1,
-      "initial_credits": 5
+      "initial_credits": 40
     },
     "limits": {
       "max_daily_requests_per_user": 5,
