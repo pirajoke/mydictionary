@@ -228,9 +228,39 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
         rendered = message.reply_text.await_args.args[0].lower()
         self.assertRegex(rendered, r"онбординг|настрой|выбер|шаг")
 
-    async def test_ac_02_greeting_is_deterministic_free_and_prompt_private(self):
+    async def test_ac_02_exact_greeting_is_free_and_contextual_to_active_language(self):
         handler = required_public(self, bot, "mirror_text_handler")
-        for phrase in ("Привет", "Что ты умеешь?", "Как ты можешь помочь?"):
+        update, context, message = text_update(503, "Привет")
+        store = MagicMock()
+        store.product_profile.return_value = admitted_profile(
+            active_lang="fr",
+            active_pack_id="fr-basics-100",
+        )
+        profile = mirror_profile(
+            mirror_persona_guidance="PRIVATE PERSONA BODY",
+            mirror_safety_envelope=PRIVATE_ENVELOPE_MARKER,
+        )
+        with (
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_bot_profile", return_value=profile),
+            patch.object(bot, "get_ai_tutor_service") as ai_service,
+        ):
+            await invoke_handler(handler, update, context)
+
+        message.reply_text.assert_awaited_once()
+        rendered = message.reply_text.await_args.args[0]
+        self.assertRegex(rendered.casefold(), r"француз|français")
+        self.assertNotEqual(rendered, CAPABILITIES)
+        self.assertLessEqual(len(rendered), 160)
+        self.assertNotIn("PRIVATE PERSONA BODY", rendered)
+        self.assertNotIn(PRIVATE_ENVELOPE_MARKER, rendered)
+        ai_service.assert_not_called()
+        store.has_consent.assert_not_called()
+        store.reserve_ai_usage.assert_not_called()
+
+    async def test_ac_02_exact_capability_questions_remain_deterministic_and_free(self):
+        handler = required_public(self, bot, "mirror_text_handler")
+        for phrase in ("Что ты умеешь?", "Как ты можешь помочь?"):
             with self.subTest(phrase=phrase):
                 update, context, message = text_update(503, phrase)
                 store = MagicMock()
@@ -251,7 +281,48 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
                 self.assertNotIn("PRIVATE PERSONA BODY", rendered)
                 self.assertNotIn(PRIVATE_ENVELOPE_MARKER, rendered)
                 ai_service.assert_not_called()
+                store.has_consent.assert_not_called()
                 store.reserve_ai_usage.assert_not_called()
+
+    async def test_ac_02_greeting_with_learning_question_routes_to_ai_with_active_context(self):
+        handler = required_public(self, bot, "mirror_text_handler")
+        question = (
+            "Привет! Почему bonjour может означать "
+            "и «здравствуйте», и «добрый день»?"
+        )
+        response = "Bonjour зависит от ситуации и времени суток."
+        update, context, message = text_update(505, question)
+        store = MagicMock()
+        store.product_profile.return_value = admitted_profile(
+            active_lang="fr",
+            active_pack_id="fr-basics-100",
+        )
+        store.has_consent.return_value = True
+        service = SimpleNamespace(ask=AsyncMock(return_value=response))
+
+        with (
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_bot_profile", return_value=mirror_profile()),
+            patch.object(bot, "get_ai_tutor_service", return_value=service),
+        ):
+            await invoke_handler(handler, update, context)
+
+        service.ask.assert_awaited_once()
+        kwargs = service.ask.await_args.kwargs
+        self.assertEqual(kwargs["question"], question)
+        self.assertEqual(kwargs["mirror_payload"]["question"], question)
+        self.assertEqual(
+            kwargs["mirror_payload"]["learning_context"]["language"], "fr"
+        )
+        self.assertEqual(
+            kwargs["mirror_payload"]["learning_context"]["pack_id"],
+            "fr-basics-100",
+        )
+        self.assertEqual(
+            kwargs["mirror_payload"]["learning_context"]["source"],
+            "active_pack",
+        )
+        message.reply_text.assert_awaited_once_with(response)
 
     async def test_ac_04_access_onboarding_and_consent_gate_ai_before_service(self):
         handler = required_public(self, bot, "mirror_text_handler")
@@ -858,7 +929,10 @@ class MirrorConcreteSpeechTest(unittest.IsolatedAsyncioTestCase):
                     await invoke_handler(handler, update, context)
 
                 factory.assert_called_once_with()
-                renderer.assert_awaited_once_with(CAPABILITIES)
+                renderer.assert_awaited_once_with(
+                    "Привет! Вижу, у тебя сейчас японский. "
+                    "Продолжим обучение или разберём слово или фразу?"
+                )
                 cached_tts.assert_not_awaited()
                 self.assertEqual(
                     [call[0] for call in order.mock_calls],

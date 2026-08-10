@@ -85,6 +85,7 @@ from mydictionary.mirror_assistant import (
     grounded_progress_snapshot,
     recent_mirror_dialogue,
     render_mirror_capabilities,
+    render_mirror_greeting,
 )
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.runtime_secrets import load_runtime_secret_files
@@ -2369,7 +2370,23 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     question = str(update.message.text or "").strip()
     mirror_profile = get_bot_profile()
     intent = classify_mirror_intent(question)
-    if intent == "capabilities":
+    if intent == "greeting":
+        role = str(profile.get("role") or "learner")
+        active_pack = CATALOG.get(str(profile.get("active_pack_id") or ""))
+        if active_pack is None:
+            active_pack = CATALOG.pack_for_language(
+                str(profile.get("active_lang") or ""), role
+            )
+        response = render_mirror_greeting(
+            active_language=(
+                active_pack.target_language
+                if active_pack is not None
+                else str(profile.get("active_lang") or "")
+            ),
+            active_pack_title=active_pack.title if active_pack is not None else None,
+            has_active_block=active_tutor_context(context.user_data) is not None,
+        )
+    elif intent == "capabilities":
         response = render_mirror_capabilities(
             mirror_profile.get(
                 "mirror_capabilities_text",
