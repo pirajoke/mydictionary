@@ -53,14 +53,34 @@ _UNSAFE_GUIDANCE_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _CAPABILITY_PATTERNS = (
-    "привет",
-    "здравствуй",
     "что ты умеешь",
     "как ты можешь помочь",
-    "hello",
-    "hi",
     "what can you do",
 )
+_GREETING_PATTERNS = frozenset(
+    {
+        "привет",
+        "здравствуй",
+        "здравствуйте",
+        "добрый день",
+        "доброе утро",
+        "добрый вечер",
+        "hello",
+        "hi",
+        "hey",
+    }
+)
+_LANGUAGE_NAMES_RU = {
+    "ar": "арабский",
+    "de": "немецкий",
+    "en": "английский",
+    "es": "испанский",
+    "fr": "французский",
+    "ja": "японский",
+    "ru": "русский",
+    "vi": "вьетнамский",
+    "zh": "китайский",
+}
 _PROGRESS_PATTERNS = (
     "прогресс",
     "продолж",
@@ -106,6 +126,9 @@ def classify_mirror_intent(text: str) -> str:
         return "capabilities"
     if any(pattern in normalized for pattern in _PROGRESS_PATTERNS):
         return "progress"
+    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
+    if words_only in _GREETING_PATTERNS:
+        return "greeting"
     return "learning_question"
 
 
@@ -114,6 +137,35 @@ def render_mirror_capabilities(capabilities: str, *, locale: str | None = None) 
     del locale
     value = str(capabilities).strip()
     return value or MIRROR_ADMIN_DEFAULTS["mirror_capabilities_text"]
+
+
+def render_mirror_greeting(
+    *,
+    active_language: str | None = None,
+    active_pack_title: str | None = None,
+    has_active_block: bool = False,
+) -> str:
+    """Return a short, free greeting grounded in the current learning context."""
+    language = _LANGUAGE_NAMES_RU.get(str(active_language or "").strip().lower())
+    title = str(active_pack_title or "").strip()
+    if has_active_block:
+        if language:
+            return (
+                f"Привет! Вижу, у тебя сейчас {language}. "
+                "Продолжим текущий блок или разберём другой вопрос?"
+            )
+        return "Привет! Продолжим текущий блок или разберём другой вопрос?"
+    if language:
+        return (
+            f"Привет! Вижу, у тебя сейчас {language}. "
+            "Продолжим обучение или разберём слово или фразу?"
+        )
+    if title:
+        return (
+            f"Привет! Сейчас активен набор «{title[:80]}». "
+            "Продолжим обучение или разберём слово или фразу?"
+        )
+    return "Привет! Продолжим обучение или разберём слово или фразу?"
 
 
 def _normalize_mirror_turn(value: Mapping[str, Any]) -> dict[str, str]:
