@@ -19,6 +19,7 @@ from mydictionary.storage import (
     AnalyticsEvent,
     DataImport,
     DatabaseStore,
+    MirrorDialogueTurn,
     RateLimitBucket,
     TelegramNotification,
     User,
@@ -97,6 +98,7 @@ class RetentionReport:
     rate_limit_buckets: int = 0
     voice_turns: int = 0
     voice_sessions: int = 0
+    mirror_dialogue_turns: int = 0
 
     @property
     def total(self) -> int:
@@ -189,6 +191,14 @@ def retention_report(
                 )
                 or 0
             ),
+            mirror_dialogue_turns=int(
+                session.scalar(
+                    select(func.count()).select_from(MirrorDialogueTurn).where(
+                        MirrorDialogueTurn.expires_at <= observed_at
+                    )
+                )
+                or 0
+            ),
         )
 
 
@@ -236,6 +246,11 @@ def apply_retention(
                 ),
             )
         ).rowcount
+        mirror_dialogue_turns = session.execute(
+            delete(MirrorDialogueTurn).where(
+                MirrorDialogueTurn.expires_at <= observed_at
+            )
+        ).rowcount
         report = RetentionReport(
             analytics_events=int(analytics or 0),
             ai_usage=int(ai_usage or 0),
@@ -243,6 +258,7 @@ def apply_retention(
             rate_limit_buckets=int(buckets or 0),
             voice_turns=int(voice_turns or 0),
             voice_sessions=int(voice_sessions or 0),
+            mirror_dialogue_turns=int(mirror_dialogue_turns or 0),
         )
         session.add(
             AdminAuditLog(
@@ -285,6 +301,7 @@ def erase_user_learning_data(
         for model in (
             VoiceTurn,
             VoiceSession,
+            MirrorDialogueTurn,
             WordProgress,
             UserPackEnrollment,
             UserProgress,
@@ -332,7 +349,8 @@ def erase_user_learning_data(
         user.daily_word_goal = 10
         session.execute(
             text(
-                "UPDATE users SET mirror_response_mode = NULL "
+                "UPDATE users SET mirror_response_mode = NULL, "
+                "mirror_style = 'teacher' "
                 "WHERE telegram_user_id = :user_id"
             ),
             {"user_id": int(user_id)},

@@ -13,9 +13,12 @@
    tokens, and configured estimated cost.
 
 Free text outside an active exercise is handled by Mirror. Its request includes
-at most 12 words from the active block or pack and at most 12 shortened recent
-Mirror turns. The dialogue window exists only in Telegram process memory and is
-cleared on restart; it is never written to the usage, audit, or event tables.
+at most 12 words from the active block or pack and at most 20 shortened recent
+Mirror turns. By default, the dialogue window exists only in Telegram process
+memory and is cleared on restart. Optional durable dialogue memory is a separate
+fail-closed setting: it requires the current AI-processing consent version,
+stores at most 20 bounded turns, expires each turn, and is never copied into AI
+usage, audit, product analytics, or admin diagnostics.
 
 The model cannot change learning progress, credits, payments, or roles. Terms,
 transcriptions, and meanings displayed to the learner come from dictionary
@@ -49,6 +52,8 @@ AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE=5000
 AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY=25000
 AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH=100000
 AI_MAX_IN_FLIGHT_COST_MICRO_USD=5000
+MIRROR_MEMORY_ENABLED=false
+MIRROR_DIALOGUE_RETENTION_DAYS=7
 ```
 
 `AI_SAFETY_SALT` is a secret random value of at least 16 characters and must
@@ -103,9 +108,18 @@ source, and timestamps. A changed version requires a new acceptance. `/privacy`
 can revoke AI consent, and learning-data erasure removes it while preserving
 mandatory billing records.
 
+When `MIRROR_MEMORY_ENABLED=true`, `mirror_dialogue_turns` stores only bounded
+user and assistant text, role, owner, and expiry metadata. It is isolated per
+learner and physically limited to the latest 20 turns. Expired turns are removed
+by the retention job; all turns are deleted by AI-consent revocation or the
+self-service privacy erasure. The setting may only be enabled alongside a
+reviewed AI-processing notice/version that explicitly discloses this storage.
+
 ## Rollout Gate
 
 - Keep the feature flag off in production.
+- Keep durable Mirror memory off until its disclosure and consent version are
+  reviewed and separately approved for production.
 - Run deterministic contract tests for all eight launch languages.
 - Preview the anonymous synthetic smoke locally; preview never calls a provider.
 - Under a separate exact approval, run one one-shot provider smoke with a

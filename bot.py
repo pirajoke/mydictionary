@@ -78,11 +78,14 @@ from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
 from mydictionary.mirror_assistant import (
     MIRROR_ADMIN_DEFAULTS,
+    MIRROR_STYLE_LABELS,
+    MirrorMemorySettings,
     append_mirror_turn,
     build_mirror_progress_summary,
     build_mirror_provider_payload,
     classify_mirror_intent,
     grounded_progress_snapshot,
+    normalize_mirror_style,
     recent_mirror_dialogue,
     render_mirror_capabilities,
     render_mirror_greeting,
@@ -177,6 +180,9 @@ def _configured_access_mode() -> str:
 
 BOT_ACCESS_MODE = _configured_access_mode()
 AI_SETTINGS = AITutorSettings.from_env()
+MIRROR_MEMORY_SETTINGS = MirrorMemorySettings.from_env(
+    ai_consent_version=AI_SETTINGS.consent_version
+)
 BILLING_SETTINGS = BillingSettings.from_env()
 SAFETY_SETTINGS = SafetySettings.from_env()
 VOICE_SETTINGS = VoiceTutorSettings.from_env()
@@ -1296,7 +1302,29 @@ def settings_keyboard(product: dict) -> InlineKeyboardMarkup:
         )
         for count in (5, 10, 20)
     ]
-    return InlineKeyboardMarkup(language_rows + [pace_row])
+    selected_style = str(product.get("mirror_style") or "teacher")
+    style_rows = [
+        [
+            InlineKeyboardButton(
+                f"{label}{' ✓' if style == selected_style else ''}",
+                callback_data=f"settings:mirror:{style}",
+            )
+        ]
+        for style, label in MIRROR_STYLE_LABELS.items()
+    ]
+    return InlineKeyboardMarkup(language_rows + [pace_row] + style_rows)
+
+
+def settings_text(current: ContentPack, product: Mapping[str, Any]) -> str:
+    style = str(product.get("mirror_style") or "teacher")
+    style_label = MIRROR_STYLE_LABELS.get(style, MIRROR_STYLE_LABELS["teacher"])
+    return (
+        f"⚙️ *Настройки*\n\n"
+        f"Язык: *{current.title}*\n"
+        f"Карточек в уроке: *{product['daily_word_goal']}*\n"
+        f"Стиль AI: *{style_label}*\n\n"
+        "Выбери язык, ритм или стиль ответа:"
+    )
 
 
 async def send_start_message(message, context, *, first_name: str | None) -> None:
@@ -1337,6 +1365,13 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             document_version=AI_SETTINGS.consent_version,
         )
     )
+    if MIRROR_MEMORY_SETTINGS.enabled:
+        mirror_memory_text = (
+            "Контекст Mirror: до 20 последних реплик, "
+            f"хранение {MIRROR_MEMORY_SETTINGS.retention_days} дней."
+        )
+    else:
+        mirror_memory_text = "Долговременный контекст Mirror: выключен."
     await update.effective_message.reply_text(
         "Приватность MY DICTIONARY\n\n"
         "Учебная история, события продукта и AI-запросы удаляются по "
@@ -1347,7 +1382,8 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "AI-согласие: принято."
             if ai_consent
             else "AI-согласие: не выдано."
-        ),
+        )
+        + f"\n{mirror_memory_text}",
         reply_markup=InlineKeyboardMarkup(
             [
                 [
@@ -1502,12 +1538,7 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         product = runtime.store.product_profile(runtime.user_id)
         await context.bot.send_message(
             chat_id=chat_id,
-            text=(
-                f"⚙️ *Настройки*\n\n"
-                f"Язык: *{current.title}*\n"
-                f"Карточек в уроке: *{product['daily_word_goal']}*\n\n"
-                "Выбери язык или ритм:"
-            ),
+            text=settings_text(current, product),
             reply_markup=settings_keyboard(product),
             parse_mode="Markdown",
         )
@@ -1543,25 +1574,25 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except ValueError:
         await query.answer("Настройка устарела.", show_alert=True)
         return
-    if setting != "pace" or value not in {"5", "10", "20"}:
+    runtime = _ACTIVE_RUNTIME.get()
+    if setting == "pace" and value in {"5", "10", "20"}:
+        await query.answer("Ритм сохранён")
+        product = runtime.store.update_product_profile(
+            runtime.user_id, daily_word_goal=int(value)
+        )
+        record_product_event(
+            "daily_goal_updated", properties={"daily_word_goal": int(value)}
+        )
+    elif setting == "mirror" and value in MIRROR_STYLE_LABELS:
+        saved = runtime.store.set_mirror_style(runtime.user_id, value)
+        await query.answer(f"Стиль: {MIRROR_STYLE_LABELS[saved]}")
+        product = runtime.store.product_profile(runtime.user_id)
+    else:
         await query.answer("Настройка недоступна.", show_alert=True)
         return
-    await query.answer("Ритм сохранён")
-    runtime = _ACTIVE_RUNTIME.get()
-    product = runtime.store.update_product_profile(
-        runtime.user_id, daily_word_goal=int(value)
-    )
-    record_product_event(
-        "daily_goal_updated", properties={"daily_word_goal": int(value)}
-    )
     current = active_content_pack()
     await query.edit_message_text(
-        (
-            f"⚙️ *Настройки*\n\n"
-            f"Язык: *{current.title}*\n"
-            f"Карточек в уроке: *{product['daily_word_goal']}*\n\n"
-            "Выбери язык или ритм:"
-        ),
+        settings_text(current, product),
         reply_markup=settings_keyboard(product),
         parse_mode="Markdown",
     )
@@ -2323,6 +2354,13 @@ def _mirror_mode(store, user_id: int) -> str:
     return mode if mode in {"text", "voice", "both"} else "text"
 
 
+def _mirror_style(store, user_id: int) -> str:
+    try:
+        return normalize_mirror_style(store.get_mirror_style(user_id))
+    except (AttributeError, TypeError, ValueError):
+        return "teacher"
+
+
 @auth
 async def cmd_mirror_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = " ".join(getattr(context, "args", [])).strip().lower()
@@ -2369,6 +2407,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     question = str(update.message.text or "").strip()
     mirror_profile = get_bot_profile()
+    response_style = _mirror_style(store, user_id)
     intent = classify_mirror_intent(question)
     if intent == "greeting":
         role = str(profile.get("role") or "learner")
@@ -2423,6 +2462,17 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                     "weak_terms": [],
                 }
             )
+            if MIRROR_MEMORY_SETTINGS.enabled:
+                try:
+                    dialogue = store.get_mirror_dialogue(user_id, limit=20)
+                except Exception as exc:
+                    logger.warning(
+                        "Mirror memory read failed: error_type=%s",
+                        type(exc).__name__,
+                    )
+                    dialogue = recent_mirror_dialogue(context.user_data)
+            else:
+                dialogue = recent_mirror_dialogue(context.user_data)
             payload = build_mirror_provider_payload(
                 question=question,
                 admin_guidance=mirror_profile.get(
@@ -2435,7 +2485,8 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                     context.user_data,
                     snapshot,
                 ),
-                recent_dialogue=recent_mirror_dialogue(context.user_data),
+                recent_dialogue=dialogue,
+                response_style=response_style,
             )
             service = get_ai_tutor_service()
             if isinstance(service, AITutorService) and hasattr(service, "ask_mirror"):
@@ -2493,6 +2544,18 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         speech_consented=speech_consented,
         voice_renderer=voice_renderer,
     )
+    if intent == "learning_question" and MIRROR_MEMORY_SETTINGS.enabled:
+        try:
+            store.append_mirror_exchange(
+                user_id,
+                question=question,
+                answer=response,
+                retention_days=MIRROR_MEMORY_SETTINGS.retention_days,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Mirror memory write failed: error_type=%s", type(exc).__name__
+            )
     append_mirror_turn(context.user_data, role="user", text=question)
     append_mirror_turn(context.user_data, role="assistant", text=response)
 

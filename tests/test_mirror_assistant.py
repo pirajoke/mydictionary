@@ -375,11 +375,13 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
                 "grounded_snapshot",
                 "learning_context",
                 "recent_dialogue",
+                "response_style",
             },
         )
         self.assertEqual(payload["grounded_snapshot"], snapshot)
         self.assertIn("immutable", payload["safety_envelope"].lower())
         self.assertEqual(payload["recent_dialogue"], [])
+        self.assertEqual(payload["response_style"], "teacher")
         self.assertEqual(payload["learning_context"], {})
         self.assertNotIn("telegram_user_id", serialized)
         self.assertNotIn("secret", serialized.lower())
@@ -653,6 +655,8 @@ class MirrorMeteredIntegrationTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("猫", json.dumps(provider_input, ensure_ascii=False))
         self.assertIn("admin_guidance", provider_input)
         self.assertIn("safety_envelope", provider_input)
+        self.assertEqual(provider_input["response_style"], "teacher")
+        self.assertIn("style_guidance", provider_input)
         self.assertEqual(provider_input["learning_context"]["language"], "ja")
         self.assertGreater(len(provider_input["learning_context"]["words"]), 0)
         self.assertLessEqual(len(provider_input["learning_context"]["words"]), 12)
@@ -1042,7 +1046,7 @@ class MirrorProgressAndPreferenceTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0014_mirror_assistant_v1")
+        self.assertEqual(revision, "0015_mirror_quality_v3")
 
         set_mode = required_public(self, self.store, "set_mirror_response_mode")
         get_mode = required_public(self, self.store, "get_mirror_response_mode")
@@ -1123,7 +1127,7 @@ class MirrorProgressAndPreferenceTest(unittest.TestCase):
             roundtrip_revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(roundtrip_revision, "0014_mirror_assistant_v1")
+        self.assertEqual(roundtrip_revision, "0015_mirror_quality_v3")
         self.store.ensure_user_id(614)
         self.assertEqual(self.store.get_mirror_response_mode(614), "text")
 

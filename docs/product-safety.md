@@ -46,19 +46,25 @@ must first be recovered by the normal AI reservation recovery path.
 | abuse events | 180 days |
 | inactive rate-limit buckets | 7 days |
 | voice transcripts and completed voice sessions | 30 days |
+| optional Mirror dialogue turns | 7 days per turn |
 
 The corresponding environment variables are `RETENTION_ANALYTICS_DAYS`,
 `RETENTION_AI_USAGE_DAYS`, `RETENTION_ABUSE_DAYS`, and
 `RETENTION_RATE_LIMIT_DAYS`.
 Voice transcript expiry uses `VOICE_TRANSCRIPT_RETENTION_DAYS`.
+Mirror dialogue expiry uses `MIRROR_DIALOGUE_RETENTION_DAYS` and applies only
+when `MIRROR_MEMORY_ENABLED=true`; memory is disabled by default, physically
+limited to 20 turns per learner, cleared when AI consent is revoked, and requires
+a current AI-processing consent version.
 
 The `/privacy` flow erases learning progress, product analytics, detailed AI
-usage, imports, rate-limit state, and Telegram profile fields. It blocks the
-account and records a pseudonymous operation reference. Billing, credit ledger,
-refund, subscription, and administrator audit records remain available for
-financial reconciliation, refunds, and fraud review. This behavior is a product
-contract, not a claim of legal compliance; jurisdiction-specific retention must
-be reviewed before launch.
+usage, optional Mirror dialogue turns, imports, rate-limit state, and Telegram
+profile fields. It also resets the learner's Mirror style. It blocks the account
+and records a pseudonymous operation reference. Billing, credit ledger, refund,
+subscription, and administrator audit records remain available for financial
+reconciliation, refunds, and fraud review. This behavior is a product contract,
+not a claim of legal compliance; jurisdiction-specific retention must be
+reviewed before launch.
 
 ## Monitoring
 

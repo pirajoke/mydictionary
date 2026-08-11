@@ -111,7 +111,7 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-            self.assertEqual(revision, "0014_mirror_assistant_v1")
+        self.assertEqual(revision, "0015_mirror_quality_v3")
 
         ai_usage_columns = {
             column["name"] for column in inspector.get_columns("ai_usage")

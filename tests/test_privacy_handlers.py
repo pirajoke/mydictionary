@@ -114,6 +114,12 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
             document_version=version,
             source="telegram",
         )
+        self.store.append_mirror_exchange(
+            self.user.id,
+            question="private question",
+            answer="private answer",
+            retention_days=7,
+        )
         message = SimpleNamespace(reply_text=AsyncMock())
         command_update = SimpleNamespace(
             effective_message=message,
@@ -123,6 +129,11 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(bot, "get_store", return_value=self.store),
             patch.object(bot, "AI_SETTINGS", settings),
+            patch.object(
+                bot,
+                "MIRROR_MEMORY_SETTINGS",
+                SimpleNamespace(enabled=True, retention_days=7),
+            ),
             bot.learner_scope(self.user),
         ):
             await bot.cmd_privacy.__wrapped__(command_update, SimpleNamespace())
@@ -130,6 +141,8 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
         rendered = message.reply_text.await_args.args[0]
         self.assertIn("AI", rendered)
         self.assertIn("принято", rendered.lower())
+        self.assertIn("20", rendered)
+        self.assertIn("7 дней", rendered)
 
         query = SimpleNamespace(
             data="privacy:ai_revoke",
@@ -159,5 +172,6 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         self.assertNotIn("pending_ai_consent", context.user_data)
+        self.assertEqual(self.store.get_mirror_dialogue(self.user.id), [])
         with self.store.Session() as session:
             self.assertEqual(session.get(User, self.user.id).privacy_status, "active")
