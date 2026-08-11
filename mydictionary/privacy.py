@@ -20,6 +20,8 @@ from mydictionary.storage import (
     DataImport,
     DatabaseStore,
     MirrorDialogueTurn,
+    MirrorResponseFeedback,
+    MirrorResponseQuality,
     RateLimitBucket,
     TelegramNotification,
     User,
@@ -278,9 +280,9 @@ def _user_reference(user_id: int) -> str:
 
 def erase_user_learning_data(
     store: DatabaseStore,
-    *,
     user_id: int,
-    actor: str,
+    *,
+    actor: str = "user",
 ) -> PrivacyDeletionResult:
     """Erase product data while retaining immutable billing and audit records."""
     reference = _user_reference(user_id)
@@ -299,6 +301,8 @@ def erase_user_learning_data(
 
         deleted_rows = 0
         for model in (
+            MirrorResponseFeedback,
+            MirrorResponseQuality,
             VoiceTurn,
             VoiceSession,
             MirrorDialogueTurn,
@@ -323,7 +327,11 @@ def erase_user_learning_data(
                 delete(UserConsent).where(
                     UserConsent.telegram_user_id == int(user_id),
                     UserConsent.consent_type.in_(
-                        ("voice_processing", "ai_processing")
+                        (
+                            "voice_processing",
+                            "voice_translation_processing",
+                            "ai_processing",
+                        )
                     ),
                 )
             ).rowcount
@@ -350,7 +358,8 @@ def erase_user_learning_data(
         session.execute(
             text(
                 "UPDATE users SET mirror_response_mode = NULL, "
-                "mirror_style = 'teacher' "
+                "mirror_style = 'teacher', mirror_depth = 'balanced', "
+                "mirror_level = 'adaptive' "
                 "WHERE telegram_user_id = :user_id"
             ),
             {"user_id": int(user_id)},

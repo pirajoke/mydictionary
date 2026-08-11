@@ -38,6 +38,7 @@ from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
 from mydictionary.content import example_target_text
+from mydictionary.mirror_assistant import MIRROR_COMMUNICATION_MODES
 from mydictionary.commercial_launch import (
     CommercialLaunchError,
     commercial_launch_overview,
@@ -541,9 +542,18 @@ def create_app(
             context["learning"] = admin_store.learning_by_language()
             context["content"] = _content_overview()
         elif tab == "ai":
+            try:
+                mirror_days = int(str(request.args.get("days") or "30"))
+            except ValueError:
+                mirror_days = 30
+            if mirror_days not in {7, 30, 90}:
+                mirror_days = 30
             context["ai"] = admin_store.ai_overview()
             context["usage"] = admin_store.recent_ai_usage(limit=100)
             context["ledger"] = admin_store.credit_ledger(limit=100)
+            context["mirror_quality"] = admin_store.mirror_quality_analytics(
+                days=mirror_days
+            )
         elif tab == "billing":
             context["billing"] = admin_store.billing_overview()
             context["products"] = admin_store.billing_products()
@@ -571,6 +581,11 @@ def create_app(
             context["voice_turns"] = admin_store.recent_voice_turns(limit=100)
         elif tab == "content":
             context["content"] = _content_overview()
+        elif tab == "profile":
+            context["mirror_control"] = admin_store.get_mirror_control_plane()
+            context["mirror_snapshots"] = (
+                admin_store.mirror_control_plane_snapshots(limit=10)
+            )
         elif tab == "diagnostics":
             with store.engine.connect() as connection:
                 revision = connection.execute(
@@ -796,6 +811,42 @@ def create_app(
         except ValueError:
             return "Mirror settings rejected.", 400
         flash("Настройки Mirror Assistant сохранены.", "success")
+        return redirect(url_for("admin_index", tab="profile"))
+
+    @app.post("/admin/settings/mirror-control-plane")
+    @login_required
+    def update_mirror_control_plane():
+        values = {
+            "policy_version": str(request.form.get("policy_version") or ""),
+            "enabled_modes": request.form.getlist("enabled_modes"),
+            "default_mode": str(request.form.get("default_mode") or ""),
+            "answer_depth": str(request.form.get("answer_depth") or ""),
+            "learner_level": str(request.form.get("learner_level") or ""),
+            "mode_guidance": {
+                mode: str(request.form.get(f"guidance_{mode}") or "")
+                for mode in MIRROR_COMMUNICATION_MODES
+            },
+        }
+        try:
+            admin_store.update_mirror_control_plane(
+                values, actor=current_actor()
+            )
+        except ValueError:
+            return "Mirror control plane rejected.", 400
+        flash("Режимы, глубина и уровень Mirror сохранены.", "success")
+        return redirect(url_for("admin_index", tab="profile"))
+
+    @app.post("/admin/settings/mirror-control-plane/restore")
+    @login_required
+    def restore_mirror_control_plane():
+        try:
+            admin_store.restore_mirror_control_plane(
+                str(request.form.get("snapshot_id") or ""),
+                actor=current_actor(),
+            )
+        except ValueError:
+            return "Mirror control plane snapshot rejected.", 400
+        flash("Версия Mirror восстановлена новым snapshot.", "success")
         return redirect(url_for("admin_index", tab="profile"))
 
     @app.post("/admin/credits")

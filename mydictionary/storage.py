@@ -66,6 +66,11 @@ WORD_PROGRESS_DEFAULTS = {
     "interval": 1,
     "next_review": None,
 }
+METERED_PROVIDER_ACTIONS = (
+    "block_tutor",
+    "voice_transcription",
+    "voice_translation",
+)
 
 
 def utcnow() -> datetime:
@@ -249,7 +254,8 @@ class UserConsent(Base):
     __tablename__ = "user_consents"
     __table_args__ = (
         CheckConstraint(
-            "consent_type IN ('billing_terms', 'voice_processing', 'ai_processing')",
+            "consent_type IN ('billing_terms', 'voice_processing', "
+            "'voice_translation_processing', 'ai_processing')",
             name="ck_user_consent_type",
         ),
         UniqueConstraint(
@@ -523,6 +529,70 @@ class AIUsage(Base):
     )
     provider_completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+
+class MirrorPolicySnapshot(Base):
+    __tablename__ = "mirror_policy_snapshots"
+
+    snapshot_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    enabled_modes_json: Mapped[str] = mapped_column(Text, nullable=False)
+    default_mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    answer_depth: Mapped[str] = mapped_column(String(16), nullable=False)
+    learner_level: Mapped[str] = mapped_column(String(16), nullable=False)
+    mode_guidance_json: Mapped[str] = mapped_column(Text, nullable=False)
+    config_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    actor: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+
+
+class MirrorResponseQuality(Base):
+    __tablename__ = "mirror_response_quality"
+
+    request_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ai_usage.request_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    task: Mapped[str] = mapped_column(String(32), nullable=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    depth: Mapped[str] = mapped_column(String(16), nullable=False)
+    level: Mapped[str] = mapped_column(String(16), nullable=False)
+    contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_length: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    example_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    has_next_step: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    deterministic_score_bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+
+
+class MirrorResponseFeedback(Base):
+    __tablename__ = "mirror_response_feedback"
+
+    request_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("ai_usage.request_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    helpful: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
     )
 
 
@@ -938,7 +1008,12 @@ EVENT_PROPERTY_KEYS = {
     "wrong_count",
 }
 EVENT_DIMENSION_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
-CONSENT_TYPES = {"billing_terms", "voice_processing", "ai_processing"}
+CONSENT_TYPES = {
+    "billing_terms",
+    "voice_processing",
+    "voice_translation_processing",
+    "ai_processing",
+}
 
 
 def run_migrations(database_url: str) -> None:
@@ -1118,6 +1193,181 @@ class DatabaseStore:
                 },
             )
         return normalized
+
+    def get_mirror_preferences(self, user_id: int) -> dict[str, str]:
+        """Return bounded learner-facing Mirror preferences."""
+        defaults = {
+            "mode": "teacher",
+            "depth": "balanced",
+            "level": "adaptive",
+        }
+        self.ensure_user_id(user_id)
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                text(
+                    "SELECT privacy_status, mirror_style, mirror_depth, mirror_level "
+                    "FROM users WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).mappings().one()
+        if row["privacy_status"] != "active":
+            return defaults
+        mode = str(row["mirror_style"] or defaults["mode"])
+        depth = str(row["mirror_depth"] or defaults["depth"])
+        level = str(row["mirror_level"] or defaults["level"])
+        return {
+            "mode": mode
+            if mode
+            in {"teacher", "conversation", "coach", "practice", "brief", "exam"}
+            else defaults["mode"],
+            "depth": depth
+            if depth in {"compact", "balanced", "deep"}
+            else defaults["depth"],
+            "level": level
+            if level in {"adaptive", "a1", "a2", "b1", "b2", "c1"}
+            else defaults["level"],
+        }
+
+    def set_mirror_preferences(
+        self,
+        user_id: int,
+        *,
+        mode: str,
+        depth: str,
+        level: str,
+    ) -> dict[str, str]:
+        values = {
+            "mode": str(mode).strip().lower(),
+            "depth": str(depth).strip().lower(),
+            "level": str(level).strip().lower(),
+        }
+        if values["mode"] not in {
+            "teacher",
+            "conversation",
+            "coach",
+            "practice",
+            "brief",
+            "exam",
+        }:
+            raise ValueError("Unknown Mirror communication mode")
+        if values["depth"] not in {"compact", "balanced", "deep"}:
+            raise ValueError("Unknown Mirror answer depth")
+        if values["level"] not in {
+            "adaptive",
+            "a1",
+            "a2",
+            "b1",
+            "b2",
+            "c1",
+        }:
+            raise ValueError("Unknown Mirror learner level")
+        self.ensure_user_id(user_id)
+        with self.engine.begin() as connection:
+            privacy_status = connection.execute(
+                text(
+                    "SELECT privacy_status FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).scalar_one()
+            if privacy_status != "active":
+                raise ValueError("Erased users cannot change Mirror preferences")
+            connection.execute(
+                text(
+                    "UPDATE users SET mirror_style = :mode, "
+                    "mirror_depth = :depth, mirror_level = :level, "
+                    "updated_at = :updated_at WHERE telegram_user_id = :user_id"
+                ),
+                {
+                    **values,
+                    "updated_at": utcnow(),
+                    "user_id": int(user_id),
+                },
+            )
+        return values
+
+    def record_mirror_quality(
+        self,
+        *,
+        request_id: str,
+        user_id: int,
+        task: str,
+        mode: str,
+        depth: str,
+        level: str,
+        contract_version: str,
+        response_length: int,
+        evidence_count: int,
+        example_count: int,
+        has_next_step: bool,
+        deterministic_score_bps: int,
+    ) -> dict[str, Any]:
+        score = int(deterministic_score_bps)
+        if not 0 <= score <= 10000:
+            raise ValueError("Mirror quality score must be 0-10000")
+        with self.Session.begin() as session:
+            usage = session.get(AIUsage, str(request_id))
+            if usage is None or usage.telegram_user_id != int(user_id):
+                raise PermissionError("Mirror quality request owner mismatch")
+            existing = session.get(MirrorResponseQuality, str(request_id))
+            if existing is not None:
+                row = existing
+            else:
+                row = MirrorResponseQuality(
+                    request_id=str(request_id),
+                    telegram_user_id=int(user_id),
+                    task=str(task)[:32],
+                    mode=str(mode)[:16],
+                    depth=str(depth)[:16],
+                    level=str(level)[:16],
+                    contract_version=str(contract_version)[:64],
+                    response_length=max(0, int(response_length)),
+                    evidence_count=max(0, int(evidence_count)),
+                    example_count=max(0, int(example_count)),
+                    has_next_step=bool(has_next_step),
+                    deterministic_score_bps=score,
+                )
+                session.add(row)
+        return self.mirror_quality_for_request(str(request_id))
+
+    def mirror_quality_for_request(self, request_id: str) -> dict[str, Any]:
+        with self.Session() as session:
+            row = session.get(MirrorResponseQuality, str(request_id))
+            if row is None:
+                return {}
+            return {
+                column.name: getattr(row, column.name)
+                for column in MirrorResponseQuality.__table__.columns
+            }
+
+    def rate_mirror_response(
+        self, user_id: int, *, request_id: str, helpful: bool
+    ) -> bool:
+        with self.Session.begin() as session:
+            usage = session.get(AIUsage, str(request_id))
+            if usage is None or usage.telegram_user_id != int(user_id):
+                raise PermissionError("Mirror response owner mismatch")
+            existing = session.get(MirrorResponseFeedback, str(request_id))
+            if existing is not None:
+                return False
+            session.add(
+                MirrorResponseFeedback(
+                    request_id=str(request_id),
+                    telegram_user_id=int(user_id),
+                    helpful=bool(helpful),
+                )
+            )
+        return True
+
+    def mirror_feedback_for_request(self, request_id: str) -> dict[str, Any]:
+        with self.Session() as session:
+            row = session.get(MirrorResponseFeedback, str(request_id))
+            if row is None:
+                return {}
+            return {
+                column.name: getattr(row, column.name)
+                for column in MirrorResponseFeedback.__table__.columns
+            }
 
     def append_mirror_exchange(
         self,
@@ -1869,7 +2119,7 @@ class DatabaseStore:
     def _ai_actual_spend(session: Any, *, since: datetime) -> int:
         value = session.execute(
             select(func.sum(AIUsage.cost_micro_usd)).where(
-                AIUsage.action == "block_tutor",
+                AIUsage.action.in_(METERED_PROVIDER_ACTIONS),
                 or_(
                     AIUsage.provider_response_received.is_(True),
                     and_(
@@ -2644,7 +2894,7 @@ class DatabaseStore:
             state = self._ensure_ai_budget_state(session)
             reserved_attempts = session.execute(
                 select(func.count(AIUsage.request_id)).where(
-                    AIUsage.action == "block_tutor",
+                    AIUsage.action.in_(METERED_PROVIDER_ACTIONS),
                     AIUsage.status == "reserved",
                 )
             ).scalar_one()
@@ -2677,7 +2927,7 @@ class DatabaseStore:
                 return False
             reserved_attempts = session.execute(
                 select(func.count(AIUsage.request_id)).where(
-                    AIUsage.action == "block_tutor",
+                    AIUsage.action.in_(METERED_PROVIDER_ACTIONS),
                     AIUsage.status == "reserved",
                 )
             ).scalar_one()

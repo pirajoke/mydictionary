@@ -6,8 +6,9 @@ enables it with complete pricing and credential settings.
 
 ## Learner flows
 
-`/voice` starts pronunciation practice for the words in the active ten-word
-block. Before the first session for the current notice version, the learner must
+`/voice` opens one selector for pronunciation practice, guided phrases, and
+completed-voice-note translation. Pronunciation practice uses the words in the
+active ten-word block. Before the first session for the current notice version, the learner must
 accept that Telegram audio will be sent to OpenAI for transcription. The bot
 checks that consent again before downloading each voice message. Each turn is
 presented in this order:

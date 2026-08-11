@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_CEILING
 from difflib import SequenceMatcher
 import hashlib
 import json
 import os
+from pathlib import Path
 import re
 from time import perf_counter
 from typing import Any, Mapping, Protocol, Sequence
@@ -17,6 +18,7 @@ from uuid import uuid4
 
 from sqlalchemy import select
 
+from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.ai_tutor import ProviderUsage
 from mydictionary.storage import (
     AIQuotaExceeded,
@@ -26,6 +28,9 @@ from mydictionary.storage import (
     VoiceTurn,
     utcnow,
 )
+
+
+_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
 class VoiceConfigurationError(RuntimeError):
@@ -217,6 +222,238 @@ class VoiceTutorSettings:
 
 
 @dataclass(frozen=True)
+class VoiceTranslationSettings:
+    enabled: bool = False
+    provider: str = "openai"
+    transcription_model: str = "gpt-4o-transcribe"
+    translation_model: str = "gpt-5.6-luna"
+    requested_service_tier: str = "default"
+    openai_api_key: str | None = None
+    consent_version: str = "unversioned"
+    processing_notice: str = ""
+    stt_cost_micro_usd_per_minute: Decimal = Decimal(0)
+    input_usd_per_million: Decimal = Decimal(0)
+    output_usd_per_million: Decimal = Decimal(0)
+    pricing_reviewed_on: str = ""
+    max_audio_bytes: int = 8 * 1024 * 1024
+    max_duration_seconds: int = 30
+    initial_credits: int = 0
+    stt_credits_per_request: int = 1
+    translation_credits_per_request: int = 1
+    reservation_timeout_seconds: int = 300
+    max_preflight_cost_micro_usd: int = 5000
+    retrospective_breaker_micro_usd_per_response: int = 5000
+    max_daily_requests_per_user: int = 5
+    max_project_cost_micro_usd_per_day: int = 25000
+    max_project_cost_micro_usd_per_month: int = 100000
+    max_in_flight_cost_micro_usd: int = 5000
+    economics_snapshot_id: str = "voice-translation-disabled"
+    economics_snapshot_sha256: str = "0" * 64
+    metering_journal_path: str | None = None
+
+    @classmethod
+    def from_env(
+        cls,
+        values: Mapping[str, str] | None = None,
+        *,
+        existing_voice_consent_version: str | None = None,
+    ) -> "VoiceTranslationSettings":
+        env = values if values is not None else os.environ
+        enabled = _bool(env.get("VOICE_TRANSLATION_ENABLED", "false"))
+        if not enabled:
+            return cls(enabled=False)
+        provider = str(env.get("VOICE_TRANSLATION_PROVIDER", "openai")).strip().lower()
+        if provider != "openai":
+            raise ValueError("VOICE_TRANSLATION_PROVIDER must be openai")
+        consent_version = str(
+            env.get("VOICE_TRANSLATION_CONSENT_VERSION", "")
+        ).strip()
+        notice = str(env.get("VOICE_TRANSLATION_PROCESSING_NOTICE", "")).strip()
+        if (
+            not _VERSION_RE.fullmatch(consent_version)
+            or consent_version == str(existing_voice_consent_version or "").strip()
+        ):
+            raise ValueError("Voice translation requires a distinct consent version")
+        notice_folded = notice.casefold()
+        if (
+            not 40 <= len(notice) <= 1000
+            or "перевод" not in notice_folded
+            or "распозна" not in notice_folded
+        ):
+            raise ValueError("Voice translation processing notice is incomplete")
+        stt_cost = _decimal(
+            env.get("VOICE_TRANSLATION_STT_MICRO_USD_PER_MINUTE", "0"),
+            "VOICE_TRANSLATION_STT_MICRO_USD_PER_MINUTE",
+        )
+        input_rate = _decimal(
+            env.get("VOICE_TRANSLATION_INPUT_USD_PER_MILLION", "0"),
+            "VOICE_TRANSLATION_INPUT_USD_PER_MILLION",
+        )
+        output_rate = _decimal(
+            env.get("VOICE_TRANSLATION_OUTPUT_USD_PER_MILLION", "0"),
+            "VOICE_TRANSLATION_OUTPUT_USD_PER_MILLION",
+        )
+        if min(stt_cost, input_rate, output_rate) <= 0:
+            raise ValueError("Voice translation requires positive reviewed prices")
+        reviewed_on = str(
+            env.get("VOICE_TRANSLATION_PRICING_REVIEWED_ON", "")
+        ).strip()
+        try:
+            reviewed_date = date.fromisoformat(reviewed_on)
+        except ValueError as exc:
+            raise ValueError("Voice translation pricing review date is invalid") from exc
+        if reviewed_date > date.today() or (date.today() - reviewed_date).days > 30:
+            raise ValueError("Voice translation pricing review is stale")
+        api_key = str(env.get("OPENAI_API_KEY", "")).strip() or None
+        if not api_key:
+            raise ValueError("Enabled voice translation requires OPENAI_API_KEY")
+        max_preflight_cost = _bounded_int(
+            env,
+            "VOICE_TRANSLATION_MAX_PREFLIGHT_COST_MICRO_USD",
+            default=5000,
+            minimum=1,
+            maximum=1000000,
+        )
+        retrospective_breaker = _bounded_int(
+            env,
+            "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE",
+            default=5000,
+            minimum=1,
+            maximum=1000000,
+        )
+        max_daily_requests = _bounded_int(
+            env,
+            "AI_MAX_DAILY_REQUESTS_PER_USER",
+            default=5,
+            minimum=1,
+            maximum=100,
+        )
+        daily_budget = _bounded_int(
+            env,
+            "AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY",
+            default=25000,
+            minimum=1,
+            maximum=100000000,
+        )
+        monthly_budget = _bounded_int(
+            env,
+            "AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH",
+            default=100000,
+            minimum=1,
+            maximum=1000000000,
+        )
+        in_flight_budget = _bounded_int(
+            env,
+            "AI_MAX_IN_FLIGHT_COST_MICRO_USD",
+            default=5000,
+            minimum=1,
+            maximum=100000000,
+        )
+        if monthly_budget < daily_budget:
+            raise ValueError("Voice translation monthly budget cannot be below daily")
+        if in_flight_budget < max_preflight_cost:
+            raise ValueError(
+                "Voice translation in-flight budget cannot be below one request"
+            )
+        snapshot_payload = {
+            "input_usd_per_million": str(input_rate),
+            "output_usd_per_million": str(output_rate),
+            "provider": provider,
+            "requested_service_tier": str(
+                env.get("VOICE_TRANSLATION_SERVICE_TIER", "default")
+            ).strip(),
+            "reviewed_on": reviewed_on,
+            "stt_micro_usd_per_minute": str(stt_cost),
+            "transcription_model": str(
+                env.get("VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe")
+            ).strip(),
+            "translation_model": str(
+                env.get("VOICE_TRANSLATION_MODEL", "gpt-5.6-luna")
+            ).strip(),
+        }
+        snapshot_sha256 = hashlib.sha256(
+            json.dumps(
+                snapshot_payload,
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        journal_path = str(env.get("AI_METERING_JOURNAL_PATH", "")).strip()
+        return cls(
+            enabled=True,
+            provider=provider,
+            transcription_model=str(
+                env.get("VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe")
+            ).strip(),
+            translation_model=str(
+                env.get("VOICE_TRANSLATION_MODEL", "gpt-5.6-luna")
+            ).strip(),
+            requested_service_tier=str(
+                env.get("VOICE_TRANSLATION_SERVICE_TIER", "default")
+            ).strip(),
+            openai_api_key=api_key,
+            consent_version=consent_version,
+            processing_notice=notice,
+            stt_cost_micro_usd_per_minute=stt_cost,
+            input_usd_per_million=input_rate,
+            output_usd_per_million=output_rate,
+            pricing_reviewed_on=reviewed_on,
+            max_audio_bytes=_bounded_int(
+                env,
+                "VOICE_TRANSLATION_MAX_AUDIO_BYTES",
+                default=8 * 1024 * 1024,
+                minimum=1024,
+                maximum=20 * 1024 * 1024,
+            ),
+            max_duration_seconds=_bounded_int(
+                env,
+                "VOICE_TRANSLATION_MAX_DURATION_SECONDS",
+                default=30,
+                minimum=2,
+                maximum=120,
+            ),
+            initial_credits=_bounded_int(
+                env, "AI_INITIAL_CREDITS", default=0, minimum=0, maximum=1000000
+            ),
+            stt_credits_per_request=_bounded_int(
+                env,
+                "VOICE_TRANSLATION_STT_CREDITS_PER_REQUEST",
+                default=1,
+                minimum=1,
+                maximum=100,
+            ),
+            translation_credits_per_request=_bounded_int(
+                env,
+                "VOICE_TRANSLATION_CREDITS_PER_REQUEST",
+                default=1,
+                minimum=1,
+                maximum=100,
+            ),
+            reservation_timeout_seconds=_bounded_int(
+                env,
+                "AI_RESERVATION_TIMEOUT_SECONDS",
+                default=300,
+                minimum=60,
+                maximum=86400,
+            ),
+            max_preflight_cost_micro_usd=max_preflight_cost,
+            retrospective_breaker_micro_usd_per_response=retrospective_breaker,
+            max_daily_requests_per_user=max_daily_requests,
+            max_project_cost_micro_usd_per_day=daily_budget,
+            max_project_cost_micro_usd_per_month=monthly_budget,
+            max_in_flight_cost_micro_usd=in_flight_budget,
+            economics_snapshot_id=f"voice-translation-{reviewed_on}",
+            economics_snapshot_sha256=snapshot_sha256,
+            metering_journal_path=str(
+                Path(journal_path).expanduser()
+                if journal_path
+                else Path("data") / "ai-metering-fallback.jsonl"
+            ),
+        )
+
+
+@dataclass(frozen=True)
 class VoiceWord:
     vocabulary_id: str
     target: str
@@ -247,6 +484,7 @@ class TranscriptionRequest:
     audio: bytes
     language: str
     prompt: str
+    detect_language: bool = False
 
 
 @dataclass(frozen=True)
@@ -255,6 +493,9 @@ class TranscriptionResult:
     response_id: str | None
     model: str
     usage: ProviderUsage
+    detected_language: str = ""
+    service_tier: str = "default"
+    status: str = "completed"
 
 
 class TranscriptionProvider(Protocol):
@@ -315,12 +556,18 @@ class OpenAITranscriptionProvider:
     async def transcribe(
         self, request: TranscriptionRequest
     ) -> TranscriptionResult:
+        values = {
+            "file": ("voice.ogg", request.audio, "audio/ogg"),
+            "model": self.model,
+            "prompt": request.prompt[:500],
+            "response_format": (
+                "verbose_json" if request.detect_language else "json"
+            ),
+        }
+        if request.language:
+            values["language"] = request.language
         response = await self.client.audio.transcriptions.create(
-            file=("voice.ogg", request.audio, "audio/ogg"),
-            model=self.model,
-            language=request.language,
-            prompt=request.prompt[:500],
-            response_format="json",
+            **values,
         )
         text = str(_attr(response, "text", "")).strip()
         if not 1 <= len(text) <= 1000:
@@ -342,6 +589,7 @@ class OpenAITranscriptionProvider:
             response_id=str(_attr(response, "id", "")) or None,
             model=str(_attr(response, "model", self.model)),
             usage=provider_usage,
+            detected_language=str(_attr(response, "language", request.language)),
         )
 
 
@@ -670,3 +918,598 @@ def build_openai_voice_service(
             model=settings.model,
         )
     return VoiceTutorService(store=store, provider=provider, settings=settings)
+
+
+@dataclass(frozen=True)
+class VoiceTranslationRequest:
+    text: str
+    source_language: str
+    target_language: str
+
+
+@dataclass(frozen=True)
+class VoiceTranslationProviderResult:
+    translation: str
+    latin_transcription: str
+    response_id: str | None
+    model: str
+    service_tier: str
+    status: str
+    usage: ProviderUsage
+    cost_micro_usd: int = 0
+    output_text: str | None = None
+
+
+@dataclass(frozen=True)
+class VoiceTranslationResult:
+    detected_language: str
+    source_transcript: str
+    target_language: str
+    translation: str
+    latin_transcription: str
+    partial: bool
+    notice_ru: str
+
+
+class TranslationProvider(Protocol):
+    async def translate(
+        self, request: VoiceTranslationRequest
+    ) -> VoiceTranslationProviderResult: ...
+
+
+class DisabledTranslationProvider:
+    async def translate(
+        self, request: VoiceTranslationRequest
+    ) -> VoiceTranslationProviderResult:
+        raise VoiceConfigurationError("Voice translation is disabled")
+
+
+VOICE_TRANSLATION_REQUIREMENTS = (
+    "Return an accurate translation plus a readable Latin transcription. "
+    "Preserve ambiguity with semicolon-separated variants."
+)
+VOICE_TRANSLATION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "translation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000,
+        },
+        "latin_transcription": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000,
+        },
+    },
+    "required": ["translation", "latin_transcription"],
+}
+
+
+def serialize_voice_translation_input(request: VoiceTranslationRequest) -> str:
+    return json.dumps(
+        {
+            "source_language": request.source_language,
+            "target_language": request.target_language,
+            "text": request.text,
+            "requirements": VOICE_TRANSLATION_REQUIREMENTS,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
+class OpenAITranslationProvider:
+    """One-attempt structured translation adapter for completed voice notes."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str,
+        service_tier: str = "default",
+        client: Any | None = None,
+    ):
+        if not api_key:
+            raise VoiceConfigurationError("OpenAI API key is required")
+        self.model = model
+        self.service_tier = service_tier
+        if client is None:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(api_key=api_key, timeout=45.0, max_retries=0)
+        self.client = client
+
+    async def translate(
+        self, request: VoiceTranslationRequest
+    ) -> VoiceTranslationProviderResult:
+        response = await self.client.responses.create(
+            model=self.model,
+            service_tier=self.service_tier,
+            input=serialize_voice_translation_input(request),
+            max_output_tokens=400,
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "voice_translation",
+                    "strict": True,
+                    "schema": VOICE_TRANSLATION_SCHEMA,
+                }
+            },
+        )
+        usage = _attr(response, "usage", None)
+        provider_usage = ProviderUsage(
+            input_tokens=int(_attr(usage, "input_tokens", 0) or 0),
+            output_tokens=int(_attr(usage, "output_tokens", 0) or 0),
+            total_tokens=int(_attr(usage, "total_tokens", 0) or 0),
+        )
+        return VoiceTranslationProviderResult(
+            translation="",
+            latin_transcription="",
+            response_id=str(_attr(response, "id", "")) or None,
+            model=str(_attr(response, "model", self.model)),
+            service_tier=str(_attr(response, "service_tier", self.service_tier)),
+            status=str(_attr(response, "status", "completed")),
+            usage=provider_usage,
+            output_text=str(_attr(response, "output_text", "")),
+        )
+
+
+class VoiceTranslationService:
+    def __init__(
+        self,
+        *,
+        store: DatabaseStore,
+        transcription_provider: TranscriptionProvider,
+        translation_provider: TranslationProvider,
+        settings: VoiceTranslationSettings,
+        metering_journal: AIMeteringJournal | None = None,
+    ):
+        self.store = store
+        self.transcription_provider = transcription_provider
+        self.translation_provider = translation_provider
+        self.settings = settings
+        self.metering_journal = metering_journal or AIMeteringJournal(
+            getattr(settings, "metering_journal_path", None)
+            or "ai-metering-fallback.jsonl"
+        )
+
+    @staticmethod
+    def _usage(value: Any) -> dict[str, int]:
+        if isinstance(value, ProviderUsage):
+            return value.as_dict()
+        return ProviderUsage(
+            input_tokens=max(0, int(_attr(value, "input_tokens", 0) or 0)),
+            output_tokens=max(0, int(_attr(value, "output_tokens", 0) or 0)),
+            total_tokens=max(0, int(_attr(value, "total_tokens", 0) or 0)),
+        ).as_dict()
+
+    def _stt_cost(self, duration_seconds: int) -> int:
+        cost = (
+            Decimal(max(0, int(duration_seconds)))
+            * Decimal(str(self.settings.stt_cost_micro_usd_per_minute))
+            / Decimal(60)
+        )
+        return int(cost.to_integral_value(rounding=ROUND_CEILING))
+
+    def _translation_cost(self, result: Any) -> int:
+        explicit = int(_attr(result, "cost_micro_usd", 0) or 0)
+        if explicit > 0:
+            return explicit
+        usage = _attr(result, "usage", None)
+        input_tokens = max(0, int(_attr(usage, "input_tokens", 0) or 0))
+        output_tokens = max(0, int(_attr(usage, "output_tokens", 0) or 0))
+        input_rate = Decimal(str(getattr(self.settings, "input_usd_per_million", 0)))
+        output_rate = Decimal(str(getattr(self.settings, "output_usd_per_million", 0)))
+        return int(
+            (input_rate * input_tokens + output_rate * output_tokens).to_integral_value(
+                rounding=ROUND_CEILING
+            )
+        )
+
+    @staticmethod
+    def _language_code(value: Any) -> str:
+        normalized = str(value or "").strip().casefold()
+        aliases = {
+            "arabic": "ar",
+            "chinese": "zh",
+            "english": "en",
+            "french": "fr",
+            "german": "de",
+            "japanese": "ja",
+            "russian": "ru",
+            "spanish": "es",
+            "vietnamese": "vi",
+        }
+        code = aliases.get(normalized, normalized)
+        if not re.fullmatch(r"[a-z]{2,3}", code):
+            raise VoiceProviderError("Detected language is invalid")
+        return code
+
+    def _translation_preflight_cost(
+        self,
+        *,
+        transcript: str,
+        source_language: str,
+        target_language: str,
+    ) -> int:
+        serialized_input = serialize_voice_translation_input(
+            VoiceTranslationRequest(
+                text=transcript,
+                source_language=source_language,
+                target_language=target_language,
+            )
+        )
+        serialized_schema = json.dumps(
+            VOICE_TRANSLATION_SCHEMA,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        input_tokens = max(
+            1,
+            (len(serialized_input) + len(serialized_schema) + 1) // 2,
+        )
+        output_tokens = 400
+        input_rate = Decimal(str(getattr(self.settings, "input_usd_per_million", 0)))
+        output_rate = Decimal(str(getattr(self.settings, "output_usd_per_million", 0)))
+        return int(
+            (input_rate * input_tokens + output_rate * output_tokens).to_integral_value(
+                rounding=ROUND_CEILING
+            )
+        )
+
+    def _reservation_budget(self, projected_cost: int) -> dict[str, Any]:
+        return {
+            "max_daily_requests": int(
+                getattr(self.settings, "max_daily_requests_per_user", 5)
+            ),
+            "economics_snapshot_id": str(
+                getattr(
+                    self.settings,
+                    "economics_snapshot_id",
+                    "voice-translation-test",
+                )
+            ),
+            "economics_snapshot_sha256": str(
+                getattr(self.settings, "economics_snapshot_sha256", "0" * 64)
+            ),
+            "projected_cost_micro_usd": int(projected_cost),
+            "max_project_cost_micro_usd_per_day": int(
+                getattr(
+                    self.settings,
+                    "max_project_cost_micro_usd_per_day",
+                    25000,
+                )
+            ),
+            "max_project_cost_micro_usd_per_month": int(
+                getattr(
+                    self.settings,
+                    "max_project_cost_micro_usd_per_month",
+                    100000,
+                )
+            ),
+            "max_in_flight_cost_micro_usd": int(
+                getattr(self.settings, "max_in_flight_cost_micro_usd", 5000)
+            ),
+        }
+
+    def _record_provider_response(
+        self,
+        *,
+        request_id: str,
+        result: Any,
+        expected_model: str,
+        cost_micro_usd: int,
+        latency_ms: int,
+    ) -> None:
+        usage = self._usage(_attr(result, "usage", None))
+        model = str(_attr(result, "model", expected_model))
+        service_tier = str(
+            _attr(result, "service_tier", self.settings.requested_service_tier)
+        )
+        provider_status = str(_attr(result, "status", "completed"))
+        telemetry = {
+            "request_id": request_id,
+            "provider_response_id": _attr(result, "response_id", None),
+            "model": model,
+            "service_tier": service_tier,
+            "provider_status": provider_status,
+            **usage,
+            "cost_micro_usd": int(cost_micro_usd),
+            "latency_ms": int(latency_ms),
+        }
+        try:
+            self.store.record_ai_provider_response(
+                request_id,
+                provider_response_id=telemetry["provider_response_id"],
+                model=model,
+                service_tier=service_tier,
+                provider_status=provider_status,
+                usage=usage,
+                cost_micro_usd=int(cost_micro_usd),
+                latency_ms=int(latency_ms),
+                expected_model=expected_model,
+                expected_service_tier=self.settings.requested_service_tier,
+                retrospective_breaker_micro_usd=int(
+                    getattr(
+                        self.settings,
+                        "retrospective_breaker_micro_usd_per_response",
+                        self.settings.max_preflight_cost_micro_usd,
+                    )
+                ),
+            )
+        except Exception as storage_error:
+            self.metering_journal.append(
+                {**telemetry, "error_code": "provider_telemetry_storage_failure"}
+            )
+            try:
+                self.store.open_ai_breaker(
+                    reason="provider_telemetry_storage_failure"
+                )
+            except Exception:
+                pass
+            raise VoiceUsageRecoveryError(
+                "Voice provider telemetry was journaled after database failure"
+            ) from storage_error
+        if model != expected_model:
+            raise VoiceProviderError("Voice provider returned an unapproved model")
+        if service_tier != self.settings.requested_service_tier:
+            raise VoiceProviderError(
+                "Voice provider returned an unapproved service tier"
+            )
+        if provider_status != "completed":
+            raise VoiceProviderError("Voice provider response did not complete")
+
+    async def translate_note(
+        self,
+        *,
+        user_id: int,
+        audio: bytes,
+        duration_seconds: int,
+        active_language: str,
+    ) -> VoiceTranslationResult:
+        if not self.settings.enabled:
+            raise VoiceConfigurationError("Voice translation is disabled")
+        if not 1 <= int(duration_seconds) <= self.settings.max_duration_seconds:
+            raise ValueError("Voice duration is outside the allowed range")
+        if not audio or len(audio) > self.settings.max_audio_bytes:
+            raise ValueError("Voice audio size is outside the allowed range")
+        try:
+            self.store.recover_stale_ai_usage(
+                timeout_seconds=self.settings.reservation_timeout_seconds,
+                user_id=user_id,
+            )
+        except Exception as exc:
+            raise VoiceUsageRecoveryError(
+                "Stale voice translation reservation recovery failed"
+            ) from exc
+
+        stt_cost = self._stt_cost(duration_seconds)
+        if stt_cost > self.settings.max_preflight_cost_micro_usd:
+            raise AIQuotaExceeded("Voice translation preflight budget exceeded")
+        stt_request_id = self.store.reserve_ai_usage(
+            user_id,
+            action="voice_transcription",
+            provider=self.settings.provider,
+            model=self.settings.transcription_model,
+            credits=self.settings.stt_credits_per_request,
+            initial_credits=self.settings.initial_credits,
+            requested_service_tier=self.settings.requested_service_tier,
+            context_fingerprint=hashlib.sha256(
+                f"voice-translation-stt:{int(user_id)}:{int(duration_seconds)}".encode(
+                    "ascii"
+                )
+            ).hexdigest(),
+            **self._reservation_budget(stt_cost),
+        )
+        started = perf_counter()
+        stt_settlement_started = False
+        try:
+            self.store.mark_ai_provider_attempt_started(stt_request_id)
+            stt = await self.transcription_provider.transcribe(
+                TranscriptionRequest(
+                    audio=bytes(audio),
+                    language="",
+                    prompt="",
+                    detect_language=True,
+                )
+            )
+            stt_latency_ms = int((perf_counter() - started) * 1000)
+            self._record_provider_response(
+                request_id=stt_request_id,
+                result=stt,
+                expected_model=self.settings.transcription_model,
+                cost_micro_usd=stt_cost,
+                latency_ms=stt_latency_ms,
+            )
+            transcript = str(_attr(stt, "text", "")).strip()
+            if not 1 <= len(transcript) <= 5000:
+                raise VoiceProviderError("Voice translation transcript is invalid")
+            detected = self._language_code(_attr(stt, "detected_language", ""))
+            stt_settlement_started = True
+            self.store.complete_ai_usage(
+                stt_request_id,
+                billed_credits=self.settings.stt_credits_per_request,
+                provider_response_id=_attr(stt, "response_id", None),
+                model=str(_attr(stt, "model", self.settings.transcription_model)),
+                usage=self._usage(_attr(stt, "usage", None)),
+                cost_micro_usd=stt_cost,
+                latency_ms=stt_latency_ms,
+                returned_service_tier=str(
+                    _attr(stt, "service_tier", self.settings.requested_service_tier)
+                ),
+                provider_status=str(_attr(stt, "status", "completed")),
+            )
+        except BaseException as exc:
+            try:
+                self.store.fail_ai_usage(
+                    stt_request_id,
+                    error_code=type(exc).__name__,
+                    open_breaker_reason=(
+                        "voice_settlement_storage_failure"
+                        if stt_settlement_started
+                        else None
+                    ),
+                )
+            except Exception as recovery_error:
+                raise VoiceUsageRecoveryError(
+                    "Voice transcription reservation could not be released"
+                ) from recovery_error
+            raise
+
+        target_language = (
+            str(active_language).strip().lower() if detected == "ru" else "ru"
+        )
+        if not re.fullmatch(r"[a-z]{2,3}", target_language):
+            raise ValueError("Active translation language is invalid")
+        translation_preflight_cost = self._translation_preflight_cost(
+            transcript=transcript,
+            source_language=detected,
+            target_language=target_language,
+        )
+        if translation_preflight_cost > self.settings.max_preflight_cost_micro_usd:
+            return VoiceTranslationResult(
+                detected_language=detected,
+                source_transcript=transcript,
+                target_language=target_language,
+                translation="",
+                latin_transcription="",
+                partial=True,
+                notice_ru="Распознавание готово, но перевод не начат из-за лимита стоимости.",
+            )
+        try:
+            translation_request_id = self.store.reserve_ai_usage(
+                user_id,
+                action="voice_translation",
+                provider=self.settings.provider,
+                model=self.settings.translation_model,
+                credits=self.settings.translation_credits_per_request,
+                initial_credits=self.settings.initial_credits,
+                requested_service_tier=self.settings.requested_service_tier,
+                context_fingerprint=hashlib.sha256(
+                    f"voice-translation:{detected}:{target_language}".encode("ascii")
+                ).hexdigest(),
+                **self._reservation_budget(translation_preflight_cost),
+            )
+        except AIQuotaExceeded:
+            return VoiceTranslationResult(
+                detected_language=detected,
+                source_transcript=transcript,
+                target_language=target_language,
+                translation="",
+                latin_transcription="",
+                partial=True,
+                notice_ru="Распознавание готово, но перевод не начат из-за лимита.",
+            )
+        started = perf_counter()
+        translation_settlement_started = False
+        try:
+            self.store.mark_ai_provider_attempt_started(translation_request_id)
+            translated = await self.translation_provider.translate(
+                VoiceTranslationRequest(
+                    text=transcript,
+                    source_language=detected,
+                    target_language=target_language,
+                )
+            )
+            translation_latency_ms = int((perf_counter() - started) * 1000)
+            cost = self._translation_cost(translated)
+            self._record_provider_response(
+                request_id=translation_request_id,
+                result=translated,
+                expected_model=self.settings.translation_model,
+                cost_micro_usd=cost,
+                latency_ms=translation_latency_ms,
+            )
+            translation = str(_attr(translated, "translation", "")).strip()
+            latin = str(_attr(translated, "latin_transcription", "")).strip()
+            if not translation or not latin:
+                try:
+                    content = json.loads(str(_attr(translated, "output_text", "")))
+                    translation = str(content["translation"]).strip()
+                    latin = str(content["latin_transcription"]).strip()
+                except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                    raise VoiceProviderError(
+                        "Voice translation output is invalid"
+                    ) from exc
+            if not 1 <= len(translation) <= 3000 or not 1 <= len(latin) <= 3000:
+                raise VoiceProviderError("Voice translation result is invalid")
+            translation_settlement_started = True
+            self.store.complete_ai_usage(
+                translation_request_id,
+                billed_credits=self.settings.translation_credits_per_request,
+                provider_response_id=_attr(translated, "response_id", None),
+                model=str(
+                    _attr(translated, "model", self.settings.translation_model)
+                ),
+                usage=self._usage(_attr(translated, "usage", None)),
+                cost_micro_usd=cost,
+                latency_ms=translation_latency_ms,
+                returned_service_tier=str(
+                    _attr(
+                        translated,
+                        "service_tier",
+                        self.settings.requested_service_tier,
+                    )
+                ),
+                provider_status=str(_attr(translated, "status", "completed")),
+            )
+            return VoiceTranslationResult(
+                detected_language=detected,
+                source_transcript=transcript,
+                target_language=target_language,
+                translation=translation,
+                latin_transcription=latin,
+                partial=False,
+                notice_ru="",
+            )
+        except BaseException as exc:
+            try:
+                self.store.fail_ai_usage(
+                    translation_request_id,
+                    error_code=type(exc).__name__,
+                    open_breaker_reason=(
+                        "voice_settlement_storage_failure"
+                        if translation_settlement_started
+                        else None
+                    ),
+                )
+            except Exception as recovery_error:
+                raise VoiceUsageRecoveryError(
+                    "Voice translation reservation could not be released"
+                ) from recovery_error
+            return VoiceTranslationResult(
+                detected_language=detected,
+                source_transcript=transcript,
+                target_language=target_language,
+                translation="",
+                latin_transcription="",
+                partial=True,
+                notice_ru="Распознавание готово, но перевод не завершён.",
+            )
+
+
+def build_openai_voice_translation_service(
+    store: DatabaseStore, settings: VoiceTranslationSettings
+) -> VoiceTranslationService:
+    if not settings.enabled:
+        transcription: TranscriptionProvider = DisabledTranscriptionProvider()
+        translation: TranslationProvider = DisabledTranslationProvider()
+    else:
+        transcription = OpenAITranscriptionProvider(
+            api_key=settings.openai_api_key or "",
+            model=settings.transcription_model,
+        )
+        translation = OpenAITranslationProvider(
+            api_key=settings.openai_api_key or "",
+            model=settings.translation_model,
+            service_tier=settings.requested_service_tier,
+        )
+    return VoiceTranslationService(
+        store=store,
+        transcription_provider=transcription,
+        translation_provider=translation,
+        settings=settings,
+    )

@@ -79,6 +79,7 @@ migrations, isolated persistence, and concurrent credit reservations.
 | `docs/product-foundation.md` | Product principles and rollout boundary |
 | `docs/pilot-operations.md` | Controlled cohort and D1/D7 measurement |
 | `docs/launch-readiness.md` | Paid and voice release gates |
+| `docs/mirror-control-plane-v1.md` | Mirror modes, quality analytics, and voice translation gates |
 | `docs/runbooks/mac-mini-deployment.md` | Production deployment and recovery runbook |
 
 Production runs on an owner-controlled Mac mini. `render.yaml` is an obsolete

@@ -21,7 +21,9 @@ from mydictionary.billing import (
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS
 from mydictionary.mirror_assistant import (
     MIRROR_ADMIN_DEFAULTS,
+    MIRROR_CONTROL_PLANE_DEFAULTS,
     validate_mirror_admin_settings,
+    validate_mirror_control_plane,
 )
 from mydictionary.storage import (
     ACCESS_STATUSES,
@@ -35,6 +37,9 @@ from mydictionary.storage import (
     BillingCreditLedger,
     BillingProduct,
     DatabaseStore,
+    MirrorPolicySnapshot,
+    MirrorResponseFeedback,
+    MirrorResponseQuality,
     PaymentOrder,
     RefundRequest,
     RateLimitBucket,
@@ -152,6 +157,247 @@ class AdminStore:
                     )
                 )
         return self.get_settings()
+
+    @staticmethod
+    def _mirror_policy_from_row(row: MirrorPolicySnapshot) -> dict[str, Any]:
+        return {
+            "snapshot_id": row.snapshot_id,
+            "policy_version": row.policy_version,
+            "enabled_modes": json.loads(row.enabled_modes_json),
+            "default_mode": row.default_mode,
+            "answer_depth": row.answer_depth,
+            "learner_level": row.learner_level,
+            "mode_guidance": json.loads(row.mode_guidance_json),
+            "config_sha256": row.config_sha256,
+            "created_at": row.created_at,
+        }
+
+    def get_mirror_control_plane(self) -> dict[str, Any]:
+        with self.store.Session() as session:
+            row = session.execute(
+                select(MirrorPolicySnapshot).order_by(
+                    MirrorPolicySnapshot.created_at.desc(),
+                    MirrorPolicySnapshot.snapshot_id.desc(),
+                )
+            ).scalars().first()
+        if row is None:
+            return {**MIRROR_CONTROL_PLANE_DEFAULTS, "snapshot_id": None}
+        return self._mirror_policy_from_row(row)
+
+    @staticmethod
+    def _mirror_policy_hashes(policy: Mapping[str, Any]) -> dict[str, str]:
+        return {
+            field: hashlib.sha256(
+                json.dumps(
+                    policy[field], ensure_ascii=False, sort_keys=True
+                ).encode("utf-8")
+            ).hexdigest()
+            for field in (
+                "policy_version",
+                "enabled_modes",
+                "default_mode",
+                "answer_depth",
+                "learner_level",
+                "mode_guidance",
+            )
+        }
+
+    def _save_mirror_control_plane(
+        self,
+        policy: Mapping[str, Any],
+        *,
+        actor: str,
+        action: str,
+        source_snapshot_id: str | None = None,
+    ) -> dict[str, Any]:
+        previous = self.get_mirror_control_plane()
+        changed = [
+            field
+            for field in (
+                "policy_version",
+                "enabled_modes",
+                "default_mode",
+                "answer_depth",
+                "learner_level",
+                "mode_guidance",
+            )
+            if previous.get(field) != policy.get(field)
+        ]
+        serialized = json.dumps(
+            dict(policy), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        snapshot_id = str(uuid4())
+        row = MirrorPolicySnapshot(
+            snapshot_id=snapshot_id,
+            policy_version=str(policy["policy_version"]),
+            enabled_modes_json=json.dumps(
+                policy["enabled_modes"], ensure_ascii=False, separators=(",", ":")
+            ),
+            default_mode=str(policy["default_mode"]),
+            answer_depth=str(policy["answer_depth"]),
+            learner_level=str(policy["learner_level"]),
+            mode_guidance_json=json.dumps(
+                policy["mode_guidance"],
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+            config_sha256=hashlib.sha256(serialized.encode("utf-8")).hexdigest(),
+            actor=str(actor)[:64],
+            created_at=utcnow(),
+        )
+        details = {
+            "changed_fields": changed,
+            "field_hashes": self._mirror_policy_hashes(policy),
+        }
+        if source_snapshot_id:
+            details["source_snapshot_id"] = source_snapshot_id
+        with self.store.Session.begin() as session:
+            session.add(row)
+            session.add(
+                AdminAuditLog(
+                    actor=str(actor)[:64],
+                    action=action,
+                    target_type="mirror_control_plane",
+                    target_id=snapshot_id,
+                    details_json=_json(details),
+                )
+            )
+        return self.get_mirror_control_plane()
+
+    def update_mirror_control_plane(
+        self, values: Mapping[str, Any], *, actor: str
+    ) -> dict[str, Any]:
+        validated = validate_mirror_control_plane(values)
+        return self._save_mirror_control_plane(
+            validated,
+            actor=actor,
+            action="mirror_control_plane_updated",
+        )
+
+    def mirror_control_plane_snapshots(self, *, limit: int = 20) -> list[dict[str, Any]]:
+        bounded = int(limit)
+        if not 1 <= bounded <= 100:
+            raise ValueError("Mirror snapshot limit must be 1-100")
+        with self.store.Session() as session:
+            rows = session.execute(
+                select(MirrorPolicySnapshot)
+                .order_by(
+                    MirrorPolicySnapshot.created_at.desc(),
+                    MirrorPolicySnapshot.snapshot_id.desc(),
+                )
+                .limit(bounded)
+            ).scalars().all()
+        return [self._mirror_policy_from_row(row) for row in rows]
+
+    def restore_mirror_control_plane(
+        self, snapshot_id: str, *, actor: str
+    ) -> dict[str, Any]:
+        with self.store.Session() as session:
+            row = session.get(MirrorPolicySnapshot, str(snapshot_id))
+            if row is None:
+                raise ValueError("Mirror control plane snapshot was not found")
+            policy = self._mirror_policy_from_row(row)
+        validated = validate_mirror_control_plane(
+            {
+                key: policy[key]
+                for key in (
+                    "policy_version",
+                    "enabled_modes",
+                    "default_mode",
+                    "answer_depth",
+                    "learner_level",
+                    "mode_guidance",
+                )
+            }
+        )
+        return self._save_mirror_control_plane(
+            validated,
+            actor=actor,
+            action="mirror_control_plane_restored",
+            source_snapshot_id=str(snapshot_id),
+        )
+
+    def mirror_quality_analytics(self, *, days: int = 30) -> dict[str, Any]:
+        if int(days) not in {7, 30, 90}:
+            raise ValueError("Mirror analytics range must be 7, 30, or 90 days")
+        range_days = int(days)
+        since = utcnow() - timedelta(days=range_days)
+        with self.store.Session() as session:
+            quality = session.execute(
+                select(MirrorResponseQuality).where(
+                    MirrorResponseQuality.created_at >= since
+                )
+            ).scalars().all()
+            feedback = session.execute(
+                select(MirrorResponseFeedback).where(
+                    MirrorResponseFeedback.created_at >= since
+                )
+            ).scalars().all()
+            learning_sessions = int(
+                session.scalar(
+                    select(func.count(AnalyticsEvent.event_id)).where(
+                        AnalyticsEvent.event_name == "block_completed",
+                        AnalyticsEvent.occurred_at >= since,
+                    )
+                )
+                or 0
+            )
+            voice_requests = int(
+                session.scalar(
+                    select(func.count(AIUsage.request_id)).where(
+                        AIUsage.action.in_(
+                            {"voice_transcription", "voice_translation"}
+                        ),
+                        AIUsage.created_at >= since,
+                    )
+                )
+                or 0
+            )
+
+        def breakdown(field: str) -> dict[str, Any]:
+            counts: dict[str, int] = {}
+            for row in quality:
+                key = str(getattr(row, field))
+                counts[key] = counts.get(key, 0) + 1
+            return (
+                {"status": "ok", "items": counts}
+                if counts
+                else {"status": "no_data", "items": {}}
+            )
+
+        has_data = bool(quality or learning_sessions or voice_requests)
+        helpful = sum(1 for row in feedback if row.helpful)
+        mirror = {
+            "status": "ok" if quality else "no_data",
+            "responses": len(quality),
+            "average_score_bps": (
+                round(sum(row.deterministic_score_bps for row in quality) / len(quality))
+                if quality
+                else 0
+            ),
+            "feedback": len(feedback),
+            "helpful": helpful,
+        }
+        return {
+            "range_days": range_days,
+            "has_data": has_data,
+            "status": "ok" if has_data else "no_data",
+            "learning": {
+                "status": "ok" if learning_sessions else "no_data",
+                "completed_blocks": learning_sessions,
+            },
+            "mirror": mirror,
+            "voice": {
+                "status": "ok" if voice_requests else "no_data",
+                "requests": voice_requests,
+            },
+            "breakdowns": {
+                "mode": breakdown("mode"),
+                "task": breakdown("task"),
+                "level": breakdown("level"),
+            },
+        }
 
     def update_settings(
         self, values: Mapping[str, str], *, actor: str

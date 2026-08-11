@@ -81,6 +81,13 @@ MIRROR_RESPONSE_SCHEMA = {
     "additionalProperties": False,
     "properties": {
         "answer_ru": {"type": "string", "minLength": 1, "maxLength": 1800},
+        "evidence_ru": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 5,
+            "items": {"type": "string", "minLength": 1, "maxLength": 300},
+        },
+        "interpretation_ru": {"type": "string", "maxLength": 800},
         "language_items": {
             "type": "array",
             "minItems": 0,
@@ -122,7 +129,14 @@ MIRROR_RESPONSE_SCHEMA = {
         },
         "next_step_ru": {"type": "string", "maxLength": 500},
     },
-    "required": ["answer_ru", "language_items", "examples", "next_step_ru"],
+    "required": [
+        "answer_ru",
+        "evidence_ru",
+        "interpretation_ru",
+        "language_items",
+        "examples",
+        "next_step_ru",
+    ],
 }
 
 TUTOR_INSTRUCTIONS = """You are the MY DICTIONARY block tutor.
@@ -234,6 +248,19 @@ class MirrorAnswer:
     language_items: tuple[MirrorLanguageItem, ...]
     examples: tuple[MirrorExample, ...]
     next_step_ru: str
+    evidence_ru: tuple[str, ...] = ()
+    interpretation_ru: str = ""
+
+
+class MirrorRenderedResponse(str):
+    """Rendered text carrying only a metering request identifier."""
+
+    request_id: str
+
+    def __new__(cls, value: str, *, request_id: str):
+        instance = super().__new__(cls, value)
+        instance.request_id = str(request_id)
+        return instance
 
 
 @dataclass(frozen=True)
@@ -773,8 +800,11 @@ def _mirror_text(
 
 
 def parse_mirror_answer(payload: Mapping[str, Any]) -> MirrorAnswer:
-    expected = {"answer_ru", "language_items", "examples", "next_step_ru"}
-    if not isinstance(payload, Mapping) or set(payload) != expected:
+    legacy = {"answer_ru", "language_items", "examples", "next_step_ru"}
+    current = legacy | {"evidence_ru", "interpretation_ru"}
+    if not isinstance(payload, Mapping) or (
+        set(payload) != legacy and set(payload) != current
+    ):
         raise AIProviderError("Mirror response has no exact required fields")
     answer_ru = _mirror_text(
         payload["answer_ru"], "answer_ru", minimum=1, maximum=1800
@@ -785,6 +815,13 @@ def parse_mirror_answer(payload: Mapping[str, Any]) -> MirrorAnswer:
         raise AIProviderError("Mirror language items are invalid")
     if not isinstance(raw_examples, list) or len(raw_examples) > 3:
         raise AIProviderError("Mirror examples are invalid")
+    raw_evidence = payload.get("evidence_ru", [])
+    if not isinstance(raw_evidence, list) or len(raw_evidence) > 5:
+        raise AIProviderError("Mirror evidence is invalid")
+    evidence = tuple(
+        _mirror_text(value, "evidence_ru", minimum=1, maximum=300)
+        for value in raw_evidence
+    )
 
     items = []
     item_fields = {"target", "transcription", "meaning_ru", "note_ru"}
@@ -826,6 +863,12 @@ def parse_mirror_answer(payload: Mapping[str, Any]) -> MirrorAnswer:
         examples=tuple(examples),
         next_step_ru=_mirror_text(
             payload["next_step_ru"], "next_step_ru", maximum=500
+        ),
+        evidence_ru=evidence,
+        interpretation_ru=_mirror_text(
+            payload.get("interpretation_ru", ""),
+            "interpretation_ru",
+            maximum=800,
         ),
     )
 
@@ -965,6 +1008,10 @@ def render_tutor_answer(result: TutorResult) -> str:
 def render_mirror_answer(answer: MirrorAnswer, *, available_credits: int) -> str:
     del available_credits
     lines = [answer.answer_ru]
+    if answer.evidence_ru:
+        lines.extend(["", *[f"• {value}" for value in answer.evidence_ru]])
+    if answer.interpretation_ru:
+        lines.extend(["", answer.interpretation_ru])
     for item in answer.language_items:
         pronunciation = f" {item.transcription}" if item.transcription else ""
         lines.extend(["", f"{item.target}{pronunciation} — {item.meaning_ru}"])
@@ -1171,8 +1218,17 @@ class AITutorService:
         )
 
     async def ask(
-        self, *, user_id: int, question: str, context: TutorContext
-    ) -> TutorResult:
+        self,
+        *,
+        user_id: int,
+        question: str,
+        context: TutorContext | None = None,
+        mirror_payload: Mapping[str, Any] | None = None,
+    ) -> TutorResult | str:
+        if mirror_payload is not None:
+            return await self.ask_mirror(user_id=user_id, payload=mirror_payload)
+        if context is None:
+            raise ValueError("AI tutor context is required")
         question = question.strip()
         if not question or len(question) > 500:
             raise ValueError("AI question must contain 1-500 characters")
@@ -1362,7 +1418,7 @@ class AITutorService:
         payload: Mapping[str, Any],
     ) -> str:
         """Run one block-independent Mirror request through existing AI gates."""
-        if set(payload) != {
+        legacy_fields = {
             "safety_envelope",
             "admin_guidance",
             "question",
@@ -1370,7 +1426,14 @@ class AITutorService:
             "learning_context",
             "recent_dialogue",
             "response_style",
-        }:
+        }
+        control_fields = legacy_fields | {
+            "task_kind",
+            "communication_mode",
+            "answer_depth",
+            "learner_level",
+        }
+        if set(payload) not in (legacy_fields, control_fields):
             raise ValueError("Mirror provider payload is invalid")
         if payload["safety_envelope"] != MIRROR_SAFETY_ENVELOPE:
             raise ValueError("Mirror safety envelope is invalid")
@@ -1379,6 +1442,9 @@ class AITutorService:
             raise ValueError("Mirror response style is invalid")
         provider_payload = dict(payload)
         provider_payload["style_guidance"] = MIRROR_STYLE_GUIDANCE[response_style]
+        if set(payload) == control_fields:
+            if payload["communication_mode"] != response_style:
+                raise ValueError("Mirror communication mode is inconsistent")
         question = str(payload["question"]).strip()
         if not 1 <= len(question) <= 500:
             raise ValueError("Mirror question must contain 1-500 characters")
@@ -1521,10 +1587,36 @@ class AITutorService:
                 returned_service_tier=provider_result.service_tier,
                 provider_status=provider_result.status,
             )
-            return render_mirror_answer(
+            rendered = render_mirror_answer(
                 answer,
                 available_credits=allowance["available_credits"],
             )
+            try:
+                self.store.record_mirror_quality(
+                    request_id=request_id,
+                    user_id=user_id,
+                    task=str(payload.get("task_kind") or "general_conversation"),
+                    mode=str(payload.get("communication_mode") or response_style),
+                    depth=str(payload.get("answer_depth") or "balanced"),
+                    level=str(payload.get("learner_level") or "adaptive"),
+                    contract_version="mirror-control-v1",
+                    response_length=len(rendered),
+                    evidence_count=len(answer.evidence_ru),
+                    example_count=len(answer.examples),
+                    has_next_step=bool(answer.next_step_ru),
+                    deterministic_score_bps=min(
+                        10000,
+                        5000
+                        + len(answer.evidence_ru) * 1000
+                        + (1500 if answer.interpretation_ru else 0)
+                        + (1500 if answer.next_step_ru else 0),
+                    ),
+                )
+            except Exception:
+                # Quality telemetry is non-billing metadata and must not hide a
+                # successfully settled learner response.
+                pass
+            return MirrorRenderedResponse(rendered, request_id=request_id)
         except BaseException as exc:
             if settlement_started:
                 try:

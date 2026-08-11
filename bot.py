@@ -77,13 +77,17 @@ from mydictionary.content import (
 from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
 from mydictionary.mirror_assistant import (
+    MIRROR_ANSWER_DEPTHS,
     MIRROR_ADMIN_DEFAULTS,
+    MIRROR_CONTROL_PLANE_DEFAULTS,
+    MIRROR_LEARNER_LEVELS,
     MIRROR_STYLE_LABELS,
     MirrorMemorySettings,
     append_mirror_turn,
     build_mirror_progress_summary,
     build_mirror_provider_payload,
     classify_mirror_intent,
+    classify_mirror_task,
     grounded_progress_snapshot,
     normalize_mirror_style,
     recent_mirror_dialogue,
@@ -109,9 +113,12 @@ from mydictionary.voice_tutor import (
     VoiceSessionState,
     VoiceTutorService,
     VoiceTutorSettings,
+    VoiceTranslationService,
+    VoiceTranslationSettings,
     VoiceUsageRecoveryError,
     VoiceWord,
     build_openai_voice_service,
+    build_openai_voice_translation_service,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -181,11 +188,15 @@ def _configured_access_mode() -> str:
 BOT_ACCESS_MODE = _configured_access_mode()
 AI_SETTINGS = AITutorSettings.from_env()
 MIRROR_MEMORY_SETTINGS = MirrorMemorySettings.from_env(
-    ai_consent_version=AI_SETTINGS.consent_version
+    ai_consent_version=AI_SETTINGS.consent_version,
+    ai_processing_notice=AI_SETTINGS.processing_notice,
 )
 BILLING_SETTINGS = BillingSettings.from_env()
 SAFETY_SETTINGS = SafetySettings.from_env()
 VOICE_SETTINGS = VoiceTutorSettings.from_env()
+VOICE_TRANSLATION_SETTINGS = VoiceTranslationSettings.from_env(
+    existing_voice_consent_version=VOICE_SETTINGS.consent_version
+)
 TELEGRAM_RUNTIME = TelegramRuntimeSettings.from_env()
 TELEGRAM_RUNTIME.validate_billing_process(
     billing_enabled=BILLING_SETTINGS.enabled,
@@ -244,6 +255,7 @@ _STORE: DatabaseStore | None = None
 _AI_TUTOR: AITutorService | None = None
 _BILLING: BillingService | None = None
 _VOICE_TUTOR: VoiceTutorService | None = None
+_VOICE_TRANSLATION: VoiceTranslationService | None = None
 LAST_PRONUNCIATION_MESSAGES_KEY = "last_pronunciation_messages"
 
 
@@ -298,6 +310,15 @@ def get_voice_tutor_service() -> VoiceTutorService:
     if _VOICE_TUTOR is None:
         _VOICE_TUTOR = build_openai_voice_service(get_store(), VOICE_SETTINGS)
     return _VOICE_TUTOR
+
+
+def get_voice_translation_service() -> VoiceTranslationService:
+    global _VOICE_TRANSLATION
+    if _VOICE_TRANSLATION is None:
+        _VOICE_TRANSLATION = build_openai_voice_translation_service(
+            get_store(), VOICE_TRANSLATION_SETTINGS
+        )
+    return _VOICE_TRANSLATION
 
 
 @dataclass
@@ -1284,7 +1305,9 @@ def start_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def settings_keyboard(product: dict) -> InlineKeyboardMarkup:
+def settings_keyboard(
+    product: dict, *, mirror_policy: Mapping[str, Any] | None = None
+) -> InlineKeyboardMarkup:
     current_pack_id = PROGRESS.get("active_pack_id")
     language_rows = []
     for pack in visible_packs():
@@ -1302,7 +1325,14 @@ def settings_keyboard(product: dict) -> InlineKeyboardMarkup:
         )
         for count in (5, 10, 20)
     ]
-    selected_style = str(product.get("mirror_style") or "teacher")
+    selected_style = str(
+        product.get("mirror_mode") or product.get("mirror_style") or "teacher"
+    )
+    enabled_modes = (
+        list(mirror_policy.get("enabled_modes", []))
+        if mirror_policy is not None
+        else ["teacher", "conversation", "brief", "practice"]
+    )
     style_rows = [
         [
             InlineKeyboardButton(
@@ -1311,19 +1341,46 @@ def settings_keyboard(product: dict) -> InlineKeyboardMarkup:
             )
         ]
         for style, label in MIRROR_STYLE_LABELS.items()
+        if style in enabled_modes
     ]
-    return InlineKeyboardMarkup(language_rows + [pace_row] + style_rows)
+    selected_depth = str(product.get("mirror_depth") or "balanced")
+    depth_row = [
+        InlineKeyboardButton(
+            f"{label}{' ✓' if value == selected_depth else ''}",
+            callback_data=f"settings:mirror-depth:{value}",
+        )
+        for value, label in (
+            ("compact", "Кратко"),
+            ("balanced", "Баланс"),
+            ("deep", "Глубоко"),
+        )
+    ]
+    selected_level = str(product.get("mirror_level") or "adaptive")
+    level_rows = [
+        [InlineKeyboardButton(
+            f"{value.upper() if value != 'adaptive' else 'Авто'}"
+            f"{' ✓' if value == selected_level else ''}",
+            callback_data=f"settings:mirror-level:{value}",
+        )]
+        for value in MIRROR_LEARNER_LEVELS
+    ]
+    return InlineKeyboardMarkup(
+        language_rows + [pace_row] + style_rows + [depth_row] + level_rows
+    )
 
 
 def settings_text(current: ContentPack, product: Mapping[str, Any]) -> str:
-    style = str(product.get("mirror_style") or "teacher")
+    style = str(product.get("mirror_mode") or product.get("mirror_style") or "teacher")
     style_label = MIRROR_STYLE_LABELS.get(style, MIRROR_STYLE_LABELS["teacher"])
+    depth = str(product.get("mirror_depth") or "balanced")
+    level = str(product.get("mirror_level") or "adaptive")
     return (
         f"⚙️ *Настройки*\n\n"
         f"Язык: *{current.title}*\n"
         f"Карточек в уроке: *{product['daily_word_goal']}*\n"
         f"Стиль AI: *{style_label}*\n\n"
-        "Выбери язык, ритм или стиль ответа:"
+        f"Глубина: *{depth}* · уровень: *{level.upper()}*\n\n"
+        "Выбери язык, ритм или формат ответа:"
     )
 
 
@@ -1536,10 +1593,16 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         current = active_content_pack()
         runtime = _ACTIVE_RUNTIME.get()
         product = runtime.store.product_profile(runtime.user_id)
+        try:
+            product.update(runtime.store.get_mirror_preferences(runtime.user_id))
+            product["mirror_mode"] = product.pop("mode")
+        except (AttributeError, TypeError, ValueError):
+            pass
+        mirror_policy = AdminStore(runtime.store).get_mirror_control_plane()
         await context.bot.send_message(
             chat_id=chat_id,
             text=settings_text(current, product),
-            reply_markup=settings_keyboard(product),
+            reply_markup=settings_keyboard(product, mirror_policy=mirror_policy),
             parse_mode="Markdown",
         )
         return
@@ -1575,6 +1638,15 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("Настройка устарела.", show_alert=True)
         return
     runtime = _ACTIVE_RUNTIME.get()
+    try:
+        preferences = runtime.store.get_mirror_preferences(runtime.user_id)
+    except (AttributeError, TypeError, ValueError):
+        preferences = {
+            "mode": runtime.store.get_mirror_style(runtime.user_id),
+            "depth": "balanced",
+            "level": "adaptive",
+        }
+    mirror_policy = AdminStore(runtime.store).get_mirror_control_plane()
     if setting == "pace" and value in {"5", "10", "20"}:
         await query.answer("Ритм сохранён")
         product = runtime.store.update_product_profile(
@@ -1583,17 +1655,37 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         record_product_event(
             "daily_goal_updated", properties={"daily_word_goal": int(value)}
         )
-    elif setting == "mirror" and value in MIRROR_STYLE_LABELS:
-        saved = runtime.store.set_mirror_style(runtime.user_id, value)
+    elif (
+        setting == "mirror"
+        and value in MIRROR_STYLE_LABELS
+        and value in mirror_policy["enabled_modes"]
+    ):
+        preferences["mode"] = value
+        saved_preferences = runtime.store.set_mirror_preferences(
+            runtime.user_id, **preferences
+        )
+        saved = saved_preferences["mode"]
         await query.answer(f"Стиль: {MIRROR_STYLE_LABELS[saved]}")
+        product = runtime.store.product_profile(runtime.user_id)
+    elif setting == "mirror-depth" and value in MIRROR_ANSWER_DEPTHS:
+        preferences["depth"] = value
+        runtime.store.set_mirror_preferences(runtime.user_id, **preferences)
+        await query.answer(f"Глубина: {value}")
+        product = runtime.store.product_profile(runtime.user_id)
+    elif setting == "mirror-level" and value in MIRROR_LEARNER_LEVELS:
+        preferences["level"] = value
+        runtime.store.set_mirror_preferences(runtime.user_id, **preferences)
+        await query.answer(f"Уровень: {value.upper()}")
         product = runtime.store.product_profile(runtime.user_id)
     else:
         await query.answer("Настройка недоступна.", show_alert=True)
         return
     current = active_content_pack()
+    product.update(runtime.store.get_mirror_preferences(runtime.user_id))
+    product["mirror_mode"] = product.pop("mode")
     await query.edit_message_text(
         settings_text(current, product),
-        reply_markup=settings_keyboard(product),
+        reply_markup=settings_keyboard(product, mirror_policy=mirror_policy),
         parse_mode="Markdown",
     )
 
@@ -2036,7 +2128,107 @@ async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def cmd_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await start_voice_mode(update, context, mode="pronunciation")
+    await update.effective_message.reply_text(
+        "Выбери голосовой режим:",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "Произношение", callback_data="voice-mode:pronunciation"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "Фразы по блоку", callback_data="voice-mode:guided-phrase"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "Перевод голосового", callback_data="voice-mode:translation"
+                    )
+                ],
+            ]
+        ),
+    )
+
+
+@auth
+async def voice_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    selected = str(query.data).split(":", 1)[1]
+    if selected == "translation":
+        context.user_data["voice_entry_mode"] = "translation"
+        if not VOICE_TRANSLATION_SETTINGS.enabled:
+            await query.edit_message_text("Перевод голосовых пока выключен.")
+            return
+        user_id = int(update.effective_user.id)
+        if not get_store().has_consent(
+            user_id,
+            consent_type="voice_translation_processing",
+            document_version=VOICE_TRANSLATION_SETTINGS.consent_version,
+        ):
+            context.user_data["pending_voice_translation_consent"] = {
+                "expires_at": int(time.time()) + 600
+            }
+            await query.edit_message_text(
+                "Согласие на распознавание и перевод\n\n"
+                f"{VOICE_TRANSLATION_SETTINGS.processing_notice}\n\n"
+                f"Версия: {VOICE_TRANSLATION_SETTINGS.consent_version}",
+                reply_markup=InlineKeyboardMarkup(
+                    [[
+                        InlineKeyboardButton(
+                            "Согласен", callback_data="voicetransconsent:accept"
+                        ),
+                        InlineKeyboardButton(
+                            "Отмена", callback_data="voicetransconsent:cancel"
+                        ),
+                    ]]
+                ),
+            )
+            return
+        await query.edit_message_text(
+            "Отправь голосовое. Русская речь будет переведена на активный язык, "
+            "а речь на другом языке — на русский."
+        )
+        return
+    context.user_data["voice_entry_mode"] = (
+        "guided-phrase" if selected == "guided-phrase" else "pronunciation"
+    )
+    mode = "conversation" if selected == "guided-phrase" else "pronunciation"
+    await start_voice_mode(update, context, mode=mode)
+
+
+@auth
+async def voice_translation_consent_cb(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    action = str(query.data).split(":", 1)[1]
+    pending = context.user_data.pop("pending_voice_translation_consent", None)
+    if action == "cancel":
+        await query.answer("Перевод отменён.")
+        await query.edit_message_reply_markup(reply_markup=None)
+        return
+    if (
+        not VOICE_TRANSLATION_SETTINGS.enabled
+        or action != "accept"
+        or not isinstance(pending, dict)
+        or int(pending.get("expires_at", 0)) < int(time.time())
+    ):
+        await query.answer("Запрос устарел. Запусти /voice снова.", show_alert=True)
+        return
+    get_store().grant_consent(
+        int(update.effective_user.id),
+        consent_type="voice_translation_processing",
+        document_version=VOICE_TRANSLATION_SETTINGS.consent_version,
+        source="telegram",
+    )
+    context.user_data["voice_entry_mode"] = "translation"
+    await query.answer("Согласие сохранено.")
+    await query.edit_message_text(
+        "Отправь голосовое для распознавания и перевода."
+    )
 
 
 @auth
@@ -2088,116 +2280,269 @@ async def cmd_voice_transcript(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(rendered[start:start + 3900])
 
 
+async def send_voice_translation_reference(
+    *,
+    chat_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+    target_text: str,
+    target_language: str,
+    renderer,
+):
+    """Send one replaceable pronunciation for the translated phrase."""
+    audio = await renderer(str(target_text), language=str(target_language))
+    if hasattr(audio, "seek"):
+        audio.seek(0)
+    sent = await context.bot.send_voice(chat_id=chat_id, voice=audio)
+    await replace_previous_pronunciation(chat_id, sent, context)
+    return sent
+
+
+def voice_translation_result_text(result) -> str:
+    source = str(result.source_transcript).strip()
+    translation = str(result.translation).strip()
+    transcription = str(result.latin_transcription).strip()
+    detected = str(result.detected_language).strip().lower()
+    target = str(result.target_language).strip().lower()
+    if not 1 <= len(source) <= 5000:
+        raise ValueError("Voice translation transcript is outside bounds")
+    if len(translation) > 3000 or len(transcription) > 3000:
+        raise ValueError("Voice translation result is outside bounds")
+    flags = {
+        "ar": "🇸🇦",
+        "de": "🇩🇪",
+        "en": "🇬🇧",
+        "es": "🇪🇸",
+        "fr": "🇫🇷",
+        "ja": "🇯🇵",
+        "ru": "🇷🇺",
+        "zh": "🇨🇳",
+    }
+    if detected == "ru":
+        lines = [f"🇷🇺 Исходная фраза: {source}"]
+        if translation:
+            lines.extend(["", f"{flags.get(target, '🌐')} {translation}"])
+    else:
+        lines = [f"🇷🇺 Перевод: {translation}" if translation else "🇷🇺 Перевод не получен"]
+        lines.extend(["", f"{flags.get(detected, '🌐')} Исходная фраза: {source}"])
+    if transcription:
+        lines.append(f"Латиницей: {transcription}")
+    lines.extend(["", f"Распознан язык: {detected or 'не определён'}."])
+    notice = str(getattr(result, "notice_ru", "") or "").strip()
+    if notice:
+        lines.extend(["", notice])
+    return "\n".join(lines)
+
+
 @auth
 async def voice_message_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    if not VOICE_SETTINGS.enabled:
-        await update.message.reply_text("Голосовой тренажёр пока выключен.")
-        return
-    if not get_store().has_consent(
-        int(update.effective_user.id),
-        consent_type="voice_processing",
-        document_version=VOICE_SETTINGS.consent_version,
+    store = get_store()
+    user_id = int(update.effective_user.id)
+    profile = store.product_profile(user_id)
+    if (
+        isinstance(profile, Mapping)
+        and profile.get("access_status") not in {None, "active"}
     ):
-        await update.message.reply_text(
-            "Согласие на обработку голоса отсутствует или устарело. "
-            "Запусти /voice и подтверди актуальные условия."
-        )
+        await update.message.reply_text("Голосовые функции сейчас недоступны.")
         return
     voice = update.message.voice
     duration = int(getattr(voice, "duration", 0) or 0)
     file_size = getattr(voice, "file_size", None)
+    user_data = getattr(context, "user_data", {})
+    entry_mode = (
+        user_data.get("voice_entry_mode") if isinstance(user_data, Mapping) else None
+    )
+    if VOICE_SETTINGS.enabled and entry_mode != "translation":
+        if (
+            duration < 1
+            or duration > VOICE_SETTINGS.max_duration_seconds
+            or file_size is None
+            or int(file_size) <= 0
+            or int(file_size) > VOICE_SETTINGS.max_audio_bytes
+        ):
+            await update.message.reply_text(
+                "Голосовое не принято: длительность или размер вне допустимого лимита."
+            )
+            return
+        if not store.has_consent(
+            user_id,
+            consent_type="voice_processing",
+            document_version=VOICE_SETTINGS.consent_version,
+        ):
+            await update.message.reply_text(
+                "Согласие на обработку голоса отсутствует или устарело. "
+                "Запусти /voice и подтверди актуальные условия."
+            )
+            return
+
+    practice_service = get_voice_tutor_service() if VOICE_SETTINGS.enabled else None
+    state = practice_service.active_session(user_id) if practice_service else None
+    if state is not None:
+        if not store.has_consent(
+            user_id,
+            consent_type="voice_processing",
+            document_version=VOICE_SETTINGS.consent_version,
+        ):
+            await update.message.reply_text(
+                "Согласие на обработку голоса отсутствует или устарело. "
+                "Запусти /voice и подтверди актуальные условия."
+            )
+            return
+        if (
+            duration < 1
+            or duration > VOICE_SETTINGS.max_duration_seconds
+            or file_size is None
+            or int(file_size) <= 0
+            or int(file_size) > VOICE_SETTINGS.max_audio_bytes
+        ):
+            await update.message.reply_text(
+                "Голосовое не принято: длительность или размер вне допустимого лимита."
+            )
+            return
+        try:
+            pack, indexed_words = restore_voice_block(state)
+            expected_indexed = indexed_words[state.next_position]
+            telegram_file = await context.bot.get_file(voice.file_id)
+            downloaded = await telegram_file.download_as_bytearray()
+            if not downloaded or len(downloaded) > VOICE_SETTINGS.max_audio_bytes:
+                raise ValueError("Downloaded voice exceeds size limit")
+            result = await practice_service.process_turn(
+                user_id=user_id,
+                audio=bytes(downloaded),
+                duration_seconds=duration,
+                words=[word for _, word in indexed_words],
+            )
+        except AIQuotaExceeded:
+            await update.message.reply_text(
+                "AI-кредиты закончились. Проверь /ai_stats или открой /buy."
+            )
+            return
+        except VoiceUsageRecoveryError:
+            logger.exception("Voice credit reservation recovery failed")
+            await update.message.reply_text(
+                "Не удалось подтвердить возврат AI-кредита. Проверь /ai_stats."
+            )
+            return
+        except (VoiceProviderError, VoiceSessionError, ValueError) as exc:
+            logger.warning("Voice turn rejected: error_type=%s", type(exc).__name__)
+            await update.message.reply_text(
+                "Не удалось безопасно обработать голосовое. AI-кредит не списан."
+            )
+            return
+        except (TelegramError, VoiceConfigurationError) as exc:
+            logger.warning(
+                "Voice service unavailable: error_type=%s", type(exc).__name__
+            )
+            await update.message.reply_text("Голосовой тренажёр временно недоступен.")
+            return
+        except Exception as exc:
+            logger.warning("Voice request failed: error_type=%s", type(exc).__name__)
+            await update.message.reply_text(
+                "Голосовой тренажёр временно недоступен. AI-кредит не списан."
+            )
+            return
+        await update.message.reply_text(voice_feedback_text(result))
+        await send_voice_reference(
+            chat_id=update.effective_chat.id,
+            context=context,
+            pack=pack,
+            indexed_word=expected_indexed,
+            mode=state.mode,
+        )
+        record_product_event(
+            "voice_turn_completed",
+            properties={
+                "pack_id": pack.pack_id,
+                "language": pack.target_language,
+                "mode": result.feedback.code,
+                "word_index": expected_indexed[0],
+            },
+            session_id=state.session_id,
+        )
+        if result.session_status == "completed":
+            await update.message.reply_text(
+                "Голосовой блок завершён. Открой /voice_transcript, чтобы увидеть все реплики."
+            )
+            return
+        await send_voice_prompt(
+            chat_id=update.effective_chat.id,
+            context=context,
+            pack=pack,
+            indexed_word=indexed_words[result.next_position],
+            position=result.next_position + 1,
+            total=len(indexed_words),
+            mode=state.mode,
+        )
+        return
+
+    if entry_mode != "translation":
+        await update.message.reply_text("Сначала выбери режим через /voice.")
+        return
+    settings = VOICE_TRANSLATION_SETTINGS
+    if not settings.enabled:
+        await update.message.reply_text("Перевод голосовых пока выключен.")
+        return
     if (
         duration < 1
-        or duration > VOICE_SETTINGS.max_duration_seconds
+        or duration > settings.max_duration_seconds
         or file_size is None
         or int(file_size) <= 0
-        or int(file_size) > VOICE_SETTINGS.max_audio_bytes
+        or int(file_size) > settings.max_audio_bytes
     ):
         await update.message.reply_text(
             "Голосовое не принято: длительность или размер вне допустимого лимита."
         )
         return
-    service = get_voice_tutor_service()
-    state = service.active_session(int(update.effective_user.id))
-    if state is None:
+    if not store.has_consent(
+        user_id,
+        consent_type="voice_translation_processing",
+        document_version=settings.consent_version,
+    ):
         await update.message.reply_text(
-            "Сначала запусти практику командой /voice после выбора блока."
+            "Нужно актуальное согласие на распознавание и перевод. Запусти /voice."
         )
         return
     try:
-        pack, indexed_words = restore_voice_block(state)
-        expected_indexed = indexed_words[state.next_position]
         telegram_file = await context.bot.get_file(voice.file_id)
         downloaded = await telegram_file.download_as_bytearray()
-        if not downloaded or len(downloaded) > VOICE_SETTINGS.max_audio_bytes:
+        if not downloaded or len(downloaded) > settings.max_audio_bytes:
             raise ValueError("Downloaded voice exceeds size limit")
-        result = await service.process_turn(
-            user_id=int(update.effective_user.id),
+        translated = await get_voice_translation_service().translate_note(
+            user_id=user_id,
             audio=bytes(downloaded),
             duration_seconds=duration,
-            words=[word for _, word in indexed_words],
+            active_language=str(profile.get("active_lang") or "en"),
         )
+        await update.message.reply_text(voice_translation_result_text(translated))
+        if translated.translation:
+            async def renderer(value: str, *, language: str):
+                pack = CATALOG.pack_for_language(language, str(profile.get("role") or "learner"))
+                return await get_audio(
+                    value,
+                    voice=pack.pronunciation.tts_voice if pack else None,
+                    rate=pack.pronunciation.tts_rate if pack else None,
+                    cache_namespace=f"voice-translation:{language}",
+                )
+
+            await send_voice_translation_reference(
+                chat_id=update.effective_chat.id,
+                context=context,
+                target_text=translated.translation,
+                target_language=translated.target_language,
+                renderer=renderer,
+            )
     except AIQuotaExceeded:
-        await update.message.reply_text(
-            "AI-кредиты закончились. Проверь /ai_stats или открой /buy."
-        )
-        return
+        await update.message.reply_text("AI-кредиты закончились. Проверь /ai_stats.")
     except VoiceUsageRecoveryError:
-        logger.exception("Voice credit reservation recovery failed")
         await update.message.reply_text(
-            "Не удалось подтвердить возврат AI-кредита. Проверь /ai_stats."
+            "Не удалось подтвердить состояние AI-кредитов. Проверь /ai_stats."
         )
-        return
-    except (VoiceProviderError, VoiceSessionError, ValueError) as exc:
-        logger.warning("Voice turn rejected: error_type=%s", type(exc).__name__)
+    except (TelegramError, VoiceProviderError, VoiceConfigurationError, ValueError) as exc:
+        logger.warning("Voice translation rejected: error_type=%s", type(exc).__name__)
         await update.message.reply_text(
-            "Не удалось безопасно обработать голосовое. AI-кредит не списан."
+            "Не удалось безопасно обработать голосовое. Текст не сохранён."
         )
-        return
-    except (TelegramError, VoiceConfigurationError) as exc:
-        logger.warning("Voice service unavailable: error_type=%s", type(exc).__name__)
-        await update.message.reply_text("Голосовой тренажёр временно недоступен.")
-        return
-    except Exception as exc:
-        logger.warning("Voice request failed: error_type=%s", type(exc).__name__)
-        await update.message.reply_text(
-            "Голосовой тренажёр временно недоступен. AI-кредит не списан."
-        )
-        return
-    await update.message.reply_text(voice_feedback_text(result))
-    await send_voice_reference(
-        chat_id=update.effective_chat.id,
-        context=context,
-        pack=pack,
-        indexed_word=expected_indexed,
-        mode=state.mode,
-    )
-    record_product_event(
-        "voice_turn_completed",
-        properties={
-            "pack_id": pack.pack_id,
-            "language": pack.target_language,
-            "mode": result.feedback.code,
-            "word_index": expected_indexed[0],
-        },
-        session_id=state.session_id,
-    )
-    if result.session_status == "completed":
-        await update.message.reply_text(
-            "Голосовой блок завершён. Открой /voice_transcript, чтобы увидеть все реплики."
-        )
-        return
-    await send_voice_prompt(
-        chat_id=update.effective_chat.id,
-        context=context,
-        pack=pack,
-        indexed_word=indexed_words[result.next_position],
-        position=result.next_position + 1,
-        total=len(indexed_words),
-        mode=state.mode,
-    )
 
 
 async def send_ai_tutor_answer(
@@ -2361,6 +2706,71 @@ def _mirror_style(store, user_id: int) -> str:
         return "teacher"
 
 
+def _mirror_preferences(store, user_id: int) -> dict[str, str]:
+    try:
+        values = store.get_mirror_preferences(user_id)
+        if isinstance(values, Mapping):
+            mode = normalize_mirror_style(values.get("mode"))
+            depth = str(values.get("depth") or "balanced").strip().lower()
+            level = str(values.get("level") or "adaptive").strip().lower()
+            if depth not in MIRROR_ANSWER_DEPTHS or level not in MIRROR_LEARNER_LEVELS:
+                raise ValueError("Invalid Mirror preferences")
+            return {"mode": mode, "depth": depth, "level": level}
+    except (AttributeError, TypeError, ValueError):
+        pass
+    return {
+        "mode": _mirror_style(store, user_id),
+        "depth": "balanced",
+        "level": "adaptive",
+    }
+
+
+def _mirror_control_policy(store) -> dict[str, Any]:
+    if isinstance(store, DatabaseStore):
+        try:
+            return AdminStore(store).get_mirror_control_plane()
+        except Exception as exc:
+            logger.warning(
+                "Mirror control plane read failed: error_type=%s",
+                type(exc).__name__,
+            )
+    return {**MIRROR_CONTROL_PLANE_DEFAULTS, "snapshot_id": None}
+
+
+def mirror_feedback_keyboard(request_id: str) -> InlineKeyboardMarkup:
+    safe_id = str(request_id).strip()
+    if not 1 <= len(safe_id) <= 64 or ":" in safe_id:
+        raise ValueError("Mirror feedback request id is invalid")
+    return InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton(
+                "Полезно", callback_data=f"mirrorfb:{safe_id}:helpful"
+            ),
+            InlineKeyboardButton(
+                "Не помогло", callback_data=f"mirrorfb:{safe_id}:not-helpful"
+            ),
+        ]]
+    )
+
+
+@auth
+async def mirror_feedback_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    try:
+        _, request_id, rating = str(query.data).split(":", 2)
+        helpful = {"helpful": True, "not-helpful": False}[rating]
+        changed = get_store().rate_mirror_response(
+            int(update.effective_user.id),
+            request_id=request_id,
+            helpful=helpful,
+        )
+    except (KeyError, PermissionError, TypeError, ValueError):
+        await query.answer("Оценка недоступна.", show_alert=True)
+        return
+    await query.answer("Спасибо" if changed else "Оценка уже учтена")
+    await query.edit_message_reply_markup(reply_markup=None)
+
+
 @auth
 async def cmd_mirror_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = " ".join(getattr(context, "args", [])).strip().lower()
@@ -2407,8 +2817,13 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     question = str(update.message.text or "").strip()
     mirror_profile = get_bot_profile()
-    response_style = _mirror_style(store, user_id)
+    preferences = _mirror_preferences(store, user_id)
+    control_policy = _mirror_control_policy(store)
+    if preferences["mode"] not in control_policy["enabled_modes"]:
+        preferences["mode"] = str(control_policy["default_mode"])
     intent = classify_mirror_intent(question)
+    task_kind = classify_mirror_task(question)
+    request_id = None
     if intent == "greeting":
         role = str(profile.get("role") or "learner")
         active_pack = CATALOG.get(str(profile.get("active_pack_id") or ""))
@@ -2433,9 +2848,8 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             ),
             locale=getattr(update.effective_user, "language_code", None),
         )
-    elif intent == "progress":
-        response = build_mirror_progress_summary(store, user_id)
     else:
+        response = ""
         consent_version = AI_SETTINGS.consent_version or "unversioned"
         try:
             consented = store.has_consent(
@@ -2473,12 +2887,21 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                     dialogue = recent_mirror_dialogue(context.user_data)
             else:
                 dialogue = recent_mirror_dialogue(context.user_data)
-            payload = build_mirror_provider_payload(
-                question=question,
-                admin_guidance=mirror_profile.get(
+            persona = str(
+                mirror_profile.get(
                     "mirror_persona_guidance",
                     MIRROR_ADMIN_DEFAULTS["mirror_persona_guidance"],
-                ),
+                )
+            ).strip()
+            mode_guidance = str(
+                control_policy["mode_guidance"].get(
+                    preferences["mode"], persona
+                )
+            ).strip()
+            combined_guidance = f"{persona}\n\n{mode_guidance}"[:1000]
+            payload = build_mirror_provider_payload(
+                question=question,
+                admin_guidance=combined_guidance,
                 grounded_snapshot=snapshot,
                 learning_context=build_mirror_learning_context(
                     profile,
@@ -2486,17 +2909,19 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                     snapshot,
                 ),
                 recent_dialogue=dialogue,
-                response_style=response_style,
+                response_style=preferences["mode"],
+                task_kind=task_kind,
+                communication_mode=preferences["mode"],
+                answer_depth=preferences["depth"],
+                learner_level=preferences["level"],
             )
             service = get_ai_tutor_service()
-            if isinstance(service, AITutorService) and hasattr(service, "ask_mirror"):
-                result = await service.ask_mirror(user_id=user_id, payload=payload)
-            else:
-                result = await service.ask(
-                    user_id=user_id,
-                    question=question,
-                    mirror_payload=payload,
-                )
+            result = await service.ask(
+                user_id=user_id,
+                question=question,
+                mirror_payload=payload,
+            )
+            request_id = getattr(result, "request_id", None)
             response = str(result).strip()
             if not response:
                 raise ValueError("Empty Mirror response")
@@ -2507,10 +2932,13 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             return
         except Exception as exc:
             logger.warning("Mirror AI failed: error_type=%s", type(exc).__name__)
-            await update.message.reply_text(
-                "Не удалось подготовить безопасный ответ. Учебный ответ не был придуман."
-            )
-            return
+            if task_kind == "progress_review":
+                response = build_mirror_progress_summary(store, user_id)
+            else:
+                await update.message.reply_text(
+                    "Не удалось подготовить безопасный ответ. Учебный ответ не был придуман."
+                )
+                return
 
     mode = _mirror_mode(store, user_id)
     try:
@@ -2544,7 +2972,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         speech_consented=speech_consented,
         voice_renderer=voice_renderer,
     )
-    if intent == "learning_question" and MIRROR_MEMORY_SETTINGS.enabled:
+    if intent not in {"greeting", "capabilities"} and MIRROR_MEMORY_SETTINGS.enabled:
         try:
             store.append_mirror_exchange(
                 user_id,
@@ -2558,6 +2986,11 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             )
     append_mirror_turn(context.user_data, role="user", text=question)
     append_mirror_turn(context.user_data, role="assistant", text=response)
+    if request_id:
+        await update.message.reply_text(
+            "Ответ был полезен?",
+            reply_markup=mirror_feedback_keyboard(str(request_id)),
+        )
 
 
 @auth
@@ -4593,6 +5026,7 @@ BOT_COMMANDS = build_bot_commands(ai_enabled=AI_SETTINGS.enabled)
 
 async def sync_telegram_profile(telegram_bot) -> None:
     """Update optional Bot API metadata without blocking polling startup."""
+    logger.disabled = False
     profile = get_bot_profile()
     operations = (
         ("commands", telegram_bot.set_my_commands, (BOT_COMMANDS,), {}),
@@ -4645,6 +5079,7 @@ async def deliver_telegram_notifications(
     limit: int = 10,
 ) -> int:
     """Deliver one leased outbox batch without exposing recipient data in logs."""
+    logger.disabled = False
     claim = getattr(store, "claim_telegram_notifications", None)
     if not callable(claim):
         return 0
@@ -4684,6 +5119,7 @@ async def deliver_telegram_notifications(
 
 async def manual_polling():
     """Manual polling loop that handles Conflict gracefully."""
+    logger.disabled = False
     BOT_HEARTBEAT.mark_starting()
     store = get_store()
     recovered_reservations = store.recover_stale_ai_usage(
@@ -4741,6 +5177,12 @@ async def manual_polling():
     app.add_handler(
         CallbackQueryHandler(voice_consent_cb, pattern=r"^voiceconsent:")
     )
+    app.add_handler(CallbackQueryHandler(voice_mode_cb, pattern=r"^voice-mode:"))
+    app.add_handler(
+        CallbackQueryHandler(
+            voice_translation_consent_cb, pattern=r"^voicetransconsent:"
+        )
+    )
     app.add_handler(
         CallbackQueryHandler(ai_consent_cb, pattern=r"^aiconsent:")
     )
@@ -4748,6 +5190,7 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(subscription_cb, pattern=r"^sub:"))
     app.add_handler(CallbackQueryHandler(privacy_cb, pattern=r"^privacy:"))
     app.add_handler(CallbackQueryHandler(settings_cb, pattern=r"^settings:"))
+    app.add_handler(CallbackQueryHandler(mirror_feedback_cb, pattern=r"^mirrorfb:"))
 
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))
