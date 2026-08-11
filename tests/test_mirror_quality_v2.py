@@ -88,8 +88,8 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
                 rendered = ai_tutor.render_mirror_answer(
                     answer, available_credits=40
                 )
-                self.assertTrue(rendered.startswith("🇷🇺 "))
-                self.assertIn("Транскрипция:", rendered)
+                self.assertTrue(rendered.startswith(answer.answer_ru))
+                self.assertIn(answer.language_items[0].transcription, rendered)
 
     def test_ac_01_russian_first_response_supports_translation_variants(self):
         parse = getattr(ai_tutor, "parse_mirror_answer", None)
@@ -118,11 +118,10 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
             }
         )
         rendered = render(answer, available_credits=39)
-        self.assertTrue(rendered.startswith("🇷🇺 "))
+        self.assertTrue(rendered.startswith(answer.answer_ru))
         self.assertIn("bonjour", rendered)
-        self.assertIn("Транскрипция: /bɔ̃.ʒuʁ/", rendered)
-        self.assertIn("Значение: здравствуйте; добрый день", rendered)
-        self.assertIn("AI-кредиты: 39", rendered)
+        self.assertIn("bonjour /bɔ̃.ʒuʁ/ — здравствуйте; добрый день", rendered)
+        self.assertNotIn("AI-кредиты", rendered)
 
     def test_ac_02_ec_01_recent_dialogue_is_ephemeral_trimmed_and_bounded(self):
         append = getattr(mirror_assistant, "append_mirror_turn", None)
@@ -130,12 +129,12 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(callable(append), "Mirror history append helper is required")
         self.assertTrue(callable(recent), "Mirror history reader is required")
         user_data = {}
-        for index in range(14):
+        for index in range(22):
             append(user_data, role="user", text=f"  вопрос {index}  ")
         turns = recent(user_data)
-        self.assertEqual(len(turns), 12)
+        self.assertEqual(len(turns), 20)
         self.assertEqual(turns[0], {"role": "user", "text": "вопрос 2"})
-        self.assertEqual(turns[-1], {"role": "user", "text": "вопрос 13"})
+        self.assertEqual(turns[-1], {"role": "user", "text": "вопрос 21"})
         with self.assertRaises(ValueError):
             append(user_data, role="system", text="hidden")
         with self.assertRaises(ValueError):

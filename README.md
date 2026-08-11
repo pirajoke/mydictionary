@@ -91,7 +91,10 @@ configuration.
 - Product analytics accept only allowlisted structured fields, never learner
   messages, answers, prompts, names, or contact details.
 - AI usage records retain operational metadata rather than prompts or generated
-  answers; voice transcripts are temporary and separately consented.
+  answers. Optional Mirror dialogue memory is disabled by default; when enabled
+  under the current AI-processing consent, it stores at most 20 bounded turns
+  for a short configured period. Voice transcripts are temporary and separately
+  consented.
 - Admin mutations require authentication and CSRF protection and are written to
   an audit log.
 - Feature activation, migrations, external messages, payments, and production

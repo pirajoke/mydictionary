@@ -24,6 +24,7 @@ from sqlalchemy import (
     UniqueConstraint,
     case,
     create_engine,
+    delete,
     func,
     or_,
     select,
@@ -394,6 +395,34 @@ class VoiceTurn(Base):
     feedback_code: Mapped[str] = mapped_column(String(16), nullable=False)
     similarity_bps: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class MirrorDialogueTurn(Base):
+    __tablename__ = "mirror_dialogue_turns"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('user', 'assistant')", name="ck_mirror_dialogue_turn_role"
+        ),
+        CheckConstraint(
+            "turn_index IN (0, 1)", name="ck_mirror_dialogue_turn_index"
+        ),
+        UniqueConstraint(
+            "exchange_id", "turn_index", name="uq_mirror_dialogue_exchange_turn"
+        ),
+    )
+
+    turn_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    exchange_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    turn_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -1043,6 +1072,154 @@ class DatabaseStore:
             )
         return normalized
 
+    def get_mirror_style(self, user_id: int) -> str:
+        self.ensure_user_id(user_id)
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                text(
+                    "SELECT privacy_status, mirror_style FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).mappings().one()
+        if row["privacy_status"] != "active":
+            return "teacher"
+        style = str(row["mirror_style"] or "teacher")
+        return (
+            style
+            if style in {"teacher", "conversation", "brief", "practice"}
+            else "teacher"
+        )
+
+    def set_mirror_style(self, user_id: int, style: str) -> str:
+        normalized = str(style).strip().lower()
+        if normalized not in {"teacher", "conversation", "brief", "practice"}:
+            raise ValueError("Unknown Mirror style")
+        self.ensure_user_id(user_id)
+        with self.engine.begin() as connection:
+            privacy_status = connection.execute(
+                text(
+                    "SELECT privacy_status FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).scalar_one()
+            if privacy_status != "active":
+                raise ValueError("Erased users cannot change Mirror style")
+            connection.execute(
+                text(
+                    "UPDATE users SET mirror_style = :style, updated_at = :updated_at "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {
+                    "style": normalized,
+                    "updated_at": utcnow(),
+                    "user_id": int(user_id),
+                },
+            )
+        return normalized
+
+    def append_mirror_exchange(
+        self,
+        user_id: int,
+        *,
+        question: str,
+        answer: str,
+        retention_days: int,
+        now: datetime | None = None,
+    ) -> None:
+        days = int(retention_days)
+        if not 1 <= days <= 30:
+            raise ValueError("Mirror dialogue retention must be 1-30 days")
+        clean_question = str(question).strip()
+        clean_answer = str(answer).strip()
+        if not clean_question or not clean_answer:
+            raise ValueError("Mirror exchange text cannot be empty")
+        clean_question = clean_question[:500]
+        clean_answer = clean_answer[:500]
+        observed_at = now or utcnow()
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=timezone.utc)
+        self.ensure_user_id(user_id)
+        exchange_id = str(uuid4())
+        expires_at = observed_at + timedelta(days=days)
+        with self.Session.begin() as session:
+            user = session.get(User, int(user_id))
+            if user is None or user.privacy_status != "active":
+                raise ValueError("Erased users cannot store Mirror dialogue")
+            session.add_all(
+                [
+                    MirrorDialogueTurn(
+                        turn_id=str(uuid4()),
+                        exchange_id=exchange_id,
+                        turn_index=0,
+                        telegram_user_id=int(user_id),
+                        role="user",
+                        text=clean_question,
+                        created_at=observed_at,
+                        expires_at=expires_at,
+                    ),
+                    MirrorDialogueTurn(
+                        turn_id=str(uuid4()),
+                        exchange_id=exchange_id,
+                        turn_index=1,
+                        telegram_user_id=int(user_id),
+                        role="assistant",
+                        text=clean_answer,
+                        created_at=observed_at,
+                        expires_at=expires_at,
+                    ),
+                ]
+            )
+
+    def get_mirror_dialogue(
+        self,
+        user_id: int,
+        *,
+        limit: int = 20,
+        now: datetime | None = None,
+    ) -> list[dict[str, str]]:
+        bounded_limit = int(limit)
+        if not 1 <= bounded_limit <= 20:
+            raise ValueError("Mirror dialogue limit must be 1-20 turns")
+        observed_at = now or utcnow()
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=timezone.utc)
+        with self.Session.begin() as session:
+            user = session.get(User, int(user_id))
+            if user is None or user.privacy_status != "active":
+                return []
+            session.execute(
+                delete(MirrorDialogueTurn).where(
+                    MirrorDialogueTurn.telegram_user_id == int(user_id),
+                    MirrorDialogueTurn.expires_at <= observed_at,
+                )
+            )
+            rows = session.execute(
+                select(MirrorDialogueTurn)
+                .where(
+                    MirrorDialogueTurn.telegram_user_id == int(user_id),
+                    MirrorDialogueTurn.expires_at > observed_at,
+                )
+                .order_by(
+                    MirrorDialogueTurn.created_at.desc(),
+                    MirrorDialogueTurn.turn_index.desc(),
+                    MirrorDialogueTurn.turn_id.desc(),
+                )
+                .limit(bounded_limit)
+            ).scalars().all()
+        rows.reverse()
+        return [{"role": row.role, "text": row.text} for row in rows]
+
+    def clear_mirror_dialogue(self, user_id: int) -> int:
+        with self.Session.begin() as session:
+            deleted = session.execute(
+                delete(MirrorDialogueTurn).where(
+                    MirrorDialogueTurn.telegram_user_id == int(user_id)
+                )
+            ).rowcount
+        return int(deleted or 0)
+
     def product_profile(self, user_id: int) -> dict[str, Any]:
         self.ensure_user_id(user_id)
         with self.Session() as session:
@@ -1059,6 +1236,7 @@ class DatabaseStore:
                 "access_status_updated_at": user.access_status_updated_at,
                 "active_pack_id": progress.active_pack_id if progress else None,
                 "active_lang": progress.active_lang if progress else "en",
+                "mirror_style": self.get_mirror_style(user_id),
             }
 
     def access_profile(self, user_id: int) -> dict[str, Any] | None:

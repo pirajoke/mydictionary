@@ -123,6 +123,11 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(bot, "get_store", return_value=self.store),
             patch.object(bot, "AI_SETTINGS", settings),
+            patch.object(
+                bot,
+                "MIRROR_MEMORY_SETTINGS",
+                SimpleNamespace(enabled=True, retention_days=7),
+            ),
             bot.learner_scope(self.user),
         ):
             await bot.cmd_privacy.__wrapped__(command_update, SimpleNamespace())
@@ -130,6 +135,8 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
         rendered = message.reply_text.await_args.args[0]
         self.assertIn("AI", rendered)
         self.assertIn("принято", rendered.lower())
+        self.assertIn("20", rendered)
+        self.assertIn("7 дней", rendered)
 
         query = SimpleNamespace(
             data="privacy:ai_revoke",

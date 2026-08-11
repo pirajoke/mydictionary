@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
+import os
 import re
 from typing import Any, Mapping, Sequence
 
@@ -43,8 +45,33 @@ MIRROR_ADMIN_DEFAULTS = {
 }
 MIRROR_RESPONSE_MODES = frozenset({"text", "voice", "both"})
 MIRROR_DIALOGUE_KEY = "mirror_recent_dialogue"
-MIRROR_DIALOGUE_LIMIT = 12
-MIRROR_TURN_TEXT_LIMIT = 350
+MIRROR_DIALOGUE_LIMIT = 20
+MIRROR_TURN_TEXT_LIMIT = 500
+MIRROR_STYLES = frozenset({"teacher", "conversation", "brief", "practice"})
+MIRROR_STYLE_LABELS = {
+    "teacher": "Преподаватель",
+    "conversation": "Собеседник",
+    "brief": "Кратко",
+    "practice": "Практика",
+}
+MIRROR_STYLE_GUIDANCE = {
+    "teacher": (
+        "Точный преподаватель: прямо объясни правило или значение, различай "
+        "контексты и добавляй учебные детали только когда они помогают ответу."
+    ),
+    "conversation": (
+        "Живой собеседник: продолжай мысль пользователя естественно, учитывай "
+        "предыдущие реплики и мягко исправляй язык только когда это полезно."
+    ),
+    "brief": (
+        "Краткий разбор: ответь максимально конкретно в одном или двух коротких "
+        "абзацах без повторов и необязательных примеров."
+    ),
+    "practice": (
+        "Практика: коротко ответь на вопрос, затем предложи ровно одно небольшое "
+        "задание или реплику на активном языке."
+    ),
+}
 
 _VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 _UNSAFE_GUIDANCE_RE = re.compile(
@@ -91,6 +118,48 @@ _PROGRESS_PATTERNS = (
     "resume",
     "weak",
 )
+
+
+@dataclass(frozen=True)
+class MirrorMemorySettings:
+    enabled: bool = False
+    retention_days: int = 7
+
+    @classmethod
+    def from_env(
+        cls,
+        values: Mapping[str, str] | None = None,
+        *,
+        ai_consent_version: str | None,
+    ) -> "MirrorMemorySettings":
+        env = values if values is not None else os.environ
+        raw_enabled = str(env.get("MIRROR_MEMORY_ENABLED", "false")).strip().lower()
+        if raw_enabled in {"1", "true", "yes", "on"}:
+            enabled = True
+        elif raw_enabled in {"0", "false", "no", "off"}:
+            enabled = False
+        else:
+            raise ValueError("MIRROR_MEMORY_ENABLED must be true or false")
+        try:
+            retention_days = int(
+                str(env.get("MIRROR_DIALOGUE_RETENTION_DAYS", "7")).strip()
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "MIRROR_DIALOGUE_RETENTION_DAYS must be an integer"
+            ) from exc
+        if not 1 <= retention_days <= 30:
+            raise ValueError("MIRROR_DIALOGUE_RETENTION_DAYS must be 1-30")
+        if enabled and not str(ai_consent_version or "").strip():
+            raise ValueError("Mirror memory requires a current AI consent version")
+        return cls(enabled=enabled, retention_days=retention_days)
+
+
+def normalize_mirror_style(value: str | None) -> str:
+    style = str(value or "teacher").strip().lower()
+    if style not in MIRROR_STYLES:
+        raise ValueError("Unknown Mirror response style")
+    return style
 
 
 def validate_mirror_admin_settings(values: Mapping[str, str]) -> dict[str, str]:
@@ -258,6 +327,7 @@ def build_mirror_provider_payload(
     grounded_snapshot: Mapping[str, Any],
     learning_context: Mapping[str, Any] | None = None,
     recent_dialogue: Sequence[Mapping[str, Any]] | None = None,
+    response_style: str = "teacher",
 ) -> dict[str, Any]:
     clean_question = str(question).strip()
     clean_guidance = str(admin_guidance).strip()
@@ -274,6 +344,7 @@ def build_mirror_provider_payload(
         "grounded_snapshot": dict(grounded_snapshot),
         "learning_context": _normalize_learning_context(learning_context),
         "recent_dialogue": normalize_mirror_dialogue(recent_dialogue),
+        "response_style": normalize_mirror_style(response_style),
     }
 
 
