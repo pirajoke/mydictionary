@@ -184,6 +184,11 @@ class MirrorPersistentContextContractTest(unittest.TestCase):
         self.assertEqual(len(dialogue), 20)
         self.assertEqual(dialogue[0], {"role": "user", "text": "question 2"})
         self.assertEqual(dialogue[-1], {"role": "assistant", "text": "answer 11"})
+        with self.store.Session() as session:
+            stored_turns = session.scalar(
+                select(func.count()).select_from(storage.MirrorDialogueTurn)
+            )
+        self.assertEqual(stored_turns, 20)
         self.assertEqual(
             self.store.get_mirror_dialogue(
                 703, limit=20, now=self.now + timedelta(days=8)

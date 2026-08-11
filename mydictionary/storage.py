@@ -1144,7 +1144,11 @@ class DatabaseStore:
         exchange_id = str(uuid4())
         expires_at = observed_at + timedelta(days=days)
         with self.Session.begin() as session:
-            user = session.get(User, int(user_id))
+            user = session.execute(
+                select(User)
+                .where(User.telegram_user_id == int(user_id))
+                .with_for_update()
+            ).scalar_one_or_none()
             if user is None or user.privacy_status != "active":
                 raise ValueError("Erased users cannot store Mirror dialogue")
             session.add_all(
@@ -1171,6 +1175,24 @@ class DatabaseStore:
                     ),
                 ]
             )
+            session.flush()
+            stale_exchange_ids = session.execute(
+                select(MirrorDialogueTurn.exchange_id)
+                .where(MirrorDialogueTurn.telegram_user_id == int(user_id))
+                .group_by(MirrorDialogueTurn.exchange_id)
+                .order_by(
+                    func.max(MirrorDialogueTurn.created_at).desc(),
+                    MirrorDialogueTurn.exchange_id.desc(),
+                )
+                .offset(10)
+            ).scalars().all()
+            if stale_exchange_ids:
+                session.execute(
+                    delete(MirrorDialogueTurn).where(
+                        MirrorDialogueTurn.telegram_user_id == int(user_id),
+                        MirrorDialogueTurn.exchange_id.in_(stale_exchange_ids),
+                    )
+                )
 
     def get_mirror_dialogue(
         self,
@@ -1631,6 +1653,12 @@ class DatabaseStore:
             for row in rows:
                 row.revoked_at = observed_at
                 changed += 1
+            if consent_type == "ai_processing":
+                session.execute(
+                    delete(MirrorDialogueTurn).where(
+                        MirrorDialogueTurn.telegram_user_id == int(user_id)
+                    )
+                )
         return changed
 
     def load_profile(

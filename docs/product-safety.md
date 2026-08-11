@@ -53,8 +53,9 @@ The corresponding environment variables are `RETENTION_ANALYTICS_DAYS`,
 `RETENTION_RATE_LIMIT_DAYS`.
 Voice transcript expiry uses `VOICE_TRANSCRIPT_RETENTION_DAYS`.
 Mirror dialogue expiry uses `MIRROR_DIALOGUE_RETENTION_DAYS` and applies only
-when `MIRROR_MEMORY_ENABLED=true`; memory is disabled by default and requires a
-current AI-processing consent version.
+when `MIRROR_MEMORY_ENABLED=true`; memory is disabled by default, physically
+limited to 20 turns per learner, cleared when AI consent is revoked, and requires
+a current AI-processing consent version.
 
 The `/privacy` flow erases learning progress, product analytics, detailed AI
 usage, optional Mirror dialogue turns, imports, rate-limit state, and Telegram

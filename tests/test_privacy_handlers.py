@@ -114,6 +114,12 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
             document_version=version,
             source="telegram",
         )
+        self.store.append_mirror_exchange(
+            self.user.id,
+            question="private question",
+            answer="private answer",
+            retention_days=7,
+        )
         message = SimpleNamespace(reply_text=AsyncMock())
         command_update = SimpleNamespace(
             effective_message=message,
@@ -166,5 +172,6 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         self.assertNotIn("pending_ai_consent", context.user_data)
+        self.assertEqual(self.store.get_mirror_dialogue(self.user.id), [])
         with self.store.Session() as session:
             self.assertEqual(session.get(User, self.user.id).privacy_status, "active")

@@ -110,10 +110,10 @@ mandatory billing records.
 
 When `MIRROR_MEMORY_ENABLED=true`, `mirror_dialogue_turns` stores only bounded
 user and assistant text, role, owner, and expiry metadata. It is isolated per
-learner, limited to the latest 20 turns sent to the provider, removed by the
-retention job after expiry, and deleted by the self-service privacy erasure. The
-setting may only be enabled alongside a reviewed AI-processing notice/version
-that explicitly discloses this storage.
+learner and physically limited to the latest 20 turns. Expired turns are removed
+by the retention job; all turns are deleted by AI-consent revocation or the
+self-service privacy erasure. The setting may only be enabled alongside a
+reviewed AI-processing notice/version that explicitly discloses this storage.
 
 ## Rollout Gate
 
