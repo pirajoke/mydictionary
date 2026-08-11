@@ -37,9 +37,9 @@ of a percentage calculated from fewer than ten eligible learners.
 **Objective (2026 Q3): prove that MY DICTIONARY is safe to operate and creates
 repeat learning value before commercial activation.**
 
-| Key result | Evidence | Status at 2026-08-08 |
+| Key result | Evidence | Status at 2026-08-11 |
 | --- | --- | --- |
-| KR1: active release, heartbeat, public/local health, and backup monitor remain green | Production health checks | Green on `d7bca5b` |
+| KR1: active release, heartbeat, public/local health, and backup monitor remain green | Production health checks | Green on `e760258` |
 | KR2: reach at least 10 D7-eligible pilot learners and record retained / eligible | `pilot_overview(days=30)` | 0 D7-eligible |
 | KR3: complete protected token-file cutover, rotation, and zero-residue sanitized-copy verification | Rotation receipt | Not complete |
 | KR4: produce one encrypted off-site upload receipt and one isolated recovery-host restore receipt | Private recovery receipts | Not complete |
@@ -105,5 +105,11 @@ Do not auto-approve users, send reminders, or change features from this report.
 | 2026-08-06 | 1 | active 1; onboarding 1; block started/completed 1/1 | 0 eligible | 0 eligible | 200/ok |
 | 2026-08-07 | 2 | active 2; approved 1; onboarding 2; block started/completed 1/1 | 0/2 (0%) | 0 eligible | 200/ok |
 | 2026-08-08 | 2 | active 2; approved 1; onboarding 2; block started/completed 1/1 | 0/2 (0%) | 0 eligible | 200/ok |
+| 2026-08-11 | 3 | waitlist 3; approved 1; onboarding 2; block started/completed 1/1 | 0/2 (0%) | 0 eligible | 200/ok |
+
+The 2026-08-11 production snapshot also records NSM = **1 durable word** and
+AI use = **5 completed requests / 5 billed credits / $0.003949 total measured
+cost**. Voice sessions, active billing products, orders, payments, and
+subscriptions remain at zero.
 
 No learner identifiers or message content belong in this history.

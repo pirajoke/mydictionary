@@ -16,8 +16,10 @@ console.
   local-only SQLite mode.
 - A server-rendered admin console for learner access, pilot D1/D7 retention,
   privacy-safe product analytics, credit operations, and audit history.
-- Optional AI tutor, voice practice, and Telegram Stars billing. All three are
-  fail-closed and remain off until their separate rollout gates are approved.
+- The AI tutor and grounded Mirror Assistant are active only in the controlled
+  pilot with versioned economics, credit limits, budgets, and breakers. Voice
+  practice and Telegram Stars billing remain fail-closed and disabled until
+  their separate rollout gates are approved.
 - Verified local PostgreSQL backups, encrypted off-site replication tooling,
   retention controls, health monitoring, and a migration-aware Mac mini
   release process.
