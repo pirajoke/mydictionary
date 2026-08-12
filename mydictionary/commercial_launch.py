@@ -1,4 +1,4 @@
-"""Privacy-safe Commercial Launch v1 contract helpers."""
+"""Privacy-safe Commercial Launch v2 contract helpers."""
 
 from __future__ import annotations
 
@@ -24,9 +24,10 @@ SENSITIVE_MEASUREMENT_KEYS = {
     "telegram_user_id",
     "user_id",
 }
-EXPECTED_V1_CATALOG = {
+EXPECTED_V2_CATALOG = {
+    "ai-mini": (20, 60, "one_time"),
     "ai-starter": (50, 100, "one_time"),
-    "ai-value": (150, 240, "one_time"),
+    "ai-value": (150, 250, "one_time"),
     "ai-monthly": (100, 180, "subscription"),
 }
 
@@ -217,8 +218,8 @@ def commercial_launch_overview(
         for package in expected_packages
         if isinstance(package, Mapping)
     }
-    if catalog != EXPECTED_V1_CATALOG:
-        raise CommercialLaunchError("Commercial Launch v1 catalog is inconsistent")
+    if catalog != EXPECTED_V2_CATALOG:
+        raise CommercialLaunchError("Commercial Launch v2 catalog is inconsistent")
     nominal_net = _integer(
         stars.get("assumed_net_micro_usd_per_xtr"), "nominal net XTR", minimum=1
     )
@@ -234,11 +235,11 @@ def commercial_launch_overview(
     support_overhead = _integer(
         stars.get("support_overhead_micro_usd_per_purchase"), "support overhead"
     )
-    preflight_budget = _integer(
-        _mapping(ai.get("limits"), "AI limits").get(
-            "max_preflight_cost_micro_usd_per_request"
+    modelled_cost_per_credit = _integer(
+        _mapping(ai.get("credit_policy"), "AI credit policy").get(
+            "modelled_cost_micro_usd_per_credit"
         ),
-        "AI preflight budget",
+        "modelled AI cost per credit",
         minimum=1,
     )
     terms_path = (root / Path(str(stars.get("terms_document", "")))).resolve()
@@ -261,7 +262,7 @@ def commercial_launch_overview(
         product_id = str(package.get("product_id", ""))
         credits = _integer(package.get("credits"), f"{product_id} credits", minimum=1)
         price_xtr = _integer(package.get("price_xtr"), f"{product_id} price", minimum=1)
-        provider_cost = credits * preflight_budget
+        provider_cost = credits * modelled_cost_per_credit
         nominal_revenue = price_xtr * nominal_net
         reserve = (nominal_revenue * refund_reserve_bps + 9999) // 10000
         estimated_cost = provider_cost + reserve + support_overhead

@@ -101,8 +101,26 @@ def build_process(
             "VOICE_TUTOR_ENABLED": source.get(
                 "VOICE_TUTOR_ENABLED", "false"
             ).strip(),
+            "VOICE_PROVIDER": source.get("VOICE_PROVIDER", "openai").strip(),
+            "VOICE_PROVIDER_CONFIGURED": str(
+                bool(
+                    source.get(
+                        "GROQ_API_KEY"
+                        if source.get("VOICE_PROVIDER", "openai").strip().lower()
+                        == "groq"
+                        else "OPENAI_API_KEY",
+                        "",
+                    ).strip()
+                )
+            ).lower(),
             "VOICE_TRANSCRIPTION_MODEL": source.get(
-                "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
+                "VOICE_TRANSCRIPTION_MODEL",
+                (
+                    "whisper-large-v3"
+                    if source.get("VOICE_PROVIDER", "openai").strip().lower()
+                    == "groq"
+                    else "gpt-4o-transcribe"
+                ),
             ).strip(),
             "TELEGRAM_STARS_ENABLED": source.get(
                 "TELEGRAM_STARS_ENABLED", "false"

@@ -5,22 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MY DICTIONARY Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
+    <script src="{{ url_for('static', filename='admin/admin.js') }}" defer></script>
   </head>
   <body>
+    {% set active_group = (
+      'overview' if tab == 'dashboard' else
+      'users' if tab in ['users', 'pilot'] else
+      'product' if tab in ['funnel', 'learning', 'content'] else
+      'ai-voice' if tab in ['ai', 'voice'] else
+      'payments' if tab == 'billing' else
+      'settings'
+    ) %}
+    {% set primary_groups = [
+      ('overview', 'Обзор', 'dashboard'),
+      ('users', 'Пользователи', 'users'),
+      ('product', 'Продукт', 'funnel'),
+      ('ai-voice', 'AI и голос', 'ai'),
+      ('payments', 'Платежи', 'billing'),
+      ('settings', 'Настройки', 'profile')
+    ] %}
+    {% set group_tabs = {
+      'overview': [('dashboard', 'Сводка')],
+      'users': [('users', 'Пользователи'), ('pilot', 'Пилот')],
+      'product': [('funnel', 'Воронка'), ('learning', 'Обучение'), ('content', 'Контент')],
+      'ai-voice': [('ai', 'AI и кредиты'), ('voice', 'Голос')],
+      'payments': [('billing', 'Stars и платежи')],
+      'settings': [('profile', 'Профиль бота'), ('safety', 'Безопасность'), ('diagnostics', 'Диагностика'), ('audit', 'Аудит')]
+    } %}
     <aside class="sidebar">
       <a class="brand" href="{{ url_for('admin_index') }}">
         <img src="{{ url_for('static', filename='admin/brand-mark.png') }}" alt="" width="40" height="40">
         <span>MY DICTIONARY<small>Admin</small></span>
       </a>
-      <nav aria-label="Разделы">
-        {% for id, label in [
-          ('dashboard','Обзор'),('users','Пользователи'),('pilot','Пилот'),('funnel','Воронка'),('learning','Обучение'),
-          ('ai','AI и кредиты'),('billing','Stars и платежи'),('voice','Голос'),('safety','Безопасность'),('content','Контент'),('profile','Профиль бота'),
-          ('diagnostics','Диагностика'),('audit','Аудит')
-        ] %}
-          <a href="{{ url_for('admin_index', tab=id) }}" class="{{ 'active' if tab == id else '' }}">{{ label }}</a>
-        {% endfor %}
-      </nav>
+      <details class="nav-disclosure" open>
+        <summary>Разделы</summary>
+        <nav class="primary-nav" aria-label="Основные разделы">
+          {% for group_id, label, first_tab in primary_groups %}
+            <a href="{{ url_for('admin_index', tab=first_tab) }}" class="primary-nav-link{{ ' active' if active_group == group_id else '' }}">{{ label }}</a>
+          {% endfor %}
+        </nav>
+      </details>
       <form method="post" action="{{ url_for('admin_logout') }}" class="logout-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="text-button">Выйти</button>
@@ -36,6 +60,11 @@
         }[tab] }}</h1></div>
         <span class="admin-name">{{ current_actor }}</span>
       </header>
+      <nav class="section-tabs" aria-label="Страницы раздела">
+        {% for id, label in group_tabs[active_group] %}
+          <a href="{{ url_for('admin_index', tab=id) }}" class="{{ 'active' if tab == id else '' }}">{{ label }}</a>
+        {% endfor %}
+      </nav>
 
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}<div class="notice {{ category }}">{{ message }}</div>{% endfor %}
@@ -230,7 +259,7 @@
       {% if tab == 'billing' %}
         <section class="panel">
           <div class="section-heading">
-            <div><p class="eyebrow">Commercial Launch v1</p><h2>Готовность коммерческого запуска</h2></div>
+            <div><p class="eyebrow">Commercial Launch v2</p><h2>Готовность коммерческого запуска</h2></div>
             <span class="status {{ 'active' if commercial_launch.status == 'ready' else 'draft' }}">{{ commercial_launch.status }}</span>
           </div>
           <dl class="diagnostic-list">
@@ -454,7 +483,8 @@
               ('AI reserved in flight', diagnostics.ai_budget.in_flight_micro_usd ~ ' microUSD · ' ~ diagnostics.ai_budget.reserved_attempts ~ ' attempts', diagnostics.ai_budget.in_flight_micro_usd == 0),
               ('AI fallback journal', diagnostics.ai_metering_journal_pending ~ ' pending', diagnostics.ai_metering_journal_pending == 0),
               ('AI key enrollment', diagnostics.ai_key_enrollment_status ~ ' · ' ~ diagnostics.ai_key_enrollment_expires_at, diagnostics.ai_key_enrollment_status in ['ready','consumed']),
-              ('Voice tutor', diagnostics.voice_enabled ~ ' · ' ~ diagnostics.voice_model, diagnostics.voice_enabled|lower in ['1','true','yes','on']),
+              ('Voice tutor', diagnostics.voice_enabled ~ ' · ' ~ diagnostics.voice_provider ~ ' · ' ~ diagnostics.voice_model, diagnostics.voice_enabled|lower in ['1','true','yes','on']),
+              ('Voice provider configured', 'yes' if diagnostics.voice_provider_configured else 'no', diagnostics.voice_provider_configured),
               ('Voice consent', diagnostics.voice_consent_version, diagnostics.voice_consent_version != 'unversioned'),
               ('Telegram Stars', 'enabled' if diagnostics.stars_enabled else 'disabled', diagnostics.stars_enabled),
               ('Billing terms', diagnostics.billing_terms_version, diagnostics.billing_terms_version != 'unversioned'),

@@ -227,7 +227,7 @@ anonymous provider attempt, never mutates production feature flags or learner
 credits, and writes a mode-`0600` aggregate receipt with no prompt, response,
 provider ID, Telegram ID, credential, or local path.
 
-Validate Commercial Launch v1 and idempotently seed only the three reviewed
+Validate Commercial Launch v2 and idempotently seed only the four reviewed
 database drafts with:
 
 ```bash
