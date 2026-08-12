@@ -71,14 +71,15 @@ class CommercialLaunchContractTest(unittest.TestCase):
             finally:
                 store.close()
 
-        self.assertEqual(first, {"created": 3, "updated": 0, "unchanged": 0})
-        self.assertEqual(second, {"created": 0, "updated": 0, "unchanged": 3})
+        self.assertEqual(first, {"created": 4, "updated": 0, "unchanged": 0})
+        self.assertEqual(second, {"created": 0, "updated": 0, "unchanged": 4})
         self.assertEqual(first_audit_count, second_audit_count)
         self.assertEqual(
             {row["product_id"]: (row["credits"], row["price_xtr"], row["status"]) for row in products},
             {
+                "ai-mini": (20, 60, "draft"),
                 "ai-starter": (50, 100, "draft"),
-                "ai-value": (150, 240, "draft"),
+                "ai-value": (150, 250, "draft"),
                 "ai-monthly": (100, 180, "draft"),
             },
         )
@@ -101,7 +102,7 @@ class CommercialLaunchContractTest(unittest.TestCase):
         self.assertEqual(overview["measurement"]["provider_attempts"], 1)
         self.assertEqual(
             [row["product_id"] for row in overview["packages"] if not row["stress_ready"]],
-            ["ai-starter", "ai-value", "ai-monthly"],
+            ["ai-mini", "ai-starter", "ai-value", "ai-monthly"],
         )
 
     def test_cli_has_no_product_activation_action(self):

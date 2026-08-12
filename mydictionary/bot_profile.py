@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Mapping
 
+from .localization import normalize_locale, translate
+
 
 BOT_PROFILE_DEFAULTS = {
     "bot_name": "MY DICTIONARY",
@@ -59,6 +61,24 @@ def validate_bot_profile(values: Mapping[str, str]) -> dict[str, str]:
     return result
 
 
-def render_start_text(profile: Mapping[str, str], first_name: str | None) -> str:
-    name = (first_name or "").strip() or "друг"
-    return str(profile["bot_start_text"]).replace("{name}", name)
+def render_start_text(
+    profile: Mapping[str, str],
+    first_name: str | None,
+    *,
+    locale: str = "ru",
+) -> str:
+    selected = normalize_locale(locale, fallback="ru")
+    fallback_names = {
+        "en": "friend",
+        "fr": "ami",
+        "de": "Freund",
+        "ja": "友だち",
+        "ar": "صديقي",
+        "zh": "朋友",
+        "ru": "друг",
+        "es": "amigo",
+    }
+    name = (first_name or "").strip() or fallback_names[selected]
+    if selected == "ru":
+        return str(profile["bot_start_text"]).replace("{name}", name)
+    return translate("start_text", selected, name=name)

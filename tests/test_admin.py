@@ -284,6 +284,8 @@ class AdminConsoleTest(unittest.TestCase):
             "learning",
             "ai",
             "billing",
+            "voice",
+            "safety",
             "content",
             "profile",
             "diagnostics",
@@ -293,6 +295,29 @@ class AdminConsoleTest(unittest.TestCase):
                 response = self.client.get(f"/admin?tab={tab}")
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("MY DICTIONARY", response.get_data(as_text=True))
+
+    def test_compact_navigation_has_six_primary_groups_and_context_tabs(self):
+        self.login()
+        page = self.client.get("/admin?tab=diagnostics").get_data(as_text=True)
+        self.assertEqual(page.count('class="primary-nav-link'), 6)
+        for label in (
+            "Обзор",
+            "Пользователи",
+            "Продукт",
+            "AI и голос",
+            "Платежи",
+            "Настройки",
+        ):
+            self.assertIn(label, page)
+        for tab in ("profile", "safety", "diagnostics", "audit"):
+            self.assertIn(f"/admin?tab={tab}", page)
+        self.assertIn("nav-disclosure", page)
+        self.assertIn('class="nav-disclosure" open', page)
+        self.assertIn("/static/admin/admin.js", page)
+
+        ai_page = self.client.get("/admin?tab=voice").get_data(as_text=True)
+        self.assertIn("/admin?tab=ai", ai_page)
+        self.assertIn("/admin?tab=voice", ai_page)
 
     def test_profile_settings_are_persisted_and_audited(self):
         self.login()
@@ -393,8 +418,8 @@ class AdminConsoleTest(unittest.TestCase):
         self.login()
         page = self.client.get("/admin?tab=billing").get_data(as_text=True)
 
-        self.assertIn("Commercial Launch v1", page)
-        self.assertIn("mydictionary-commercial-v1-2026-08-09", page)
+        self.assertIn("Commercial Launch v2", page)
+        self.assertIn("mydictionary-commercial-v2-2026-08-12", page)
         self.assertIn("Измеренный AI-вызов", page)
         self.assertIn("2 353 microUSD", page)
         self.assertIn("Реквизиты продавца", page)

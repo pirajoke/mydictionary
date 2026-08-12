@@ -17,7 +17,7 @@ renders API keys, payload secrets, safety salts, support contacts, or terms text
 
 ## Reviewed external assumptions
 
-Snapshot date: 2026-08-09. Maximum runtime age: 30 days.
+Snapshot date: 2026-08-12. Maximum runtime age: 30 days.
 
 - OpenAI Standard short-context pricing for `gpt-5.6-luna` is $0.20 input,
   $0.02 cached input, $0.25 cache writes, and $1.20 output per one million
@@ -31,6 +31,10 @@ Snapshot date: 2026-08-09. Maximum runtime age: 30 days.
   unavailable for up to 21 days, and earned Stars expire after three years.
   Enabling topics in private chats currently adds a 15% fee to subsequent Stars
   purchases. Source: [Bot Platform Developer Terms](https://telegram.org/tos/bot-developers?setln=en).
+- Groq lists `whisper-large-v3` transcription at $0.111/hour and applies a
+  10-second minimum billable duration. The candidate requires Zero Data
+  Retention before production voice activation. Sources: [Groq pricing](https://groq.com/pricing)
+  and [Groq data controls](https://console.groq.com/docs/your-data).
 
 The official reward reference is not guaranteed net income. The snapshot
 therefore reserves 3,000 microUSD per XTR for withdrawal friction, taxes, and
@@ -43,7 +47,7 @@ changes either rule.
 
 | Control | Draft value | Purpose |
 | --- | ---: | --- |
-| Initial free allowance | 5 credits once | Bounded pilot access without enabling Stars |
+| Initial free allowance | 40 credits once | Bounded pilot access without enabling Stars |
 | Credit cost | 1 credit/request | Stable learner-facing unit |
 | Daily limit | 5 attempts/user/rolling 24h | Bounded pilot exposure, including failed attempts |
 | Preflight request budget | 5,000 microUSD | Rejects a request before reservation from a conservative token upper bound |
@@ -89,23 +93,34 @@ It contains no learner ID, request ID, prompt, response, credential, or provider
 charge identifier. The provider-dashboard charge was not captured in durable
 telemetry and remains explicitly `not_recorded`.
 
+## Voice cost envelope
+
+Voice stays disabled. The candidate uses Groq `whisper-large-v3`, 1,850
+microUSD per minute, a 10-second minimum billable duration, and a 30-second
+application limit. Runtime rounds the estimate up: a request billed at the
+minimum costs 309 microUSD, while a full 30-second request costs at most 925
+microUSD under this reviewed rate. This is a local admission estimate, not a
+guaranteed provider invoice.
+
 ## Commercial package candidate
 
-The package model uses a modelled $0.005 provider cost per credit, $0.10 support
-overhead per purchase, and a 10% refund reserve on estimated net revenue. The
-$0.005 value is a pricing hypothesis, not a guaranteed provider ceiling.
+The package model uses a conservative $0.006 provider cost envelope per credit,
+$0.10 support overhead per purchase, and a 10% refund reserve on estimated net
+revenue. The $0.006 value is a pricing hypothesis, not a guaranteed provider
+ceiling and not the runtime preflight budget.
 
 | Product | Credits | Price | Net revenue | Estimated cost | Margin |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `ai-starter` | 50 | 100 XTR | $1.0000 | $0.4500 | 55.00% |
-| `ai-value` | 150 | 240 XTR | $2.4000 | $1.0900 | 54.58% |
-| `ai-monthly` | 100 / 30 days | 180 XTR | $1.8000 | $0.7800 | 56.66% |
+| `ai-mini` | 20 | 60 XTR | $0.6000 | $0.2800 | 53.33% |
+| `ai-starter` | 50 | 100 XTR | $1.0000 | $0.5000 | 50.00% |
+| `ai-value` | 150 | 250 XTR | $2.5000 | $1.2500 | 50.00% |
+| `ai-monthly` | 100 / 30 days | 180 XTR | $1.8000 | $0.8800 | 51.11% |
 
-The manifest labels all three packages `candidate`; the seeding CLI stores them
+The manifest labels all four packages `candidate`; the seeding CLI stores them
 as `draft` and has no activation action. Each package has a 50% nominal margin
 floor. The dashboard also applies the reviewed 8,500 microUSD/XTR deterioration
-scenario while keeping the nominal cost envelope fixed: 47.05%, 46.56%, and
-49.01%. Each package therefore fails closed under that scenario; an average
+scenario while keeping the nominal cost envelope fixed: 45.09%, 41.17%, 41.17%,
+and 42.48%. Each package therefore fails closed under that scenario; an average
 margin cannot hide the individual failure. Support time, refund rate, taxes,
 withdrawal availability, dashboard charge, and test-environment payment still
 need evidence before activation.

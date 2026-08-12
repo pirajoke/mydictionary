@@ -1,12 +1,14 @@
 {
   "schema_version": 3,
-  "snapshot_id": "mydictionary-commercial-v1-2026-08-09",
+  "snapshot_id": "mydictionary-commercial-v2-2026-08-12",
   "status": "candidate",
-  "reviewed_on": "2026-08-09",
+  "reviewed_on": "2026-08-12",
   "max_age_days": 30,
   "sources": [
     "https://developers.openai.com/api/docs/pricing",
     "https://developers.openai.com/api/docs/models/gpt-5.6-luna",
+    "https://groq.com/pricing",
+    "https://console.groq.com/docs/your-data",
     "https://core.telegram.org/bots/payments-stars",
     "https://telegram.org/tos/bot-developers?setln=en",
     "https://europa.eu/youreurope/citizens/consumers/shopping/contract-information/index_en.htm",
@@ -30,7 +32,8 @@
     },
     "credit_policy": {
       "credits_per_request": 1,
-      "initial_credits": 40
+      "initial_credits": 40,
+      "modelled_cost_micro_usd_per_credit": 6000
     },
     "limits": {
       "max_daily_requests_per_user": 5,
@@ -46,6 +49,19 @@
       "report": "config/measurements/ai-gate2-2026-08-07.json",
       "sha256": "237d5105fba67358bace756985667be5438ae1eba939ec29a1de0d150dd2bc32"
     }
+  },
+  "voice": {
+    "status": "candidate",
+    "provider": "groq",
+    "transcription_model": "whisper-large-v3",
+    "cost_micro_usd_per_hour": 111000,
+    "cost_micro_usd_per_minute": 1850,
+    "minimum_billable_seconds": 10,
+    "max_duration_seconds": 30,
+    "max_request_cost_micro_usd": 925,
+    "source": "https://groq.com/pricing",
+    "data_policy_source": "https://console.groq.com/docs/your-data",
+    "zdr_required_for_production": true
   },
   "stars": {
     "status": "candidate",
@@ -65,6 +81,23 @@
     "terms_version": "stars-ru-v1-2026-08-08",
     "packages": [
       {
+        "product_id": "ai-mini",
+        "status": "candidate",
+        "title": "Мини",
+        "description": "20 AI-кредитов для знакомства с репетитором",
+        "billing_mode": "one_time",
+        "credits": 20,
+        "price_xtr": 60,
+        "modelled_provider_cost_micro_usd": 120000,
+        "refund_reserve_micro_usd": 60000,
+        "estimated_cost_micro_usd": 280000,
+        "net_revenue_micro_usd": 600000,
+        "estimated_margin_bps": 5333,
+        "stress_margin_bps": 4509,
+        "target_margin_bps": 5000,
+        "display_order": 5
+      },
+      {
         "product_id": "ai-starter",
         "status": "candidate",
         "title": "Старт",
@@ -72,12 +105,12 @@
         "billing_mode": "one_time",
         "credits": 50,
         "price_xtr": 100,
-        "modelled_provider_cost_micro_usd": 250000,
+        "modelled_provider_cost_micro_usd": 300000,
         "refund_reserve_micro_usd": 100000,
-        "estimated_cost_micro_usd": 450000,
+        "estimated_cost_micro_usd": 500000,
         "net_revenue_micro_usd": 1000000,
-        "estimated_margin_bps": 5500,
-        "stress_margin_bps": 4705,
+        "estimated_margin_bps": 5000,
+        "stress_margin_bps": 4117,
         "target_margin_bps": 5000,
         "display_order": 10
       },
@@ -88,13 +121,13 @@
         "description": "150 AI-кредитов для регулярной практики",
         "billing_mode": "one_time",
         "credits": 150,
-        "price_xtr": 240,
-        "modelled_provider_cost_micro_usd": 750000,
-        "refund_reserve_micro_usd": 240000,
-        "estimated_cost_micro_usd": 1090000,
-        "net_revenue_micro_usd": 2400000,
-        "estimated_margin_bps": 5458,
-        "stress_margin_bps": 4656,
+        "price_xtr": 250,
+        "modelled_provider_cost_micro_usd": 900000,
+        "refund_reserve_micro_usd": 250000,
+        "estimated_cost_micro_usd": 1250000,
+        "net_revenue_micro_usd": 2500000,
+        "estimated_margin_bps": 5000,
+        "stress_margin_bps": 4117,
         "target_margin_bps": 5000,
         "display_order": 20
       },
@@ -107,12 +140,12 @@
         "subscription_period_seconds": 2592000,
         "credits": 100,
         "price_xtr": 180,
-        "modelled_provider_cost_micro_usd": 500000,
+        "modelled_provider_cost_micro_usd": 600000,
         "refund_reserve_micro_usd": 180000,
-        "estimated_cost_micro_usd": 780000,
+        "estimated_cost_micro_usd": 880000,
         "net_revenue_micro_usd": 1800000,
-        "estimated_margin_bps": 5666,
-        "stress_margin_bps": 4901,
+        "estimated_margin_bps": 5111,
+        "stress_margin_bps": 4248,
         "target_margin_bps": 5000,
         "display_order": 30
       }

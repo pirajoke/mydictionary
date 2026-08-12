@@ -49,13 +49,13 @@ class VoiceSessionError(RuntimeError):
     """A voice session is missing, expired, or no longer at the expected turn."""
 
 
-def _bool(value: str) -> bool:
+def _bool(value: str, name: str = "VOICE_TUTOR_ENABLED") -> bool:
     normalized = str(value).strip().lower()
     if normalized in {"1", "true", "yes", "on"}:
         return True
     if normalized in {"0", "false", "no", "off", ""}:
         return False
-    raise VoiceConfigurationError("VOICE_TUTOR_ENABLED must be a boolean")
+    raise VoiceConfigurationError(f"{name} must be a boolean")
 
 
 def _bounded_int(
@@ -105,6 +105,9 @@ class VoiceTutorSettings:
         "Исходное аудио не сохраняется, а текстовая расшифровка хранится "
         "ограниченное время."
     )
+    groq_api_key: str | None = None
+    minimum_billable_seconds: int = 0
+    groq_zdr_verified: bool = False
 
     @classmethod
     def from_env(
@@ -113,9 +116,12 @@ class VoiceTutorSettings:
         env = values if values is not None else os.environ
         enabled = _bool(env.get("VOICE_TUTOR_ENABLED", "false"))
         provider = str(env.get("VOICE_PROVIDER", "openai")).strip().lower()
-        if provider != "openai":
-            raise VoiceConfigurationError("VOICE_PROVIDER must be 'openai'")
-        model = str(env.get("VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe")).strip()
+        if provider not in {"openai", "groq"}:
+            raise VoiceConfigurationError("VOICE_PROVIDER must be openai or groq")
+        default_model = (
+            "whisper-large-v3" if provider == "groq" else "gpt-4o-transcribe"
+        )
+        model = str(env.get("VOICE_TRANSCRIPTION_MODEL", default_model)).strip()
         if not model or len(model) > 128:
             raise VoiceConfigurationError("VOICE_TRANSCRIPTION_MODEL is invalid")
         settings = cls(
@@ -182,6 +188,18 @@ class VoiceTutorSettings:
                 env.get("VOICE_PROCESSING_NOTICE", "")
             ).strip()
             or cls.processing_notice,
+            groq_api_key=str(env.get("GROQ_API_KEY") or "").strip() or None,
+            minimum_billable_seconds=_bounded_int(
+                env,
+                "VOICE_MINIMUM_BILLABLE_SECONDS",
+                default=10 if provider == "groq" else 0,
+                minimum=0,
+                maximum=60,
+            ),
+            groq_zdr_verified=_bool(
+                env.get("VOICE_GROQ_ZDR_VERIFIED", "false"),
+                "VOICE_GROQ_ZDR_VERIFIED",
+            ),
         )
         if not re.fullmatch(
             r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", settings.consent_version
@@ -194,9 +212,23 @@ class VoiceTutorSettings:
                 "VOICE_PROCESSING_NOTICE must contain 40 to 1000 characters"
             )
         if enabled:
-            if not settings.openai_api_key:
+            provider_key = (
+                settings.groq_api_key
+                if settings.provider == "groq"
+                else settings.openai_api_key
+            )
+            if not provider_key:
                 raise VoiceConfigurationError(
-                    "Enabled voice tutor requires OPENAI_API_KEY"
+                    "Enabled voice tutor requires "
+                    + (
+                        "GROQ_API_KEY"
+                        if settings.provider == "groq"
+                        else "OPENAI_API_KEY"
+                    )
+                )
+            if settings.provider == "groq" and not settings.groq_zdr_verified:
+                raise VoiceConfigurationError(
+                    "Enabled Groq voice requires VOICE_GROQ_ZDR_VERIFIED=true"
                 )
             if settings.cost_micro_usd_per_minute <= 0:
                 raise VoiceConfigurationError(
@@ -214,7 +246,13 @@ class VoiceTutorSettings:
 
     def estimated_cost_micro_usd(self, duration_seconds: int) -> int:
         value = (
-            Decimal(max(0, int(duration_seconds)))
+            Decimal(
+                max(
+                    0,
+                    int(duration_seconds),
+                    int(self.minimum_billable_seconds),
+                )
+            )
             * self.cost_micro_usd_per_minute
             / Decimal(60)
         )
@@ -250,6 +288,9 @@ class VoiceTranslationSettings:
     economics_snapshot_id: str = "voice-translation-disabled"
     economics_snapshot_sha256: str = "0" * 64
     metering_journal_path: str | None = None
+    groq_api_key: str | None = None
+    stt_minimum_billable_seconds: int = 0
+    groq_zdr_verified: bool = False
 
     @classmethod
     def from_env(
@@ -259,12 +300,15 @@ class VoiceTranslationSettings:
         existing_voice_consent_version: str | None = None,
     ) -> "VoiceTranslationSettings":
         env = values if values is not None else os.environ
-        enabled = _bool(env.get("VOICE_TRANSLATION_ENABLED", "false"))
+        enabled = _bool(
+            env.get("VOICE_TRANSLATION_ENABLED", "false"),
+            "VOICE_TRANSLATION_ENABLED",
+        )
         if not enabled:
             return cls(enabled=False)
         provider = str(env.get("VOICE_TRANSLATION_PROVIDER", "openai")).strip().lower()
-        if provider != "openai":
-            raise ValueError("VOICE_TRANSLATION_PROVIDER must be openai")
+        if provider not in {"openai", "groq"}:
+            raise ValueError("VOICE_TRANSLATION_PROVIDER must be openai or groq")
         consent_version = str(
             env.get("VOICE_TRANSLATION_CONSENT_VERSION", "")
         ).strip()
@@ -307,6 +351,17 @@ class VoiceTranslationSettings:
         api_key = str(env.get("OPENAI_API_KEY", "")).strip() or None
         if not api_key:
             raise ValueError("Enabled voice translation requires OPENAI_API_KEY")
+        groq_api_key = str(env.get("GROQ_API_KEY", "")).strip() or None
+        if provider == "groq" and not groq_api_key:
+            raise ValueError("Enabled Groq transcription requires GROQ_API_KEY")
+        groq_zdr_verified = _bool(
+            env.get("VOICE_GROQ_ZDR_VERIFIED", "false"),
+            "VOICE_GROQ_ZDR_VERIFIED",
+        )
+        if provider == "groq" and not groq_zdr_verified:
+            raise ValueError(
+                "Enabled Groq transcription requires VOICE_GROQ_ZDR_VERIFIED=true"
+            )
         max_preflight_cost = _bounded_int(
             env,
             "VOICE_TRANSLATION_MAX_PREFLIGHT_COST_MICRO_USD",
@@ -365,11 +420,17 @@ class VoiceTranslationSettings:
             "reviewed_on": reviewed_on,
             "stt_micro_usd_per_minute": str(stt_cost),
             "transcription_model": str(
-                env.get("VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe")
+                env.get(
+                    "VOICE_TRANSCRIPTION_MODEL",
+                    "whisper-large-v3"
+                    if provider == "groq"
+                    else "gpt-4o-transcribe",
+                )
             ).strip(),
             "translation_model": str(
                 env.get("VOICE_TRANSLATION_MODEL", "gpt-5.6-luna")
             ).strip(),
+            "groq_zdr_verified": groq_zdr_verified,
         }
         snapshot_sha256 = hashlib.sha256(
             json.dumps(
@@ -384,7 +445,12 @@ class VoiceTranslationSettings:
             enabled=True,
             provider=provider,
             transcription_model=str(
-                env.get("VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe")
+                env.get(
+                    "VOICE_TRANSCRIPTION_MODEL",
+                    "whisper-large-v3"
+                    if provider == "groq"
+                    else "gpt-4o-transcribe",
+                )
             ).strip(),
             translation_model=str(
                 env.get("VOICE_TRANSLATION_MODEL", "gpt-5.6-luna")
@@ -450,6 +516,15 @@ class VoiceTranslationSettings:
                 if journal_path
                 else Path("data") / "ai-metering-fallback.jsonl"
             ),
+            groq_api_key=groq_api_key,
+            stt_minimum_billable_seconds=_bounded_int(
+                env,
+                "VOICE_TRANSLATION_STT_MINIMUM_BILLABLE_SECONDS",
+                default=10 if provider == "groq" else 0,
+                minimum=0,
+                maximum=60,
+            ),
+            groq_zdr_verified=groq_zdr_verified,
         )
 
 
@@ -550,7 +625,7 @@ class OpenAITranscriptionProvider:
         if client is None:
             from openai import AsyncOpenAI
 
-            client = AsyncOpenAI(api_key=api_key, timeout=45.0, max_retries=1)
+            client = AsyncOpenAI(api_key=api_key, timeout=45.0, max_retries=0)
         self.client = client
 
     async def transcribe(
@@ -584,13 +659,42 @@ class OpenAITranscriptionProvider:
             output_tokens=int(_attr(usage, "output_tokens", 0)),
             total_tokens=int(_attr(usage, "total_tokens", 0)),
         )
+        x_groq = _attr(response, "x_groq", None)
         return TranscriptionResult(
             text=text,
-            response_id=str(_attr(response, "id", "")) or None,
+            response_id=(
+                str(_attr(response, "id", ""))
+                or str(_attr(x_groq, "id", ""))
+                or None
+            ),
             model=str(_attr(response, "model", self.model)),
             usage=provider_usage,
             detected_language=str(_attr(response, "language", request.language)),
         )
+
+
+class GroqTranscriptionProvider(OpenAITranscriptionProvider):
+    """One-attempt Groq STT adapter through its OpenAI-compatible endpoint."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str = "whisper-large-v3",
+        client: Any | None = None,
+    ):
+        if not api_key:
+            raise VoiceConfigurationError("Groq API key is required")
+        if client is None:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(
+                api_key=api_key,
+                base_url="https://api.groq.com/openai/v1",
+                timeout=45.0,
+                max_retries=0,
+            )
+        super().__init__(api_key=api_key, model=model, client=client)
 
 
 def _aware(value: datetime) -> datetime:
@@ -907,17 +1011,29 @@ class VoiceTutorService:
         )
 
 
-def build_openai_voice_service(
+def build_voice_service(
     store: DatabaseStore, settings: VoiceTutorSettings
 ) -> VoiceTutorService:
     if not settings.enabled:
         provider: TranscriptionProvider = DisabledTranscriptionProvider()
+    elif settings.provider == "groq":
+        provider = GroqTranscriptionProvider(
+            api_key=settings.groq_api_key or "",
+            model=settings.model,
+        )
     else:
         provider = OpenAITranscriptionProvider(
             api_key=settings.openai_api_key or "",
             model=settings.model,
         )
     return VoiceTutorService(store=store, provider=provider, settings=settings)
+
+
+def build_openai_voice_service(
+    store: DatabaseStore, settings: VoiceTutorSettings
+) -> VoiceTutorService:
+    """Backward-compatible factory; provider selection is settings-driven."""
+    return build_voice_service(store, settings)
 
 
 @dataclass(frozen=True)
@@ -1087,7 +1203,19 @@ class VoiceTranslationService:
 
     def _stt_cost(self, duration_seconds: int) -> int:
         cost = (
-            Decimal(max(0, int(duration_seconds)))
+            Decimal(
+                max(
+                    0,
+                    int(duration_seconds),
+                    int(
+                        getattr(
+                            self.settings,
+                            "stt_minimum_billable_seconds",
+                            0,
+                        )
+                    ),
+                )
+            )
             * Decimal(str(self.settings.stt_cost_micro_usd_per_minute))
             / Decimal(60)
         )
@@ -1383,7 +1511,7 @@ class VoiceTranslationService:
             translation_request_id = self.store.reserve_ai_usage(
                 user_id,
                 action="voice_translation",
-                provider=self.settings.provider,
+                provider="openai",
                 model=self.settings.translation_model,
                 credits=self.settings.translation_credits_per_request,
                 initial_credits=self.settings.initial_credits,
@@ -1491,17 +1619,23 @@ class VoiceTranslationService:
             )
 
 
-def build_openai_voice_translation_service(
+def build_voice_translation_service(
     store: DatabaseStore, settings: VoiceTranslationSettings
 ) -> VoiceTranslationService:
     if not settings.enabled:
         transcription: TranscriptionProvider = DisabledTranscriptionProvider()
         translation: TranslationProvider = DisabledTranslationProvider()
     else:
-        transcription = OpenAITranscriptionProvider(
-            api_key=settings.openai_api_key or "",
-            model=settings.transcription_model,
-        )
+        if settings.provider == "groq":
+            transcription = GroqTranscriptionProvider(
+                api_key=settings.groq_api_key or "",
+                model=settings.transcription_model,
+            )
+        else:
+            transcription = OpenAITranscriptionProvider(
+                api_key=settings.openai_api_key or "",
+                model=settings.transcription_model,
+            )
         translation = OpenAITranslationProvider(
             api_key=settings.openai_api_key or "",
             model=settings.translation_model,
@@ -1513,3 +1647,10 @@ def build_openai_voice_translation_service(
         translation_provider=translation,
         settings=settings,
     )
+
+
+def build_openai_voice_translation_service(
+    store: DatabaseStore, settings: VoiceTranslationSettings
+) -> VoiceTranslationService:
+    """Backward-compatible factory; STT provider selection is settings-driven."""
+    return build_voice_translation_service(store, settings)

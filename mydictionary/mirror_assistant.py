@@ -12,6 +12,13 @@ from typing import Any, Mapping, Sequence
 
 from sqlalchemy import func, select
 
+from mydictionary.localization import (
+    language_name,
+    normalize_locale,
+    require_interface_locale,
+    response_language_instruction,
+    translate,
+)
 from mydictionary.storage import (
     AnalyticsEvent,
     UserPackEnrollment,
@@ -333,7 +340,9 @@ def classify_mirror_task(text: str) -> str:
 
 def render_mirror_capabilities(capabilities: str, *, locale: str | None = None) -> str:
     """Return only the reviewed learner-facing capability copy."""
-    del locale
+    selected = normalize_locale(locale, fallback="ru" if locale is None else "en")
+    if selected != "ru":
+        return translate("mirror_capabilities", selected)
     value = str(capabilities).strip()
     return value or MIRROR_ADMIN_DEFAULTS["mirror_capabilities_text"]
 
@@ -343,10 +352,36 @@ def render_mirror_greeting(
     active_language: str | None = None,
     active_pack_title: str | None = None,
     has_active_block: bool = False,
+    locale: str = "ru",
+    first_name: str | None = None,
+    target_language: str | None = None,
 ) -> str:
     """Return a short, free greeting grounded in the current learning context."""
-    language = _LANGUAGE_NAMES_RU.get(str(active_language or "").strip().lower())
+    selected = normalize_locale(locale, fallback="ru" if locale is None else "en")
+    language_code = str(target_language or active_language or "").strip().lower()
+    language = _LANGUAGE_NAMES_RU.get(language_code)
     title = str(active_pack_title or "").strip()
+    if selected != "ru":
+        display_language = (
+            language_name(language_code, selected)
+            if language_code
+            else title[:80] or language_name("en", selected)
+        )
+        clean_name = str(first_name or "").strip()
+        if not clean_name:
+            name = ""
+        elif selected == "ja":
+            name = f"{clean_name}さん、"
+        elif selected == "zh":
+            name = clean_name
+        else:
+            name = f", {clean_name}"
+        return translate(
+            "mirror_greeting_block" if has_active_block else "mirror_greeting",
+            selected,
+            name=name,
+            language=display_language,
+        )
     if has_active_block:
         if language:
             return (
@@ -462,6 +497,7 @@ def build_mirror_provider_payload(
     communication_mode: str | None = None,
     answer_depth: str = "balanced",
     learner_level: str = "adaptive",
+    interface_locale: str | None = None,
 ) -> dict[str, Any]:
     clean_question = str(question).strip()
     clean_guidance = str(admin_guidance).strip()
@@ -498,6 +534,16 @@ def build_mirror_provider_payload(
         "recent_dialogue": normalize_mirror_dialogue(recent_dialogue),
         "response_style": selected_mode,
     }
+    if interface_locale is not None:
+        selected_locale = require_interface_locale(interface_locale)
+        payload.update(
+            {
+                "interface_locale": selected_locale,
+                "response_language_instruction": response_language_instruction(
+                    selected_locale
+                ),
+            }
+        )
     if task_kind is not None or communication_mode is not None:
         payload.update(
             {

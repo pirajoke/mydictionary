@@ -25,9 +25,11 @@ from mydictionary.commercial_launch import (
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SNAPSHOT = ROOT / "config" / "launch-economics.json"
 ALLOWED_SOURCE_HOSTS = {
+    "console.groq.com",
     "core.telegram.org",
     "developers.openai.com",
     "europa.eu",
+    "groq.com",
     "telegram.org",
     "www.economie.gouv.fr",
 }
@@ -157,6 +159,12 @@ def validate_snapshot(
         minimum=0,
         maximum=1_000_000,
     )
+    modelled_cost_per_credit = _integer(
+        credit_policy.get("modelled_cost_micro_usd_per_credit"),
+        "modelled AI cost per credit",
+        minimum=1,
+        maximum=1_000_000,
+    )
     limits = _object(ai.get("limits"), "AI limits")
     daily_limit = _integer(
         limits.get("max_daily_requests_per_user"),
@@ -224,6 +232,61 @@ def validate_snapshot(
         raise EconomicsContractError("AI measurement model differs from snapshot")
     if measurement["service_tier"] != ai["service_tier"]:
         raise EconomicsContractError("AI measurement tier differs from snapshot")
+
+    voice = _object(snapshot.get("voice"), "voice")
+    if (
+        voice.get("status") != "candidate"
+        or voice.get("provider") != "groq"
+        or voice.get("transcription_model") != "whisper-large-v3"
+    ):
+        raise EconomicsContractError("Voice contract must remain the reviewed Groq candidate")
+    voice_cost_per_hour = _integer(
+        voice.get("cost_micro_usd_per_hour"),
+        "Groq voice hourly cost",
+        minimum=1,
+        maximum=10_000_000,
+    )
+    voice_cost_per_minute = _integer(
+        voice.get("cost_micro_usd_per_minute"),
+        "Groq voice minute cost",
+        minimum=1,
+        maximum=1_000_000,
+    )
+    if voice_cost_per_hour != 111_000 or voice_cost_per_minute * 60 != voice_cost_per_hour:
+        raise EconomicsContractError("Groq voice price differs from the reviewed rate")
+    voice_minimum_billable_seconds = _integer(
+        voice.get("minimum_billable_seconds"),
+        "Groq minimum billable duration",
+        minimum=1,
+        maximum=60,
+    )
+    voice_max_duration_seconds = _integer(
+        voice.get("max_duration_seconds"),
+        "Groq maximum request duration",
+        minimum=2,
+        maximum=120,
+    )
+    voice_max_request_cost = _integer(
+        voice.get("max_request_cost_micro_usd"),
+        "Groq maximum request cost",
+        minimum=1,
+        maximum=1_000_000,
+    )
+    expected_voice_max_cost = (
+        voice_max_duration_seconds * voice_cost_per_minute + 59
+    ) // 60
+    if (
+        voice_minimum_billable_seconds != 10
+        or voice_max_duration_seconds != 30
+        or voice_max_request_cost != expected_voice_max_cost
+    ):
+        raise EconomicsContractError("Groq voice billing envelope is inconsistent")
+    if voice.get("source") != "https://groq.com/pricing":
+        raise EconomicsContractError("Groq voice pricing source is invalid")
+    if voice.get("data_policy_source") != "https://console.groq.com/docs/your-data":
+        raise EconomicsContractError("Groq voice data-policy source is invalid")
+    if voice.get("zdr_required_for_production") is not True:
+        raise EconomicsContractError("Groq voice production requires ZDR")
 
     stars = _object(snapshot.get("stars"), "stars")
     if stars.get("status") != "candidate" or stars.get("currency") != "XTR":
@@ -373,7 +436,7 @@ def validate_snapshot(
             maximum=1_000_000,
         )
         net_revenue = price_xtr * net_per_xtr
-        provider_cost = credits * preflight_budget
+        provider_cost = credits * modelled_cost_per_credit
         reserve = (net_revenue * refund_reserve_bps + 9999) // 10000
         estimated_cost = provider_cost + reserve + support_overhead
         margin_bps = (net_revenue - estimated_cost) * 10000 // net_revenue
@@ -424,6 +487,7 @@ def validate_snapshot(
         "input_chars": input_chars,
         "output_tokens": output_tokens,
         "preflight_budget": preflight_budget,
+        "modelled_cost_per_credit": modelled_cost_per_credit,
         "retrospective_breaker": retrospective_breaker,
         "project_daily_budget": project_daily_budget,
         "project_monthly_budget": project_monthly_budget,
@@ -439,6 +503,10 @@ def validate_snapshot(
         "measurement_dashboard_charge_verified": measurement[
             "dashboard_charge_verified"
         ],
+        "voice_cost_micro_usd_per_hour": voice_cost_per_hour,
+        "voice_minimum_billable_seconds": voice_minimum_billable_seconds,
+        "voice_max_request_cost_micro_usd": voice_max_request_cost,
+        "voice_zdr_required": True,
     }
 
 
@@ -449,6 +517,7 @@ def render_environment(snapshot: Mapping[str, Any]) -> str:
     credit_policy = _object(ai["credit_policy"], "credit policy")
     limits = _object(ai["limits"], "limits")
     stars = _object(snapshot["stars"], "stars")
+    voice = _object(snapshot["voice"], "voice")
     values = {
         "AI_TUTOR_ENABLED": "false",
         "AI_PROVIDER": ai["provider"],
@@ -485,6 +554,22 @@ def render_environment(snapshot: Mapping[str, Any]) -> str:
         "AI_MAX_OUTPUT_TOKENS": limits["max_output_tokens"],
         "AI_SDK_MAX_RETRIES": "0",
         "VOICE_TUTOR_ENABLED": "false",
+        "VOICE_PROVIDER": voice["provider"],
+        "VOICE_TRANSCRIPTION_MODEL": voice["transcription_model"],
+        "VOICE_COST_MICRO_USD_PER_MINUTE": voice["cost_micro_usd_per_minute"],
+        "VOICE_MINIMUM_BILLABLE_SECONDS": voice[
+            "minimum_billable_seconds"
+        ],
+        "VOICE_MAX_DURATION_SECONDS": voice["max_duration_seconds"],
+        "VOICE_GROQ_ZDR_VERIFIED": "false",
+        "VOICE_TRANSLATION_ENABLED": "false",
+        "VOICE_TRANSLATION_PROVIDER": voice["provider"],
+        "VOICE_TRANSLATION_STT_MICRO_USD_PER_MINUTE": voice[
+            "cost_micro_usd_per_minute"
+        ],
+        "VOICE_TRANSLATION_STT_MINIMUM_BILLABLE_SECONDS": voice[
+            "minimum_billable_seconds"
+        ],
         "TELEGRAM_STARS_ENABLED": "false",
         "BILLING_NET_MICRO_USD_PER_XTR": validated["net_micro_usd_per_xtr"],
         "BILLING_ECONOMICS_REVIEWED_ON": snapshot["reviewed_on"],

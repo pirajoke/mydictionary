@@ -18,7 +18,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "ai_tutor_eval.json"
-EXPECTED_MIGRATION = "0014_mirror_assistant_v1"
+EXPECTED_MIGRATION = "0016_mirror_control_plane_v1"
 
 
 def parse_environment(rendered: str) -> dict[str, str]:
@@ -30,7 +30,7 @@ class AIPilotEconomicsContractTest(unittest.TestCase):
         snapshot = economics.load_snapshot()
         result = economics.validate_snapshot(snapshot)
 
-        self.assertEqual(snapshot["reviewed_on"], "2026-08-09")
+        self.assertEqual(snapshot["reviewed_on"], "2026-08-12")
         self.assertEqual(snapshot["ai"]["status"], "approved")
         self.assertNotEqual(snapshot.get("status"), "approved")
         self.assertEqual(result["pricing_max_age_days"], 30)
@@ -63,7 +63,7 @@ class AIPilotEconomicsContractTest(unittest.TestCase):
             "AI_CACHED_INPUT_USD_PER_MILLION": "0.02",
             "AI_CACHE_WRITE_USD_PER_MILLION": "0.25",
             "AI_OUTPUT_USD_PER_MILLION": "1.20",
-            "AI_PRICING_REVIEWED_ON": "2026-08-09",
+            "AI_PRICING_REVIEWED_ON": "2026-08-12",
             "AI_PRICING_MAX_AGE_DAYS": "30",
             "AI_INITIAL_CREDITS": "40",
             "AI_CREDITS_PER_REQUEST": "1",
@@ -125,7 +125,7 @@ class AIPilotReadinessTest(unittest.TestCase):
             runtime_state=self.runtime_state(),
             database_revision=EXPECTED_MIGRATION,
             fixture_path=FIXTURE,
-            today=date(2026, 8, 9),
+            today=date(2026, 8, 12),
         )
 
         self.assertTrue(result["ready"])
@@ -170,7 +170,7 @@ class AIPilotReadinessTest(unittest.TestCase):
                         runtime_state=state,
                         database_revision=migration,
                         fixture_path=FIXTURE,
-                        today=date(2026, 8, 9),
+                        today=date(2026, 8, 12),
                     )
                 self.assertEqual(environment, original)
                 self.assertEqual(environment["AI_TUTOR_ENABLED"], "true")
@@ -200,7 +200,7 @@ class AIPilotReadinessTest(unittest.TestCase):
                     runtime_state=self.runtime_state(),
                     database_revision=EXPECTED_MIGRATION,
                     fixture_path=FIXTURE,
-                    today=date(2026, 8, 9),
+                    today=date(2026, 8, 12),
                 )
 
         self.assertEqual(environment, original)

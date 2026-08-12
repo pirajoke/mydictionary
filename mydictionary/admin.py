@@ -663,8 +663,21 @@ def create_app(
                     admin_store.billing_settings.net_micro_usd_per_xtr > 0
                 ),
                 "voice_enabled": os.environ.get("VOICE_TUTOR_ENABLED", "false"),
+                "voice_provider": os.environ.get("VOICE_PROVIDER", "openai"),
+                "voice_provider_configured": (
+                    os.environ.get(
+                        "VOICE_PROVIDER_CONFIGURED", "false"
+                    ).lower()
+                    in {"1", "true", "yes", "on"}
+                ),
                 "voice_model": os.environ.get(
-                    "VOICE_TRANSCRIPTION_MODEL", "gpt-4o-transcribe"
+                    "VOICE_TRANSCRIPTION_MODEL",
+                    (
+                        "whisper-large-v3"
+                        if os.environ.get("VOICE_PROVIDER", "openai").lower()
+                        == "groq"
+                        else "gpt-4o-transcribe"
+                    ),
                 ),
                 "billing_terms_version": admin_store.billing_settings.terms_version,
                 "billing_terms_approved": (

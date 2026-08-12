@@ -76,6 +76,7 @@ from mydictionary.content import (
 )
 from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
+from mydictionary.localization import normalize_locale, translate
 from mydictionary.mirror_assistant import (
     MIRROR_ANSWER_DEPTHS,
     MIRROR_ADMIN_DEFAULTS,
@@ -117,8 +118,8 @@ from mydictionary.voice_tutor import (
     VoiceTranslationSettings,
     VoiceUsageRecoveryError,
     VoiceWord,
-    build_openai_voice_service,
-    build_openai_voice_translation_service,
+    build_voice_service,
+    build_voice_translation_service,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -308,14 +309,14 @@ def get_billing_service() -> BillingService:
 def get_voice_tutor_service() -> VoiceTutorService:
     global _VOICE_TUTOR
     if _VOICE_TUTOR is None:
-        _VOICE_TUTOR = build_openai_voice_service(get_store(), VOICE_SETTINGS)
+        _VOICE_TUTOR = build_voice_service(get_store(), VOICE_SETTINGS)
     return _VOICE_TUTOR
 
 
 def get_voice_translation_service() -> VoiceTranslationService:
     global _VOICE_TRANSLATION
     if _VOICE_TRANSLATION is None:
-        _VOICE_TRANSLATION = build_openai_voice_translation_service(
+        _VOICE_TRANSLATION = build_voice_translation_service(
             get_store(), VOICE_TRANSLATION_SETTINGS
         )
     return _VOICE_TRANSLATION
@@ -1006,6 +1007,14 @@ def auth(func):
             telegram_user = update.poll_answer.user
         if telegram_user is None:
             return
+        interface_locale = normalize_locale(
+            getattr(telegram_user, "language_code", None),
+            fallback=(
+                "ru"
+                if getattr(telegram_user, "language_code", None) is None
+                else "en"
+            ),
+        )
         user_id = int(telegram_user.id)
         configured = user_id in ALLOWED_USER_IDS or user_id in ADMIN_USER_IDS
         store = get_store()
@@ -1030,26 +1039,25 @@ def auth(func):
                 )
             await reject_access(
                 update,
-                "Заявка на участие в бесплатном пилоте принята. "
-                "После одобрения администратора открой /start ещё раз.",
+                translate("access_waitlist", interface_locale),
             )
             return
         if decision == "blocked":
             await reject_access(
                 update,
-                "Доступ к MY DICTIONARY заблокирован. Обратись в поддержку.",
+                translate("access_blocked", interface_locale),
             )
             return
         if decision == "pending":
             await reject_access(
                 update,
-                "Доступ к пилоту ещё не одобрен. Статус можно проверить через /start.",
+                translate("access_pending", interface_locale),
             )
             return
         if decision == "deny":
             await reject_access(
                 update,
-                "MY DICTIONARY пока доступен только участникам закрытого тестирования.",
+                translate("access_closed", interface_locale),
             )
             return
         with learner_scope(telegram_user) as runtime:
@@ -1066,8 +1074,11 @@ def auth(func):
                 if not rate_decision.allowed:
                     await reject_access(
                         update,
-                        "Слишком много действий подряд. "
-                        f"Попробуй снова через {rate_decision.retry_after_seconds} сек.",
+                        translate(
+                            "rate_limited",
+                            interface_locale,
+                            seconds=rate_decision.retry_after_seconds,
+                        ),
                     )
                     return
             if (
@@ -1080,7 +1091,9 @@ def auth(func):
                     await query.answer()
                 message = getattr(update, "effective_message", None)
                 if message is not None:
-                    await send_onboarding_intro(message)
+                    await send_onboarding_intro(
+                        message, locale=interface_locale_for_update(update)
+                    )
                 return
             return await func(update, context)
     return wrapper
@@ -1098,12 +1111,15 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     record_product_event("start_received", source=source)
     if runtime.role != "admin" and not runtime.onboarding_completed:
-        await send_onboarding_intro(update.message)
+        await send_onboarding_intro(
+            update.message, locale=interface_locale_for_update(update)
+        )
         return
     await send_start_message(
         update.message,
         context,
         first_name=getattr(update.effective_user, "first_name", None),
+        locale=interface_locale_for_update(update),
     )
 
 
@@ -1120,20 +1136,23 @@ def start_source(args) -> str:
     return candidate
 
 
-def onboarding_intro_keyboard() -> InlineKeyboardMarkup:
+def interface_locale_for_update(update: Update) -> str:
+    raw = getattr(getattr(update, "effective_user", None), "language_code", None)
+    return normalize_locale(raw, fallback="ru" if raw is None else "en")
+
+
+def onboarding_intro_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [[InlineKeyboardButton(
-            "Попробовать бесплатно ✨", callback_data="onboarding:begin"
+            translate("onboarding_try", locale), callback_data="onboarding:begin"
         )]]
     )
 
 
-async def send_onboarding_intro(message) -> None:
+async def send_onboarding_intro(message, *, locale: str = "ru") -> None:
     await message.reply_text(
-        "MY DICTIONARY — короткие уроки со словами, карточками и "
-        "произношением прямо в Telegram. Базовые наборы бесплатны.\n\n"
-        "Два коротких шага — и первый урок готов.",
-        reply_markup=onboarding_intro_keyboard(),
+        translate("onboarding_intro", locale),
+        reply_markup=onboarding_intro_keyboard(locale),
     )
 
 
@@ -1145,11 +1164,16 @@ ONBOARDING_GOALS = {
 }
 
 
-def onboarding_pack_keyboard() -> InlineKeyboardMarkup:
+def onboarding_pack_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(
-                f"{pack.label} · {pack.entry_count} слов",
+                translate(
+                    "onboarding_pack_words",
+                    locale,
+                    label=pack.label,
+                    count=pack.entry_count,
+                ),
                 callback_data=f"onboarding:pack:{pack.pack_id}",
             )]
             for pack in CATALOG.visible_packs("learner")
@@ -1157,17 +1181,17 @@ def onboarding_pack_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def onboarding_pace_keyboard() -> InlineKeyboardMarkup:
+def onboarding_pace_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(
-                "5 карточек · легко", callback_data="onboarding:pace:5"
+                translate("pace_5", locale), callback_data="onboarding:pace:5"
             )],
             [InlineKeyboardButton(
-                "10 карточек · обычно", callback_data="onboarding:pace:10"
+                translate("pace_10", locale), callback_data="onboarding:pace:10"
             )],
             [InlineKeyboardButton(
-                "20 карточек · интенсивно", callback_data="onboarding:pace:20"
+                translate("pace_20", locale), callback_data="onboarding:pace:20"
             )],
         ]
     )
@@ -1178,20 +1202,21 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     parts = query.data.split(":")
     runtime = _ACTIVE_RUNTIME.get()
+    locale = interface_locale_for_update(update)
     if runtime.role == "admin" or runtime.onboarding_completed:
-        await query.answer("Настройка уже завершена.")
+        await query.answer(translate("onboarding_done", locale))
         return
     await query.answer()
     if parts == ["onboarding", "begin"]:
         record_product_event("onboarding_started")
         runtime.store.update_product_profile(
             runtime.user_id,
-            native_language="ru",
+            native_language=locale,
             learning_goal="basics",
         )
         record_product_event(
             "onboarding_native_selected",
-            properties={"language": "ru"},
+            properties={"language": locale},
             source="default",
         )
         record_product_event(
@@ -1200,8 +1225,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             source="default",
         )
         await query.edit_message_text(
-            "Шаг 1 из 2. Какой язык хочешь учить?",
-            reply_markup=onboarding_pack_keyboard(),
+            translate("onboarding_choose_pack", locale),
+            reply_markup=onboarding_pack_keyboard(locale),
         )
         return
     # Compatibility for buttons sent by the previous onboarding version.
@@ -1215,14 +1240,14 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "onboarding_native_selected", properties={"language": parts[2]}
         )
         await query.edit_message_text(
-            "Шаг 1 из 2. Какой язык хочешь учить?",
-            reply_markup=onboarding_pack_keyboard(),
+            translate("onboarding_choose_pack", locale),
+            reply_markup=onboarding_pack_keyboard(locale),
         )
         return
     if len(parts) == 3 and parts[1] == "pack":
         pack = CATALOG.get(parts[2])
         if pack is None or not pack.visible_to("learner"):
-            await query.edit_message_text("Этот набор недоступен. Начни настройку заново.")
+            await query.edit_message_text(translate("pack_unavailable", locale))
             return
         activate_content_pack(pack, source="onboarding")
         context.user_data["onboarding_pack_id"] = pack.pack_id
@@ -1234,8 +1259,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
         )
         await query.edit_message_text(
-            "Шаг 2 из 2. Сколько карточек удобно проходить в день?",
-            reply_markup=onboarding_pace_keyboard(),
+            translate("onboarding_choose_pace", locale),
+            reply_markup=onboarding_pace_keyboard(locale),
         )
         return
     # Compatibility for an in-flight goal step from the previous version.
@@ -1247,8 +1272,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "onboarding_goal_selected", properties={"goal": parts[2]}
         )
         await query.edit_message_text(
-            "Шаг 2 из 2. Сколько карточек удобно проходить в день?",
-            reply_markup=onboarding_pace_keyboard(),
+            translate("onboarding_choose_pace", locale),
+            reply_markup=onboarding_pace_keyboard(locale),
         )
         return
     if len(parts) == 3 and parts[1] == "pace" and parts[2] in {"5", "10", "20"}:
@@ -1258,7 +1283,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             or product["active_pack_id"]
         )
         if pack is None or not pack.visible_to("learner"):
-            await query.edit_message_text("Выбери учебный набор заново через /start.")
+            await query.edit_message_text(translate("choose_pack_again", locale))
             return
         runtime.store.update_product_profile(
             runtime.user_id,
@@ -1275,31 +1300,39 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
         )
         await query.edit_message_text(
-            f"Готово ✨ Подключён набор «{pack.title}». "
-            "Первый урок уже ждёт тебя."
+            translate("onboarding_complete", locale, title=pack.title)
         )
         await send_start_message(
             query.message,
             context,
             first_name=getattr(update.effective_user, "first_name", None),
+            locale=locale,
         )
         return
-    await query.edit_message_text("Шаг настройки устарел. Отправь /start.")
+    await query.edit_message_text(translate("onboarding_stale", locale))
 
 
-def start_keyboard() -> InlineKeyboardMarkup:
+def start_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(
-                "▶️ Урок на сегодня", callback_data="start:daily"
+                translate("start_daily", locale), callback_data="start:daily"
             )],
             [
-                InlineKeyboardButton("🔁 Повторить", callback_data="start:review"),
-                InlineKeyboardButton("📚 Темы", callback_data="start:topics"),
+                InlineKeyboardButton(
+                    translate("start_review", locale), callback_data="start:review"
+                ),
+                InlineKeyboardButton(
+                    translate("start_topics", locale), callback_data="start:topics"
+                ),
             ],
             [
-                InlineKeyboardButton("📊 Прогресс", callback_data="start:stats"),
-                InlineKeyboardButton("⚙️ Настройки", callback_data="start:settings"),
+                InlineKeyboardButton(
+                    translate("start_stats", locale), callback_data="start:stats"
+                ),
+                InlineKeyboardButton(
+                    translate("start_settings", locale), callback_data="start:settings"
+                ),
             ],
         ]
     )
@@ -1384,21 +1417,27 @@ def settings_text(current: ContentPack, product: Mapping[str, Any]) -> str:
     )
 
 
-async def send_start_message(message, context, *, first_name: str | None) -> None:
+async def send_start_message(
+    message,
+    context,
+    *,
+    first_name: str | None,
+    locale: str = "ru",
+) -> None:
     profile = get_bot_profile()
-    text = render_start_text(profile, first_name)
+    text = render_start_text(profile, first_name, locale=locale)
     if WELCOME_BANNER_PATH.exists():
         try:
             with WELCOME_BANNER_PATH.open("rb") as photo:
                 await message.reply_photo(
                     photo=photo,
                     caption=text,
-                    reply_markup=start_keyboard(),
+                    reply_markup=start_keyboard(locale),
                 )
             return
         except Exception as exc:
             logger.warning("Welcome banner failed; using text fallback: %s", exc)
-    await message.reply_text(text, reply_markup=start_keyboard())
+    await message.reply_text(text, reply_markup=start_keyboard(locale))
 
 
 @auth
@@ -2807,12 +2846,17 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     store = get_store()
     user_id = int(update.effective_user.id)
+    interface_locale = interface_locale_for_update(update)
     profile = store.product_profile(user_id)
     if profile.get("access_status") != "active":
-        await update.message.reply_text("Доступ к Mirror сейчас недоступен.")
+        await update.message.reply_text(
+            translate("mirror_unavailable", interface_locale)
+        )
         return
     if not profile.get("onboarding_completed_at"):
-        await update.message.reply_text("Сначала заверши настройку через /start.")
+        await update.message.reply_text(
+            translate("onboarding_required", interface_locale)
+        )
         return
 
     question = str(update.message.text or "").strip()
@@ -2839,6 +2883,8 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             ),
             active_pack_title=active_pack.title if active_pack is not None else None,
             has_active_block=active_tutor_context(context.user_data) is not None,
+            locale=interface_locale,
+            first_name=getattr(update.effective_user, "first_name", None),
         )
     elif intent == "capabilities":
         response = render_mirror_capabilities(
@@ -2846,7 +2892,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "mirror_capabilities_text",
                 MIRROR_ADMIN_DEFAULTS["mirror_capabilities_text"],
             ),
-            locale=getattr(update.effective_user, "language_code", None),
+            locale=interface_locale,
         )
     else:
         response = ""
@@ -2861,7 +2907,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             consented = False
         if not consented:
             await update.message.reply_text(
-                "Для объясняющего AI-ответа нужно актуальное согласие через /ai."
+                translate("ai_consent_required", interface_locale)
             )
             return
         try:
@@ -2914,6 +2960,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 communication_mode=preferences["mode"],
                 answer_depth=preferences["depth"],
                 learner_level=preferences["level"],
+                interface_locale=interface_locale,
             )
             service = get_ai_tutor_service()
             result = await service.ask(
@@ -2927,7 +2974,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 raise ValueError("Empty Mirror response")
         except AIQuotaExceeded:
             await update.message.reply_text(
-                "AI-кредиты закончились. Проверь баланс через /ai_stats."
+                translate("ai_no_credits", interface_locale)
             )
             return
         except Exception as exc:
@@ -2936,7 +2983,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 response = build_mirror_progress_summary(store, user_id)
             else:
                 await update.message.reply_text(
-                    "Не удалось подготовить безопасный ответ. Учебный ответ не был придуман."
+                    translate("ai_failure", interface_locale)
                 )
                 return
 

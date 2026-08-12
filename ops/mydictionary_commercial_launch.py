@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Commercial Launch v1 and idempotently seed draft products."""
+"""Validate Commercial Launch v2 and idempotently seed draft products."""
 
 from __future__ import annotations
 
@@ -19,8 +19,9 @@ from ops import mydictionary_economics as economics
 
 
 EXPECTED_CATALOG = {
+    "ai-mini": (20, 60, "one_time"),
     "ai-starter": (50, 100, "one_time"),
-    "ai-value": (150, 240, "one_time"),
+    "ai-value": (150, 250, "one_time"),
     "ai-monthly": (100, 180, "subscription"),
 }
 PRODUCT_FIELDS = (
@@ -61,11 +62,11 @@ def _candidate_products(snapshot: Mapping[str, Any]) -> list[dict[str, Any]]:
     }
     if actual_catalog != EXPECTED_CATALOG:
         raise economics.EconomicsContractError(
-            "Commercial Launch v1 catalog differs from approved prices"
+            "Commercial Launch v2 catalog differs from approved prices"
         )
     if validated["minimum_margin_bps"] < 5000:
         raise economics.EconomicsContractError(
-            "Commercial Launch v1 margin policy is too low"
+            "Commercial Launch v2 margin policy is too low"
         )
     return [
         {
@@ -101,7 +102,7 @@ def seed_products(
         enabled=False,
         payload_secret=None,
         support_contact="",
-        terms_text="Commercial Launch v1 candidate",
+        terms_text="Commercial Launch v2 candidate",
         terms_version=str(snapshot["stars"]["terms_version"]),
         net_micro_usd_per_xtr=int(
             snapshot["stars"]["assumed_net_micro_usd_per_xtr"]

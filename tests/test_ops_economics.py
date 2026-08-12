@@ -13,8 +13,8 @@ class EconomicsContractTest(unittest.TestCase):
     def test_checked_in_snapshot_has_approved_ai_and_candidate_stars(self):
         result = economics.validate_snapshot(self.snapshot)
 
-        self.assertEqual(result["packages"], 3)
-        self.assertEqual(result["snapshot_id"], "mydictionary-commercial-v1-2026-08-09")
+        self.assertEqual(result["packages"], 4)
+        self.assertEqual(result["snapshot_id"], "mydictionary-commercial-v2-2026-08-12")
         self.assertEqual(self.snapshot["ai"]["status"], "approved")
         self.assertEqual(self.snapshot["status"], "candidate")
         self.assertEqual(result["minimum_margin_bps"], 5000)
@@ -22,6 +22,7 @@ class EconomicsContractTest(unittest.TestCase):
         self.assertFalse(result["stress_launchable"])
         self.assertEqual(result["daily_limit"], 5)
         self.assertEqual(result["preflight_budget"], 5000)
+        self.assertEqual(result["modelled_cost_per_credit"], 6000)
         self.assertEqual(result["retrospective_breaker"], 5000)
         self.assertEqual(result["project_daily_budget"], 25000)
         self.assertEqual(result["project_monthly_budget"], 100000)
@@ -38,8 +39,9 @@ class EconomicsContractTest(unittest.TestCase):
                 for product_id, package in packages.items()
             },
             {
+                "ai-mini": (20, 60),
                 "ai-starter": (50, 100),
-                "ai-value": (150, 240),
+                "ai-value": (150, 250),
                 "ai-monthly": (100, 180),
             },
         )
@@ -52,6 +54,10 @@ class EconomicsContractTest(unittest.TestCase):
         self.assertEqual(result["measurement_provider_attempts"], 1)
         self.assertEqual(result["measurement_cost_micro_usd"], 2353)
         self.assertFalse(result["measurement_dashboard_charge_verified"])
+        self.assertEqual(result["voice_cost_micro_usd_per_hour"], 111000)
+        self.assertEqual(result["voice_minimum_billable_seconds"], 10)
+        self.assertEqual(result["voice_max_request_cost_micro_usd"], 925)
+        self.assertTrue(result["voice_zdr_required"])
 
     def test_tampered_package_cost_is_rejected(self):
         tampered = copy.deepcopy(self.snapshot)
@@ -61,6 +67,30 @@ class EconomicsContractTest(unittest.TestCase):
             economics.EconomicsContractError, "estimated_cost"
         ):
             economics.validate_snapshot(tampered)
+
+    def test_modelled_credit_cost_is_independent_from_runtime_preflight_limit(self):
+        tampered = copy.deepcopy(self.snapshot)
+        tampered["ai"]["limits"]["max_preflight_cost_micro_usd_per_request"] = 4500
+        tampered["ai"]["limits"]["max_in_flight_cost_micro_usd"] = 4500
+
+        result = economics.validate_snapshot(tampered)
+
+        self.assertEqual(result["preflight_budget"], 4500)
+        self.assertEqual(result["modelled_cost_per_credit"], 6000)
+
+    def test_tampered_groq_voice_contract_is_rejected(self):
+        for key, value in (
+            ("provider", "openai"),
+            ("cost_micro_usd_per_hour", 110999),
+            ("minimum_billable_seconds", 0),
+            ("max_request_cost_micro_usd", 924),
+            ("zdr_required_for_production", False),
+        ):
+            with self.subTest(key=key):
+                tampered = copy.deepcopy(self.snapshot)
+                tampered["voice"][key] = value
+                with self.assertRaises(economics.EconomicsContractError):
+                    economics.validate_snapshot(tampered)
 
     def test_package_price_or_status_tampering_is_rejected(self):
         for key, value in (("price_xtr", 99), ("status", "active")):
@@ -116,6 +146,15 @@ class EconomicsContractTest(unittest.TestCase):
         rendered = economics.render_environment(self.snapshot)
 
         self.assertIn("AI_TUTOR_ENABLED=false", rendered)
+        self.assertIn("VOICE_TUTOR_ENABLED=false", rendered)
+        self.assertIn("VOICE_PROVIDER=groq", rendered)
+        self.assertIn("VOICE_TRANSCRIPTION_MODEL=whisper-large-v3", rendered)
+        self.assertIn("VOICE_COST_MICRO_USD_PER_MINUTE=1850", rendered)
+        self.assertIn("VOICE_MINIMUM_BILLABLE_SECONDS=10", rendered)
+        self.assertIn("VOICE_MAX_DURATION_SECONDS=30", rendered)
+        self.assertIn("VOICE_GROQ_ZDR_VERIFIED=false", rendered)
+        self.assertIn("VOICE_TRANSLATION_ENABLED=false", rendered)
+        self.assertIn("VOICE_TRANSLATION_PROVIDER=groq", rendered)
         self.assertIn("TELEGRAM_STARS_ENABLED=false", rendered)
         self.assertIn("BILLING_TERMS_APPROVED=false", rendered)
         self.assertIn(
