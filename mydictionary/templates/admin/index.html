@@ -175,6 +175,29 @@
           <article class="accent-coral"><span>Расчётная стоимость</span><strong>{{ dashboard.ai_cost_micro_usd|usd }}</strong><small>без реальных списаний</small></article>
           <article><span>Ошибки</span><strong>{{ ai.statuses.get('failed', 0) }}</strong><small>{{ ai.statuses.get('reserved', 0) }} в резерве</small></article>
         </section>
+        <section class="panel mirror-analytics" data-mirror-quality>
+          <div class="section-heading">
+            <div><p class="eyebrow">Mirror Control Plane</p><h2>Качество ответов</h2></div>
+            <form method="get" class="inline-form">
+              <input type="hidden" name="tab" value="ai">
+              <label>Период
+                <select name="days" onchange="this.form.submit()">
+                  {% for range in [7, 30, 90] %}<option value="{{ range }}" {{ 'selected' if mirror_quality.range_days == range else '' }}>{{ range }} дней</option>{% endfor %}
+                </select>
+              </label>
+            </form>
+          </div>
+          {% if mirror_quality.has_data %}
+            <div class="mirror-analytics-grid">
+              <article><span>Ответы Mirror</span><strong>{{ mirror_quality.mirror.responses }}</strong></article>
+              <article><span>Оценка контракта</span><strong>{{ (mirror_quality.mirror.average_score_bps / 100)|round(1) }}%</strong></article>
+              <article><span>Полезные оценки</span><strong>{{ mirror_quality.mirror.helpful }}/{{ mirror_quality.mirror.feedback }}</strong></article>
+              <article><span>Голосовые операции</span><strong>{{ mirror_quality.voice.requests }}</strong></article>
+            </div>
+          {% else %}
+            <p class="empty">Нет данных за выбранный период.</p>
+          {% endif %}
+        </section>
         <section class="split-layout wide-left">
           <div class="panel">
             <div class="section-heading"><div><p class="eyebrow">Последние 100</p><h2>AI-использование</h2></div><a class="button-link" href="{{ url_for('export_csv', kind='ai-usage') }}">CSV</a></div>
@@ -310,6 +333,20 @@
       {% endif %}
 
       {% if tab == 'profile' %}
+        <section class="panel form-panel">
+          <div class="section-heading"><div><p class="eyebrow">Mirror Control Plane v1</p><h2>Режимы и сложность</h2></div><span>Safety envelope не редактируется</span></div>
+          <form method="post" action="{{ url_for('update_mirror_control_plane') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>Версия политики<input name="policy_version" maxlength="64" value="{{ mirror_control.policy_version }}" required></label>
+            <label>Режим по умолчанию<select name="default_mode">{% for mode in ['teacher','conversation','coach','practice','brief','exam'] %}<option value="{{ mode }}" {{ 'selected' if mirror_control.default_mode == mode else '' }}>{{ mode }}</option>{% endfor %}</select></label>
+            <label>Глубина<select name="answer_depth">{% for depth in ['compact','balanced','deep'] %}<option value="{{ depth }}" {{ 'selected' if mirror_control.answer_depth == depth else '' }}>{{ depth }}</option>{% endfor %}</select></label>
+            <label>Уровень ученика<select name="learner_level">{% for level in ['adaptive','a1','a2','b1','b2','c1'] %}<option value="{{ level }}" {{ 'selected' if mirror_control.learner_level == level else '' }}>{{ level }}</option>{% endfor %}</select></label>
+            <fieldset class="span-2 mode-toggle-grid"><legend>Доступные режимы</legend>{% for mode in ['teacher','conversation','coach','practice','brief','exam'] %}<label><input type="checkbox" name="enabled_modes" value="{{ mode }}" {{ 'checked' if mode in mirror_control.enabled_modes else '' }}> {{ mode }}</label>{% endfor %}</fieldset>
+            {% for mode in ['teacher','conversation','coach','practice','brief','exam'] %}<label class="span-2">Инструкция · {{ mode }}<textarea name="guidance_{{ mode }}" maxlength="1000" rows="3" required>{{ mirror_control.mode_guidance[mode] }}</textarea></label>{% endfor %}
+            <div class="span-2"><button type="submit" class="primary">Сохранить новую версию</button></div>
+          </form>
+          {% if mirror_snapshots %}<div class="snapshot-list"><h3>История версий</h3>{% for snapshot in mirror_snapshots %}<form method="post" action="{{ url_for('restore_mirror_control_plane') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="snapshot_id" value="{{ snapshot.snapshot_id }}"><span>{{ snapshot.created_at|datetime }} · {{ snapshot.default_mode }} · {{ snapshot.answer_depth }}</span><button type="submit" class="compact-button">Восстановить</button></form>{% endfor %}</div>{% endif %}
+        </section>
         <section class="panel form-panel">
           <div class="section-heading"><div><p class="eyebrow">Mirror Assistant</p><h2>Безопасные ответы</h2></div><span>Системная граница безопасности неизменяема</span></div>
           <form method="post" action="{{ url_for('update_mirror_settings') }}" class="form-grid">

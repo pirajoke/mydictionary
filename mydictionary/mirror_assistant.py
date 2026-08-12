@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
+import json
 import os
 import re
 from typing import Any, Mapping, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
-from mydictionary.storage import UserPackEnrollment, UserProgress, WordProgress
+from mydictionary.storage import (
+    AnalyticsEvent,
+    UserPackEnrollment,
+    UserProgress,
+    WordProgress,
+)
 
 
 MIRROR_SAFETY_ENVELOPE = (
@@ -47,12 +53,24 @@ MIRROR_RESPONSE_MODES = frozenset({"text", "voice", "both"})
 MIRROR_DIALOGUE_KEY = "mirror_recent_dialogue"
 MIRROR_DIALOGUE_LIMIT = 20
 MIRROR_TURN_TEXT_LIMIT = 500
-MIRROR_STYLES = frozenset({"teacher", "conversation", "brief", "practice"})
+MIRROR_COMMUNICATION_MODES = (
+    "teacher",
+    "conversation",
+    "coach",
+    "practice",
+    "brief",
+    "exam",
+)
+MIRROR_ANSWER_DEPTHS = ("compact", "balanced", "deep")
+MIRROR_LEARNER_LEVELS = ("adaptive", "a1", "a2", "b1", "b2", "c1")
+MIRROR_STYLES = frozenset(MIRROR_COMMUNICATION_MODES)
 MIRROR_STYLE_LABELS = {
     "teacher": "Преподаватель",
     "conversation": "Собеседник",
+    "coach": "Коуч",
     "brief": "Кратко",
     "practice": "Практика",
+    "exam": "Экзамен",
 }
 MIRROR_STYLE_GUIDANCE = {
     "teacher": (
@@ -63,6 +81,10 @@ MIRROR_STYLE_GUIDANCE = {
         "Живой собеседник: продолжай мысль пользователя естественно, учитывай "
         "предыдущие реплики и мягко исправляй язык только когда это полезно."
     ),
+    "coach": (
+        "Учебный коуч: отделяй факты прогресса от интерпретации, называй "
+        "главный риск и предлагай один конкретный следующий шаг."
+    ),
     "brief": (
         "Краткий разбор: ответь максимально конкретно в одном или двух коротких "
         "абзацах без повторов и необязательных примеров."
@@ -71,6 +93,18 @@ MIRROR_STYLE_GUIDANCE = {
         "Практика: коротко ответь на вопрос, затем предложи ровно одно небольшое "
         "задание или реплику на активном языке."
     ),
+    "exam": (
+        "Экзаменатор: не подсказывай ответ заранее, проверяй по одному навыку "
+        "за раз и после ответа давай краткий проверяемый разбор."
+    ),
+}
+MIRROR_CONTROL_PLANE_DEFAULTS = {
+    "policy_version": "mirror-control-v1",
+    "enabled_modes": list(MIRROR_COMMUNICATION_MODES),
+    "default_mode": "teacher",
+    "answer_depth": "balanced",
+    "learner_level": "adaptive",
+    "mode_guidance": dict(MIRROR_STYLE_GUIDANCE),
 }
 
 _VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
@@ -131,6 +165,7 @@ class MirrorMemorySettings:
         values: Mapping[str, str] | None = None,
         *,
         ai_consent_version: str | None,
+        ai_processing_notice: str | None = None,
     ) -> "MirrorMemorySettings":
         env = values if values is not None else os.environ
         raw_enabled = str(env.get("MIRROR_MEMORY_ENABLED", "false")).strip().lower()
@@ -152,6 +187,22 @@ class MirrorMemorySettings:
             raise ValueError("MIRROR_DIALOGUE_RETENTION_DAYS must be 1-30")
         if enabled and not str(ai_consent_version or "").strip():
             raise ValueError("Mirror memory requires a current AI consent version")
+        if enabled and ai_processing_notice is not None:
+            version = str(ai_consent_version or "").casefold()
+            notice = str(ai_processing_notice or "").casefold()
+            describes_history = any(
+                marker in notice for marker in ("истор", "реплик", "dialogue", "history")
+            )
+            describes_retention = str(retention_days) in notice
+            if (
+                "question-only" in version
+                or "только текущ" in notice
+                or not describes_history
+                or not describes_retention
+            ):
+                raise ValueError(
+                    "Mirror memory requires a history-specific consent notice"
+                )
         return cls(enabled=enabled, retention_days=retention_days)
 
 
@@ -160,6 +211,61 @@ def normalize_mirror_style(value: str | None) -> str:
     if style not in MIRROR_STYLES:
         raise ValueError("Unknown Mirror response style")
     return style
+
+
+def validate_mirror_control_plane(values: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate mutable teaching controls while keeping safety immutable."""
+    expected = {
+        "policy_version",
+        "enabled_modes",
+        "default_mode",
+        "answer_depth",
+        "learner_level",
+        "mode_guidance",
+    }
+    if not isinstance(values, Mapping) or set(values) != expected:
+        raise ValueError("Mirror control plane fields are incomplete")
+    version = str(values["policy_version"]).strip()
+    if not _VERSION_RE.fullmatch(version):
+        raise ValueError("Invalid Mirror control plane version")
+    raw_modes = values["enabled_modes"]
+    if isinstance(raw_modes, (str, bytes)) or not isinstance(raw_modes, Sequence):
+        raise ValueError("Mirror enabled modes must be a list")
+    modes = [str(value).strip().lower() for value in raw_modes]
+    if (
+        not modes
+        or len(modes) != len(set(modes))
+        or any(mode not in MIRROR_COMMUNICATION_MODES for mode in modes)
+    ):
+        raise ValueError("Mirror enabled modes are invalid")
+    default_mode = str(values["default_mode"]).strip().lower()
+    if default_mode not in MIRROR_COMMUNICATION_MODES or default_mode not in modes:
+        raise ValueError("Mirror default mode must be enabled")
+    answer_depth = str(values["answer_depth"]).strip().lower()
+    if answer_depth not in MIRROR_ANSWER_DEPTHS:
+        raise ValueError("Mirror answer depth is invalid")
+    learner_level = str(values["learner_level"]).strip().lower()
+    if learner_level not in MIRROR_LEARNER_LEVELS:
+        raise ValueError("Mirror learner level is invalid")
+    raw_guidance = values["mode_guidance"]
+    if not isinstance(raw_guidance, Mapping) or set(raw_guidance) != set(
+        MIRROR_COMMUNICATION_MODES
+    ):
+        raise ValueError("Mirror mode guidance is incomplete")
+    guidance: dict[str, str] = {}
+    for mode in MIRROR_COMMUNICATION_MODES:
+        text_value = str(raw_guidance[mode]).strip()
+        if not 10 <= len(text_value) <= 1000 or _UNSAFE_GUIDANCE_RE.search(text_value):
+            raise ValueError("Mirror mode guidance is unsafe or outside bounds")
+        guidance[mode] = text_value
+    return {
+        "policy_version": version,
+        "enabled_modes": modes,
+        "default_mode": default_mode,
+        "answer_depth": answer_depth,
+        "learner_level": learner_level,
+        "mode_guidance": guidance,
+    }
 
 
 def validate_mirror_admin_settings(values: Mapping[str, str]) -> dict[str, str]:
@@ -199,6 +305,30 @@ def classify_mirror_intent(text: str) -> str:
     if words_only in _GREETING_PATTERNS:
         return "greeting"
     return "learning_question"
+
+
+def classify_mirror_task(text: str) -> str:
+    """Classify a learning request without sending learner text anywhere."""
+    normalized = " ".join(str(text).casefold().strip().split())
+    if any(value in normalized for value in ("прогресс", "слаб", "где останов")):
+        return "progress_review"
+    if any(
+        value in normalized
+        for value in ("значит", "перевод", "оттен", "вариант значения")
+    ):
+        return "translation_nuance"
+    if any(value in normalized for value in ("исправ", "проверь фраз", "correct")):
+        return "correction"
+    if any(
+        value in normalized
+        for value in ("граммат", "present ", "past ", "future ", "когда нужен")
+    ):
+        return "grammar"
+    if any(value in normalized for value in ("произнес", "произнош", "ударен")):
+        return "pronunciation"
+    if any(value in normalized for value in ("потрен", "практик", "упражнен")):
+        return "practice"
+    return "general_conversation"
 
 
 def render_mirror_capabilities(capabilities: str, *, locale: str | None = None) -> str:
@@ -328,6 +458,10 @@ def build_mirror_provider_payload(
     learning_context: Mapping[str, Any] | None = None,
     recent_dialogue: Sequence[Mapping[str, Any]] | None = None,
     response_style: str = "teacher",
+    task_kind: str | None = None,
+    communication_mode: str | None = None,
+    answer_depth: str = "balanced",
+    learner_level: str = "adaptive",
 ) -> dict[str, Any]:
     clean_question = str(question).strip()
     clean_guidance = str(admin_guidance).strip()
@@ -337,15 +471,50 @@ def build_mirror_provider_payload(
         raise ValueError("Mirror guidance is invalid")
     if _UNSAFE_GUIDANCE_RE.search(clean_guidance):
         raise ValueError("Unsafe Mirror guidance")
-    return {
+    selected_mode = normalize_mirror_style(communication_mode or response_style)
+    selected_depth = str(answer_depth).strip().lower()
+    selected_level = str(learner_level).strip().lower()
+    if selected_depth not in MIRROR_ANSWER_DEPTHS:
+        raise ValueError("Mirror answer depth is invalid")
+    if selected_level not in MIRROR_LEARNER_LEVELS:
+        raise ValueError("Mirror learner level is invalid")
+    selected_task = str(task_kind or classify_mirror_task(clean_question)).strip()
+    if selected_task not in {
+        "progress_review",
+        "translation_nuance",
+        "correction",
+        "grammar",
+        "pronunciation",
+        "practice",
+        "general_conversation",
+    }:
+        raise ValueError("Mirror task kind is invalid")
+    payload = {
         "safety_envelope": MIRROR_SAFETY_ENVELOPE,
         "admin_guidance": clean_guidance,
         "question": clean_question,
         "grounded_snapshot": dict(grounded_snapshot),
         "learning_context": _normalize_learning_context(learning_context),
         "recent_dialogue": normalize_mirror_dialogue(recent_dialogue),
-        "response_style": normalize_mirror_style(response_style),
+        "response_style": selected_mode,
     }
+    if task_kind is not None or communication_mode is not None:
+        payload.update(
+            {
+                "task_kind": selected_task,
+                "communication_mode": selected_mode,
+                "answer_depth": selected_depth,
+                "learner_level": selected_level,
+            }
+        )
+    while (
+        len(json.dumps(payload, ensure_ascii=False, separators=(",", ":"))) > 12000
+        and payload["recent_dialogue"]
+    ):
+        payload["recent_dialogue"].pop(0)
+    if len(json.dumps(payload, ensure_ascii=False, separators=(",", ":"))) > 12000:
+        raise ValueError("Mirror provider payload exceeds the safe bound")
+    return payload
 
 
 def grounded_progress_snapshot(
@@ -370,6 +539,13 @@ def grounded_progress_snapshot(
             )
             .order_by(UserPackEnrollment.enrolled_at.desc())
         ).scalars().first()
+        recent_sessions = session.scalar(
+            select(func.count(AnalyticsEvent.event_id)).where(
+                AnalyticsEvent.telegram_user_id == int(user_id),
+                AnalyticsEvent.event_name == "block_completed",
+                AnalyticsEvent.occurred_at >= observed_at - timedelta(days=7),
+            )
+        ) or 0
     if progress is None:
         return {"has_progress": False}
     correct = max(0, int(progress.total_correct or 0))
@@ -379,10 +555,22 @@ def grounded_progress_snapshot(
     if not has_progress:
         return {"has_progress": False}
     due_count = 0
-    weak_terms: list[str] = []
+    weak_terms: list[dict[str, Any]] = []
+    learned_count = 0
     for word in words:
-        if int(word.wrong_count or 0) > int(word.correct_count or 0):
-            weak_terms.append(str(word.term))
+        correct_count = max(0, int(word.correct_count or 0))
+        wrong_count = max(0, int(word.wrong_count or 0))
+        if correct_count >= 3:
+            learned_count += 1
+        elif wrong_count > correct_count:
+            weak_terms.append(
+                {
+                    "term": str(word.term)[:120],
+                    "correct": correct_count,
+                    "wrong": wrong_count,
+                    "error_gap": wrong_count - correct_count,
+                }
+            )
         if word.next_review:
             try:
                 due_at = datetime.fromisoformat(str(word.next_review).replace("Z", "+00:00"))
@@ -392,16 +580,31 @@ def grounded_progress_snapshot(
                     due_count += 1
             except ValueError:
                 pass
+    weak_terms.sort(key=lambda item: (-item["error_gap"], item["term"]))
+    accuracy = round(correct * 100 / attempts) if attempts else None
+    streak = int(progress.streak or 0)
     snapshot: dict[str, Any] = {
         "has_progress": True,
         "language": progress.active_lang or None,
         "active_pack_id": progress.active_pack_id or (
             enrollment.pack_id if enrollment is not None else None
         ),
-        "accuracy_percent": round(correct * 100 / attempts) if attempts else None,
+        "accuracy_percent": accuracy,
+        "lifetime_accuracy_percent": accuracy,
+        "lifetime_correct": correct,
+        "lifetime_wrong": wrong,
+        "tracked_words": len(words),
+        "learned_words": learned_count,
         "due_count": due_count,
+        "due_reviews": due_count,
         "weak_terms": weak_terms[:5],
-        "streak": int(progress.streak) if int(progress.streak or 0) > 0 else None,
+        "streak": streak if streak > 0 else None,
+        "streak_days": streak,
+        "recent_activity": {"sessions_7d": int(recent_sessions)},
+        "trend": {
+            "status": "unavailable",
+            "reason": "historical_accuracy_series_not_recorded",
+        },
     }
     return snapshot
 
@@ -427,7 +630,12 @@ def build_mirror_progress_summary(
     )
     lines.append(f"К повторению: {due}.")
     lines.append(
-        "Слабые места: " + ", ".join(weak) + "."
+        "Слабые места: "
+        + ", ".join(
+            str(item.get("term")) if isinstance(item, Mapping) else str(item)
+            for item in weak
+        )
+        + "."
         if weak
         else "Слабые места: пока не выявлены."
     )
