@@ -124,6 +124,12 @@ form without receiving `OPENAI_API_KEY` in its environment. Set
 owner-only `local-config` directory and the window cannot exceed one hour. See
 `docs/admin-console.md` for the lifecycle and cleanup procedure.
 
+Groq Voice uses the separate `GROQ_KEY_ENROLLMENT_ENABLED`,
+`GROQ_KEY_ENROLLMENT_PATH`, and `GROQ_KEY_ENROLLMENT_EXPIRES_AT` window. Set
+`GROQ_API_KEY_FILE` to the same absolute target under owner-only
+`local-config`. The launcher validates the file without forwarding its contents
+and rejects simultaneous `GROQ_API_KEY` and `GROQ_API_KEY_FILE` sources.
+
 Operator migration deploys also require:
 
 ```text
@@ -151,10 +157,10 @@ of plist files readable by other users and retain it while an issued invoice
 may still be paid.
 
 Voice tutor settings remain optional and default off. The admin launcher passes
-the voice model and consent version for diagnostics, but it does not receive
-`OPENAI_API_KEY` or the processing payload and cannot initiate transcription
-requests. The bot runtime settings and activation checklist are documented in
-`docs/voice-tutor.md`.
+the reviewed voice model, limits, consent metadata, `GROQ_API_KEY_FILE`, and a
+derived provider-configured boolean for diagnostics. It does not receive either
+provider's key value and cannot initiate transcription requests. The bot runtime
+settings and activation checklist are documented in `docs/voice-tutor.md`.
 
 Candidate environments are installed from `requirements.lock`. Update the lock
 only as a reviewed dependency change and validate it on Linux CI and the Mac

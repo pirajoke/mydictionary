@@ -12,6 +12,9 @@ import stat
 
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+TRUE_VALUES = {"1", "true", "yes", "on"}
+FALSE_VALUES = {"0", "false", "no", "off"}
+GROQ_PROJECT_KEY_RE = re.compile(r"gsk_[A-Za-z0-9_-]{16,508}")
 
 
 def required(values: dict[str, str], name: str) -> str:
@@ -46,6 +49,103 @@ def active_release_sha(current: Path) -> str:
     return active_release(current).name
 
 
+def _groq_file_configured(raw_path: str) -> bool:
+    if not raw_path:
+        return False
+    path = Path(raw_path).expanduser()
+    if not path.is_absolute():
+        raise RuntimeError("GROQ_API_KEY_FILE must be an absolute path")
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return False
+    if not stat.S_ISREG(metadata.st_mode) or path.is_symlink():
+        raise RuntimeError("Groq key file must be a regular file")
+    if metadata.st_uid != os.geteuid():
+        raise RuntimeError("Groq key file must be owned by this user")
+    if stat.S_IMODE(metadata.st_mode) & 0o077:
+        raise RuntimeError("Groq key file permissions are unsafe")
+    if metadata.st_size <= 0 or metadata.st_size > 1024:
+        raise RuntimeError("Groq key file size is invalid")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise RuntimeError("Groq key file is unreadable") from exc
+    try:
+        opened = os.fstat(descriptor)
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError("Groq key file must be a regular file")
+        if opened.st_uid != os.geteuid():
+            raise RuntimeError("Groq key file must be owned by this user")
+        if stat.S_IMODE(opened.st_mode) & 0o077:
+            raise RuntimeError("Groq key file permissions are unsafe")
+        if opened.st_size <= 0 or opened.st_size > 1024:
+            raise RuntimeError("Groq key file size is invalid")
+        if (metadata.st_dev, metadata.st_ino) != (opened.st_dev, opened.st_ino):
+            raise RuntimeError("Groq key file changed while opening")
+        payload = os.read(descriptor, 1025)
+    finally:
+        os.close(descriptor)
+    try:
+        value = payload.decode("ascii")
+    except UnicodeDecodeError as exc:
+        raise RuntimeError("Groq key file is unreadable") from exc
+    if not GROQ_PROJECT_KEY_RE.fullmatch(value):
+        raise RuntimeError("Groq key file format is invalid")
+    return True
+
+
+def _validate_bounded_enrollment(
+    environment: dict[str, str],
+    *,
+    prefix: str,
+    label: str,
+    app_root: Path,
+) -> None:
+    enabled_name = f"{prefix}_ENABLED"
+    enrollment_enabled = environment[enabled_name].lower()
+    if enrollment_enabled not in TRUE_VALUES | FALSE_VALUES:
+        raise RuntimeError(f"{enabled_name} must be a boolean")
+    if enrollment_enabled not in TRUE_VALUES:
+        return
+    raw_target = required(environment, f"{prefix}_PATH")
+    target = Path(raw_target).expanduser()
+    if not target.is_absolute():
+        raise RuntimeError(f"{label} key enrollment path must be absolute")
+    local_config = (app_root / "local-config").resolve()
+    if not local_config.is_dir() or local_config.is_symlink():
+        raise RuntimeError(f"{label} key enrollment directory is unavailable")
+    if stat.S_IMODE(local_config.stat().st_mode) & 0o022:
+        raise RuntimeError(
+            f"{label} key enrollment directory permissions are unsafe"
+        )
+    if target.parent.resolve() != local_config:
+        raise RuntimeError(
+            f"{label} key enrollment path must stay in local-config"
+        )
+    raw_expiry = required(environment, f"{prefix}_EXPIRES_AT")
+    normalized_expiry = (
+        raw_expiry[:-1] + "+00:00" if raw_expiry.endswith("Z") else raw_expiry
+    )
+    try:
+        expires_at = datetime.fromisoformat(normalized_expiry)
+    except ValueError as exc:
+        raise RuntimeError(
+            f"{label} key enrollment expiry must use ISO 8601"
+        ) from exc
+    if expires_at.tzinfo is None:
+        raise RuntimeError(
+            f"{label} key enrollment expiry must include timezone"
+        )
+    if expires_at.astimezone(timezone.utc) > datetime.now(
+        timezone.utc
+    ) + timedelta(hours=1):
+        raise RuntimeError(
+            f"{label} key enrollment window cannot exceed one hour"
+        )
+
+
 def build_process(
     values: dict[str, str] | None = None,
 ) -> tuple[Path, list[str], dict[str, str], Path]:
@@ -66,6 +166,19 @@ def build_process(
     release_python = release / ".venv" / "bin" / "python3"
     if not release_python.is_file():
         raise RuntimeError("Release Python is missing")
+
+    voice_provider = source.get("VOICE_PROVIDER", "openai").strip().lower()
+    if voice_provider not in {"openai", "groq"}:
+        raise RuntimeError("VOICE_PROVIDER must be openai or groq")
+    groq_direct = source.get("GROQ_API_KEY", "")
+    groq_file = source.get("GROQ_API_KEY_FILE", "").strip()
+    if groq_direct and groq_file:
+        raise RuntimeError(
+            "GROQ_API_KEY and GROQ_API_KEY_FILE are mutually exclusive"
+        )
+    if groq_direct and not GROQ_PROJECT_KEY_RE.fullmatch(groq_direct):
+        raise RuntimeError("GROQ_API_KEY format is invalid")
+    groq_configured = bool(groq_direct) or _groq_file_configured(groq_file)
 
     environment = {
         key: source[key]
@@ -95,30 +208,26 @@ def build_process(
             "AI_KEY_ENROLLMENT_ENABLED": source.get(
                 "AI_KEY_ENROLLMENT_ENABLED", "false"
             ).strip(),
+            "GROQ_KEY_ENROLLMENT_ENABLED": source.get(
+                "GROQ_KEY_ENROLLMENT_ENABLED", "false"
+            ).strip(),
             "AI_PROVIDER_CONFIGURED": str(
                 bool(source.get("OPENAI_API_KEY", "").strip())
             ).lower(),
             "VOICE_TUTOR_ENABLED": source.get(
                 "VOICE_TUTOR_ENABLED", "false"
             ).strip(),
-            "VOICE_PROVIDER": source.get("VOICE_PROVIDER", "openai").strip(),
+            "VOICE_PROVIDER": voice_provider,
             "VOICE_PROVIDER_CONFIGURED": str(
-                bool(
-                    source.get(
-                        "GROQ_API_KEY"
-                        if source.get("VOICE_PROVIDER", "openai").strip().lower()
-                        == "groq"
-                        else "OPENAI_API_KEY",
-                        "",
-                    ).strip()
-                )
+                groq_configured
+                if voice_provider == "groq"
+                else bool(source.get("OPENAI_API_KEY", "").strip())
             ).lower(),
             "VOICE_TRANSCRIPTION_MODEL": source.get(
                 "VOICE_TRANSCRIPTION_MODEL",
                 (
                     "whisper-large-v3"
-                    if source.get("VOICE_PROVIDER", "openai").strip().lower()
-                    == "groq"
+                    if voice_provider == "groq"
                     else "gpt-4o-transcribe"
                 ),
             ).strip(),
@@ -168,7 +277,34 @@ def build_process(
         "AI_METERING_JOURNAL_PATH",
         "AI_KEY_ENROLLMENT_PATH",
         "AI_KEY_ENROLLMENT_EXPIRES_AT",
+        "GROQ_API_KEY_FILE",
+        "GROQ_KEY_ENROLLMENT_PATH",
+        "GROQ_KEY_ENROLLMENT_EXPIRES_AT",
+        "AI_RESERVATION_TIMEOUT_SECONDS",
         "VOICE_CONSENT_VERSION",
+        "VOICE_PROCESSING_NOTICE",
+        "VOICE_GROQ_ZDR_VERIFIED",
+        "VOICE_MINIMUM_BILLABLE_SECONDS",
+        "VOICE_COST_MICRO_USD_PER_MINUTE",
+        "VOICE_CREDITS_PER_REQUEST",
+        "VOICE_MAX_AUDIO_BYTES",
+        "VOICE_MAX_DURATION_SECONDS",
+        "VOICE_SESSION_TTL_MINUTES",
+        "VOICE_TRANSCRIPT_RETENTION_DAYS",
+        "VOICE_TRANSLATION_ENABLED",
+        "VOICE_TRANSLATION_PROVIDER",
+        "VOICE_TRANSLATION_MODEL",
+        "VOICE_TRANSLATION_SERVICE_TIER",
+        "VOICE_TRANSLATION_CONSENT_VERSION",
+        "VOICE_TRANSLATION_PROCESSING_NOTICE",
+        "VOICE_TRANSLATION_STT_MICRO_USD_PER_MINUTE",
+        "VOICE_TRANSLATION_STT_MINIMUM_BILLABLE_SECONDS",
+        "VOICE_TRANSLATION_INPUT_USD_PER_MILLION",
+        "VOICE_TRANSLATION_OUTPUT_USD_PER_MILLION",
+        "VOICE_TRANSLATION_PRICING_REVIEWED_ON",
+        "VOICE_TRANSLATION_MAX_PREFLIGHT_COST_MICRO_USD",
+        "VOICE_TRANSLATION_STT_CREDITS_PER_REQUEST",
+        "VOICE_TRANSLATION_CREDITS_PER_REQUEST",
     ):
         if source.get(name):
             environment[name] = str(source[name]).strip()
@@ -187,48 +323,18 @@ def build_process(
         "on",
     }:
         raise RuntimeError("AI_TUTOR_ENABLED must be a boolean")
-    enrollment_enabled = environment["AI_KEY_ENROLLMENT_ENABLED"].lower()
-    if enrollment_enabled not in {
-        "0",
-        "1",
-        "false",
-        "true",
-        "no",
-        "yes",
-        "off",
-        "on",
-    }:
-        raise RuntimeError("AI_KEY_ENROLLMENT_ENABLED must be a boolean")
-    if enrollment_enabled in {"1", "true", "yes", "on"}:
-        raw_target = required(environment, "AI_KEY_ENROLLMENT_PATH")
-        target = Path(raw_target).expanduser()
-        if not target.is_absolute():
-            raise RuntimeError("AI key enrollment path must be absolute")
-        local_config = (app_root / "local-config").resolve()
-        if not local_config.is_dir() or local_config.is_symlink():
-            raise RuntimeError("AI key enrollment directory is unavailable")
-        if stat.S_IMODE(local_config.stat().st_mode) & 0o022:
-            raise RuntimeError("AI key enrollment directory permissions are unsafe")
-        if target.parent.resolve() != local_config:
-            raise RuntimeError("AI key enrollment path must stay in local-config")
-        raw_expiry = required(environment, "AI_KEY_ENROLLMENT_EXPIRES_AT")
-        normalized_expiry = (
-            raw_expiry[:-1] + "+00:00"
-            if raw_expiry.endswith("Z")
-            else raw_expiry
-        )
-        try:
-            expires_at = datetime.fromisoformat(normalized_expiry)
-        except ValueError as exc:
-            raise RuntimeError(
-                "AI key enrollment expiry must use ISO 8601"
-            ) from exc
-        if expires_at.tzinfo is None:
-            raise RuntimeError("AI key enrollment expiry must include timezone")
-        if expires_at.astimezone(timezone.utc) > datetime.now(
-            timezone.utc
-        ) + timedelta(hours=1):
-            raise RuntimeError("AI key enrollment window cannot exceed one hour")
+    _validate_bounded_enrollment(
+        environment,
+        prefix="AI_KEY_ENROLLMENT",
+        label="AI",
+        app_root=app_root,
+    )
+    _validate_bounded_enrollment(
+        environment,
+        prefix="GROQ_KEY_ENROLLMENT",
+        label="Groq",
+        app_root=app_root,
+    )
     if environment["VOICE_TUTOR_ENABLED"].lower() not in {
         "0",
         "1",

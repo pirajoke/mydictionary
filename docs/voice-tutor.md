@@ -70,7 +70,8 @@ would require a separately evaluated provider and a new product contract.
 | `VOICE_PROVIDER` | `openai` | `openai` or `groq` |
 | `VOICE_TRANSCRIPTION_MODEL` | provider default | `gpt-4o-transcribe` for OpenAI; `whisper-large-v3` for Groq |
 | `OPENAI_API_KEY` | unset | required for OpenAI STT and for text translation |
-| `GROQ_API_KEY` | unset | required when the STT provider is `groq` |
+| `GROQ_API_KEY` | unset | legacy direct source; mutually exclusive with `GROQ_API_KEY_FILE` |
+| `GROQ_API_KEY_FILE` | unset | preferred absolute path to an owner-owned regular `0600` file when STT uses `groq` |
 | `VOICE_GROQ_ZDR_VERIFIED` | `false` | explicit `true` after Zero Data Retention is verified for Groq |
 | `VOICE_MINIMUM_BILLABLE_SECONDS` | provider default | `10` for Groq, `0` for OpenAI |
 | `VOICE_CREDITS_PER_REQUEST` | `1` | 1-100 |
@@ -87,6 +88,13 @@ of one US dollar. The checked-in economics snapshot records the reviewed Groq
 candidate rate and ten-second minimum; runtime activation still requires a
 current reviewed snapshot.
 
+The Groq credential loader rejects relative paths, symlinks, non-regular files,
+files owned by another user, group/world permissions, oversized values, invalid
+`gsk_` values, and simultaneous direct/file sources. The admin process receives
+only `GROQ_API_KEY_FILE` and a derived configured boolean; it never receives the
+key value. Generate an isolated key at https://console.groq.com/keys and use the
+bounded `/admin/groq-key` enrollment flow documented in `admin-console.md`.
+
 The OpenAI adapter follows the official transcription endpoint and sends an OGG
 file tuple in memory:
 
@@ -98,6 +106,7 @@ The Groq adapter uses the OpenAI-compatible transcription endpoint with
 attempt:
 
 - https://console.groq.com/docs/speech-to-text
+- https://console.groq.com/docs/your-data
 - https://groq.com/pricing
 
 Voice-note translation can use Groq for STT and OpenAI for structured text

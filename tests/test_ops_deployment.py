@@ -309,6 +309,50 @@ class AdminLauncherTest(OpsTestCase):
         with self.assertRaisesRegex(RuntimeError, "must stay in local-config"):
             admin_launcher.build_process(source)
 
+    def test_launcher_forwards_groq_file_and_bounded_enrollment_without_secret(self):
+        source = self.launcher_environment()
+        local_config = self.root / "local-config"
+        key_file = local_config / "groq-voice.key"
+        key_file.write_text("gsk_" + "G" * 48, encoding="ascii")
+        os.chmod(key_file, 0o600)
+        enrollment_target = local_config / "groq-enrollment.key"
+        expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
+        source.update(
+            {
+                "VOICE_PROVIDER": "groq",
+                "GROQ_API_KEY_FILE": str(key_file),
+                "GROQ_KEY_ENROLLMENT_ENABLED": "true",
+                "GROQ_KEY_ENROLLMENT_PATH": str(enrollment_target),
+                "GROQ_KEY_ENROLLMENT_EXPIRES_AT": expiry.isoformat(),
+            }
+        )
+
+        _, _, environment, _ = admin_launcher.build_process(source)
+
+        self.assertEqual(environment["GROQ_API_KEY_FILE"], str(key_file))
+        self.assertEqual(environment["VOICE_PROVIDER_CONFIGURED"], "true")
+        self.assertEqual(environment["GROQ_KEY_ENROLLMENT_ENABLED"], "true")
+        self.assertEqual(
+            environment["GROQ_KEY_ENROLLMENT_PATH"], str(enrollment_target)
+        )
+        self.assertNotIn("GROQ_API_KEY", environment)
+
+    def test_launcher_rejects_ambiguous_groq_key_sources(self):
+        source = self.launcher_environment()
+        key_file = self.root / "local-config" / "groq-voice.key"
+        key_file.write_text("gsk_" + "G" * 48, encoding="ascii")
+        os.chmod(key_file, 0o600)
+        source.update(
+            {
+                "VOICE_PROVIDER": "groq",
+                "GROQ_API_KEY": "gsk_" + "D" * 48,
+                "GROQ_API_KEY_FILE": str(key_file),
+            }
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "mutually exclusive"):
+            admin_launcher.build_process(source)
+
     def test_launcher_rejects_release_outside_versioned_tree(self):
         environment = self.launcher_environment()
         outside = self.root / NEW_SHA

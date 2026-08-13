@@ -483,6 +483,7 @@
               ('AI reserved in flight', diagnostics.ai_budget.in_flight_micro_usd ~ ' microUSD · ' ~ diagnostics.ai_budget.reserved_attempts ~ ' attempts', diagnostics.ai_budget.in_flight_micro_usd == 0),
               ('AI fallback journal', diagnostics.ai_metering_journal_pending ~ ' pending', diagnostics.ai_metering_journal_pending == 0),
               ('AI key enrollment', diagnostics.ai_key_enrollment_status ~ ' · ' ~ diagnostics.ai_key_enrollment_expires_at, diagnostics.ai_key_enrollment_status in ['ready','consumed']),
+              ('Groq key enrollment', diagnostics.groq_key_enrollment_status ~ ' · ' ~ diagnostics.groq_key_enrollment_expires_at, diagnostics.groq_key_enrollment_status in ['ready','consumed']),
               ('Voice tutor', diagnostics.voice_enabled ~ ' · ' ~ diagnostics.voice_provider ~ ' · ' ~ diagnostics.voice_model, diagnostics.voice_enabled|lower in ['1','true','yes','on']),
               ('Voice provider configured', 'yes' if diagnostics.voice_provider_configured else 'no', diagnostics.voice_provider_configured),
               ('Voice consent', diagnostics.voice_consent_version, diagnostics.voice_consent_version != 'unversioned'),
@@ -501,6 +502,11 @@
         {% if diagnostics.ai_key_enrollment_status == 'ready' %}
           <section class="panel action-panel">
             <div class="section-heading"><div><p class="eyebrow">Gate 2</p><h2>Одноразовая передача OpenAI key</h2></div><a class="button-link" href="{{ url_for('ai_key_enrollment') }}">Открыть защищённую форму</a></div>
+          </section>
+        {% endif %}
+        {% if diagnostics.groq_key_enrollment_status == 'ready' %}
+          <section class="panel action-panel">
+            <div class="section-heading"><div><p class="eyebrow">Voice provider</p><h2>Одноразовая передача Groq key</h2></div><a class="button-link" href="{{ url_for('groq_key_enrollment_page') }}">Открыть защищённую форму</a></div>
           </section>
         {% endif %}
         {% if diagnostics.ai_budget.breaker_open %}
