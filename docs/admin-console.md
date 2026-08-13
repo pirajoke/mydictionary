@@ -19,7 +19,8 @@ polling. The default binding is loopback-only on the Mac mini.
 - database, migration, feature-flag, release, asset, and Telegram polling readiness
 - AI snapshot/tier/budget diagnostics plus audited breaker reset, blocked while
   provider telemetry remains in the fallback journal
-- opt-in, time-limited, one-time enrollment of an isolated OpenAI project key
+- separate opt-in, time-limited, one-time enrollment windows for isolated
+  OpenAI and Groq project keys
 - append-only administration audit log
 
 The admin can request a refund hold but cannot call Telegram's refund API. Live
@@ -47,6 +48,19 @@ AI_KEY_ENROLLMENT_ENABLED=true
 AI_KEY_ENROLLMENT_PATH=/absolute/app-root/local-config/openai-gate2.key
 AI_KEY_ENROLLMENT_EXPIRES_AT=2026-08-07T12:30:00Z
 ```
+
+Groq Voice uses an independent window and destination:
+
+```text
+GROQ_API_KEY_FILE=/absolute/app-root/local-config/groq-voice.key
+GROQ_KEY_ENROLLMENT_ENABLED=true
+GROQ_KEY_ENROLLMENT_PATH=/absolute/app-root/local-config/groq-voice.key
+GROQ_KEY_ENROLLMENT_EXPIRES_AT=2026-08-13T12:30:00Z
+```
+
+The target file must not exist before enrollment. `GROQ_API_KEY_FILE` tells the
+bot where to read the enrolled value; it does not expose the value to the admin
+process. Do not set `GROQ_API_KEY` at the same time.
 
 The production launcher accepts a destination only directly under
 `MYDICTIONARY_APP_ROOT/local-config`. That directory must already exist and
@@ -106,8 +120,9 @@ add HTTPS and an explicit network access policy before use.
 Use this only for an isolated, short-lived provider key while AI remains
 disabled. Configure a window of at most one hour, restart only the admin
 service, authenticate normally, and open `/admin/ai-key` over the existing
-HTTPS admin endpoint. The form requires the signed admin session and CSRF
-token.
+HTTPS admin endpoint. Use `/admin/groq-key` for Groq. Each provider has its own
+window, target, status, and audit actions. Both forms require the signed admin
+session and CSRF token.
 
 The server creates the destination with `O_EXCL`, `O_NOFOLLOW` where available,
 and mode `0600`. It never stores the key in PostgreSQL, session data, audit
@@ -116,10 +131,11 @@ details, command arguments, or a response. The audit log records only a
 permanently consumes the window. Invalid, expired, duplicate, symlink, and
 unsafe-directory cases fail closed.
 
-After the controlled provider attempt, delete the local key file, set
-`AI_KEY_ENROLLMENT_ENABLED=false`, restart the admin service, and revoke the
-project key in OpenAI Platform. Never forward `OPENAI_API_KEY` to the admin
-process.
+After enrollment, close the corresponding window by setting its
+`*_KEY_ENROLLMENT_ENABLED` flag to `false`. Keep the owner-only file only while
+the bot needs the provider. On revocation, disable Voice first, remove the file,
+and revoke the project key in the provider console. Never forward direct
+`OPENAI_API_KEY` or `GROQ_API_KEY` values to the admin process.
 
 ## Security properties
 

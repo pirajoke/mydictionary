@@ -312,6 +312,15 @@ def create_app(
         AI_KEY_ENROLLMENT_EXPIRES_AT=os.environ.get(
             "AI_KEY_ENROLLMENT_EXPIRES_AT", ""
         ),
+        GROQ_KEY_ENROLLMENT_ENABLED=os.environ.get(
+            "GROQ_KEY_ENROLLMENT_ENABLED", "false"
+        ),
+        GROQ_KEY_ENROLLMENT_PATH=os.environ.get(
+            "GROQ_KEY_ENROLLMENT_PATH", ""
+        ),
+        GROQ_KEY_ENROLLMENT_EXPIRES_AT=os.environ.get(
+            "GROQ_KEY_ENROLLMENT_EXPIRES_AT", ""
+        ),
         MAX_CONTENT_LENGTH=64 * 1024,
     )
     if test_config:
@@ -330,9 +339,15 @@ def create_app(
         app.config,
         allowed_directory=Path(app.config["DATA_DIR"]) / "local-config",
     )
+    groq_key_enrollment = SecretEnrollmentSettings.from_mapping(
+        app.config,
+        allowed_directory=Path(app.config["DATA_DIR"]) / "local-config",
+        provider="groq",
+    )
     app.extensions["database_store"] = store
     app.extensions["admin_store"] = admin_store
     app.extensions["ai_key_enrollment"] = key_enrollment
+    app.extensions["groq_key_enrollment"] = groq_key_enrollment
     limiter = LoginLimiter()
 
     username = str(app.config.get("ADMIN_USERNAME") or "").strip()
@@ -658,6 +673,12 @@ def create_app(
                     if key_enrollment.expires_at
                     else "not configured"
                 ),
+                "groq_key_enrollment_status": groq_key_enrollment.status(),
+                "groq_key_enrollment_expires_at": (
+                    groq_key_enrollment.expires_at.isoformat()
+                    if groq_key_enrollment.expires_at
+                    else "not configured"
+                ),
                 "stars_enabled": admin_store.billing_settings.enabled,
                 "stars_unit_economics": (
                     admin_store.billing_settings.net_micro_usd_per_xtr > 0
@@ -714,36 +735,50 @@ def create_app(
             context["audit"] = admin_store.audit_log(limit=250)
         return render_template("admin/index.html", **context)
 
-    @app.get("/admin/ai-key")
-    @login_required
-    def ai_key_enrollment():
-        state = key_enrollment.status()
+    def render_provider_key_enrollment(
+        settings: SecretEnrollmentSettings,
+        *,
+        provider_name: str,
+        form_endpoint: str,
+        error: str | None = None,
+    ):
+        state = settings.status()
         if state == "disabled":
             abort(404)
         return (
             render_template(
                 "admin/ai_key.html",
                 state=state,
-                expires_at=key_enrollment.expires_at,
+                expires_at=settings.expires_at,
+                provider_name=provider_name,
+                form_endpoint=form_endpoint,
+                error=error,
             ),
             410 if state == "expired" else 200,
         )
 
-    @app.post("/admin/ai-key")
-    @login_required
-    def enroll_ai_key():
+    def submit_provider_key_enrollment(
+        settings: SecretEnrollmentSettings,
+        *,
+        provider: str,
+        provider_name: str,
+        page_endpoint: str,
+        form_endpoint: str,
+    ):
         try:
-            fingerprint = key_enrollment.enroll(
+            fingerprint = settings.enroll(
                 str(request.form.get("api_key") or "")
             )
         except SecretEnrollmentError:
-            state = key_enrollment.status()
+            state = settings.status()
             reason = "invalid_key" if state == "ready" else state
             admin_store.record_audit(
                 actor=current_actor(),
-                action="ai_key_enrollment_rejected",
+                action=f"{provider}_key_enrollment_rejected"
+                if provider != "openai"
+                else "ai_key_enrollment_rejected",
                 target_type="provider_credential",
-                target_id="openai",
+                target_id=provider,
                 details={"reason": reason},
             )
             messages = {
@@ -752,26 +787,68 @@ def create_app(
                 "expired": "Срок действия одноразового окна истёк.",
                 "disabled": "Одноразовое окно выключено.",
             }
-            return (
-                render_template(
-                    "admin/ai_key.html",
-                    state=state,
-                    expires_at=key_enrollment.expires_at,
-                    error=messages.get(state, "Ключ не принят."),
-                ),
-                {"ready": 400, "consumed": 409, "expired": 410}.get(
-                    state, 404
-                ),
+            response, _ = render_provider_key_enrollment(
+                settings,
+                provider_name=provider_name,
+                form_endpoint=form_endpoint,
+                error=messages.get(state, "Ключ не принят."),
             )
+            return response, {
+                "ready": 400,
+                "consumed": 409,
+                "expired": 410,
+            }.get(state, 404)
         admin_store.record_audit(
             actor=current_actor(),
-            action="ai_key_enrolled",
+            action=f"{provider}_key_enrolled"
+            if provider != "openai"
+            else "ai_key_enrolled",
             target_type="provider_credential",
-            target_id="openai",
+            target_id=provider,
             details={"fingerprint_sha256_12": fingerprint},
         )
         session["csrf_token"] = secrets.token_urlsafe(32)
-        return redirect(url_for("ai_key_enrollment"), code=303)
+        return redirect(url_for(page_endpoint), code=303)
+
+    @app.get("/admin/ai-key")
+    @login_required
+    def ai_key_enrollment():
+        return render_provider_key_enrollment(
+            key_enrollment,
+            provider_name="OpenAI",
+            form_endpoint="enroll_ai_key",
+        )
+
+    @app.post("/admin/ai-key")
+    @login_required
+    def enroll_ai_key():
+        return submit_provider_key_enrollment(
+            key_enrollment,
+            provider="openai",
+            provider_name="OpenAI",
+            page_endpoint="ai_key_enrollment",
+            form_endpoint="enroll_ai_key",
+        )
+
+    @app.get("/admin/groq-key")
+    @login_required
+    def groq_key_enrollment_page():
+        return render_provider_key_enrollment(
+            groq_key_enrollment,
+            provider_name="Groq",
+            form_endpoint="enroll_groq_key",
+        )
+
+    @app.post("/admin/groq-key")
+    @login_required
+    def enroll_groq_key():
+        return submit_provider_key_enrollment(
+            groq_key_enrollment,
+            provider="groq",
+            provider_name="Groq",
+            page_endpoint="groq_key_enrollment_page",
+            form_endpoint="enroll_groq_key",
+        )
 
     @app.post("/admin/ai/breaker/reset")
     @login_required

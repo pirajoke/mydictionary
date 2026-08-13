@@ -42,6 +42,7 @@ class AdminConsoleTest(unittest.TestCase):
         self.local_config_dir.mkdir()
         os.chmod(self.local_config_dir, 0o700)
         self.ai_key_path = self.local_config_dir / "openai-gate2.key"
+        self.groq_key_path = self.local_config_dir / "groq-voice.key"
         self.app = create_app(
             {
                 "TESTING": True,
@@ -54,6 +55,11 @@ class AdminConsoleTest(unittest.TestCase):
                 "AI_KEY_ENROLLMENT_ENABLED": "true",
                 "AI_KEY_ENROLLMENT_PATH": str(self.ai_key_path),
                 "AI_KEY_ENROLLMENT_EXPIRES_AT": (
+                    datetime.now(timezone.utc) + timedelta(minutes=30)
+                ).isoformat(),
+                "GROQ_KEY_ENROLLMENT_ENABLED": "true",
+                "GROQ_KEY_ENROLLMENT_PATH": str(self.groq_key_path),
+                "GROQ_KEY_ENROLLMENT_EXPIRES_AT": (
                     datetime.now(timezone.utc) + timedelta(minutes=30)
                 ).isoformat(),
             },
@@ -234,6 +240,50 @@ class AdminConsoleTest(unittest.TestCase):
                 },
                 database_store=self.store,
             )
+
+    def test_remote_groq_key_enrollment_is_separate_private_and_audited(self):
+        secret = "gsk_" + "G" * 48
+        self.login()
+
+        page = self.client.get("/admin/groq-key")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("Groq project key", page.get_data(as_text=True))
+        self.assertNotIn(secret, page.get_data(as_text=True))
+        self.assertEqual(page.headers["Cache-Control"], "no-store")
+
+        invalid = self.client.post(
+            "/admin/groq-key",
+            data={"csrf_token": self.csrf(), "api_key": "sk-not-groq"},
+        )
+        self.assertEqual(invalid.status_code, 400)
+        self.assertFalse(self.groq_key_path.exists())
+
+        accepted = self.client.post(
+            "/admin/groq-key",
+            data={"csrf_token": self.csrf(), "api_key": secret},
+        )
+        self.assertEqual(accepted.status_code, 303)
+        self.assertEqual(self.groq_key_path.read_text(encoding="ascii"), secret)
+        self.assertEqual(self.groq_key_path.stat().st_mode & 0o777, 0o600)
+        self.assertFalse(self.ai_key_path.exists())
+
+        replay = self.client.post(
+            "/admin/groq-key",
+            data={"csrf_token": self.csrf(), "api_key": "gsk_" + "R" * 48},
+        )
+        self.assertEqual(replay.status_code, 409)
+        with self.store.Session() as database_session:
+            rows = database_session.execute(
+                select(AdminAuditLog).where(
+                    AdminAuditLog.action.in_(
+                        {"groq_key_enrolled", "groq_key_enrollment_rejected"}
+                    )
+                )
+            ).scalars().all()
+        serialized = "\n".join(row.details_json for row in rows)
+        self.assertEqual(len(rows), 3)
+        self.assertNotIn(secret, serialized)
+        self.assertIn("fingerprint_sha256_12", serialized)
 
     def test_duplicate_login_post_keeps_authenticated_session(self):
         self.client.get("/admin/login")

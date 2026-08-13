@@ -1,6 +1,8 @@
 import os
+import tempfile
 import unittest
 from datetime import date
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -19,10 +21,11 @@ from mydictionary.voice_tutor import (
 
 
 def groq_voice_env(**overrides):
+    key = "gsk_" + "G" * 48
     values = {
         "VOICE_TUTOR_ENABLED": "true",
         "VOICE_PROVIDER": "groq",
-        "GROQ_API_KEY": "test-groq-key",
+        "GROQ_API_KEY": key,
         "VOICE_GROQ_ZDR_VERIFIED": "true",
         "VOICE_COST_MICRO_USD_PER_MINUTE": "1850",
         "VOICE_CONSENT_VERSION": "voice-groq-2026-08",
@@ -41,7 +44,7 @@ class GroqVoiceSettingsContractTest(unittest.TestCase):
         self.assertTrue(configured.enabled)
         self.assertEqual(configured.provider, "groq")
         self.assertEqual(configured.model, "whisper-large-v3")
-        self.assertEqual(configured.groq_api_key, "test-groq-key")
+        self.assertEqual(configured.groq_api_key, "gsk_" + "G" * 48)
         self.assertEqual(configured.minimum_billable_seconds, 10)
         self.assertEqual(configured.estimated_cost_micro_usd(3), 309)
         self.assertEqual(configured.estimated_cost_micro_usd(30), 925)
@@ -56,11 +59,68 @@ class GroqVoiceSettingsContractTest(unittest.TestCase):
                 groq_voice_env(VOICE_GROQ_ZDR_VERIFIED="false")
             )
 
+    def test_disabled_voice_does_not_require_or_read_groq_key_file(self):
+        configured = VoiceTutorSettings.from_env(
+            {
+                "VOICE_TUTOR_ENABLED": "false",
+                "VOICE_PROVIDER": "groq",
+                "GROQ_API_KEY_FILE": "/missing/disabled-groq.key",
+            }
+        )
+        translated = VoiceTranslationSettings.from_env(
+            {
+                "VOICE_TRANSLATION_ENABLED": "false",
+                "VOICE_TRANSLATION_PROVIDER": "groq",
+                "GROQ_API_KEY_FILE": "/missing/disabled-groq.key",
+            }
+        )
+
+        self.assertFalse(configured.enabled)
+        self.assertIsNone(configured.groq_api_key)
+        self.assertFalse(translated.enabled)
+
+    def test_practice_and_translation_accept_private_key_file(self):
+        with tempfile.TemporaryDirectory(prefix="mydictionary-groq-key-") as raw:
+            root = Path(raw)
+            os.chmod(root, 0o700)
+            key_file = root / "groq.key"
+            key_file.write_text("gsk_" + "F" * 48, encoding="ascii")
+            os.chmod(key_file, 0o600)
+
+            practice_values = groq_voice_env(
+                GROQ_API_KEY="",
+                GROQ_API_KEY_FILE=str(key_file),
+            )
+            practice = VoiceTutorSettings.from_env(practice_values)
+            self.assertEqual(practice.groq_api_key, "gsk_" + "F" * 48)
+
+            translation_values = {
+                "VOICE_TRANSLATION_ENABLED": "true",
+                "VOICE_TRANSLATION_PROVIDER": "groq",
+                "GROQ_API_KEY_FILE": str(key_file),
+                "VOICE_GROQ_ZDR_VERIFIED": "true",
+                "OPENAI_API_KEY": "test-openai-key",
+                "VOICE_TRANSLATION_CONSENT_VERSION": "voice-translation-groq-v1",
+                "VOICE_TRANSLATION_PROCESSING_NOTICE": (
+                    "Голос передаётся Groq для распознавания и OpenAI для "
+                    "перевода; исходное аудио не сохраняется."
+                ),
+                "VOICE_TRANSLATION_STT_MICRO_USD_PER_MINUTE": "1850",
+                "VOICE_TRANSLATION_INPUT_USD_PER_MILLION": "1",
+                "VOICE_TRANSLATION_OUTPUT_USD_PER_MILLION": "1.25",
+                "VOICE_TRANSLATION_PRICING_REVIEWED_ON": date.today().isoformat(),
+            }
+            translation = VoiceTranslationSettings.from_env(
+                translation_values,
+                existing_voice_consent_version="voice-practice-v1",
+            )
+            self.assertEqual(translation.groq_api_key, "gsk_" + "F" * 48)
+
     def test_translation_requires_groq_for_stt_and_openai_for_text(self):
         values = {
             "VOICE_TRANSLATION_ENABLED": "true",
             "VOICE_TRANSLATION_PROVIDER": "groq",
-            "GROQ_API_KEY": "test-groq-key",
+            "GROQ_API_KEY": "gsk_" + "G" * 48,
             "VOICE_GROQ_ZDR_VERIFIED": "true",
             "OPENAI_API_KEY": "test-openai-key",
             "VOICE_TRANSLATION_CONSENT_VERSION": "voice-translation-groq-v1",
@@ -79,7 +139,7 @@ class GroqVoiceSettingsContractTest(unittest.TestCase):
         )
         self.assertEqual(configured.provider, "groq")
         self.assertEqual(configured.transcription_model, "whisper-large-v3")
-        self.assertEqual(configured.groq_api_key, "test-groq-key")
+        self.assertEqual(configured.groq_api_key, "gsk_" + "G" * 48)
         self.assertEqual(configured.openai_api_key, "test-openai-key")
         self.assertEqual(configured.stt_minimum_billable_seconds, 10)
         self.assertTrue(configured.groq_zdr_verified)

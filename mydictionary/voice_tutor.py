@@ -20,6 +20,10 @@ from sqlalchemy import select
 
 from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.ai_tutor import ProviderUsage
+from mydictionary.secret_enrollment import (
+    SecretEnrollmentError,
+    load_provider_api_key,
+)
 from mydictionary.storage import (
     AIQuotaExceeded,
     AIUsageStateError,
@@ -124,6 +128,12 @@ class VoiceTutorSettings:
         model = str(env.get("VOICE_TRANSCRIPTION_MODEL", default_model)).strip()
         if not model or len(model) > 128:
             raise VoiceConfigurationError("VOICE_TRANSCRIPTION_MODEL is invalid")
+        groq_api_key = None
+        if enabled and provider == "groq":
+            try:
+                groq_api_key = load_provider_api_key(env, provider="groq")
+            except SecretEnrollmentError as exc:
+                raise VoiceConfigurationError(str(exc)) from exc
         settings = cls(
             enabled=enabled,
             provider=provider,
@@ -188,7 +198,7 @@ class VoiceTutorSettings:
                 env.get("VOICE_PROCESSING_NOTICE", "")
             ).strip()
             or cls.processing_notice,
-            groq_api_key=str(env.get("GROQ_API_KEY") or "").strip() or None,
+            groq_api_key=groq_api_key,
             minimum_billable_seconds=_bounded_int(
                 env,
                 "VOICE_MINIMUM_BILLABLE_SECONDS",
@@ -221,7 +231,7 @@ class VoiceTutorSettings:
                 raise VoiceConfigurationError(
                     "Enabled voice tutor requires "
                     + (
-                        "GROQ_API_KEY"
+                        "GROQ_API_KEY or GROQ_API_KEY_FILE"
                         if settings.provider == "groq"
                         else "OPENAI_API_KEY"
                     )
@@ -351,9 +361,16 @@ class VoiceTranslationSettings:
         api_key = str(env.get("OPENAI_API_KEY", "")).strip() or None
         if not api_key:
             raise ValueError("Enabled voice translation requires OPENAI_API_KEY")
-        groq_api_key = str(env.get("GROQ_API_KEY", "")).strip() or None
+        groq_api_key = None
+        if provider == "groq":
+            try:
+                groq_api_key = load_provider_api_key(env, provider="groq")
+            except SecretEnrollmentError as exc:
+                raise VoiceConfigurationError(str(exc)) from exc
         if provider == "groq" and not groq_api_key:
-            raise ValueError("Enabled Groq transcription requires GROQ_API_KEY")
+            raise ValueError(
+                "Enabled Groq transcription requires GROQ_API_KEY or GROQ_API_KEY_FILE"
+            )
         groq_zdr_verified = _bool(
             env.get("VOICE_GROQ_ZDR_VERIFIED", "false"),
             "VOICE_GROQ_ZDR_VERIFIED",
