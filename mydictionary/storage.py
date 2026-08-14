@@ -975,6 +975,10 @@ class AIQuotaExceeded(RuntimeError):
     """Raised when credits, request limits, or the cost breaker block AI use."""
 
 
+class AICreditExhausted(AIQuotaExceeded):
+    """Raised only when a learner wallet cannot fund an AI reservation."""
+
+
 class AIUsageStateError(RuntimeError):
     """Raised when an AI usage transition is invalid or duplicated."""
 
@@ -990,8 +994,10 @@ TELEGRAM_NOTIFICATION_STATUSES = {
 }
 EVENT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 EVENT_PROPERTY_KEYS = {
+    "amount_xtr",
     "correct_count",
     "consent_type",
+    "credits",
     "daily_word_goal",
     "document_version",
     "goal",
@@ -1000,6 +1006,7 @@ EVENT_PROPERTY_KEYS = {
     "mode",
     "pack_id",
     "position",
+    "product_id",
     "rating",
     "retry",
     "topic",
@@ -2084,6 +2091,18 @@ class DatabaseStore:
             "balance_credits": wallet.balance_credits,
         }
 
+    def ai_charge_credits(self, user_id: int, configured_credits: int) -> int:
+        """Return the durable role-aware credit charge for one provider action."""
+        configured = int(configured_credits)
+        if configured <= 0:
+            raise ValueError("Configured AI credits must be positive")
+        self.ensure_user_id(user_id)
+        with self.Session() as session:
+            role = session.execute(
+                select(User.role).where(User.telegram_user_id == int(user_id))
+            ).scalar_one()
+        return 0 if role == "admin" else configured
+
     def _ensure_ai_budget_state(self, session: Any) -> AIBudgetState:
         insert_for_dialect = (
             postgresql_insert
@@ -2252,8 +2271,8 @@ class DatabaseStore:
         request_id: str | None = None,
     ) -> str:
         """Atomically reserve wallet credits and create a metered request."""
-        if credits <= 0 or initial_credits < 0:
-            raise ValueError("AI credits must be positive and allowance non-negative")
+        if credits < 0 or initial_credits < 0:
+            raise ValueError("AI credits and allowance must be non-negative")
         if max_daily_requests is not None and max_daily_requests <= 0:
             raise ValueError("AI daily request limit must be positive")
         projected_cost = int(projected_cost_micro_usd)
@@ -2273,6 +2292,13 @@ class DatabaseStore:
         with self.Session.begin() as session:
             if session.get(AIUsage, usage_id) is not None:
                 raise AIUsageStateError("AI request id already exists")
+            role = session.execute(
+                select(User.role)
+                .where(User.telegram_user_id == int(user_id))
+                .with_for_update()
+            ).scalar_one()
+            if credits == 0 and role != "admin":
+                raise ValueError("Zero-credit AI reservations require admin role")
             budget_state = self._ensure_ai_budget_state(session)
             if projected_cost:
                 if budget_state.breaker_open:
@@ -2313,7 +2339,7 @@ class DatabaseStore:
                 if int(attempts) >= int(max_daily_requests):
                     raise AIQuotaExceeded("AI daily request limit reached")
             if wallet.balance_credits - wallet.reserved_credits < credits:
-                raise AIQuotaExceeded("AI credit allowance exhausted")
+                raise AICreditExhausted("AI credit allowance exhausted")
             wallet.reserved_credits += credits
             wallet.updated_at = utcnow()
             budget_state.in_flight_micro_usd += projected_cost

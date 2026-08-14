@@ -59,7 +59,7 @@ until every issued order is expired and payment reconciliation is complete.
 
 ## Unit economics
 
-Commercial Launch v2 products are seeded as `draft`. Validate the immutable
+Commercial Launch v3 products are seeded as `draft`. Validate the immutable
 contract without a database write, then perform an explicit idempotent draft
 upsert only in the approved environment:
 

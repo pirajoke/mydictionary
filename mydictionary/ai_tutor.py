@@ -1268,13 +1268,16 @@ class AITutorService:
             raise AIUsageRecoveryError(
                 "Stale AI reservation recovery failed before a new request"
             ) from exc
+        charge_credits = self.store.ai_charge_credits(
+            user_id, self.settings.credits_per_request
+        )
         request_id = str(uuid4())
         request_id = self.store.reserve_ai_usage(
             user_id,
             action="block_tutor",
             provider=self.settings.provider,
             model=self.settings.model,
-            credits=self.settings.credits_per_request,
+            credits=charge_credits,
             initial_credits=self.settings.initial_credits,
             context_fingerprint=context_fingerprint(context),
             max_daily_requests=self.settings.max_daily_requests_per_user,
@@ -1373,7 +1376,7 @@ class AITutorService:
             settlement_started = True
             allowance = self.store.complete_ai_usage(
                 request_id,
-                billed_credits=self.settings.credits_per_request,
+                billed_credits=charge_credits,
                 provider_response_id=provider_result.response_id,
                 model=provider_result.model,
                 usage=provider_result.usage.as_dict(),
@@ -1501,12 +1504,15 @@ class AITutorService:
             raise AIUsageRecoveryError(
                 "Stale AI reservation recovery failed before a new request"
             ) from exc
+        charge_credits = self.store.ai_charge_credits(
+            user_id, self.settings.credits_per_request
+        )
         request_id = self.store.reserve_ai_usage(
             user_id,
             action="block_tutor",
             provider=self.settings.provider,
             model=self.settings.model,
-            credits=self.settings.credits_per_request,
+            credits=charge_credits,
             initial_credits=self.settings.initial_credits,
             context_fingerprint=hashlib.sha256(
                 serialized_input.encode("utf-8")
@@ -1600,7 +1606,7 @@ class AITutorService:
             settlement_started = True
             allowance = self.store.complete_ai_usage(
                 request_id,
-                billed_credits=self.settings.credits_per_request,
+                billed_credits=charge_credits,
                 provider_response_id=provider_result.response_id,
                 model=provider_result.model,
                 usage=provider_result.usage.as_dict(),

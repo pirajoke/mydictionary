@@ -1064,8 +1064,11 @@ class AdminStore:
             ("start_received", "Открыли /start"),
             ("onboarding_completed", "Завершили настройку"),
             ("block_started", "Открыли учебный блок"),
+            ("ai_paywall_shown", "Увидели предложение"),
             ("buy_opened", "Открыли покупку"),
             ("billing_terms_accepted", "Приняли условия"),
+            ("billing_package_selected", "Выбрали пакет"),
+            ("billing_invoice_created", "Получили счёт"),
         ]
         event_names = [name for name, _ in event_steps]
         with self.store.Session() as session:
@@ -1117,6 +1120,11 @@ class AdminStore:
                     AIUsage.status == "completed",
                 )
             ).one()
+            ai_provider_cost = session.execute(
+                select(func.coalesce(func.sum(AIUsage.cost_micro_usd), 0)).where(
+                    AIUsage.created_at >= since
+                )
+            ).scalar_one()
             payment_counts = (
                 select(
                     StarsPayment.telegram_user_id.label("telegram_user_id"),
@@ -1175,6 +1183,13 @@ class AdminStore:
         )
         for step in steps:
             step["conversion"] = step["users"] / starts * 100 if starts else 0
+        net_xtr = int(gross_xtr or 0) - int(refunded_xtr or 0)
+        estimated_revenue = max(
+            0,
+            net_xtr * int(self.billing_settings.net_micro_usd_per_xtr or 0),
+        )
+        provider_cost = int(ai_provider_cost or 0)
+        estimated_contribution = estimated_revenue - provider_cost
         return {
             "days": days,
             "steps": steps,
@@ -1184,7 +1199,14 @@ class AdminStore:
                 "payers": int(payment_users or 0),
                 "gross_xtr": int(gross_xtr or 0),
                 "refunded_xtr": int(refunded_xtr or 0),
-                "net_xtr": int(gross_xtr or 0) - int(refunded_xtr or 0),
+                "net_xtr": net_xtr,
+                "ai_provider_cost_micro_usd": provider_cost,
+                "estimated_contribution_micro_usd": estimated_contribution,
+                "estimated_contribution_margin_bps": (
+                    estimated_contribution * 10000 // estimated_revenue
+                    if estimated_revenue
+                    else None
+                ),
             },
         }
 

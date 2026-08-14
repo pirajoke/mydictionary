@@ -101,6 +101,7 @@ from mydictionary.privacy import erase_user_learning_data
 from mydictionary.safety import PersistentRateLimiter, SafetySettings
 from mydictionary.storage import (
     ACCESS_STATUSES,
+    AICreditExhausted,
     AIQuotaExceeded,
     DatabaseStore,
     WORD_PROGRESS_DEFAULTS,
@@ -258,6 +259,8 @@ _BILLING: BillingService | None = None
 _VOICE_TUTOR: VoiceTutorService | None = None
 _VOICE_TRANSLATION: VoiceTranslationService | None = None
 LAST_PRONUNCIATION_MESSAGES_KEY = "last_pronunciation_messages"
+PENDING_AI_QUESTION_KEY = "pending_ai_question"
+PENDING_AI_QUESTION_TTL_SECONDS = 30 * 60
 
 
 def database_url() -> str:
@@ -459,14 +462,21 @@ def record_product_event(
     properties: dict | None = None,
     session_id: str | None = None,
     source: str | None = None,
+    user_id: int | None = None,
 ) -> None:
     """Record analytics without allowing telemetry failures to break learning."""
     runtime = _ACTIVE_RUNTIME.get()
-    if runtime is None:
+    if runtime is None and user_id is None:
         return
     try:
-        runtime.store.record_event(
-            runtime.user_id,
+        if user_id is not None:
+            store = get_store()
+            event_user_id = int(user_id)
+        else:
+            store = runtime.store
+            event_user_id = runtime.user_id
+        store.record_event(
+            event_user_id,
             event_name,
             properties=properties,
             session_id=session_id,
@@ -2614,9 +2624,17 @@ async def voice_message_handler(
                 audio=audio,
                 duration=duration,
             )
+        except AICreditExhausted:
+            await send_ai_credit_paywall(
+                update.message,
+                context,
+                user_id=user_id,
+                locale=interface_locale_for_update(update),
+                mode="voice",
+            )
         except AIQuotaExceeded:
             await update.message.reply_text(
-                "AI-кредиты закончились. Проверь /ai_stats или открой /buy."
+                translate("ai_limit_reached", interface_locale_for_update(update))
             )
         except VoiceUsageRecoveryError:
             logger.exception("Voice credit reservation recovery failed")
@@ -2670,9 +2688,17 @@ async def voice_message_handler(
                 audio=audio,
                 duration=duration,
             )
+        except AICreditExhausted:
+            await send_ai_credit_paywall(
+                update.message,
+                context,
+                user_id=user_id,
+                locale=interface_locale_for_update(update),
+                mode="voice",
+            )
         except AIQuotaExceeded:
             await update.message.reply_text(
-                "AI-кредиты закончились. Проверь /ai_stats."
+                translate("ai_limit_reached", interface_locale_for_update(update))
             )
         except VoiceUsageRecoveryError:
             await update.message.reply_text(
@@ -2747,9 +2773,18 @@ async def voice_message_handler(
             audio=audio,
             duration_seconds=duration,
         )
+    except AICreditExhausted:
+        await send_ai_credit_paywall(
+            update.message,
+            context,
+            user_id=user_id,
+            locale=interface_locale_for_update(update),
+            mode="voice",
+        )
+        return
     except AIQuotaExceeded:
         await update.message.reply_text(
-            "AI-кредиты закончились. Проверь /ai_stats или открой /buy."
+            translate("ai_limit_reached", interface_locale_for_update(update))
         )
         return
     except VoiceUsageRecoveryError:
@@ -2787,7 +2822,7 @@ async def voice_message_handler(
 
 
 async def send_ai_tutor_answer(
-    message, context, question: str, *, user_id: int
+    message, context, question: str, *, user_id: int, locale: str = "ru"
 ) -> None:
     if not AI_SETTINGS.enabled:
         await message.reply_text("AI-репетитор пока выключен.")
@@ -2802,9 +2837,18 @@ async def send_ai_tutor_answer(
             question=question,
             context=tutor_context,
         )
+    except AICreditExhausted:
+        await send_ai_credit_paywall(
+            message,
+            context,
+            user_id=user_id,
+            locale=locale,
+            question=question,
+        )
+        return
     except AIQuotaExceeded:
         await message.reply_text(
-            "AI-кредиты закончились. Проверь баланс через /ai_stats или открой /buy."
+            translate("ai_limit_reached", locale)
         )
         return
     except AIConfigurationError:
@@ -2877,6 +2921,7 @@ async def request_ai_tutor_answer(
     *,
     user_id: int,
     request_kind: str,
+    locale: str = "ru",
 ) -> None:
     """Require current, versioned processing consent before any AI work."""
     if not AI_SETTINGS.enabled:
@@ -2893,7 +2938,11 @@ async def request_ai_tutor_answer(
         document_version=consent_version,
     ):
         await send_ai_tutor_answer(
-            message, context, question, user_id=int(user_id)
+            message,
+            context,
+            question,
+            user_id=int(user_id),
+            locale=locale,
         )
         return
     await request_ai_processing_consent(
@@ -3075,21 +3124,22 @@ async def handle_mirror_question(
     question: str,
 ) -> None:
     """Answer one typed or transcribed question through the same Mirror path."""
+    message = getattr(update, "effective_message", None) or update.message
     question = str(question).strip()
     if not question:
-        await update.message.reply_text("Не удалось распознать вопрос.")
+        await message.reply_text("Не удалось распознать вопрос.")
         return
     store = get_store()
     user_id = int(update.effective_user.id)
     interface_locale = interface_locale_for_update(update)
     profile = store.product_profile(user_id)
     if profile.get("access_status") != "active":
-        await update.message.reply_text(
+        await message.reply_text(
             translate("mirror_unavailable", interface_locale)
         )
         return
     if not profile.get("onboarding_completed_at"):
-        await update.message.reply_text(
+        await message.reply_text(
             translate("onboarding_required", interface_locale)
         )
         return
@@ -3140,7 +3190,7 @@ async def handle_mirror_question(
         except (TypeError, ValueError):
             consented = False
         if not consented:
-            await update.message.reply_text(
+            await message.reply_text(
                 translate("ai_consent_required", interface_locale)
             )
             return
@@ -3206,9 +3256,18 @@ async def handle_mirror_question(
             response = str(result).strip()
             if not response:
                 raise ValueError("Empty Mirror response")
+        except AICreditExhausted:
+            await send_ai_credit_paywall(
+                message,
+                context,
+                user_id=user_id,
+                locale=interface_locale,
+                question=question,
+            )
+            return
         except AIQuotaExceeded:
-            await update.message.reply_text(
-                translate("ai_no_credits", interface_locale)
+            await message.reply_text(
+                translate("ai_limit_reached", interface_locale)
             )
             return
         except Exception as exc:
@@ -3216,7 +3275,7 @@ async def handle_mirror_question(
             if task_kind == "progress_review":
                 response = build_mirror_progress_summary(store, user_id)
             else:
-                await update.message.reply_text(
+                await message.reply_text(
                     translate("ai_failure", interface_locale)
                 )
                 return
@@ -3246,7 +3305,7 @@ async def handle_mirror_question(
                     type(exc).__name__,
                 )
     await send_mirror_response(
-        update.message,
+        message,
         response,
         mode=mode,
         voice_enabled=voice_enabled,
@@ -3268,7 +3327,7 @@ async def handle_mirror_question(
     append_mirror_turn(context.user_data, role="user", text=question)
     append_mirror_turn(context.user_data, role="assistant", text=response)
     if request_id:
-        await update.message.reply_text(
+        await message.reply_text(
             "Ответ был полезен?",
             reply_markup=mirror_feedback_keyboard(str(request_id)),
         )
@@ -3329,6 +3388,7 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context,
         question,
         user_id=user_id,
+        locale=interface_locale_for_update(update),
     )
 
 
@@ -3343,6 +3403,7 @@ async def cmd_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
         question,
         user_id=int(update.effective_user.id),
         request_kind="command",
+        locale=interface_locale_for_update(update),
     )
 
 
@@ -3359,6 +3420,92 @@ async def cmd_ai_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Использовано: {summary['spent_credits']}\n"
         f"Запросы: {summary['completed_requests']} успешно, "
         f"{summary['failed_requests']} с возвратом"
+    )
+
+
+def _remember_pending_ai_question(context, question: str | None) -> None:
+    user_data = getattr(context, "user_data", None)
+    if not isinstance(user_data, MutableMapping):
+        return
+    bounded = str(question or "").strip()[:500]
+    if not bounded:
+        user_data.pop(PENDING_AI_QUESTION_KEY, None)
+        return
+    user_data[PENDING_AI_QUESTION_KEY] = {
+        "question": bounded,
+        "expires_at": int(time.time()) + PENDING_AI_QUESTION_TTL_SECONDS,
+    }
+
+
+def _pending_ai_question(context, *, consume: bool = False) -> str | None:
+    user_data = getattr(context, "user_data", None)
+    if not isinstance(user_data, MutableMapping):
+        return None
+    pending = user_data.get(PENDING_AI_QUESTION_KEY)
+    try:
+        question = str(pending["question"]).strip()
+        expires_at = int(pending["expires_at"])
+    except (KeyError, TypeError, ValueError):
+        user_data.pop(PENDING_AI_QUESTION_KEY, None)
+        return None
+    if not 1 <= len(question) <= 500 or expires_at < int(time.time()):
+        user_data.pop(PENDING_AI_QUESTION_KEY, None)
+        return None
+    if consume:
+        user_data.pop(PENDING_AI_QUESTION_KEY, None)
+    return question
+
+
+async def send_ai_credit_paywall(
+    message,
+    context,
+    *,
+    user_id: int,
+    locale: str,
+    question: str | None = None,
+    mode: str = "mirror",
+) -> None:
+    """Show one fail-closed purchase action without creating an invoice."""
+    _remember_pending_ai_question(context, question)
+    try:
+        summary = get_store().ai_usage_summary(
+            int(user_id), initial_credits=AI_SETTINGS.initial_credits
+        )
+        balance = max(0, int(summary["available_credits"]))
+    except Exception as exc:
+        logger.warning(
+            "AI paywall balance unavailable: error_type=%s", type(exc).__name__
+        )
+        balance = 0
+    markup = None
+    if BILLING_SETTINGS.enabled:
+        try:
+            products = await asyncio.to_thread(get_billing_service().active_products)
+        except Exception as exc:
+            logger.warning(
+                "AI paywall catalog unavailable: error_type=%s", type(exc).__name__
+            )
+            products = []
+        if products:
+            markup = InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        translate("ai_buy_credits", locale),
+                        callback_data="billing:open",
+                    )
+                ]]
+            )
+    record_product_event(
+        "ai_paywall_shown",
+        properties={"mode": str(mode)[:64]},
+    )
+    await message.reply_text(
+        translate(
+            "ai_paywall",
+            locale,
+            balance=balance,
+        ),
+        reply_markup=markup,
     )
 
 
@@ -3449,6 +3596,41 @@ async def send_billing_products(message) -> None:
 
 
 @auth
+async def billing_open_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not BILLING_SETTINGS.enabled:
+        await query.answer("Покупка AI-кредитов пока выключена.", show_alert=True)
+        return
+    await query.answer()
+    if not get_store().has_consent(
+        int(update.effective_user.id),
+        consent_type="billing_terms",
+        document_version=BILLING_SETTINGS.terms_version,
+    ):
+        await send_billing_terms(query.message)
+        return
+    await send_billing_products(query.message)
+
+
+@auth
+async def billing_resume_ai_cb(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    locale = interface_locale_for_update(update)
+    question = _pending_ai_question(context, consume=True)
+    if question is None:
+        await query.answer(translate("ai_resume_expired", locale), show_alert=True)
+        return
+    await query.answer()
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except TelegramError:
+        pass
+    await handle_mirror_question(update, context, question=question)
+
+
+@auth
 async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if not BILLING_SETTINGS.enabled:
@@ -3488,6 +3670,10 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_billing_terms(query.message)
         return
     product_id = query.data.split(":", 1)[1]
+    record_product_event(
+        "billing_package_selected",
+        properties={"product_id": product_id},
+    )
     try:
         order = await asyncio.to_thread(
             get_billing_service().create_order,
@@ -3521,6 +3707,14 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else {}
             ),
         }
+    )
+    record_product_event(
+        "billing_invoice_created",
+        properties={
+            "product_id": order.product_id,
+            "credits": order.credits,
+            "amount_xtr": order.amount_xtr,
+        },
     )
 
 
@@ -3580,14 +3774,34 @@ async def successful_payment_handler(
         return
     if result.created:
         prefix = "Тестовая " if TELEGRAM_RUNTIME.is_test else ""
+        locale = interface_locale_for_update(update)
+        resume_markup = (
+            InlineKeyboardMarkup(
+                [[
+                    InlineKeyboardButton(
+                        translate("ai_continue_question", locale),
+                        callback_data="billing:resume_ai",
+                    )
+                ]]
+            )
+            if _pending_ai_question(context) is not None
+            else None
+        )
+        record_product_event(
+            "stars_payment_completed",
+            properties={"credits": result.credits},
+            user_id=int(update.effective_user.id),
+        )
         await update.message.reply_text(
             f"{prefix}оплата подтверждена. "
             f"Начислено {result.credits} AI-кредитов.\n"
-            f"Доступно: {result.available_credits}."
+            f"Доступно: {result.available_credits}.",
+            reply_markup=resume_markup,
         )
     else:
         await update.message.reply_text(
-            f"Этот платёж уже учтён. Доступно: {result.available_credits}."
+            f"Этот платёж уже учтён. Доступно: {result.available_credits}.",
+            reply_markup=None,
         )
 
 
@@ -4756,6 +4970,7 @@ async def block_ai_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Объясни главные связи между словами этого блока.",
             user_id=user_id,
             request_kind="active_block",
+            locale=interface_locale_for_update(update),
         )
         return
     await _authorized_block_ai_cb.__wrapped__(update, context)
@@ -4778,6 +4993,7 @@ async def _authorized_block_ai_cb(
             question,
             user_id=int(update.effective_user.id),
             request_kind="active_block",
+            locale=interface_locale_for_update(update),
         )
     else:
         await send_ai_tutor_answer(
@@ -4785,6 +5001,7 @@ async def _authorized_block_ai_cb(
             context,
             question,
             user_id=int(update.effective_user.id),
+            locale=interface_locale_for_update(update),
         )
 
 
@@ -5470,7 +5687,19 @@ async def manual_polling():
     # Welcome menu callbacks
     app.add_handler(CallbackQueryHandler(onboarding_cb, pattern=r"^onboarding:"))
     app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
-    app.add_handler(CallbackQueryHandler(billing_consent_cb, pattern=r"^billing:"))
+    app.add_handler(
+        CallbackQueryHandler(billing_open_cb, pattern=r"^billing:open$")
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            billing_resume_ai_cb, pattern=r"^billing:resume_ai$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            billing_consent_cb, pattern=r"^billing:accept_terms$"
+        )
+    )
     app.add_handler(
         CallbackQueryHandler(voice_consent_cb, pattern=r"^voiceconsent:")
     )

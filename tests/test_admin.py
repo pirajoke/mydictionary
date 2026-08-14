@@ -468,8 +468,8 @@ class AdminConsoleTest(unittest.TestCase):
         self.login()
         page = self.client.get("/admin?tab=billing").get_data(as_text=True)
 
-        self.assertIn("Commercial Launch v2", page)
-        self.assertIn("mydictionary-commercial-v2-2026-08-12", page)
+        self.assertIn("Commercial Launch v3", page)
+        self.assertIn("mydictionary-commercial-v3-2026-08-14", page)
         self.assertIn("Измеренный AI-вызов", page)
         self.assertIn("2 353 microUSD", page)
         self.assertIn("Реквизиты продавца", page)
@@ -839,6 +839,13 @@ class AdminConsoleTest(unittest.TestCase):
                 total_amount=10,
                 telegram_payment_charge_id=f"funnel-charge-{index}",
             )
+        for event_name in (
+            "ai_paywall_shown",
+            "billing_package_selected",
+            "billing_invoice_created",
+            "stars_payment_completed",
+        ):
+            self.store.record_event(user_id, event_name, source="telegram")
         with self.store.Session.begin() as session:
             session.add(
                 AIUsage(
@@ -851,17 +858,28 @@ class AdminConsoleTest(unittest.TestCase):
                     context_fingerprint="f" * 64,
                     reserved_credits=1,
                     billed_credits=1,
+                    cost_micro_usd=1000,
                 )
             )
 
         funnel = admin.product_funnel(days=30)
         steps = {step["event_name"]: step for step in funnel["steps"]}
         self.assertEqual(steps["invoice_created"]["events"], 2)
+        self.assertEqual(steps["ai_paywall_shown"]["events"], 1)
+        self.assertEqual(steps["billing_package_selected"]["events"], 1)
+        self.assertEqual(steps["billing_invoice_created"]["events"], 1)
         self.assertEqual(steps["stars_payment_completed"]["users"], 1)
         self.assertEqual(steps["ai_request_completed"]["users"], 1)
         self.assertEqual(steps["repeat_purchase"]["users"], 1)
         self.assertEqual(funnel["commercial"]["gross_xtr"], 20)
         self.assertEqual(funnel["commercial"]["net_xtr"], 20)
+        self.assertEqual(funnel["commercial"]["ai_provider_cost_micro_usd"], 1000)
+        self.assertEqual(
+            funnel["commercial"]["estimated_contribution_micro_usd"], 19000
+        )
+        self.assertEqual(
+            funnel["commercial"]["estimated_contribution_margin_bps"], 9500
+        )
 
     def test_health_exposes_no_internal_configuration(self):
         response = self.client.get("/health")
