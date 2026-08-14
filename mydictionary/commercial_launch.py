@@ -1,4 +1,4 @@
-"""Privacy-safe Commercial Launch v2 contract helpers."""
+"""Privacy-safe Commercial Launch v3 contract helpers."""
 
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ SENSITIVE_MEASUREMENT_KEYS = {
     "telegram_user_id",
     "user_id",
 }
-EXPECTED_V2_CATALOG = {
-    "ai-mini": (20, 60, "one_time"),
-    "ai-starter": (50, 100, "one_time"),
-    "ai-value": (150, 250, "one_time"),
-    "ai-monthly": (100, 180, "subscription"),
+EXPECTED_V3_CATALOG = {
+    "ai-mini": (20, 69, "one_time"),
+    "ai-starter": (50, 129, "one_time"),
+    "ai-value": (150, 319, "one_time"),
+    "ai-monthly": (100, 229, "subscription"),
 }
 
 
@@ -218,8 +218,8 @@ def commercial_launch_overview(
         for package in expected_packages
         if isinstance(package, Mapping)
     }
-    if catalog != EXPECTED_V2_CATALOG:
-        raise CommercialLaunchError("Commercial Launch v2 catalog is inconsistent")
+    if catalog != EXPECTED_V3_CATALOG:
+        raise CommercialLaunchError("Commercial Launch v3 catalog is inconsistent")
     nominal_net = _integer(
         stars.get("assumed_net_micro_usd_per_xtr"), "nominal net XTR", minimum=1
     )

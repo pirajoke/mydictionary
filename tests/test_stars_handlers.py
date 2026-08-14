@@ -1,4 +1,5 @@
 import os
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -15,6 +16,75 @@ from mydictionary.billing import (
 
 
 class StarsHandlerTest(unittest.IsolatedAsyncioTestCase):
+    async def test_credit_paywall_is_compact_and_keeps_one_bounded_question(self):
+        message = SimpleNamespace(reply_text=AsyncMock())
+        context = SimpleNamespace(user_data={})
+        store = MagicMock()
+        store.ai_usage_summary.return_value = {"available_credits": 0}
+        service = MagicMock()
+        service.active_products.return_value = [{"product_id": "ai-mini"}]
+        settings = SimpleNamespace(enabled=True)
+        question = "q" * 700
+
+        with (
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_billing_service", return_value=service),
+            patch.object(bot, "BILLING_SETTINGS", settings),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(initial_credits=40),
+            ),
+            patch.object(bot, "record_product_event") as event,
+        ):
+            await bot.send_ai_credit_paywall(
+                message,
+                context,
+                user_id=7001,
+                locale="ru",
+                question=question,
+            )
+
+        pending = context.user_data[bot.PENDING_AI_QUESTION_KEY]
+        self.assertEqual(len(pending["question"]), 500)
+        self.assertGreater(pending["expires_at"], int(time.time()))
+        markup = message.reply_text.await_args.kwargs["reply_markup"]
+        buttons = [button for row in markup.inline_keyboard for button in row]
+        self.assertEqual(len(buttons), 1)
+        self.assertEqual(buttons[0].callback_data, "billing:open")
+        self.assertIn("0", message.reply_text.await_args.args[0])
+        event.assert_called_once_with(
+            "ai_paywall_shown", properties={"mode": "mirror"}
+        )
+        service.create_order.assert_not_called()
+
+    async def test_disabled_billing_paywall_has_no_purchase_action(self):
+        message = SimpleNamespace(reply_text=AsyncMock())
+        context = SimpleNamespace(user_data={})
+        store = MagicMock()
+        store.ai_usage_summary.return_value = {"available_credits": 0}
+        with (
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "BILLING_SETTINGS", SimpleNamespace(enabled=False)),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(initial_credits=40),
+            ),
+            patch.object(bot, "get_billing_service") as service,
+            patch.object(bot, "record_product_event"),
+        ):
+            await bot.send_ai_credit_paywall(
+                message,
+                context,
+                user_id=7001,
+                locale="en",
+                question="Explain bonjour",
+            )
+
+        self.assertIsNone(message.reply_text.await_args.kwargs["reply_markup"])
+        service.assert_not_called()
+
     async def test_terms_show_seller_support_and_explicit_immediate_performance_consent(self):
         message = SimpleNamespace(reply_text=AsyncMock())
         settings = SimpleNamespace(
@@ -155,6 +225,7 @@ class StarsHandlerTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch.object(bot, "get_billing_service", return_value=service),
             patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "record_product_event") as event,
         ):
             await bot.buy_product_cb.__wrapped__(update, context)
 
@@ -162,6 +233,10 @@ class StarsHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(kwargs["currency"], "XTR")
         self.assertNotIn("provider_token", kwargs)
         self.assertEqual(kwargs["prices"][0].amount, 100)
+        self.assertEqual(
+            [call.args[0] for call in event.call_args_list],
+            ["billing_package_selected", "billing_invoice_created"],
+        )
 
     async def test_pre_checkout_rejects_mismatched_order(self):
         service = MagicMock()
@@ -260,15 +335,111 @@ class StarsHandlerTest(unittest.IsolatedAsyncioTestCase):
             reply_text=AsyncMock(),
         )
         update = SimpleNamespace(
-            message=message, effective_user=SimpleNamespace(id=7001)
+            message=message,
+            effective_message=message,
+            effective_user=SimpleNamespace(id=7001, language_code="ru"),
+        )
+        context = SimpleNamespace(
+            user_data={
+                "pending_ai_question": {
+                    "question": "Объясни bonjour",
+                    "expires_at": int(time.time()) + 600,
+                }
+            }
         )
 
-        with patch.object(bot, "get_billing_service", return_value=service):
-            await bot.successful_payment_handler(update, SimpleNamespace())
+        with (
+            patch.object(bot, "get_billing_service", return_value=service),
+            patch.object(bot, "record_product_event") as event,
+        ):
+            await bot.successful_payment_handler(update, context)
 
         service.fulfill_successful_payment.assert_called_once()
         message.reply_text.assert_awaited_once()
         self.assertIn("Начислено 50", message.reply_text.await_args.args[0])
+        button = message.reply_text.await_args.kwargs["reply_markup"].inline_keyboard[0][0]
+        self.assertEqual(button.callback_data, "billing:resume_ai")
+        event.assert_called_once_with(
+            "stars_payment_completed",
+            properties={"credits": 50},
+            user_id=7001,
+        )
+
+    async def test_duplicate_payment_has_no_event_or_resume_action(self):
+        service = MagicMock()
+        service.fulfill_successful_payment.return_value = FulfillmentResult(
+            payment_id="payment-1",
+            order_id="order-1",
+            credits=50,
+            available_credits=50,
+            created=False,
+        )
+        message = SimpleNamespace(
+            successful_payment=SimpleNamespace(
+                invoice_payload="payload",
+                currency="XTR",
+                total_amount=100,
+                telegram_payment_charge_id="charge-1",
+                provider_payment_charge_id="",
+            ),
+            reply_text=AsyncMock(),
+        )
+        update = SimpleNamespace(
+            message=message,
+            effective_message=message,
+            effective_user=SimpleNamespace(id=7001, language_code="ru"),
+        )
+        context = SimpleNamespace(
+            user_data={
+                "pending_ai_question": {
+                    "question": "Объясни bonjour",
+                    "expires_at": int(time.time()) + 600,
+                }
+            }
+        )
+        with (
+            patch.object(bot, "get_billing_service", return_value=service),
+            patch.object(bot, "record_product_event") as event,
+        ):
+            await bot.successful_payment_handler(update, context)
+
+        event.assert_not_called()
+        self.assertIsNone(message.reply_text.await_args.kwargs["reply_markup"])
+
+    async def test_resume_callback_consumes_question_before_mirror(self):
+        message = SimpleNamespace(reply_text=AsyncMock())
+        query = SimpleNamespace(
+            data="billing:resume_ai",
+            answer=AsyncMock(),
+            edit_message_reply_markup=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_message=message,
+            effective_user=SimpleNamespace(id=7001, language_code="ru"),
+        )
+        context = SimpleNamespace(
+            user_data={
+                "pending_ai_question": {
+                    "question": "Объясни bonjour",
+                    "expires_at": int(time.time()) + 600,
+                }
+            }
+        )
+        with patch.object(
+            bot, "handle_mirror_question", new=AsyncMock()
+        ) as mirror:
+            await bot.billing_resume_ai_cb.__wrapped__(update, context)
+            await bot.billing_resume_ai_cb.__wrapped__(update, context)
+
+        self.assertNotIn("pending_ai_question", context.user_data)
+        mirror.assert_awaited_once_with(
+            update,
+            context,
+            question="Объясни bonjour",
+        )
+        self.assertTrue(query.answer.await_args.kwargs["show_alert"])
 
     async def test_subscription_callback_uses_telegram_gateway(self):
         service = MagicMock()

@@ -149,8 +149,8 @@
         <section class="metric-grid" aria-label="Коммерческие показатели за 30 дней">
           <article><span>Счета</span><strong>{{ funnel.commercial.orders|number }}</strong><small>{{ funnel.commercial.payments }} успешных платежей</small></article>
           <article><span>Плательщики</span><strong>{{ funnel.commercial.payers|number }}</strong><small>уникальные пользователи</small></article>
-          <article><span>Stars получено</span><strong>{{ funnel.commercial.gross_xtr|number }}</strong><small>{{ funnel.commercial.refunded_xtr }} возвращено</small></article>
-          <article><span>Stars после возвратов</span><strong>{{ funnel.commercial.net_xtr|number }}</strong><small>до комиссии и пересчёта в валюту</small></article>
+          <article><span>Stars получено</span><strong>{{ funnel.commercial.gross_xtr|number }}</strong><small>{{ funnel.commercial.net_xtr }} после возвратов</small></article>
+          <article><span>Оценочная маржа</span><strong>{% if funnel.commercial.estimated_contribution_margin_bps is not none %}{{ (funnel.commercial.estimated_contribution_margin_bps / 100)|round(1) }}%{% else %}—{% endif %}</strong><small>AI {{ funnel.commercial.ai_provider_cost_micro_usd|usd }} · вклад {{ funnel.commercial.estimated_contribution_micro_usd|usd }}</small></article>
         </section>
         <section class="metric-grid" aria-label="Воронка за 30 дней">
           {% for step in funnel.steps %}<article>
@@ -259,7 +259,7 @@
       {% if tab == 'billing' %}
         <section class="panel">
           <div class="section-heading">
-            <div><p class="eyebrow">Commercial Launch v2</p><h2>Готовность коммерческого запуска</h2></div>
+            <div><p class="eyebrow">Commercial Launch v3</p><h2>Готовность коммерческого запуска</h2></div>
             <span class="status {{ 'active' if commercial_launch.status == 'ready' else 'draft' }}">{{ commercial_launch.status }}</span>
           </div>
           <dl class="diagnostic-list">

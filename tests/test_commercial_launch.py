@@ -77,10 +77,10 @@ class CommercialLaunchContractTest(unittest.TestCase):
         self.assertEqual(
             {row["product_id"]: (row["credits"], row["price_xtr"], row["status"]) for row in products},
             {
-                "ai-mini": (20, 60, "draft"),
-                "ai-starter": (50, 100, "draft"),
-                "ai-value": (150, 250, "draft"),
-                "ai-monthly": (100, 180, "draft"),
+                "ai-mini": (20, 69, "draft"),
+                "ai-starter": (50, 129, "draft"),
+                "ai-value": (150, 319, "draft"),
+                "ai-monthly": (100, 229, "draft"),
             },
         )
 
@@ -100,10 +100,7 @@ class CommercialLaunchContractTest(unittest.TestCase):
         self.assertFalse(overview["terms_approved"])
         self.assertFalse(overview["checkout_enabled"])
         self.assertEqual(overview["measurement"]["provider_attempts"], 1)
-        self.assertEqual(
-            [row["product_id"] for row in overview["packages"] if not row["stress_ready"]],
-            ["ai-mini", "ai-starter", "ai-value", "ai-monthly"],
-        )
+        self.assertTrue(all(row["stress_ready"] for row in overview["packages"]))
 
     def test_cli_has_no_product_activation_action(self):
         parsed = launch_cli.parser().parse_args(["seed-products"])

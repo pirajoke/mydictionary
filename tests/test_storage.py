@@ -20,6 +20,7 @@ from alembic.config import Config
 from sqlalchemy import inspect, select, text
 
 from mydictionary.legacy import import_legacy_user
+import mydictionary.storage as storage_module
 from mydictionary.storage import (
     AIQuotaExceeded,
     AIUsage,
@@ -615,6 +616,32 @@ class DatabaseStoreTest(unittest.TestCase):
         summary = self.store.ai_usage_summary(305)
         self.assertEqual(summary["available_credits"], 1)
         self.assertEqual(summary["reserved_credits"], 1)
+
+    def test_credit_exhaustion_has_a_distinct_paywall_signal(self):
+        exhausted = getattr(storage_module, "AICreditExhausted")
+
+        with self.assertRaises(exhausted):
+            self.store.reserve_ai_usage(
+                399,
+                action="block_tutor",
+                provider="test",
+                model="test-model",
+                credits=1,
+                initial_credits=0,
+                context_fingerprint="e" * 64,
+            )
+
+    def test_zero_credit_reservation_is_rejected_for_a_learner(self):
+        with self.assertRaisesRegex(ValueError, "admin"):
+            self.store.reserve_ai_usage(
+                398,
+                action="block_tutor",
+                provider="test",
+                model="test-model",
+                credits=0,
+                initial_credits=40,
+                context_fingerprint="z" * 64,
+            )
 
     def test_project_budget_reservation_is_released_on_failure(self):
         request_id = self.store.reserve_ai_usage(

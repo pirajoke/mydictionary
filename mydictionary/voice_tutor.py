@@ -1001,12 +1001,15 @@ class VoiceTutorService:
                 "Stale voice reservation recovery failed"
             ) from exc
 
+        charge_credits = self.store.ai_charge_credits(
+            user_id, self.settings.credits_per_request
+        )
         request_id = self.store.reserve_ai_usage(
             user_id,
             action="voice_transcription",
             provider=self.settings.provider,
             model=self.settings.model,
-            credits=self.settings.credits_per_request,
+            credits=charge_credits,
             initial_credits=self.settings.initial_credits,
             context_fingerprint=hashlib.sha256(
                 f"voice-assistant:{int(user_id)}:{uuid4()}".encode("ascii")
@@ -1034,7 +1037,7 @@ class VoiceTutorService:
                 raise VoiceProviderError("Transcription is empty or too large")
             completed = self.store.complete_ai_usage(
                 request_id,
-                billed_credits=self.settings.credits_per_request,
+                billed_credits=charge_credits,
                 provider_response_id=provider_result.response_id,
                 model=provider_result.model,
                 usage=usage,
@@ -1096,12 +1099,15 @@ class VoiceTutorService:
         fingerprint = hashlib.sha256(
             f"voice:{state.session_id}:{expected.vocabulary_id}".encode("ascii")
         ).hexdigest()
+        charge_credits = self.store.ai_charge_credits(
+            user_id, self.settings.credits_per_request
+        )
         request_id = self.store.reserve_ai_usage(
             user_id,
             action="voice_transcription",
             provider=self.settings.provider,
             model=self.settings.model,
-            credits=self.settings.credits_per_request,
+            credits=charge_credits,
             initial_credits=self.settings.initial_credits,
             context_fingerprint=fingerprint,
         )
@@ -1144,7 +1150,7 @@ class VoiceTutorService:
                 similarity_bps=feedback.similarity_bps,
                 transcript_expires_at=utcnow()
                 + timedelta(days=self.settings.transcript_retention_days),
-                billed_credits=self.settings.credits_per_request,
+                billed_credits=charge_credits,
                 provider_response_id=provider_result.response_id,
                 model=provider_result.model,
                 usage=usage,
@@ -1579,12 +1585,15 @@ class VoiceTranslationService:
         stt_cost = self._stt_cost(duration_seconds)
         if stt_cost > self.settings.max_preflight_cost_micro_usd:
             raise AIQuotaExceeded("Voice translation preflight budget exceeded")
+        stt_charge_credits = self.store.ai_charge_credits(
+            user_id, self.settings.stt_credits_per_request
+        )
         stt_request_id = self.store.reserve_ai_usage(
             user_id,
             action="voice_transcription",
             provider=self.settings.provider,
             model=self.settings.transcription_model,
-            credits=self.settings.stt_credits_per_request,
+            credits=stt_charge_credits,
             initial_credits=self.settings.initial_credits,
             requested_service_tier=self.settings.requested_service_tier,
             context_fingerprint=hashlib.sha256(
@@ -1621,7 +1630,7 @@ class VoiceTranslationService:
             stt_settlement_started = True
             self.store.complete_ai_usage(
                 stt_request_id,
-                billed_credits=self.settings.stt_credits_per_request,
+                billed_credits=stt_charge_credits,
                 provider_response_id=_attr(stt, "response_id", None),
                 model=str(_attr(stt, "model", self.settings.transcription_model)),
                 usage=self._usage(_attr(stt, "usage", None)),
@@ -1670,12 +1679,15 @@ class VoiceTranslationService:
                 notice_ru="Распознавание готово, но перевод не начат из-за лимита стоимости.",
             )
         try:
+            translation_charge_credits = self.store.ai_charge_credits(
+                user_id, self.settings.translation_credits_per_request
+            )
             translation_request_id = self.store.reserve_ai_usage(
                 user_id,
                 action="voice_translation",
                 provider="openai",
                 model=self.settings.translation_model,
-                credits=self.settings.translation_credits_per_request,
+                credits=translation_charge_credits,
                 initial_credits=self.settings.initial_credits,
                 requested_service_tier=self.settings.requested_service_tier,
                 context_fingerprint=hashlib.sha256(
@@ -1729,7 +1741,7 @@ class VoiceTranslationService:
             translation_settlement_started = True
             self.store.complete_ai_usage(
                 translation_request_id,
-                billed_credits=self.settings.translation_credits_per_request,
+                billed_credits=translation_charge_credits,
                 provider_response_id=_attr(translated, "response_id", None),
                 model=str(
                     _attr(translated, "model", self.settings.translation_model)

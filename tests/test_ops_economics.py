@@ -14,12 +14,12 @@ class EconomicsContractTest(unittest.TestCase):
         result = economics.validate_snapshot(self.snapshot)
 
         self.assertEqual(result["packages"], 4)
-        self.assertEqual(result["snapshot_id"], "mydictionary-commercial-v2-2026-08-12")
+        self.assertEqual(result["snapshot_id"], "mydictionary-commercial-v3-2026-08-14")
         self.assertEqual(self.snapshot["ai"]["status"], "approved")
         self.assertEqual(self.snapshot["status"], "candidate")
         self.assertEqual(result["minimum_margin_bps"], 5000)
         self.assertEqual(result["stress_net_micro_usd_per_xtr"], 8500)
-        self.assertFalse(result["stress_launchable"])
+        self.assertTrue(result["stress_launchable"])
         self.assertEqual(result["daily_limit"], 5)
         self.assertEqual(result["preflight_budget"], 5000)
         self.assertEqual(result["modelled_cost_per_credit"], 6000)
@@ -39,10 +39,10 @@ class EconomicsContractTest(unittest.TestCase):
                 for product_id, package in packages.items()
             },
             {
-                "ai-mini": (20, 60),
-                "ai-starter": (50, 100),
-                "ai-value": (150, 250),
-                "ai-monthly": (100, 180),
+                "ai-mini": (20, 69),
+                "ai-starter": (50, 129),
+                "ai-value": (150, 319),
+                "ai-monthly": (100, 229),
             },
         )
         self.assertTrue(
@@ -50,6 +50,9 @@ class EconomicsContractTest(unittest.TestCase):
         )
         self.assertTrue(
             all(package["estimated_margin_bps"] >= 5000 for package in packages.values())
+        )
+        self.assertTrue(
+            all(package["stress_margin_bps"] >= 5000 for package in packages.values())
         )
         self.assertEqual(result["measurement_provider_attempts"], 1)
         self.assertEqual(result["measurement_cost_micro_usd"], 2353)

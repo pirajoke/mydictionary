@@ -416,6 +416,64 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(usage["provider_response_received"])
         self.assertTrue(usage["economics_snapshot_id"].startswith("test-ai-"))
 
+    async def test_admin_request_is_metered_without_changing_wallet(self):
+        user_id = 199
+        self.store.ensure_user(SimpleNamespace(id=user_id), role="admin")
+        before = self.store.ai_usage_summary(user_id, initial_credits=2)
+        provider = StaticProvider()
+        service = AITutorService(
+            store=self.store,
+            provider=provider,
+            settings=settings(self.temp_dir.name),
+        )
+
+        result = await service.ask(
+            user_id=user_id,
+            question="Объясни слово 私",
+            context=CONTEXT,
+        )
+
+        after = self.store.ai_usage_summary(user_id, initial_credits=2)
+        self.assertEqual(provider.calls, 1)
+        self.assertEqual(result.allowance["available_credits"], 2)
+        self.assertEqual(after["available_credits"], before["available_credits"])
+        self.assertEqual(after["spent_credits"], before["spent_credits"])
+        with self.store.Session() as session:
+            usage = session.execute(select(AIUsage)).scalar_one()
+        self.assertEqual(usage.reserved_credits, 0)
+        self.assertEqual(usage.billed_credits, 0)
+        self.assertEqual(usage.provider_attempts, 1)
+        self.assertGreater(usage.cost_micro_usd, 0)
+
+    async def test_admin_exemption_still_obeys_daily_attempt_limit(self):
+        user_id = 198
+        self.store.ensure_user(SimpleNamespace(id=user_id), role="admin")
+        provider = StaticProvider()
+        service = AITutorService(
+            store=self.store,
+            provider=provider,
+            settings=settings(self.temp_dir.name),
+        )
+
+        for _ in range(5):
+            await service.ask(
+                user_id=user_id,
+                question="Объясни слово 私",
+                context=CONTEXT,
+            )
+        with self.assertRaisesRegex(AIQuotaExceeded, "daily"):
+            await service.ask(
+                user_id=user_id,
+                question="Объясни слово 私",
+                context=CONTEXT,
+            )
+
+        summary = self.store.ai_usage_summary(user_id, initial_credits=2)
+        self.assertEqual(provider.calls, 5)
+        self.assertEqual(summary["completed_requests"], 5)
+        self.assertEqual(summary["spent_credits"], 0)
+        self.assertEqual(summary["available_credits"], 2)
+
     async def test_provider_failure_refunds_entire_reservation(self):
         service = AITutorService(
             store=self.store,

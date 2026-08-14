@@ -109,21 +109,20 @@ $0.10 support overhead per purchase, and a 10% refund reserve on estimated net
 revenue. The $0.006 value is a pricing hypothesis, not a guaranteed provider
 ceiling and not the runtime preflight budget.
 
-| Product | Credits | Price | Net revenue | Estimated cost | Margin |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| `ai-mini` | 20 | 60 XTR | $0.6000 | $0.2800 | 53.33% |
-| `ai-starter` | 50 | 100 XTR | $1.0000 | $0.5000 | 50.00% |
-| `ai-value` | 150 | 250 XTR | $2.5000 | $1.2500 | 50.00% |
-| `ai-monthly` | 100 / 30 days | 180 XTR | $1.8000 | $0.8800 | 51.11% |
+| Product | Credits | Price | Net revenue | Estimated cost | Nominal margin | Stress margin |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `ai-mini` | 20 | 69 XTR | $0.6900 | $0.2890 | 58.11% | 50.72% |
+| `ai-starter` | 50 | 129 XTR | $1.2900 | $0.5290 | 58.99% | 51.75% |
+| `ai-value` | 150 | 319 XTR | $3.1900 | $1.3190 | 58.65% | 51.35% |
+| `ai-monthly` | 100 / 30 days | 229 XTR | $2.2900 | $0.9290 | 59.43% | 52.27% |
 
 The manifest labels all four packages `candidate`; the seeding CLI stores them
-as `draft` and has no activation action. Each package has a 50% nominal margin
-floor. The dashboard also applies the reviewed 8,500 microUSD/XTR deterioration
-scenario while keeping the nominal cost envelope fixed: 45.09%, 41.17%, 41.17%,
-and 42.48%. Each package therefore fails closed under that scenario; an average
-margin cannot hide the individual failure. Support time, refund rate, taxes,
-withdrawal availability, dashboard charge, and test-environment payment still
-need evidence before activation.
+as `draft` and has no activation action. Each package clears the 50% floor both
+nominally and under the reviewed 8,500 microUSD/XTR deterioration scenario while
+keeping the nominal cost envelope fixed. This arithmetic does not activate a
+package or validate payout, tax, support, refund, or renewal assumptions. The
+monthly subscription remains draft pending a separate renewal/cancel/refund
+approval.
 
 ## Separate approval gates
 
