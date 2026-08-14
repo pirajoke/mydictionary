@@ -124,11 +124,19 @@ class VoiceTranslationSettingsContractTest(unittest.TestCase):
 
 
 class VoiceEntryPointContractTest(unittest.IsolatedAsyncioTestCase):
-    async def test_ac_07_existing_voice_entry_shows_three_modes_without_new_command(self):
+    async def test_voice_entry_explains_direct_notes_and_hides_disabled_translation(self):
         update, context, message = voice_update()
         update.message.voice = None
         update.message.text = "/voice"
-        with patch.object(bot, "start_voice_mode", new=AsyncMock()) as start:
+        with (
+            patch.object(bot, "VOICE_SETTINGS", SimpleNamespace(enabled=True)),
+            patch.object(
+                bot,
+                "VOICE_TRANSLATION_SETTINGS",
+                SimpleNamespace(enabled=False),
+            ),
+            patch.object(bot, "start_voice_mode", new=AsyncMock()) as start,
+        ):
             await getattr(bot.cmd_voice, "__wrapped__", bot.cmd_voice)(update, context)
 
         start.assert_not_awaited()
@@ -144,12 +152,36 @@ class VoiceEntryPointContractTest(unittest.IsolatedAsyncioTestCase):
             {
                 "voice-mode:pronunciation",
                 "voice-mode:guided-phrase",
-                "voice-mode:translation",
             },
         )
+        self.assertIn("голосовое", message.reply_text.await_args.args[0].casefold())
+        self.assertIn("одно слово", message.reply_text.await_args.args[0].casefold())
         commands = {item.command for item in bot.build_bot_commands(ai_enabled=True)}
         self.assertNotIn("voice_translate", commands)
         self.assertNotIn("guided_phrase", commands)
+
+    async def test_voice_entry_keeps_translation_when_feature_is_enabled(self):
+        update, context, message = voice_update()
+        update.message.voice = None
+        update.message.text = "/voice"
+        with (
+            patch.object(bot, "VOICE_SETTINGS", SimpleNamespace(enabled=True)),
+            patch.object(
+                bot,
+                "VOICE_TRANSLATION_SETTINGS",
+                SimpleNamespace(enabled=True),
+            ),
+        ):
+            await getattr(bot.cmd_voice, "__wrapped__", bot.cmd_voice)(update, context)
+
+        callbacks = {
+            button.callback_data
+            for row in message.reply_text.await_args.kwargs[
+                "reply_markup"
+            ].inline_keyboard
+            for button in row
+        }
+        self.assertIn("voice-mode:translation", callbacks)
 
     async def test_ac_07_new_reference_retires_previous_replaceable_audio(self):
         sender = required_public(self, bot, "send_voice_translation_reference")

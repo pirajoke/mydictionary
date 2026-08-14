@@ -112,6 +112,7 @@ class VoiceTutorSettings:
     groq_api_key: str | None = None
     minimum_billable_seconds: int = 0
     groq_zdr_verified: bool = False
+    retrospective_breaker_micro_usd_per_response: int = 5000
 
     @classmethod
     def from_env(
@@ -209,6 +210,13 @@ class VoiceTutorSettings:
             groq_zdr_verified=_bool(
                 env.get("VOICE_GROQ_ZDR_VERIFIED", "false"),
                 "VOICE_GROQ_ZDR_VERIFIED",
+            ),
+            retrospective_breaker_micro_usd_per_response=_bounded_int(
+                env,
+                "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE",
+                default=5000,
+                minimum=1,
+                maximum=1000000,
             ),
         )
         if not re.fullmatch(
@@ -620,6 +628,13 @@ class VoiceTurnResult:
     available_credits: int
 
 
+@dataclass(frozen=True)
+class VoiceTranscriptResult:
+    transcript: str
+    detected_language: str
+    available_credits: int
+
+
 def _attr(value: Any, name: str, default: Any = 0) -> Any:
     if value is None:
         return default
@@ -662,8 +677,6 @@ class OpenAITranscriptionProvider:
             **values,
         )
         text = str(_attr(response, "text", "")).strip()
-        if not 1 <= len(text) <= 1000:
-            raise VoiceProviderError("Transcription is empty or too large")
         usage = _attr(response, "usage", None)
         input_details = _attr(
             usage,
@@ -908,6 +921,44 @@ class VoiceTutorService:
             row.updated_at = utcnow()
             return True
 
+    def _record_provider_response(
+        self,
+        *,
+        request_id: str,
+        result: TranscriptionResult,
+        duration_seconds: int,
+        started: float,
+    ) -> tuple[dict[str, int], int, int]:
+        usage = result.usage.as_dict()
+        cost_micro_usd = self.settings.estimated_cost_micro_usd(duration_seconds)
+        latency_ms = int((perf_counter() - started) * 1000)
+        telemetry = self.store.record_ai_provider_response(
+            request_id,
+            provider_response_id=result.response_id,
+            model=result.model,
+            service_tier=result.service_tier,
+            provider_status=result.status,
+            usage=usage,
+            cost_micro_usd=cost_micro_usd,
+            latency_ms=latency_ms,
+            expected_model=self.settings.model,
+            expected_service_tier="default",
+            retrospective_breaker_micro_usd=(
+                self.settings.retrospective_breaker_micro_usd_per_response
+            ),
+        )
+        if telemetry["breaker_open"]:
+            raise VoiceProviderError("Voice cost or provider contract breaker opened")
+        if result.model != self.settings.model:
+            raise VoiceProviderError("Voice provider returned an unapproved model")
+        if result.service_tier != "default":
+            raise VoiceProviderError(
+                "Voice provider returned an unapproved service tier"
+            )
+        if result.status != "completed":
+            raise VoiceProviderError("Voice provider response did not complete")
+        return usage, cost_micro_usd, latency_ms
+
     def turns(self, *, user_id: int, session_id: str) -> list[dict[str, Any]]:
         with self.store.Session() as session:
             owner = session.get(VoiceSession, str(session_id))
@@ -925,6 +976,92 @@ class VoiceTutorService:
             }
             for row in rows
         ]
+
+    async def transcribe_message(
+        self,
+        *,
+        user_id: int,
+        audio: bytes,
+        duration_seconds: int,
+    ) -> VoiceTranscriptResult:
+        """Transcribe one ephemeral voice note for the contextual assistant."""
+        if not self.settings.enabled:
+            raise VoiceConfigurationError("Voice tutor is disabled")
+        if not 1 <= int(duration_seconds) <= self.settings.max_duration_seconds:
+            raise ValueError("Voice duration is outside the allowed range")
+        if not audio or len(audio) > self.settings.max_audio_bytes:
+            raise ValueError("Voice audio size is outside the allowed range")
+        try:
+            self.store.recover_stale_ai_usage(
+                timeout_seconds=self.settings.reservation_timeout_seconds,
+                user_id=user_id,
+            )
+        except Exception as exc:
+            raise VoiceUsageRecoveryError(
+                "Stale voice reservation recovery failed"
+            ) from exc
+
+        request_id = self.store.reserve_ai_usage(
+            user_id,
+            action="voice_transcription",
+            provider=self.settings.provider,
+            model=self.settings.model,
+            credits=self.settings.credits_per_request,
+            initial_credits=self.settings.initial_credits,
+            context_fingerprint=hashlib.sha256(
+                f"voice-assistant:{int(user_id)}:{uuid4()}".encode("ascii")
+            ).hexdigest(),
+        )
+        started = perf_counter()
+        try:
+            self.store.mark_ai_provider_attempt_started(request_id)
+            provider_result = await self.provider.transcribe(
+                TranscriptionRequest(
+                    audio=bytes(audio),
+                    language="",
+                    prompt="",
+                    detect_language=True,
+                )
+            )
+            usage, cost_micro_usd, latency_ms = self._record_provider_response(
+                request_id=request_id,
+                result=provider_result,
+                duration_seconds=duration_seconds,
+                started=started,
+            )
+            transcript = str(provider_result.text).strip()
+            if not 1 <= len(transcript) <= 1000:
+                raise VoiceProviderError("Transcription is empty or too large")
+            completed = self.store.complete_ai_usage(
+                request_id,
+                billed_credits=self.settings.credits_per_request,
+                provider_response_id=provider_result.response_id,
+                model=provider_result.model,
+                usage=usage,
+                cost_micro_usd=cost_micro_usd,
+                latency_ms=latency_ms,
+                returned_service_tier=provider_result.service_tier,
+                provider_status=provider_result.status,
+            )
+        except BaseException as exc:
+            try:
+                released = self.store.fail_ai_usage(
+                    request_id, error_code=type(exc).__name__
+                )
+            except Exception as recovery_error:
+                raise VoiceUsageRecoveryError(
+                    "Voice request failed and its reservation could not be released"
+                ) from recovery_error
+            if not released:
+                raise VoiceUsageRecoveryError(
+                    "Voice request reservation state is unknown"
+                ) from exc
+            raise
+        return VoiceTranscriptResult(
+            transcript=transcript,
+            detected_language=str(provider_result.detected_language).strip().lower()[:16],
+            available_credits=int(completed["available_credits"]),
+        )
 
     async def process_turn(
         self,
@@ -973,6 +1110,7 @@ class VoiceTutorService:
         )
         started = perf_counter()
         try:
+            self.store.mark_ai_provider_attempt_started(request_id)
             provider_result = await self.provider.transcribe(
                 TranscriptionRequest(
                     audio=bytes(audio),
@@ -980,8 +1118,17 @@ class VoiceTutorService:
                     prompt=prompt,
                 )
             )
+            usage, cost_micro_usd, latency_ms = self._record_provider_response(
+                request_id=request_id,
+                result=provider_result,
+                duration_seconds=duration_seconds,
+                started=started,
+            )
+            transcript = str(provider_result.text).strip()
+            if not 1 <= len(transcript) <= 1000:
+                raise VoiceProviderError("Transcription is empty or too large")
             feedback = evaluate_transcript(
-                provider_result.text, expected=expected, words=words
+                transcript, expected=expected, words=words
             )
             completed = self.store.complete_voice_usage(
                 request_id=request_id,
@@ -1000,11 +1147,9 @@ class VoiceTutorService:
                 billed_credits=self.settings.credits_per_request,
                 provider_response_id=provider_result.response_id,
                 model=provider_result.model,
-                usage=provider_result.usage.as_dict(),
-                cost_micro_usd=self.settings.estimated_cost_micro_usd(
-                    duration_seconds
-                ),
-                latency_ms=int((perf_counter() - started) * 1000),
+                usage=usage,
+                cost_micro_usd=cost_micro_usd,
+                latency_ms=latency_ms,
             )
         except BaseException as exc:
             try:

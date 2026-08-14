@@ -177,6 +177,22 @@ class LearningBlocksTest(unittest.TestCase):
         ]
         self.assertIn("bai:session1", callbacks)
 
+    def test_voice_practice_button_is_visible_on_new_block(self):
+        with patch.object(
+            bot, "VOICE_SETTINGS", SimpleNamespace(enabled=True)
+        ):
+            keyboard = bot.build_study_buttons([10], "session1")
+
+        buttons = [
+            button
+            for row in keyboard.inline_keyboard
+            for button in row
+        ]
+        voice = next(
+            button for button in buttons if button.callback_data == "bvoice:session1"
+        )
+        self.assertIn("10 слов", voice.text)
+
     def test_quiz_options_only_use_words_from_active_block(self):
         indices = list(range(10))
         allowed_translations = {meaning_text(bot.W()[idx]) for idx in indices}

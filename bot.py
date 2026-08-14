@@ -1911,18 +1911,25 @@ def voice_prompt_text(
 ) -> str:
     target = _directional_text(word.target, pack.direction)
     reading = f" {word.transcription}" if word.transcription else ""
-    title = "Разговорная практика" if mode == "conversation" else "Голосовая практика"
+    title = "Фразы" if mode == "conversation" else "Произношение"
     focus = ""
     if mode == "conversation" and word.focus_target:
         focus = (
             f"\nКлючевое слово: {word.focus_target}"
             f" {word.focus_transcription or ''}"
         ).rstrip()
+    instruction = (
+        "Скажи всю фразу одним голосовым."
+        if mode == "conversation"
+        else "Скажи только это слово одним голосовым."
+    )
     return (
-        f"{title} {position}/{total}\n\n"
+        f"🎤 {title} · {position}/{total}\n\n"
         f"🇷🇺 {word.meaning_ru}\n"
         f"{pack.flag} {target}{reading}{focus}\n\n"
-        "Прослушай эталон ниже, затем отправь голосовое сообщение."
+        f"{instruction}\n"
+        "Я распознаю речь, подскажу исправление и сам дам следующее задание.\n"
+        "Проверяется распознанный текст, а не акцент."
     )
 
 
@@ -1985,9 +1992,9 @@ async def send_voice_reference(
 
 def voice_feedback_text(result) -> str:
     labels = {
-        "exact": "Текст распознан как ожидаемое слово.",
-        "close": "Распознавание близко к ожидаемому слову.",
-        "retry": "Распознавание не совпало. Прослушай эталон и попробуй ещё раз в новой сессии.",
+        "exact": "✅ Верно. Перехожу к следующему слову.",
+        "close": "🟡 Близко. Сверь написание выше; продолжаем.",
+        "retry": "🔁 Попробуй это же слово ещё раз.",
     }
     feedback = result.feedback
     lines = [
@@ -2030,6 +2037,40 @@ def voice_feedback_text(result) -> str:
     return "\n".join(lines)
 
 
+async def request_voice_processing_consent(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    mode: str,
+) -> None:
+    user_data = getattr(context, "user_data", None)
+    if not isinstance(user_data, dict):
+        user_data = {}
+        context.user_data = user_data
+    user_data["pending_voice_consent"] = {
+        "mode": mode,
+        "block_session": user_data.get("block_session"),
+        "expires_at": int(time.time()) + 600,
+    }
+    action = "продолжить" if mode == "assistant" else "начать"
+    await message.reply_text(
+        "Согласие на обработку голоса\n\n"
+        f"{VOICE_SETTINGS.processing_notice}\n\n"
+        f"Версия: {VOICE_SETTINGS.consent_version}",
+        reply_markup=InlineKeyboardMarkup(
+            [[
+                InlineKeyboardButton(
+                    f"Согласен и {action}",
+                    callback_data="voiceconsent:accept",
+                ),
+                InlineKeyboardButton(
+                    "Отмена", callback_data="voiceconsent:cancel"
+                ),
+            ]]
+        ),
+    )
+
+
 async def start_voice_mode(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -2052,26 +2093,10 @@ async def start_voice_mode(
         consent_type="voice_processing",
         document_version=VOICE_SETTINGS.consent_version,
     ):
-        context.user_data["pending_voice_consent"] = {
-            "mode": mode,
-            "block_session": context.user_data.get("block_session"),
-            "expires_at": int(time.time()) + 600,
-        }
-        await message.reply_text(
-            "Согласие на обработку голоса\n\n"
-            f"{VOICE_SETTINGS.processing_notice}\n\n"
-            f"Версия: {VOICE_SETTINGS.consent_version}",
-            reply_markup=InlineKeyboardMarkup(
-                [[
-                    InlineKeyboardButton(
-                        "Согласен и начать",
-                        callback_data="voiceconsent:accept",
-                    ),
-                    InlineKeyboardButton(
-                        "Отмена", callback_data="voiceconsent:cancel"
-                    ),
-                ]]
-            ),
+        await request_voice_processing_consent(
+            message,
+            context,
+            mode=mode,
         )
         return
     await launch_voice_mode(update, context, mode=mode)
@@ -2140,8 +2165,16 @@ async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         action != "accept"
         or not isinstance(pending, dict)
         or int(pending.get("expires_at", 0)) < int(time.time())
-        or pending.get("block_session") != context.user_data.get("block_session")
-        or pending.get("mode") not in {"pronunciation", "conversation"}
+        or pending.get("mode") not in {
+            "assistant",
+            "pronunciation",
+            "conversation",
+        }
+        or (
+            pending.get("mode") != "assistant"
+            and pending.get("block_session")
+            != context.user_data.get("block_session")
+        )
     ):
         await query.answer("Запрос устарел. Запусти /voice снова.", show_alert=True)
         return
@@ -2162,32 +2195,52 @@ async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     await query.answer("Согласие сохранено.")
     await query.edit_message_reply_markup(reply_markup=None)
+    if pending["mode"] == "assistant":
+        await query.message.reply_text(
+            "Готово. Отправь голосовое ещё раз — я распознаю его и отвечу по контексту."
+        )
+        return
     await launch_voice_mode(update, context, mode=pending["mode"])
 
 
 @auth
 async def cmd_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.effective_message.reply_text(
-        "Выбери голосовой режим:",
-        reply_markup=InlineKeyboardMarkup(
+    rows = []
+    if VOICE_SETTINGS.enabled:
+        rows.extend(
             [
                 [
                     InlineKeyboardButton(
-                        "Произношение", callback_data="voice-mode:pronunciation"
+                        "🎤 Произнести 10 слов",
+                        callback_data="voice-mode:pronunciation",
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        "Фразы по блоку", callback_data="voice-mode:guided-phrase"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "Перевод голосового", callback_data="voice-mode:translation"
+                        "💬 Фразы по блоку",
+                        callback_data="voice-mode:guided-phrase",
                     )
                 ],
             ]
-        ),
+        )
+    if VOICE_TRANSLATION_SETTINGS.enabled:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    "🌐 Перевести голосовое",
+                    callback_data="voice-mode:translation",
+                )
+            ]
+        )
+    if not rows:
+        await update.effective_message.reply_text("Голосовые функции пока выключены.")
+        return
+    await update.effective_message.reply_text(
+        "🎙 Голосовые сообщения\n\n"
+        "Просто отправь голосовое с вопросом — AI распознает речь и ответит по контексту.\n\n"
+        "Для произношения выбери тренировку ниже. Одно голосовое — одно слово. "
+        "После проверки я сам покажу следующее.",
+        reply_markup=InlineKeyboardMarkup(rows),
     )
 
 
@@ -2197,10 +2250,11 @@ async def voice_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     selected = str(query.data).split(":", 1)[1]
     if selected == "translation":
-        context.user_data["voice_entry_mode"] = "translation"
         if not VOICE_TRANSLATION_SETTINGS.enabled:
+            context.user_data.pop("voice_entry_mode", None)
             await query.edit_message_text("Перевод голосовых пока выключен.")
             return
+        context.user_data["voice_entry_mode"] = "translation"
         user_id = int(update.effective_user.id)
         if not get_store().has_consent(
             user_id,
@@ -2372,116 +2426,56 @@ def voice_translation_result_text(result) -> str:
     return "\n".join(lines)
 
 
-@auth
-async def voice_message_handler(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
-    store = get_store()
-    user_id = int(update.effective_user.id)
-    profile = store.product_profile(user_id)
-    if (
-        isinstance(profile, Mapping)
-        and profile.get("access_status") not in {None, "active"}
-    ):
-        await update.message.reply_text("Голосовые функции сейчас недоступны.")
-        return
-    voice = update.message.voice
-    duration = int(getattr(voice, "duration", 0) or 0)
-    file_size = getattr(voice, "file_size", None)
-    user_data = getattr(context, "user_data", {})
-    entry_mode = (
-        user_data.get("voice_entry_mode") if isinstance(user_data, Mapping) else None
+def voice_note_within_limits(voice, settings) -> bool:
+    try:
+        duration = int(getattr(voice, "duration", 0) or 0)
+        file_size = int(getattr(voice, "file_size", 0) or 0)
+    except (TypeError, ValueError):
+        return False
+    return (
+        1 <= duration <= int(settings.max_duration_seconds)
+        and 1 <= file_size <= int(settings.max_audio_bytes)
     )
-    if VOICE_SETTINGS.enabled and entry_mode != "translation":
-        if (
-            duration < 1
-            or duration > VOICE_SETTINGS.max_duration_seconds
-            or file_size is None
-            or int(file_size) <= 0
-            or int(file_size) > VOICE_SETTINGS.max_audio_bytes
-        ):
-            await update.message.reply_text(
-                "Голосовое не принято: длительность или размер вне допустимого лимита."
-            )
-            return
-        if not store.has_consent(
-            user_id,
-            consent_type="voice_processing",
-            document_version=VOICE_SETTINGS.consent_version,
-        ):
-            await update.message.reply_text(
-                "Согласие на обработку голоса отсутствует или устарело. "
-                "Запусти /voice и подтверди актуальные условия."
-            )
-            return
 
-    practice_service = get_voice_tutor_service() if VOICE_SETTINGS.enabled else None
-    state = practice_service.active_session(user_id) if practice_service else None
-    if state is not None:
-        if not store.has_consent(
-            user_id,
-            consent_type="voice_processing",
-            document_version=VOICE_SETTINGS.consent_version,
-        ):
-            await update.message.reply_text(
-                "Согласие на обработку голоса отсутствует или устарело. "
-                "Запусти /voice и подтверди актуальные условия."
-            )
-            return
-        if (
-            duration < 1
-            or duration > VOICE_SETTINGS.max_duration_seconds
-            or file_size is None
-            or int(file_size) <= 0
-            or int(file_size) > VOICE_SETTINGS.max_audio_bytes
-        ):
-            await update.message.reply_text(
-                "Голосовое не принято: длительность или размер вне допустимого лимита."
-            )
-            return
-        try:
-            pack, indexed_words = restore_voice_block(state)
-            expected_indexed = indexed_words[state.next_position]
-            telegram_file = await context.bot.get_file(voice.file_id)
-            downloaded = await telegram_file.download_as_bytearray()
-            if not downloaded or len(downloaded) > VOICE_SETTINGS.max_audio_bytes:
-                raise ValueError("Downloaded voice exceeds size limit")
-            result = await practice_service.process_turn(
-                user_id=user_id,
-                audio=bytes(downloaded),
-                duration_seconds=duration,
-                words=[word for _, word in indexed_words],
-            )
-        except AIQuotaExceeded:
-            await update.message.reply_text(
-                "AI-кредиты закончились. Проверь /ai_stats или открой /buy."
-            )
-            return
-        except VoiceUsageRecoveryError:
-            logger.exception("Voice credit reservation recovery failed")
-            await update.message.reply_text(
-                "Не удалось подтвердить возврат AI-кредита. Проверь /ai_stats."
-            )
-            return
-        except (VoiceProviderError, VoiceSessionError, ValueError) as exc:
-            logger.warning("Voice turn rejected: error_type=%s", type(exc).__name__)
-            await update.message.reply_text(
-                "Не удалось безопасно обработать голосовое. AI-кредит не списан."
-            )
-            return
-        except (TelegramError, VoiceConfigurationError) as exc:
-            logger.warning(
-                "Voice service unavailable: error_type=%s", type(exc).__name__
-            )
-            await update.message.reply_text("Голосовой тренажёр временно недоступен.")
-            return
-        except Exception as exc:
-            logger.warning("Voice request failed: error_type=%s", type(exc).__name__)
-            await update.message.reply_text(
-                "Голосовой тренажёр временно недоступен. AI-кредит не списан."
-            )
-            return
-        await update.message.reply_text(voice_feedback_text(result))
+
+async def download_voice_note(context, voice, *, max_audio_bytes: int) -> bytes:
+    telegram_file = await context.bot.get_file(voice.file_id)
+    downloaded = await telegram_file.download_as_bytearray()
+    if not downloaded or len(downloaded) > int(max_audio_bytes):
+        raise ValueError("Downloaded voice exceeds size limit")
+    return bytes(downloaded)
+
+
+async def process_voice_practice_turn(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    service,
+    state,
+    user_id: int,
+    audio: bytes,
+    duration: int,
+) -> None:
+    pack, indexed_words = restore_voice_block(state)
+    expected_indexed = indexed_words[state.next_position]
+    result = await service.process_turn(
+        user_id=user_id,
+        audio=audio,
+        duration_seconds=duration,
+        words=[word for _, word in indexed_words],
+    )
+    await update.message.reply_text(voice_feedback_text(result))
+    record_product_event(
+        "voice_turn_completed",
+        properties={
+            "pack_id": pack.pack_id,
+            "language": pack.target_language,
+            "mode": result.feedback.code,
+            "word_index": expected_indexed[0],
+        },
+        session_id=state.session_id,
+    )
+    if result.feedback.code == "retry":
         await send_voice_reference(
             chat_id=update.effective_chat.id,
             context=context,
@@ -2489,99 +2483,307 @@ async def voice_message_handler(
             indexed_word=expected_indexed,
             mode=state.mode,
         )
-        record_product_event(
-            "voice_turn_completed",
-            properties={
-                "pack_id": pack.pack_id,
-                "language": pack.target_language,
-                "mode": result.feedback.code,
-                "word_index": expected_indexed[0],
-            },
-            session_id=state.session_id,
+        return
+    if result.session_status == "completed":
+        await update.message.reply_text(
+            "✅ Голосовой блок завершён. Все 10 слов проверены."
         )
-        if result.session_status == "completed":
-            await update.message.reply_text(
-                "Голосовой блок завершён. Открой /voice_transcript, чтобы увидеть все реплики."
-            )
-            return
-        await send_voice_prompt(
-            chat_id=update.effective_chat.id,
-            context=context,
-            pack=pack,
-            indexed_word=indexed_words[result.next_position],
-            position=result.next_position + 1,
-            total=len(indexed_words),
-            mode=state.mode,
-        )
+        return
+    await send_voice_prompt(
+        chat_id=update.effective_chat.id,
+        context=context,
+        pack=pack,
+        indexed_word=indexed_words[result.next_position],
+        position=result.next_position + 1,
+        total=len(indexed_words),
+        mode=state.mode,
+    )
+
+
+async def process_voice_translation(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    profile: Mapping,
+    user_id: int,
+    audio: bytes,
+    duration: int,
+) -> None:
+    translated = await get_voice_translation_service().translate_note(
+        user_id=user_id,
+        audio=audio,
+        duration_seconds=duration,
+        active_language=str(profile.get("active_lang") or "en"),
+    )
+    await update.message.reply_text(voice_translation_result_text(translated))
+    if not translated.translation:
         return
 
-    if entry_mode != "translation":
-        await update.message.reply_text("Сначала выбери режим через /voice.")
+    async def renderer(value: str, *, language: str):
+        pack = CATALOG.pack_for_language(
+            language, str(profile.get("role") or "learner")
+        )
+        return await get_audio(
+            value,
+            voice=pack.pronunciation.tts_voice if pack else None,
+            rate=pack.pronunciation.tts_rate if pack else None,
+            cache_namespace=f"voice-translation:{language}",
+        )
+
+    await send_voice_translation_reference(
+        chat_id=update.effective_chat.id,
+        context=context,
+        target_text=translated.translation,
+        target_language=translated.target_language,
+        renderer=renderer,
+    )
+
+
+@auth
+async def voice_message_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    store = get_store()
+    user_id = int(update.effective_user.id)
+    raw_profile = store.product_profile(user_id)
+    profile = raw_profile if isinstance(raw_profile, Mapping) else {}
+    if profile.get("access_status") not in {None, "active"}:
+        await update.message.reply_text("Голосовые функции сейчас недоступны.")
         return
-    settings = VOICE_TRANSLATION_SETTINGS
-    if not settings.enabled:
-        await update.message.reply_text("Перевод голосовых пока выключен.")
+
+    voice = update.message.voice
+    duration = int(getattr(voice, "duration", 0) or 0)
+    user_data = getattr(context, "user_data", {})
+    entry_mode = (
+        user_data.get("voice_entry_mode") if isinstance(user_data, Mapping) else None
+    )
+    if entry_mode == "translation" and not VOICE_TRANSLATION_SETTINGS.enabled:
+        if isinstance(user_data, dict):
+            user_data.pop("voice_entry_mode", None)
+        entry_mode = None
+
+    if VOICE_SETTINGS.enabled and entry_mode != "translation":
+        if not voice_note_within_limits(voice, VOICE_SETTINGS):
+            await update.message.reply_text(
+                "Голосовое не принято: длительность или размер вне допустимого лимита."
+            )
+            return
+        if not store.has_consent(
+            user_id,
+            consent_type="voice_processing",
+            document_version=VOICE_SETTINGS.consent_version,
+        ):
+            await request_voice_processing_consent(
+                update.message,
+                context,
+                mode="assistant",
+            )
+            return
+
+    practice_service = get_voice_tutor_service() if VOICE_SETTINGS.enabled else None
+    state = practice_service.active_session(user_id) if practice_service else None
+    if state is not None:
+        if not voice_note_within_limits(voice, VOICE_SETTINGS):
+            await update.message.reply_text(
+                "Голосовое не принято: длительность или размер вне допустимого лимита."
+            )
+            return
+        if not store.has_consent(
+            user_id,
+            consent_type="voice_processing",
+            document_version=VOICE_SETTINGS.consent_version,
+        ):
+            await request_voice_processing_consent(
+                update.message,
+                context,
+                mode=state.mode,
+            )
+            return
+        try:
+            audio = await download_voice_note(
+                context,
+                voice,
+                max_audio_bytes=VOICE_SETTINGS.max_audio_bytes,
+            )
+            await process_voice_practice_turn(
+                update,
+                context,
+                service=practice_service,
+                state=state,
+                user_id=user_id,
+                audio=audio,
+                duration=duration,
+            )
+        except AIQuotaExceeded:
+            await update.message.reply_text(
+                "AI-кредиты закончились. Проверь /ai_stats или открой /buy."
+            )
+        except VoiceUsageRecoveryError:
+            logger.exception("Voice credit reservation recovery failed")
+            await update.message.reply_text(
+                "Не удалось подтвердить возврат AI-кредита. Проверь /ai_stats."
+            )
+        except (VoiceProviderError, VoiceSessionError, ValueError) as exc:
+            logger.warning("Voice turn rejected: error_type=%s", type(exc).__name__)
+            await update.message.reply_text(
+                "Не удалось безопасно обработать голосовое. AI-кредит не списан."
+            )
+        except (TelegramError, VoiceConfigurationError) as exc:
+            logger.warning(
+                "Voice service unavailable: error_type=%s", type(exc).__name__
+            )
+            await update.message.reply_text("Голосовой тренажёр временно недоступен.")
+        except Exception as exc:
+            logger.warning("Voice request failed: error_type=%s", type(exc).__name__)
+            await update.message.reply_text(
+                "Голосовой тренажёр временно недоступен. AI-кредит не списан."
+            )
         return
-    if (
-        duration < 1
-        or duration > settings.max_duration_seconds
-        or file_size is None
-        or int(file_size) <= 0
-        or int(file_size) > settings.max_audio_bytes
-    ):
+
+    if entry_mode == "translation" and VOICE_TRANSLATION_SETTINGS.enabled:
+        settings = VOICE_TRANSLATION_SETTINGS
+        if not voice_note_within_limits(voice, settings):
+            await update.message.reply_text(
+                "Голосовое не принято: длительность или размер вне допустимого лимита."
+            )
+            return
+        if not store.has_consent(
+            user_id,
+            consent_type="voice_translation_processing",
+            document_version=settings.consent_version,
+        ):
+            await update.message.reply_text(
+                "Нужно актуальное согласие на распознавание и перевод. Запусти /voice."
+            )
+            return
+        try:
+            audio = await download_voice_note(
+                context,
+                voice,
+                max_audio_bytes=settings.max_audio_bytes,
+            )
+            await process_voice_translation(
+                update,
+                context,
+                profile=profile,
+                user_id=user_id,
+                audio=audio,
+                duration=duration,
+            )
+        except AIQuotaExceeded:
+            await update.message.reply_text(
+                "AI-кредиты закончились. Проверь /ai_stats."
+            )
+        except VoiceUsageRecoveryError:
+            await update.message.reply_text(
+                "Не удалось подтвердить состояние AI-кредитов. Проверь /ai_stats."
+            )
+        except (
+            TelegramError,
+            VoiceProviderError,
+            VoiceConfigurationError,
+            ValueError,
+        ) as exc:
+            logger.warning(
+                "Voice translation rejected: error_type=%s", type(exc).__name__
+            )
+            await update.message.reply_text(
+                "Не удалось безопасно обработать голосовое. Текст не сохранён."
+            )
+        return
+
+    if not VOICE_SETTINGS.enabled or practice_service is None:
+        await update.message.reply_text("Голосовой AI пока выключен.")
+        return
+    if not voice_note_within_limits(voice, VOICE_SETTINGS):
         await update.message.reply_text(
             "Голосовое не принято: длительность или размер вне допустимого лимита."
         )
         return
     if not store.has_consent(
         user_id,
-        consent_type="voice_translation_processing",
-        document_version=settings.consent_version,
+        consent_type="voice_processing",
+        document_version=VOICE_SETTINGS.consent_version,
     ):
+        await request_voice_processing_consent(
+            update.message,
+            context,
+            mode="assistant",
+        )
+        return
+    if not profile.get("onboarding_completed_at"):
         await update.message.reply_text(
-            "Нужно актуальное согласие на распознавание и перевод. Запусти /voice."
+            translate("onboarding_required", interface_locale_for_update(update))
+        )
+        return
+    if not AI_SETTINGS.enabled:
+        await update.message.reply_text("AI-репетитор пока выключен.")
+        return
+    consent_version = str(getattr(AI_SETTINGS, "consent_version", "") or "")
+    if not consent_version or not store.has_consent(
+        user_id,
+        consent_type="ai_processing",
+        document_version=consent_version,
+    ):
+        if not consent_version or not str(
+            getattr(AI_SETTINGS, "processing_notice", "") or ""
+        ).strip():
+            await update.message.reply_text("AI-репетитор временно недоступен.")
+            return
+        await request_ai_processing_consent(
+            update.message,
+            context,
+            request_kind="voice_assistant",
         )
         return
     try:
-        telegram_file = await context.bot.get_file(voice.file_id)
-        downloaded = await telegram_file.download_as_bytearray()
-        if not downloaded or len(downloaded) > settings.max_audio_bytes:
-            raise ValueError("Downloaded voice exceeds size limit")
-        translated = await get_voice_translation_service().translate_note(
-            user_id=user_id,
-            audio=bytes(downloaded),
-            duration_seconds=duration,
-            active_language=str(profile.get("active_lang") or "en"),
+        audio = await download_voice_note(
+            context,
+            voice,
+            max_audio_bytes=VOICE_SETTINGS.max_audio_bytes,
         )
-        await update.message.reply_text(voice_translation_result_text(translated))
-        if translated.translation:
-            async def renderer(value: str, *, language: str):
-                pack = CATALOG.pack_for_language(language, str(profile.get("role") or "learner"))
-                return await get_audio(
-                    value,
-                    voice=pack.pronunciation.tts_voice if pack else None,
-                    rate=pack.pronunciation.tts_rate if pack else None,
-                    cache_namespace=f"voice-translation:{language}",
-                )
-
-            await send_voice_translation_reference(
-                chat_id=update.effective_chat.id,
-                context=context,
-                target_text=translated.translation,
-                target_language=translated.target_language,
-                renderer=renderer,
-            )
+        transcribed = await practice_service.transcribe_message(
+            user_id=user_id,
+            audio=audio,
+            duration_seconds=duration,
+        )
     except AIQuotaExceeded:
-        await update.message.reply_text("AI-кредиты закончились. Проверь /ai_stats.")
+        await update.message.reply_text(
+            "AI-кредиты закончились. Проверь /ai_stats или открой /buy."
+        )
+        return
     except VoiceUsageRecoveryError:
+        logger.exception("Voice assistant credit reservation recovery failed")
         await update.message.reply_text(
             "Не удалось подтвердить состояние AI-кредитов. Проверь /ai_stats."
         )
+        return
     except (TelegramError, VoiceProviderError, VoiceConfigurationError, ValueError) as exc:
-        logger.warning("Voice translation rejected: error_type=%s", type(exc).__name__)
+        logger.warning("Voice assistant rejected: error_type=%s", type(exc).__name__)
         await update.message.reply_text(
-            "Не удалось безопасно обработать голосовое. Текст не сохранён."
+            "Не удалось распознать голосовое. AI-кредит не списан."
         )
+        return
+    except Exception as exc:
+        logger.warning("Voice assistant failed: error_type=%s", type(exc).__name__)
+        await update.message.reply_text(
+            "Голосовой AI временно недоступен. AI-кредит не списан."
+        )
+        return
+
+    record_product_event(
+        "voice_assistant_transcribed",
+        properties={
+            "detected_language": transcribed.detected_language or "unknown",
+            "duration_seconds": duration,
+        },
+        session_id=context.user_data.get("block_session"),
+    )
+    await handle_mirror_question(
+        update,
+        context,
+        question=transcribed.transcript,
+    )
 
 
 async def send_ai_tutor_answer(
@@ -2639,6 +2841,35 @@ async def send_ai_tutor_answer(
         await message.reply_text(chunk)
 
 
+async def request_ai_processing_consent(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    request_kind: str,
+    question: str = "",
+) -> None:
+    context.user_data["pending_ai_consent"] = {
+        "request_kind": request_kind,
+        "question": question,
+        "block_session": context.user_data.get("block_session"),
+        "expires_at": int(time.time()) + 600,
+    }
+    await message.reply_text(
+        "Согласие на обработку AI\n\n"
+        f"{AI_SETTINGS.processing_notice}\n\n"
+        f"Версия: {AI_SETTINGS.consent_version}",
+        reply_markup=InlineKeyboardMarkup(
+            [[
+                InlineKeyboardButton(
+                    "Согласен и продолжить",
+                    callback_data="aiconsent:accept",
+                ),
+                InlineKeyboardButton("Отмена", callback_data="aiconsent:cancel"),
+            ]]
+        ),
+    )
+
+
 async def request_ai_tutor_answer(
     message,
     context,
@@ -2665,25 +2896,11 @@ async def request_ai_tutor_answer(
             message, context, question, user_id=int(user_id)
         )
         return
-    context.user_data["pending_ai_consent"] = {
-        "request_kind": request_kind,
-        "question": question,
-        "block_session": context.user_data.get("block_session"),
-        "expires_at": int(time.time()) + 600,
-    }
-    await message.reply_text(
-        "Согласие на обработку AI\n\n"
-        f"{processing_notice}\n\n"
-        f"Версия: {consent_version}",
-        reply_markup=InlineKeyboardMarkup(
-            [[
-                InlineKeyboardButton(
-                    "Согласен и продолжить",
-                    callback_data="aiconsent:accept",
-                ),
-                InlineKeyboardButton("Отмена", callback_data="aiconsent:cancel"),
-            ]]
-        ),
+    await request_ai_processing_consent(
+        message,
+        context,
+        request_kind=request_kind,
+        question=question,
     )
 
 
@@ -2844,6 +3061,24 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await handler(update, context)
         return
 
+    await handle_mirror_question(
+        update,
+        context,
+        question=str(update.message.text or "").strip(),
+    )
+
+
+async def handle_mirror_question(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    question: str,
+) -> None:
+    """Answer one typed or transcribed question through the same Mirror path."""
+    question = str(question).strip()
+    if not question:
+        await update.message.reply_text("Не удалось распознать вопрос.")
+        return
     store = get_store()
     user_id = int(update.effective_user.id)
     interface_locale = interface_locale_for_update(update)
@@ -2859,7 +3094,6 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    question = str(update.message.text or "").strip()
     mirror_profile = get_bot_profile()
     preferences = _mirror_preferences(store, user_id)
     control_policy = _mirror_control_policy(store)
@@ -3063,8 +3297,13 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         action != "accept"
         or not isinstance(pending, dict)
         or expires_at < int(time.time())
-        or pending.get("block_session") != context.user_data.get("block_session")
-        or pending.get("request_kind") not in {"command", "active_block"}
+        or pending.get("request_kind")
+        not in {"command", "active_block", "voice_assistant"}
+        or (
+            pending.get("request_kind") != "voice_assistant"
+            and pending.get("block_session")
+            != context.user_data.get("block_session")
+        )
     ):
         await query.answer("Запрос устарел. Запусти /ai снова.", show_alert=True)
         return
@@ -3077,6 +3316,11 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await query.answer("Согласие сохранено.")
     await query.edit_message_reply_markup(reply_markup=None)
+    if pending["request_kind"] == "voice_assistant":
+        await query.message.reply_text(
+            "Готово. Отправь голосовое ещё раз — AI ответит по его содержанию."
+        )
+        return
     question = str(pending.get("question") or "").strip()
     if not question:
         question = "Объясни главные связи между словами этого блока."
@@ -4360,6 +4604,12 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
         rows.append([
             InlineKeyboardButton(
                 "AI-репетитор", callback_data=f"bai:{session_id}"
+            )
+        ])
+    if VOICE_SETTINGS.enabled:
+        rows.append([
+            InlineKeyboardButton(
+                "🎤 Произнести 10 слов", callback_data=f"bvoice:{session_id}"
             )
         ])
     rows.append([InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}")])

@@ -2686,7 +2686,7 @@ class DatabaseStore:
         cost_micro_usd: int,
         latency_ms: int,
     ) -> dict[str, Any]:
-        """Atomically settle STT credits, persist a turn, and advance its session."""
+        """Atomically settle STT credits, persist a turn, and advance accepted speech."""
         if feedback_code not in {"exact", "close", "retry"}:
             raise ValueError("Unknown voice feedback code")
         transcript = str(transcript).strip()
@@ -2767,7 +2767,8 @@ class DatabaseStore:
                 )
             )
             voice_session.turn_count += 1
-            voice_session.next_position += 1
+            if feedback_code != "retry":
+                voice_session.next_position += 1
             voice_session.updated_at = utcnow()
             if voice_session.next_position >= len(expected_ids):
                 voice_session.status = "completed"
