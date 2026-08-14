@@ -141,6 +141,41 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
         answer.assert_awaited_once()
         self.assertNotIn("pending_ai_consent", context.user_data)
 
+    async def test_voice_assistant_consent_survives_block_change_and_requests_resend(self):
+        reply_text = AsyncMock()
+        query = SimpleNamespace(
+            data="aiconsent:accept",
+            answer=AsyncMock(),
+            edit_message_reply_markup=AsyncMock(),
+            message=SimpleNamespace(chat_id=55, reply_text=reply_text),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=55),
+        )
+        context = SimpleNamespace(
+            user_data={
+                "block_session": "new-block",
+                "pending_ai_consent": {
+                    "request_kind": "voice_assistant",
+                    "block_session": "old-block",
+                    "expires_at": 9_999_999_999,
+                },
+            },
+            bot=SimpleNamespace(),
+        )
+        store = MagicMock()
+        with (
+            patch.object(bot, "AI_SETTINGS", enabled_settings()),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "send_ai_tutor_answer", new=AsyncMock()) as answer,
+        ):
+            await bot.ai_consent_cb.__wrapped__(update, context)
+
+        store.grant_consent.assert_called_once()
+        answer.assert_not_awaited()
+        self.assertIn("ещё раз", reply_text.await_args.args[0])
+
     async def test_ac_03_cancel_expiry_malformed_and_stale_callbacks_do_nothing(self):
         cases = (
             ("aiconsent:cancel", "block-1", 9_999_999_999),

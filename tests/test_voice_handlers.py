@@ -51,7 +51,209 @@ STATE = VoiceSessionState(
 )
 
 
+def direct_voice_update(*, entry_mode=None):
+    message = SimpleNamespace(
+        voice=SimpleNamespace(duration=3, file_size=3, file_id="voice"),
+        reply_text=AsyncMock(),
+    )
+    user_data = {}
+    if entry_mode is not None:
+        user_data["voice_entry_mode"] = entry_mode
+    telegram_file = SimpleNamespace(
+        download_as_bytearray=AsyncMock(return_value=bytearray(b"ogg"))
+    )
+    context = SimpleNamespace(
+        user_data=user_data,
+        bot=SimpleNamespace(get_file=AsyncMock(return_value=telegram_file)),
+    )
+    update = SimpleNamespace(
+        message=message,
+        effective_message=message,
+        effective_user=SimpleNamespace(id=55, first_name="Mark"),
+        effective_chat=SimpleNamespace(id=55),
+    )
+    return update, context, message
+
+
 class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
+    async def test_direct_voice_is_transcribed_once_and_routed_to_mirror(self):
+        update, context, _ = direct_voice_update()
+        store = MagicMock()
+        store.product_profile.return_value = {
+            "access_status": "active",
+            "onboarding_completed_at": "2026-08-01T00:00:00Z",
+        }
+        store.has_consent.return_value = True
+        practice = SimpleNamespace(
+            active_session=MagicMock(return_value=None),
+            transcribe_message=AsyncMock(
+                return_value=SimpleNamespace(
+                    transcript="Объясни разницу между bonjour и salut",
+                    detected_language="ru",
+                    available_credits=39,
+                )
+            ),
+        )
+        mirror = AsyncMock()
+
+        with (
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(
+                bot,
+                "VOICE_TRANSLATION_SETTINGS",
+                SimpleNamespace(enabled=False),
+            ),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(enabled=True, consent_version="ai-v1"),
+            ),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_voice_tutor_service", return_value=practice),
+            patch.object(bot, "handle_mirror_question", new=mirror, create=True),
+            patch.object(bot, "record_product_event"),
+        ):
+            await bot.voice_message_handler.__wrapped__(update, context)
+
+        context.bot.get_file.assert_awaited_once_with("voice")
+        practice.transcribe_message.assert_awaited_once_with(
+            user_id=55,
+            audio=b"ogg",
+            duration_seconds=3,
+        )
+        mirror.assert_awaited_once_with(
+            update,
+            context,
+            question="Объясни разницу между bonjour и salut",
+        )
+
+    async def test_disabled_sticky_translation_falls_back_to_direct_voice(self):
+        update, context, _ = direct_voice_update(entry_mode="translation")
+        store = MagicMock()
+        store.product_profile.return_value = {
+            "access_status": "active",
+            "onboarding_completed_at": "2026-08-01T00:00:00Z",
+        }
+        store.has_consent.return_value = True
+        practice = SimpleNamespace(
+            active_session=MagicMock(return_value=None),
+            transcribe_message=AsyncMock(
+                return_value=SimpleNamespace(
+                    transcript="Как мой прогресс?",
+                    detected_language="ru",
+                    available_credits=39,
+                )
+            ),
+        )
+        mirror = AsyncMock()
+
+        with (
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(
+                bot,
+                "VOICE_TRANSLATION_SETTINGS",
+                SimpleNamespace(enabled=False),
+            ),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(enabled=True, consent_version="ai-v1"),
+            ),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_voice_tutor_service", return_value=practice),
+            patch.object(bot, "handle_mirror_question", new=mirror, create=True),
+            patch.object(bot, "record_product_event"),
+        ):
+            await bot.voice_message_handler.__wrapped__(update, context)
+
+        self.assertNotIn("voice_entry_mode", context.user_data)
+        mirror.assert_awaited_once()
+
+    async def test_direct_voice_missing_consent_offers_inline_accept_before_download(self):
+        update, context, message = direct_voice_update()
+        store = MagicMock()
+        store.product_profile.return_value = {
+            "access_status": "active",
+            "onboarding_completed_at": "2026-08-01T00:00:00Z",
+        }
+        store.has_consent.return_value = False
+        practice = SimpleNamespace(active_session=MagicMock(return_value=None))
+
+        with (
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(
+                bot,
+                "VOICE_TRANSLATION_SETTINGS",
+                SimpleNamespace(enabled=False),
+            ),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(enabled=True, consent_version="ai-v1"),
+            ),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_voice_tutor_service", return_value=practice),
+        ):
+            await bot.voice_message_handler.__wrapped__(update, context)
+
+        context.bot.get_file.assert_not_awaited()
+        self.assertEqual(
+            context.user_data["pending_voice_consent"]["mode"], "assistant"
+        )
+        markup = message.reply_text.await_args.kwargs["reply_markup"]
+        callbacks = {
+            button.callback_data
+            for row in markup.inline_keyboard
+            for button in row
+        }
+        self.assertIn("voiceconsent:accept", callbacks)
+
+    async def test_direct_voice_missing_ai_consent_is_checked_before_download(self):
+        update, context, message = direct_voice_update()
+        store = MagicMock()
+        store.product_profile.return_value = {
+            "access_status": "active",
+            "onboarding_completed_at": "2026-08-01T00:00:00Z",
+        }
+        store.has_consent.side_effect = lambda user_id, **values: (
+            values["consent_type"] == "voice_processing"
+        )
+        practice = SimpleNamespace(active_session=MagicMock(return_value=None))
+
+        with (
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(
+                bot,
+                "VOICE_TRANSLATION_SETTINGS",
+                SimpleNamespace(enabled=False),
+            ),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(
+                    enabled=True,
+                    consent_version="ai-v1",
+                    processing_notice="Текст передаётся AI для учебного ответа.",
+                ),
+            ),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_voice_tutor_service", return_value=practice),
+        ):
+            await bot.voice_message_handler.__wrapped__(update, context)
+
+        context.bot.get_file.assert_not_awaited()
+        self.assertEqual(
+            context.user_data["pending_ai_consent"]["request_kind"],
+            "voice_assistant",
+        )
+        markup = message.reply_text.await_args.kwargs["reply_markup"]
+        callbacks = {
+            button.callback_data
+            for row in markup.inline_keyboard
+            for button in row
+        }
+        self.assertIn("aiconsent:accept", callbacks)
+
     async def test_voice_mode_requests_versioned_consent_before_session(self):
         message = SimpleNamespace(reply_text=AsyncMock())
         update = SimpleNamespace(
@@ -112,6 +314,41 @@ class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
 
         store.grant_consent.assert_called_once()
         launch.assert_awaited_once_with(update, context, mode="pronunciation")
+
+    async def test_voice_assistant_consent_survives_block_change_and_requests_resend(self):
+        reply_text = AsyncMock()
+        query = SimpleNamespace(
+            data="voiceconsent:accept",
+            answer=AsyncMock(),
+            edit_message_reply_markup=AsyncMock(),
+            message=SimpleNamespace(reply_text=reply_text),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=55),
+        )
+        context = SimpleNamespace(
+            user_data={
+                "block_session": "new-block",
+                "pending_voice_consent": {
+                    "mode": "assistant",
+                    "block_session": "old-block",
+                    "expires_at": 9999999999,
+                },
+            }
+        )
+        store = MagicMock()
+        with (
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(bot, "record_product_event"),
+            patch.object(bot, "launch_voice_mode", new=AsyncMock()) as launch,
+        ):
+            await bot.voice_consent_cb.__wrapped__(update, context)
+
+        store.grant_consent.assert_called_once()
+        launch.assert_not_awaited()
+        self.assertIn("ещё раз", reply_text.await_args.args[0])
 
     async def test_prompt_sends_russian_text_before_reference_audio(self):
         context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock()))
@@ -232,7 +469,7 @@ class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
         )
         word_audio.assert_not_awaited()
 
-    async def test_success_shows_transcript_then_reference_audio(self):
+    async def test_completed_success_does_not_repeat_reference_audio(self):
         telegram_file = SimpleNamespace(
             download_as_bytearray=AsyncMock(return_value=bytearray(b"ogg"))
         )
@@ -288,4 +525,56 @@ class VoiceHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Значение: неделя", first_reply)
         self.assertIn("Транскрипция: shuu", first_reply)
         self.assertIn("не акустическая оценка", first_reply)
-        pronunciation.assert_awaited_once_with(77, 7, context)
+        pronunciation.assert_not_awaited()
+
+    async def test_retry_keeps_same_word_and_replays_only_its_reference(self):
+        update, context, message = direct_voice_update()
+        feedback = PronunciationFeedback(
+            transcript="ほん",
+            expected=WORD,
+            matched=VoiceWord("b" * 64, "本", "ほん", "hon", "книга"),
+            code="retry",
+            similarity_bps=0,
+        )
+        state = SimpleNamespace(
+            next_position=0,
+            mode="pronunciation",
+            session_id="practice-session",
+        )
+        service = SimpleNamespace(
+            active_session=MagicMock(return_value=state),
+            process_turn=AsyncMock(
+                return_value=VoiceTurnResult(feedback, "active", 0, 4)
+            ),
+        )
+        pack = SimpleNamespace(
+            pack_id="basic-ja-100", target_language="ja", flag="🇯🇵"
+        )
+        store = MagicMock()
+        store.product_profile.return_value = {"access_status": "active"}
+        store.has_consent.return_value = True
+
+        with (
+            patch.object(bot, "VOICE_SETTINGS", enabled_settings()),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_voice_tutor_service", return_value=service),
+            patch.object(
+                bot,
+                "restore_voice_block",
+                return_value=(pack, [(7, WORD), (8, feedback.matched)]),
+            ),
+            patch.object(bot, "send_voice_reference", new=AsyncMock()) as reference,
+            patch.object(bot, "send_voice_prompt", new=AsyncMock()) as next_prompt,
+            patch.object(bot, "record_product_event"),
+        ):
+            await bot.voice_message_handler.__wrapped__(update, context)
+
+        self.assertIn("ещё раз", message.reply_text.await_args.args[0].casefold())
+        reference.assert_awaited_once_with(
+            chat_id=55,
+            context=context,
+            pack=pack,
+            indexed_word=(7, WORD),
+            mode="pronunciation",
+        )
+        next_prompt.assert_not_awaited()

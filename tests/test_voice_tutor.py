@@ -11,6 +11,7 @@ from mydictionary.voice_tutor import (
     OpenAITranscriptionProvider,
     TranscriptionResult,
     VoiceConfigurationError,
+    VoiceProviderError,
     VoiceTutorService,
     VoiceTutorSettings,
     VoiceWord,
@@ -136,8 +137,12 @@ class VoiceTutorServiceTest(unittest.IsolatedAsyncioTestCase):
     async def test_last_word_completes_session(self):
         provider = FakeProvider(
             [
-                TranscriptionResult("しゅう", None, "test", ProviderUsage()),
-                TranscriptionResult("ほん", None, "test", ProviderUsage()),
+                TranscriptionResult(
+                    "しゅう", None, "gpt-4o-transcribe", ProviderUsage()
+                ),
+                TranscriptionResult(
+                    "ほん", None, "gpt-4o-transcribe", ProviderUsage()
+                ),
             ]
         )
         service = self.service(provider)
@@ -160,6 +165,163 @@ class VoiceTutorServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.session_status, "active")
         self.assertEqual(second.session_status, "completed")
         self.assertIsNone(service.active_session(202))
+
+    async def test_retry_is_persisted_without_advancing_expected_word(self):
+        provider = FakeProvider(
+            [
+                TranscriptionResult(
+                    "ほん", None, "gpt-4o-transcribe", ProviderUsage()
+                ),
+                TranscriptionResult(
+                    "しゅう", None, "gpt-4o-transcribe", ProviderUsage()
+                ),
+            ]
+        )
+        service = self.service(provider)
+        state = service.start_session(
+            user_id=212,
+            pack_id="basic-ja-100",
+            language="ja",
+            topic=None,
+            block_session_id=None,
+            words=WORDS,
+        )
+
+        retry = await service.process_turn(
+            user_id=212, audio=b"wrong", duration_seconds=2, words=WORDS
+        )
+        accepted = await service.process_turn(
+            user_id=212, audio=b"correct", duration_seconds=2, words=WORDS
+        )
+
+        self.assertEqual(retry.feedback.code, "retry")
+        self.assertEqual(retry.next_position, 0)
+        self.assertEqual(retry.session_status, "active")
+        self.assertEqual(accepted.feedback.code, "exact")
+        self.assertEqual(accepted.next_position, 1)
+        turns = service.turns(user_id=212, session_id=state.session_id)
+        self.assertEqual(
+            [turn["expected_vocabulary_id"] for turn in turns],
+            [WORDS[0].vocabulary_id, WORDS[0].vocabulary_id],
+        )
+
+    async def test_freeform_transcription_is_metered_once_without_audio_storage(self):
+        provider = FakeProvider(
+            [
+                TranscriptionResult(
+                    "Как мой прогресс?",
+                    "groq-transcription-1",
+                    "gpt-4o-transcribe",
+                    ProviderUsage(input_tokens=8, output_tokens=3, total_tokens=11),
+                    detected_language="ru",
+                )
+            ]
+        )
+        service = self.service(provider)
+
+        result = await service.transcribe_message(
+            user_id=220,
+            audio=b"ephemeral-telegram-ogg",
+            duration_seconds=3,
+        )
+
+        self.assertEqual(result.transcript, "Как мой прогресс?")
+        self.assertEqual(result.detected_language, "ru")
+        self.assertEqual(result.available_credits, 4)
+        self.assertTrue(provider.requests[0].detect_language)
+        with self.store.Session() as session:
+            usage = session.execute(select(AIUsage)).scalar_one()
+            self.assertEqual(usage.action, "voice_transcription")
+            self.assertEqual(usage.status, "completed")
+            self.assertEqual(usage.billed_credits, 1)
+            self.assertEqual(usage.provider_attempts, 1)
+            self.assertTrue(usage.provider_response_received)
+            self.assertNotIn(
+                b"ephemeral-telegram-ogg",
+                str(usage.__dict__).encode("utf-8"),
+            )
+
+    async def test_freeform_provider_failure_releases_reserved_credit(self):
+        service = self.service(FakeProvider([RuntimeError("provider down")]))
+
+        with self.assertRaises(RuntimeError):
+            await service.transcribe_message(
+                user_id=221,
+                audio=b"voice",
+                duration_seconds=2,
+            )
+
+        summary = self.store.ai_usage_summary(221, initial_credits=5)
+        self.assertEqual(summary["available_credits"], 5)
+        self.assertEqual(summary["failed_requests"], 1)
+
+    async def test_invalid_billable_transcript_keeps_provider_telemetry(self):
+        provider = FakeProvider(
+            [
+                TranscriptionResult(
+                    "",
+                    "groq-invalid-1",
+                    "gpt-4o-transcribe",
+                    ProviderUsage(input_tokens=8, output_tokens=1, total_tokens=9),
+                    detected_language="ru",
+                )
+            ]
+        )
+        service = self.service(provider)
+
+        with self.assertRaises(VoiceProviderError):
+            await service.transcribe_message(
+                user_id=222,
+                audio=b"voice",
+                duration_seconds=2,
+            )
+
+        summary = self.store.ai_usage_summary(222, initial_credits=5)
+        self.assertEqual(summary["available_credits"], 5)
+        with self.store.Session() as session:
+            usage = session.execute(select(AIUsage)).scalar_one()
+            self.assertEqual(usage.status, "failed")
+            self.assertTrue(usage.provider_response_received)
+            self.assertEqual(usage.provider_response_id, "groq-invalid-1")
+            self.assertEqual(usage.cost_micro_usd, 200)
+
+    async def test_invalid_practice_transcript_keeps_provider_telemetry(self):
+        provider = FakeProvider(
+            [
+                TranscriptionResult(
+                    "",
+                    "practice-invalid-1",
+                    "gpt-4o-transcribe",
+                    ProviderUsage(input_tokens=8, output_tokens=1, total_tokens=9),
+                )
+            ]
+        )
+        service = self.service(provider)
+        service.start_session(
+            user_id=223,
+            pack_id="basic-ja-100",
+            language="ja",
+            topic=None,
+            block_session_id=None,
+            words=WORDS,
+        )
+
+        with self.assertRaises(VoiceProviderError):
+            await service.process_turn(
+                user_id=223,
+                audio=b"voice",
+                duration_seconds=2,
+                words=WORDS,
+            )
+
+        summary = self.store.ai_usage_summary(223, initial_credits=5)
+        self.assertEqual(summary["available_credits"], 5)
+        with self.store.Session() as session:
+            usage = session.execute(select(AIUsage)).scalar_one()
+            self.assertEqual(usage.status, "failed")
+            self.assertTrue(usage.provider_response_received)
+            self.assertEqual(usage.provider_response_id, "practice-invalid-1")
+            self.assertEqual(usage.cost_micro_usd, 200)
 
     async def test_provider_failure_releases_reserved_credit(self):
         service = self.service(FakeProvider([RuntimeError("provider down")]))
@@ -269,3 +431,7 @@ class VoiceSettingsTest(unittest.TestCase):
         )
         self.assertTrue(configured.enabled)
         self.assertEqual(configured.consent_version, "voice-2026-08")
+        self.assertEqual(
+            configured.retrospective_breaker_micro_usd_per_response,
+            5000,
+        )
