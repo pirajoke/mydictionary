@@ -309,6 +309,41 @@ class AdminLauncherTest(OpsTestCase):
         with self.assertRaisesRegex(RuntimeError, "must stay in local-config"):
             admin_launcher.build_process(source)
 
+    def test_launcher_forwards_bounded_stars_launch_window_without_values(self):
+        source = self.launcher_environment()
+        local_config = self.root / "local-config"
+        profile_path = local_config / "billing-launch-profile.json"
+        credentials_path = local_config / "telegram-test-credentials.json"
+        receipt_path = local_config / "telegram-test-receipt.json"
+        expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
+        source.update(
+            {
+                "STARS_LAUNCH_ENROLLMENT_ENABLED": "true",
+                "STARS_LAUNCH_PROFILE_PATH": str(profile_path),
+                "STARS_TEST_CREDENTIALS_PATH": str(credentials_path),
+                "STARS_TEST_RECEIPT_PATH": str(receipt_path),
+                "STARS_LAUNCH_ENROLLMENT_EXPIRES_AT": expiry.isoformat(),
+            }
+        )
+
+        _, _, environment, _ = admin_launcher.build_process(source)
+
+        self.assertEqual(environment["STARS_LAUNCH_ENROLLMENT_ENABLED"], "true")
+        self.assertEqual(environment["STARS_LAUNCH_PROFILE_PATH"], str(profile_path))
+        self.assertEqual(
+            environment["STARS_TEST_CREDENTIALS_PATH"], str(credentials_path)
+        )
+        self.assertEqual(environment["STARS_TEST_RECEIPT_PATH"], str(receipt_path))
+        self.assertEqual(
+            environment["STARS_LAUNCH_ENROLLMENT_EXPIRES_AT"], expiry.isoformat()
+        )
+        self.assertNotIn("BILLING_PAYLOAD_SECRET", environment)
+        self.assertNotIn("BOT_TOKEN", environment)
+
+        source["STARS_LAUNCH_PROFILE_PATH"] = str(self.root / "outside.json")
+        with self.assertRaisesRegex(RuntimeError, "must stay in local-config"):
+            admin_launcher.build_process(source)
+
     def test_launcher_forwards_groq_file_and_bounded_enrollment_without_secret(self):
         source = self.launcher_environment()
         local_config = self.root / "local-config"

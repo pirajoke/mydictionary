@@ -38,6 +38,7 @@ All settings are disabled by default. Enabling checkout requires:
 | Variable | Constraint |
 | --- | --- |
 | `TELEGRAM_STARS_ENABLED` | `true` only after rollout approval |
+| `BILLING_LAUNCH_PROFILE_FILE` | preferred absolute mode-`0600` seller/terms/payload-secret bundle |
 | `BILLING_PAYLOAD_SECRET` | random value of at least 32 characters |
 | `BILLING_SUPPORT_CONTACT` | monitored payment-support contact |
 | `BILLING_SELLER_LEGAL_NAME` | complete legal seller name shown before payment |
@@ -56,6 +57,11 @@ All settings are disabled by default. Enabling checkout requires:
 
 Disabling checkout stops new orders. Do not remove or rotate the payload secret
 until every issued order is expired and payment reconciliation is complete.
+When `BILLING_LAUNCH_PROFILE_FILE` is used, do not also set the inline payload,
+seller, support, terms, hash, or approval variables. Conflicting sources fail
+closed. The admin Stars Launch Wizard creates this private bundle without
+placing its values in PostgreSQL, audit details, process arguments, or HTML
+responses.
 
 ## Unit economics
 
@@ -184,3 +190,36 @@ The checked-in test terms are
 Use a dedicated test process and database; do not add these variables to the
 production launchd service. A real test-environment purchase, refund, or
 subscription mutation remains separately gated by `APPROVE_TELEGRAM_TEST_ENV`.
+
+## Launch gate and one-time activation
+
+After seller enrollment and a separately approved isolated Telegram test run,
+configure the three owner-only references:
+
+```text
+BILLING_LAUNCH_PROFILE_FILE=<private billing profile JSON>
+TELEGRAM_TEST_CREDENTIALS_FILE=<private test bot/user JSON>
+STARS_TEST_RECEIPT_FILE=<private aggregate test receipt JSON>
+```
+
+Run the no-network gate:
+
+```bash
+python ops/mydictionary_stars_launch.py check
+```
+
+The receipt contains only schema version, `telegram_test`, completion time, and
+passed statuses for purchase, duplicate delivery, restart recovery,
+reconciliation, and refund. Identifiers, bot tokens, charge IDs, payloads, and
+paths are not accepted. The default receipt freshness limit is 30 days and can
+be reduced with `STARS_TEST_RECEIPT_MAX_AGE_DAYS`.
+
+Only a green gate permits the explicit one-time-product database transition:
+
+```bash
+python ops/mydictionary_stars_launch.py activate-products --execute
+```
+
+This leaves the monthly subscription draft and checkout disabled. Enabling
+`TELEGRAM_STARS_ENABLED`, restarting services, and running any invoice,
+payment, refund, or subscription flow remain later rollout actions.

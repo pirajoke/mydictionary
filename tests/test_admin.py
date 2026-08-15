@@ -43,6 +43,13 @@ class AdminConsoleTest(unittest.TestCase):
         os.chmod(self.local_config_dir, 0o700)
         self.ai_key_path = self.local_config_dir / "openai-gate2.key"
         self.groq_key_path = self.local_config_dir / "groq-voice.key"
+        self.stars_profile_path = self.local_config_dir / "billing-launch-profile.json"
+        self.stars_test_credentials_path = (
+            self.local_config_dir / "telegram-test-credentials.json"
+        )
+        self.stars_test_receipt_path = (
+            self.local_config_dir / "telegram-test-receipt.json"
+        )
         self.app = create_app(
             {
                 "TESTING": True,
@@ -60,6 +67,15 @@ class AdminConsoleTest(unittest.TestCase):
                 "GROQ_KEY_ENROLLMENT_ENABLED": "true",
                 "GROQ_KEY_ENROLLMENT_PATH": str(self.groq_key_path),
                 "GROQ_KEY_ENROLLMENT_EXPIRES_AT": (
+                    datetime.now(timezone.utc) + timedelta(minutes=30)
+                ).isoformat(),
+                "STARS_LAUNCH_ENROLLMENT_ENABLED": "true",
+                "STARS_LAUNCH_PROFILE_PATH": str(self.stars_profile_path),
+                "STARS_TEST_CREDENTIALS_PATH": str(
+                    self.stars_test_credentials_path
+                ),
+                "STARS_TEST_RECEIPT_PATH": str(self.stars_test_receipt_path),
+                "STARS_LAUNCH_ENROLLMENT_EXPIRES_AT": (
                     datetime.now(timezone.utc) + timedelta(minutes=30)
                 ).isoformat(),
             },
@@ -193,6 +209,7 @@ class AdminConsoleTest(unittest.TestCase):
         disabled_client = disabled_app.test_client()
         self.login(disabled_client)
         self.assertEqual(disabled_client.get("/admin/ai-key").status_code, 404)
+        self.assertEqual(disabled_client.get("/admin/stars-launch").status_code, 404)
 
         expired_path = self.local_config_dir / "expired-gate2.key"
         expired_app = create_app(
@@ -241,6 +258,64 @@ class AdminConsoleTest(unittest.TestCase):
                 database_store=self.store,
             )
 
+    def test_expired_stars_launch_window_never_accepts_data(self):
+        expired_profile = self.local_config_dir / "expired-stars-profile.json"
+        expired_credentials = self.local_config_dir / "expired-stars-creds.json"
+        expired_app = create_app(
+            {
+                "TESTING": True,
+                "SECRET_KEY": "expired-stars-session-secret-at-least-32",
+                "DATA_DIR": self.temp_dir.name,
+                "STARS_LAUNCH_ENROLLMENT_ENABLED": "true",
+                "STARS_LAUNCH_PROFILE_PATH": str(expired_profile),
+                "STARS_TEST_CREDENTIALS_PATH": str(expired_credentials),
+                "STARS_TEST_RECEIPT_PATH": str(
+                    self.local_config_dir / "expired-stars-receipt.json"
+                ),
+                "STARS_LAUNCH_ENROLLMENT_EXPIRES_AT": (
+                    datetime.now(timezone.utc) - timedelta(seconds=1)
+                ).isoformat(),
+            },
+            database_store=self.store,
+        )
+        client = expired_app.test_client()
+        self.login(client)
+        self.assertEqual(client.get("/admin/stars-launch").status_code, 410)
+        response = client.post(
+            "/admin/stars-launch/test-credentials",
+            data={
+                "csrf_token": self.csrf(client),
+                "current_password": "test-password-123",
+                "bot_token": "123456789:" + "T" * 35,
+                "test_user_id": "7001",
+            },
+        )
+        self.assertEqual(response.status_code, 410)
+        self.assertFalse(expired_profile.exists())
+        self.assertFalse(expired_credentials.exists())
+
+    def test_stars_launch_reauthentication_is_rate_limited(self):
+        self.login()
+        payload = {
+            "csrf_token": self.csrf(),
+            "current_password": "wrong-password",
+            "bot_token": "123456789:" + "T" * 35,
+            "test_user_id": "7001",
+        }
+        responses = [
+            self.client.post(
+                "/admin/stars-launch/test-credentials", data=payload
+            )
+            for _ in range(6)
+        ]
+
+        self.assertEqual([item.status_code for item in responses[:5]], [403] * 5)
+        self.assertEqual(responses[5].status_code, 429)
+        self.assertFalse(self.stars_test_credentials_path.exists())
+        self.assertNotIn(
+            "wrong-password", responses[5].get_data(as_text=True)
+        )
+
     def test_remote_groq_key_enrollment_is_separate_private_and_audited(self):
         secret = "gsk_" + "G" * 48
         self.login()
@@ -283,6 +358,95 @@ class AdminConsoleTest(unittest.TestCase):
         serialized = "\n".join(row.details_json for row in rows)
         self.assertEqual(len(rows), 3)
         self.assertNotIn(secret, serialized)
+        self.assertIn("fingerprint_sha256_12", serialized)
+
+    def test_stars_launch_wizard_is_reauthenticated_one_time_and_private(self):
+        seller_name = "Example Learning SAS"
+        bot_token = "123456789:" + "T" * 35
+        anonymous = self.client.get("/admin/stars-launch")
+        self.assertEqual(anonymous.status_code, 302)
+        self.assertEqual(anonymous.headers["Location"], "/admin/login")
+
+        self.login()
+        page = self.client.get("/admin/stars-launch")
+        self.assertEqual(page.status_code, 200)
+        body = page.get_data(as_text=True)
+        self.assertIn("Stars Launch Wizard", body)
+        self.assertEqual(page.headers["Cache-Control"], "no-store")
+
+        profile_form = {
+            "csrf_token": self.csrf(),
+            "current_password": "wrong-password",
+            "seller_legal_name": seller_name,
+            "seller_address": "10 Example Street, 75001 Paris, France",
+            "seller_email": "billing@example.test",
+            "seller_phone": "+33102030405",
+            "support_contact": "@example_support",
+            "terms_text": "AI credits are delivered after successful payment.",
+            "terms_version": "stars-prod-v1",
+            "terms_approved": "on",
+        }
+        rejected = self.client.post(
+            "/admin/stars-launch/profile", data=profile_form
+        )
+        self.assertEqual(rejected.status_code, 403)
+        self.assertFalse(self.stars_profile_path.exists())
+
+        accepted = self.client.post(
+            "/admin/stars-launch/profile",
+            data={
+                **profile_form,
+                "csrf_token": self.csrf(),
+                "current_password": "test-password-123",
+            },
+        )
+        self.assertEqual(accepted.status_code, 303)
+        self.assertNotIn(seller_name, accepted.get_data(as_text=True))
+        self.assertEqual(self.stars_profile_path.stat().st_mode & 0o777, 0o600)
+
+        credentials = self.client.post(
+            "/admin/stars-launch/test-credentials",
+            data={
+                "csrf_token": self.csrf(),
+                "current_password": "test-password-123",
+                "bot_token": bot_token,
+                "test_user_id": "7001",
+            },
+        )
+        self.assertEqual(credentials.status_code, 303)
+        self.assertNotIn(bot_token, credentials.get_data(as_text=True))
+        self.assertEqual(
+            self.stars_test_credentials_path.stat().st_mode & 0o777, 0o600
+        )
+
+        consumed = self.client.get("/admin/stars-launch")
+        consumed_body = consumed.get_data(as_text=True)
+        self.assertEqual(consumed.status_code, 200)
+        self.assertIn("Профиль сохранён", consumed_body)
+        self.assertIn("Test credentials сохранены", consumed_body)
+        self.assertNotIn(seller_name, consumed_body)
+        self.assertNotIn(bot_token, consumed_body)
+        self.assertNotIn("7001", consumed_body)
+
+        billing_page = self.client.get("/admin?tab=billing").get_data(as_text=True)
+        self.assertIn("Stars Launch Wizard", billing_page)
+        self.assertIn("/admin/stars-launch", billing_page)
+        with self.store.Session() as database_session:
+            rows = database_session.execute(
+                select(AdminAuditLog).where(
+                    AdminAuditLog.action.like("stars_launch_%")
+                )
+            ).scalars().all()
+        self.assertEqual(len(rows), 3)
+        serialized = "\n".join(row.details_json for row in rows)
+        for forbidden in (
+            seller_name,
+            "@example_support",
+            bot_token,
+            "7001",
+            str(self.local_config_dir),
+        ):
+            self.assertNotIn(forbidden, serialized)
         self.assertIn("fingerprint_sha256_12", serialized)
 
     def test_duplicate_login_post_keeps_authenticated_session(self):

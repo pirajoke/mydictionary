@@ -130,6 +130,13 @@ Groq Voice uses the separate `GROQ_KEY_ENROLLMENT_ENABLED`,
 `local-config`. The launcher validates the file without forwarding its contents
 and rejects simultaneous `GROQ_API_KEY` and `GROQ_API_KEY_FILE` sources.
 
+Stars setup uses `STARS_LAUNCH_ENROLLMENT_ENABLED` with separate profile, test
+credential, and test receipt paths under the same owner-only `local-config`
+directory plus `STARS_LAUNCH_ENROLLMENT_EXPIRES_AT`. The launcher rejects
+shared destinations, paths outside `local-config`, and windows over one hour.
+The authenticated `/admin/stars-launch` page additionally requires the current
+admin password and generates the payload secret server-side.
+
 Operator migration deploys also require:
 
 ```text
@@ -146,15 +153,13 @@ other standard libpq environment variables. Both wrappers reject a combined
 connection string before stopping services or starting a backup.
 
 Telegram Stars settings are optional and default off. A reviewed billing rollout
-passes `TELEGRAM_STARS_ENABLED`, `BILLING_PAYLOAD_SECRET`,
-`BILLING_SUPPORT_CONTACT`, `BILLING_SELLER_LEGAL_NAME`,
-`BILLING_SELLER_ADDRESS`, `BILLING_SELLER_EMAIL`,
-`BILLING_SELLER_PHONE`, `BILLING_TERMS_TEXT`, `BILLING_TERMS_VERSION`,
-`BILLING_TERMS_SHA256`, `BILLING_TERMS_APPROVED`,
+passes `TELEGRAM_STARS_ENABLED`, the preferred owner-only
+`BILLING_LAUNCH_PROFILE_FILE`,
 `BILLING_ORDER_TTL_SECONDS`, `BILLING_NET_MICRO_USD_PER_XTR`, and the dated
 economics settings to both bot and admin processes. Keep the payload secret out
-of plist files readable by other users and retain it while an issued invoice
-may still be paid.
+of plist files and retain the profile while an issued invoice may still be
+paid. Legacy inline profile settings remain supported but cannot be mixed with
+the private profile file.
 
 Voice tutor settings remain optional and default off. The admin launcher passes
 the reviewed voice model, limits, consent metadata, `GROQ_API_KEY_FILE`, and a
@@ -243,6 +248,18 @@ python ops/mydictionary_commercial_launch.py seed-products --execute
 
 The second command requires `DATABASE_URL`, refuses writes without `--execute`,
 never activates a product, and refuses to overwrite a non-draft catalog row.
+
+The Stars launch wrapper checks private setup, isolated test evidence,
+economics, catalog integrity, and disabled checkout without network access:
+
+```bash
+python ops/mydictionary_stars_launch.py check
+```
+
+Its output contains only gate booleans and stable blocker codes. After a
+separately approved test run and activation stage, `activate-products
+--execute` can idempotently activate only the three one-time products. It leaves
+the monthly subscription draft and never changes the Stars feature flag.
 
 AI provider telemetry that could not reach PostgreSQL is written to a private
 fallback journal. Inspect it without revealing contents and reconcile it only
