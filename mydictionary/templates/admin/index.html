@@ -260,9 +260,14 @@
         <section class="panel">
           <div class="section-heading">
             <div><p class="eyebrow">Commercial Launch v3</p><h2>Готовность коммерческого запуска</h2></div>
-            <span class="status {{ 'active' if commercial_launch.status == 'ready' else 'draft' }}">{{ commercial_launch.status }}</span>
+            <div class="heading-actions">
+              {% if stars_launch.enabled %}<a class="button-link" href="{{ url_for('stars_launch_wizard') }}">Stars Launch Wizard</a>{% endif %}
+              <span class="status {{ 'active' if commercial_launch.status == 'ready' else 'draft' }}">{{ commercial_launch.status }}</span>
+            </div>
           </div>
           <dl class="diagnostic-list">
+            <div><dt>Launch profile</dt><dd>{{ stars_launch.profile_status }} · test credentials {{ stars_launch.test_credentials_status }}</dd><span class="readiness {{ 'ok' if stars_launch.profile_status == 'consumed' and stars_launch.test_credentials_status == 'consumed' else 'off' }}">{{ 'ready' if stars_launch.profile_status == 'consumed' and stars_launch.test_credentials_status == 'consumed' else 'setup' }}</span></div>
+            <div><dt>Test evidence</dt><dd>{{ stars_launch.test_receipt_status }}</dd><span class="readiness {{ 'ok' if stars_launch.test_receipt_status == 'passed' else 'off' }}">{{ 'ready' if stars_launch.test_receipt_status == 'passed' else 'blocked' }}</span></div>
             <div><dt>Контракт</dt><dd class="mono">{{ commercial_launch.snapshot_id }} · {{ commercial_launch.snapshot_sha256[:12] }}</dd><span class="readiness {{ 'ok' if commercial_launch.contract_ready else 'off' }}">{{ 'ready' if commercial_launch.contract_ready else 'blocked' }}</span></div>
             <div><dt>Измеренный AI-вызов</dt><dd>{% if commercial_launch.measurement %}{{ commercial_launch.measurement.cost_micro_usd|number }} microUSD · {{ commercial_launch.measurement.total_tokens|number }} tokens · {{ commercial_launch.measurement.provider_attempts }} attempt{% else %}нет валидного отчёта{% endif %}</dd><span class="readiness {{ 'ok' if commercial_launch.measurement else 'off' }}">{{ 'ready' if commercial_launch.measurement else 'blocked' }}</span></div>
             <div><dt>Provider dashboard charge</dt><dd>{{ 'verified' if commercial_launch.measurement.dashboard_charge_verified else 'not recorded' }}</dd><span class="readiness {{ 'ok' if commercial_launch.measurement.dashboard_charge_verified else 'off' }}">{{ 'ready' if commercial_launch.measurement.dashboard_charge_verified else 'open' }}</span></div>

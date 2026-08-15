@@ -59,6 +59,11 @@ from mydictionary.secret_enrollment import (
     SecretEnrollmentError,
     SecretEnrollmentSettings,
 )
+from mydictionary.stars_launch import (
+    StarsLaunchEnrollmentSettings,
+    StarsLaunchError,
+    stars_launch_enrollment_overview,
+)
 from mydictionary.storage import DatabaseStore
 from vocabulary_topics import topic_counts, transcription_for
 
@@ -321,6 +326,30 @@ def create_app(
         GROQ_KEY_ENROLLMENT_EXPIRES_AT=os.environ.get(
             "GROQ_KEY_ENROLLMENT_EXPIRES_AT", ""
         ),
+        STARS_LAUNCH_ENROLLMENT_ENABLED=os.environ.get(
+            "STARS_LAUNCH_ENROLLMENT_ENABLED", "false"
+        ),
+        STARS_LAUNCH_PROFILE_PATH=os.environ.get(
+            "STARS_LAUNCH_PROFILE_PATH", ""
+        ),
+        STARS_TEST_CREDENTIALS_PATH=os.environ.get(
+            "STARS_TEST_CREDENTIALS_PATH", ""
+        ),
+        STARS_TEST_RECEIPT_PATH=os.environ.get(
+            "STARS_TEST_RECEIPT_PATH", ""
+        ),
+        BILLING_LAUNCH_PROFILE_FILE=os.environ.get(
+            "BILLING_LAUNCH_PROFILE_FILE", ""
+        ),
+        TELEGRAM_TEST_CREDENTIALS_FILE=os.environ.get(
+            "TELEGRAM_TEST_CREDENTIALS_FILE", ""
+        ),
+        STARS_TEST_RECEIPT_FILE=os.environ.get(
+            "STARS_TEST_RECEIPT_FILE", ""
+        ),
+        STARS_LAUNCH_ENROLLMENT_EXPIRES_AT=os.environ.get(
+            "STARS_LAUNCH_ENROLLMENT_EXPIRES_AT", ""
+        ),
         MAX_CONTENT_LENGTH=64 * 1024,
     )
     if test_config:
@@ -344,10 +373,15 @@ def create_app(
         allowed_directory=Path(app.config["DATA_DIR"]) / "local-config",
         provider="groq",
     )
+    stars_launch_enrollment = StarsLaunchEnrollmentSettings.from_mapping(
+        app.config,
+        allowed_directory=Path(app.config["DATA_DIR"]) / "local-config",
+    )
     app.extensions["database_store"] = store
     app.extensions["admin_store"] = admin_store
     app.extensions["ai_key_enrollment"] = key_enrollment
     app.extensions["groq_key_enrollment"] = groq_key_enrollment
+    app.extensions["stars_launch_enrollment"] = stars_launch_enrollment
     limiter = LoginLimiter()
 
     username = str(app.config.get("ADMIN_USERNAME") or "").strip()
@@ -572,6 +606,7 @@ def create_app(
         elif tab == "billing":
             context["billing"] = admin_store.billing_overview()
             context["products"] = admin_store.billing_products()
+            context["stars_launch"] = _stars_launch_overview()
             context["commercial_launch"] = _commercial_launch_diagnostics(
                 context["products"], admin_store
             )
@@ -849,6 +884,206 @@ def create_app(
             page_endpoint="groq_key_enrollment_page",
             form_endpoint="enroll_groq_key",
         )
+
+    def _stars_launch_overview() -> dict[str, Any]:
+        raw_receipt_path = str(
+            app.config.get("STARS_TEST_RECEIPT_PATH")
+            or app.config.get("STARS_TEST_RECEIPT_FILE")
+            or ""
+        ).strip()
+        raw_profile_path = str(
+            app.config.get("BILLING_LAUNCH_PROFILE_FILE") or ""
+        ).strip()
+        raw_test_credentials_path = str(
+            app.config.get("TELEGRAM_TEST_CREDENTIALS_FILE") or ""
+        ).strip()
+        return stars_launch_enrollment_overview(
+            stars_launch_enrollment,
+            receipt_path=Path(raw_receipt_path) if raw_receipt_path else None,
+            runtime_profile_path=(
+                Path(raw_profile_path) if raw_profile_path else None
+            ),
+            runtime_test_credentials_path=(
+                Path(raw_test_credentials_path)
+                if raw_test_credentials_path
+                else None
+            ),
+        )
+
+    def _stars_launch_http_status(kind: str) -> int:
+        state = stars_launch_enrollment.statuses().get(kind, "disabled")
+        return {
+            "ready": 400,
+            "consumed": 409,
+            "expired": 410,
+            "disabled": 404,
+        }.get(state, 400)
+
+    def _current_password_status() -> str:
+        limiter_key = f"stars-launch:{request.remote_addr or 'unknown'}"
+        if not limiter.allowed(limiter_key):
+            return "rate_limited"
+        credential = current_credential()
+        supplied = str(request.form.get("current_password") or "")
+        valid = bool(
+            credential
+            and supplied
+            and check_password_hash(credential.password_hash, supplied)
+        )
+        if valid:
+            limiter.success(limiter_key)
+            return "ok"
+        limiter.failure(limiter_key)
+        return "invalid"
+
+    def _render_stars_launch(*, error: str | None = None, status: int = 200):
+        overview = _stars_launch_overview()
+        if not overview["enabled"]:
+            abort(404)
+        return (
+            render_template(
+                "admin/stars_launch.html",
+                stars_launch=overview,
+                error=error,
+            ),
+            status,
+        )
+
+    @app.get("/admin/stars-launch")
+    @login_required
+    def stars_launch_wizard():
+        states = stars_launch_enrollment.statuses()
+        status = (
+            410
+            if states
+            and all(value in {"expired", "disabled"} for value in states.values())
+            and "expired" in states.values()
+            else 200
+        )
+        return _render_stars_launch(status=status)
+
+    @app.post("/admin/stars-launch/profile")
+    @login_required
+    def enroll_stars_launch_profile():
+        password_status = _current_password_status()
+        if password_status != "ok":
+            admin_store.record_audit(
+                actor=current_actor(),
+                action="stars_launch_profile_rejected",
+                target_type="billing_launch_profile",
+                target_id="stars-launch",
+                details={
+                    "reason": (
+                        "reauthentication_rate_limited"
+                        if password_status == "rate_limited"
+                        else "reauthentication_failed"
+                    )
+                },
+            )
+            return _render_stars_launch(
+                error=(
+                    "Слишком много попыток. Повторите позже."
+                    if password_status == "rate_limited"
+                    else "Текущий пароль не подтверждён."
+                ),
+                status=429 if password_status == "rate_limited" else 403,
+            )
+        fields = (
+            "seller_legal_name",
+            "seller_address",
+            "seller_email",
+            "seller_phone",
+            "support_contact",
+            "terms_text",
+            "terms_version",
+            "terms_approved",
+        )
+        try:
+            fingerprint = stars_launch_enrollment.enroll_profile(
+                {field: request.form.get(field) for field in fields}
+            )
+        except StarsLaunchError:
+            state = stars_launch_enrollment.statuses()["profile"]
+            admin_store.record_audit(
+                actor=current_actor(),
+                action="stars_launch_profile_rejected",
+                target_type="billing_launch_profile",
+                target_id="stars-launch",
+                details={
+                    "reason": "invalid_input" if state == "ready" else state
+                },
+            )
+            return _render_stars_launch(
+                error="Профиль не принят. Проверьте обязательные поля.",
+                status=_stars_launch_http_status("profile"),
+            )
+        admin_store.record_audit(
+            actor=current_actor(),
+            action="stars_launch_profile_enrolled",
+            target_type="billing_launch_profile",
+            target_id="stars-launch",
+            details={"fingerprint_sha256_12": fingerprint},
+        )
+        session["csrf_token"] = secrets.token_urlsafe(32)
+        return redirect(url_for("stars_launch_wizard"), code=303)
+
+    @app.post("/admin/stars-launch/test-credentials")
+    @login_required
+    def enroll_stars_test_credentials():
+        password_status = _current_password_status()
+        if password_status != "ok":
+            admin_store.record_audit(
+                actor=current_actor(),
+                action="stars_launch_test_credentials_rejected",
+                target_type="telegram_test_credentials",
+                target_id="stars-launch",
+                details={
+                    "reason": (
+                        "reauthentication_rate_limited"
+                        if password_status == "rate_limited"
+                        else "reauthentication_failed"
+                    )
+                },
+            )
+            return _render_stars_launch(
+                error=(
+                    "Слишком много попыток. Повторите позже."
+                    if password_status == "rate_limited"
+                    else "Текущий пароль не подтверждён."
+                ),
+                status=429 if password_status == "rate_limited" else 403,
+            )
+        try:
+            fingerprint = stars_launch_enrollment.enroll_test_credentials(
+                {
+                    "bot_token": request.form.get("bot_token"),
+                    "test_user_id": request.form.get("test_user_id"),
+                }
+            )
+        except StarsLaunchError:
+            state = stars_launch_enrollment.statuses()["test_credentials"]
+            admin_store.record_audit(
+                actor=current_actor(),
+                action="stars_launch_test_credentials_rejected",
+                target_type="telegram_test_credentials",
+                target_id="stars-launch",
+                details={
+                    "reason": "invalid_input" if state == "ready" else state
+                },
+            )
+            return _render_stars_launch(
+                error="Test credentials не приняты. Проверьте token и user ID.",
+                status=_stars_launch_http_status("test_credentials"),
+            )
+        admin_store.record_audit(
+            actor=current_actor(),
+            action="stars_launch_test_credentials_enrolled",
+            target_type="telegram_test_credentials",
+            target_id="stars-launch",
+            details={"fingerprint_sha256_12": fingerprint},
+        )
+        session["csrf_token"] = secrets.token_urlsafe(32)
+        return redirect(url_for("stars_launch_wizard"), code=303)
 
     @app.post("/admin/ai/breaker/reset")
     @login_required

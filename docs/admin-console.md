@@ -21,6 +21,8 @@ polling. The default binding is loopback-only on the Mac mini.
   provider telemetry remains in the fallback journal
 - separate opt-in, time-limited, one-time enrollment windows for isolated
   OpenAI and Groq project keys
+- a reauthenticated Stars Launch Wizard for a private seller/terms profile and
+  separate Telegram test-environment credentials
 - append-only administration audit log
 
 The admin can request a refund hold but cannot call Telegram's refund API. Live
@@ -66,6 +68,29 @@ The production launcher accepts a destination only directly under
 `MYDICTIONARY_APP_ROOT/local-config`. That directory must already exist and
 must not be group or world writable. The expiry must include a timezone and
 cannot be more than one hour in the future.
+
+Stars launch setup uses one bounded window with separate destinations:
+
+```text
+STARS_LAUNCH_ENROLLMENT_ENABLED=true
+STARS_LAUNCH_PROFILE_PATH=<app-root>/local-config/billing-launch-profile.json
+STARS_TEST_CREDENTIALS_PATH=<app-root>/local-config/telegram-test-credentials.json
+STARS_TEST_RECEIPT_PATH=<app-root>/local-config/telegram-test-receipt.json
+STARS_LAUNCH_ENROLLMENT_EXPIRES_AT=<timezone-aware timestamp within one hour>
+```
+
+Open `/admin/stars-launch` after the admin-only restart that creates the window.
+Each form requires the current admin password in addition to the authenticated
+session and CSRF token. The profile form generates the invoice payload secret
+server-side; neither form redisplays submitted data. Successful destinations
+are mode `0600`, independently consumed, and represented in audit only by a
+short SHA-256 fingerprint.
+
+Close the window after both entries are consumed. Runtime processes load the
+seller/terms profile through `BILLING_LAUNCH_PROFILE_FILE`; do not configure
+that variable together with any inline seller, support, terms, approval, or
+payload-secret variable. The dedicated test credential file is used only by an
+isolated Telegram test process through `TELEGRAM_TEST_CREDENTIALS_FILE`.
 
 The bot and admin processes must resolve the same heartbeat path. By default it
 is `DATA_DIR/bot-heartbeat.json`. `BOT_HEARTBEAT_PATH` can override the complete
@@ -136,6 +161,33 @@ After enrollment, close the corresponding window by setting its
 the bot needs the provider. On revocation, disable Voice first, remove the file,
 and revoke the project key in the provider console. Never forward direct
 `OPENAI_API_KEY` or `GROQ_API_KEY` values to the admin process.
+
+## Stars launch gates
+
+The billing tab keeps the existing commercial metrics and adds a compact setup
+and test-evidence checklist. It does not activate checkout. After a separately
+approved Telegram test-environment run has produced a privacy-safe mode-`0600`
+receipt, the read-only operator gate is:
+
+```bash
+python ops/mydictionary_stars_launch.py check
+```
+
+The check requires the private profile, dedicated test credentials, current
+economics, exact Commercial Launch v3 catalog, disabled checkout, and passing
+purchase, duplicate-delivery, restart-recovery, reconciliation, and refund
+evidence. Its JSON output contains only gate booleans and blocker codes.
+
+Product activation remains a separate explicit database write:
+
+```bash
+python ops/mydictionary_stars_launch.py activate-products --execute
+```
+
+It can activate only `ai-mini`, `ai-starter`, and `ai-value`, is idempotent,
+and leaves `ai-monthly` draft. It never changes `TELEGRAM_STARS_ENABLED`; the
+checkout flag and service restart still require a separately approved
+production rollout.
 
 ## Security properties
 

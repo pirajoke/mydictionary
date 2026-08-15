@@ -16,6 +16,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 
 from mydictionary.economics import parse_reviewed_on, require_current_review
+from mydictionary.stars_launch import StarsLaunchError, load_billing_launch_profile
 from mydictionary.storage import (
     AIUsageStateError,
     AdminAuditLog,
@@ -102,7 +103,12 @@ class BillingSettings:
 
     @classmethod
     def from_env(cls, values: Mapping[str, str] | None = None) -> "BillingSettings":
-        env = values if values is not None else os.environ
+        configured = values if values is not None else os.environ
+        try:
+            profile = load_billing_launch_profile(configured)
+        except StarsLaunchError as exc:
+            raise BillingConfigurationError(str(exc)) from exc
+        env = {**configured, **profile} if profile else configured
         enabled = _env_bool(env.get("TELEGRAM_STARS_ENABLED", "false"))
         terms_approved = _env_bool(
             env.get("BILLING_TERMS_APPROVED", "false"),

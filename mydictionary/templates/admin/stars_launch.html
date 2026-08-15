@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Stars Launch Wizard · MY DICTIONARY Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
+  </head>
+  <body class="login-page wizard-page">
+    <main class="login-panel stars-launch-panel">
+      <header class="wizard-header">
+        <img src="{{ url_for('static', filename='admin/brand-mark.png') }}" alt="" width="64" height="64">
+        <div><p class="eyebrow">MY DICTIONARY · Payments</p><h1>Stars Launch Wizard</h1></div>
+      </header>
+
+      {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+
+      <dl class="diagnostic-list wizard-status">
+        <div><dt>Профиль запуска</dt><dd>{{ stars_launch.profile_status }}</dd><span class="readiness {{ 'ok' if stars_launch.profile_status == 'consumed' else 'off' }}">{{ stars_launch.profile_fingerprint }}</span></div>
+        <div><dt>Test credentials</dt><dd>{{ stars_launch.test_credentials_status }}</dd><span class="readiness {{ 'ok' if stars_launch.test_credentials_status == 'consumed' else 'off' }}">{{ stars_launch.test_credentials_fingerprint }}</span></div>
+        <div><dt>Test receipt</dt><dd>{{ stars_launch.test_receipt_status }}</dd><span class="readiness {{ 'ok' if stars_launch.test_receipt_status == 'passed' else 'off' }}">{{ stars_launch.test_receipt_fingerprint }}</span></div>
+      </dl>
+
+      <div class="wizard-grid">
+        <section>
+          <h2>Продавец и условия</h2>
+          {% if stars_launch.profile_status == 'ready' %}
+            <form method="post" action="{{ url_for('enroll_stars_launch_profile') }}" class="form-stack">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label>Юридическое имя<input name="seller_legal_name" maxlength="160" autocomplete="organization" required></label>
+              <label>Адрес<textarea name="seller_address" maxlength="500" rows="2" autocomplete="street-address" required></textarea></label>
+              <label>Email<input name="seller_email" type="email" maxlength="254" autocomplete="email" required></label>
+              <label>Телефон<input name="seller_phone" type="tel" maxlength="64" autocomplete="tel" required></label>
+              <label>Поддержка<input name="support_contact" maxlength="256" placeholder="@support или email" required></label>
+              <label>Версия условий<input name="terms_version" maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}" required></label>
+              <label>Условия<textarea name="terms_text" maxlength="3500" rows="8" required></textarea></label>
+              <label class="checkbox-label"><input type="checkbox" name="terms_approved" required> Текст проверен и одобрен</label>
+              <label>Текущий пароль<input type="password" name="current_password" autocomplete="current-password" required></label>
+              <button type="submit" class="primary">Сохранить профиль</button>
+            </form>
+          {% elif stars_launch.profile_status == 'consumed' %}
+            <div class="notice">Профиль сохранён. Повторная запись закрыта.</div>
+          {% else %}
+            <div class="notice error">Окно профиля: {{ stars_launch.profile_status }}.</div>
+          {% endif %}
+        </section>
+
+        <section>
+          <h2>Telegram test environment</h2>
+          {% if stars_launch.test_credentials_status == 'ready' %}
+            <form method="post" action="{{ url_for('enroll_stars_test_credentials') }}" class="form-stack">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label>Test bot token<input type="password" name="bot_token" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>
+              <label>Test user ID<input name="test_user_id" inputmode="numeric" pattern="[1-9][0-9]*" autocomplete="off" required></label>
+              <label>Текущий пароль<input type="password" name="current_password" autocomplete="current-password" required></label>
+              <button type="submit" class="primary">Сохранить test credentials</button>
+            </form>
+          {% elif stars_launch.test_credentials_status == 'consumed' %}
+            <div class="notice">Test credentials сохранены. Повторная запись закрыта.</div>
+          {% else %}
+            <div class="notice error">Окно test credentials: {{ stars_launch.test_credentials_status }}.</div>
+          {% endif %}
+        </section>
+      </div>
+
+      <p class="security-copy wizard-expiry">Одноразовое окно: {{ stars_launch.expires_at|datetime }}. Checkout не включается этой страницей.</p>
+      <p class="back-link"><a href="{{ url_for('admin_index', tab='billing') }}">Вернуться в Stars и платежи</a></p>
+    </main>
+  </body>
+</html>

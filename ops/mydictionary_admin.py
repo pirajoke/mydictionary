@@ -146,6 +146,51 @@ def _validate_bounded_enrollment(
         )
 
 
+def _validate_stars_launch_enrollment(
+    environment: dict[str, str], *, app_root: Path
+) -> None:
+    enabled = environment["STARS_LAUNCH_ENROLLMENT_ENABLED"].lower()
+    if enabled not in TRUE_VALUES | FALSE_VALUES:
+        raise RuntimeError("STARS_LAUNCH_ENROLLMENT_ENABLED must be a boolean")
+    if enabled not in TRUE_VALUES:
+        return
+    local_config = (app_root / "local-config").resolve()
+    if not local_config.is_dir() or local_config.is_symlink():
+        raise RuntimeError("Stars launch enrollment directory is unavailable")
+    if stat.S_IMODE(local_config.stat().st_mode) & 0o022:
+        raise RuntimeError("Stars launch enrollment directory permissions are unsafe")
+    targets = []
+    for name in (
+        "STARS_LAUNCH_PROFILE_PATH",
+        "STARS_TEST_CREDENTIALS_PATH",
+        "STARS_TEST_RECEIPT_PATH",
+    ):
+        target = Path(required(environment, name)).expanduser()
+        if not target.is_absolute():
+            raise RuntimeError(f"{name} must be absolute")
+        if target.parent.resolve() != local_config:
+            raise RuntimeError(f"{name} must stay in local-config")
+        targets.append(target)
+    if len(set(targets)) != len(targets):
+        raise RuntimeError("Stars launch files require separate destinations")
+    raw_expiry = required(environment, "STARS_LAUNCH_ENROLLMENT_EXPIRES_AT")
+    normalized = (
+        raw_expiry[:-1] + "+00:00" if raw_expiry.endswith("Z") else raw_expiry
+    )
+    try:
+        expires_at = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise RuntimeError(
+            "Stars launch enrollment expiry must use ISO 8601"
+        ) from exc
+    if expires_at.tzinfo is None:
+        raise RuntimeError("Stars launch enrollment expiry must include timezone")
+    if expires_at.astimezone(timezone.utc) > datetime.now(
+        timezone.utc
+    ) + timedelta(hours=1):
+        raise RuntimeError("Stars launch enrollment window cannot exceed one hour")
+
+
 def build_process(
     values: dict[str, str] | None = None,
 ) -> tuple[Path, list[str], dict[str, str], Path]:
@@ -210,6 +255,9 @@ def build_process(
             ).strip(),
             "GROQ_KEY_ENROLLMENT_ENABLED": source.get(
                 "GROQ_KEY_ENROLLMENT_ENABLED", "false"
+            ).strip(),
+            "STARS_LAUNCH_ENROLLMENT_ENABLED": source.get(
+                "STARS_LAUNCH_ENROLLMENT_ENABLED", "false"
             ).strip(),
             "AI_PROVIDER_CONFIGURED": str(
                 bool(source.get("OPENAI_API_KEY", "").strip())
@@ -280,6 +328,14 @@ def build_process(
         "GROQ_API_KEY_FILE",
         "GROQ_KEY_ENROLLMENT_PATH",
         "GROQ_KEY_ENROLLMENT_EXPIRES_AT",
+        "STARS_LAUNCH_PROFILE_PATH",
+        "STARS_TEST_CREDENTIALS_PATH",
+        "STARS_TEST_RECEIPT_PATH",
+        "STARS_LAUNCH_ENROLLMENT_EXPIRES_AT",
+        "BILLING_LAUNCH_PROFILE_FILE",
+        "TELEGRAM_TEST_CREDENTIALS_FILE",
+        "STARS_TEST_RECEIPT_FILE",
+        "STARS_TEST_RECEIPT_MAX_AGE_DAYS",
         "AI_RESERVATION_TIMEOUT_SECONDS",
         "VOICE_CONSENT_VERSION",
         "VOICE_PROCESSING_NOTICE",
@@ -335,6 +391,7 @@ def build_process(
         label="Groq",
         app_root=app_root,
     )
+    _validate_stars_launch_enrollment(environment, app_root=app_root)
     if environment["VOICE_TUTOR_ENABLED"].lower() not in {
         "0",
         "1",
