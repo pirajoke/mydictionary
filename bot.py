@@ -4239,10 +4239,14 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     # Block type mode
     if context.user_data.get("block_typing"):
+        locale = learning_card_locale(context.user_data)
         if is_correct:
             text = f"✅\n{format_word_details(idx)}"
         else:
-            text = f"❌\n{format_word_details(idx)}\nТвой ответ: _{answer}_"
+            text = (
+                f"❌\n{format_word_details(idx)}\n"
+                f"{translate('block_your_answer', locale, answer=answer)}"
+            )
         await update.message.reply_text(text, parse_mode="Markdown")
         await send_pronunciation(update.message.chat_id, idx, context)
         context.user_data["type_idx"] = None
@@ -4818,8 +4822,9 @@ def build_topic_keyboard(
     return InlineKeyboardMarkup(rows)
 
 
-def topic_title(topic: str | None) -> str:
-    return CATALOG.topic_labels.get(topic, "🌐 Все слова")
+def topic_title(topic: str | None, *, locale: str = "ru") -> str:
+    key = f"topic_{topic}" if topic in CATALOG.topic_labels else "topic_all"
+    return translate(key, normalize_locale(locale, fallback="ru"))
 
 
 BLOCK_STALE_TEXT = "Эта кнопка устарела. Используй последнее сообщение блока."
@@ -4978,15 +4983,30 @@ def track_card_shown(user_data: dict, idx: int) -> None:
     )
 
 
-def format_block_intro(indices: list[int], topic: str | None) -> str:
-    return (
-        f"📖 *{topic_title(topic)}*\n"
-        f"Запомни {len(indices)} слов:\n\n{format_study_list(indices)}"
+def format_block_intro(
+    indices: list[int],
+    topic: str | None,
+    *,
+    locale: str = "ru",
+) -> str:
+    locale = normalize_locale(locale, fallback="ru")
+    return translate(
+        "block_intro",
+        locale,
+        topic=topic_title(topic, locale=locale),
+        count=len(indices),
+        study=format_study_list(indices),
     )
 
 
-def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMarkup:
+def build_study_buttons(
+    indices: list[int],
+    session_id: str,
+    *,
+    locale: str = "ru",
+) -> InlineKeyboardMarkup:
     """Build inline keyboard with 🔊 buttons for each word + mode buttons."""
+    locale = normalize_locale(locale, fallback="ru")
     # Audio buttons in rows of 5
     audio_row1 = [InlineKeyboardButton(f"🔊 {n}", callback_data=f"lplay:{session_id}:{idx}")
                   for n, idx in enumerate(indices[:5], 1)]
@@ -4994,11 +5014,11 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
                   for n, idx in enumerate(indices[5:], 6)]
     mode_row = [
         InlineKeyboardButton(
-            "Тест · 4 варианта",
+            translate("block_quiz_mode", locale),
             callback_data=f"bmode:{session_id}:quiz",
         ),
         InlineKeyboardButton(
-            "Письменно",
+            translate("block_written_mode", locale),
             callback_data=f"bmode:{session_id}:type",
         ),
     ]
@@ -5009,16 +5029,21 @@ def build_study_buttons(indices: list[int], session_id: str) -> InlineKeyboardMa
     if AI_SETTINGS.enabled:
         rows.append([
             InlineKeyboardButton(
-                "AI-репетитор", callback_data=f"bai:{session_id}"
+                translate("block_ai_tutor", locale),
+                callback_data=f"bai:{session_id}",
             )
         ])
     if VOICE_SETTINGS.enabled:
         rows.append([
             InlineKeyboardButton(
-                "🎤 Произнести 10 слов", callback_data=f"bvoice:{session_id}"
+                translate("block_voice_practice", locale),
+                callback_data=f"bvoice:{session_id}",
             )
         ])
-    rows.append([InlineKeyboardButton("Темы 📚", callback_data=f"btopics:{session_id}")])
+    rows.append([InlineKeyboardButton(
+        translate("block_topics_study", locale),
+        callback_data=f"btopics:{session_id}",
+    )])
     return InlineKeyboardMarkup(rows)
 
 
@@ -5040,6 +5065,8 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Start a block from the selected language and topic."""
     query = update.callback_query
     await query.answer()
+    locale = interface_locale_for_update(update)
+    context.user_data["interface_locale"] = locale
     try:
         _, requested_pack, topic_id = query.data.split(":", 2)
     except ValueError:
@@ -5061,12 +5088,16 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not indices:
         await query.edit_message_text(
             "В этой теме пока нет слов.",
-            reply_markup=build_topic_keyboard(pack),
+            reply_markup=build_topic_keyboard(pack, locale=locale),
         )
         return
     await query.edit_message_text(
-        format_block_intro(indices, topic),
-        reply_markup=build_study_buttons(indices, context.user_data["block_session"]),
+        format_block_intro(indices, topic, locale=locale),
+        reply_markup=build_study_buttons(
+            indices,
+            context.user_data["block_session"],
+            locale=locale,
+        ),
         parse_mode="Markdown",
     )
     record_product_event(
@@ -5256,12 +5287,14 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
 
     idx = indices[pos]
     mode = ud["block_mode"]
+    locale = learning_card_locale(ud)
     progress_text = f"({pos + 1}/{len(indices)})"
     track_card_shown(ud, idx)
 
     if mode == "quiz":
         await query.edit_message_text(
-            f"{progress_text} {format_word_label(idx)}\n\nВыбери перевод:",
+            f"{progress_text} {format_word_label(idx)}\n\n"
+            f"{translate('block_quiz_prompt', locale)}",
             reply_markup=build_block_quiz_keyboard(ud, idx),
             parse_mode="Markdown"
         )
@@ -5271,14 +5304,14 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
         ud["type_idx"] = idx
         ud["block_typing"] = True
         await query.edit_message_text(
-            f"{progress_text} {format_word_label(idx)}\n\nНапиши перевод:",
+            f"{progress_text} {format_word_label(idx)}\n\n"
+            f"{translate('block_written_prompt', locale)}",
             parse_mode="Markdown"
         )
         await send_pronunciation(query.message.chat_id, idx, context)
 
     elif mode == "flash":
         session_id = ud["block_session"]
-        locale = learning_card_locale(ud)
         btn = InlineKeyboardMarkup(
             [[InlineKeyboardButton(
                 translate("learning_show_meaning", locale),
@@ -5337,12 +5370,14 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
 
     idx = indices[pos]
     mode = ud["block_mode"]
+    locale = learning_card_locale(ud)
     progress_text = f"({pos + 1}/{len(indices)})"
     track_card_shown(ud, idx)
 
     if mode == "quiz":
         await message.reply_text(
-            f"{progress_text} {format_word_label(idx)}\n\nВыбери перевод:",
+            f"{progress_text} {format_word_label(idx)}\n\n"
+            f"{translate('block_quiz_prompt', locale)}",
             reply_markup=build_block_quiz_keyboard(ud, idx),
             parse_mode="Markdown"
         )
@@ -5352,14 +5387,14 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
         ud["type_idx"] = idx
         ud["block_typing"] = True
         await message.reply_text(
-            f"{progress_text} {format_word_label(idx)}\n\nНапиши перевод:",
+            f"{progress_text} {format_word_label(idx)}\n\n"
+            f"{translate('block_written_prompt', locale)}",
             parse_mode="Markdown"
         )
         await send_pronunciation(message.chat_id, idx, context)
 
     elif mode == "flash":
         session_id = ud["block_session"]
-        locale = learning_card_locale(ud)
         btn = InlineKeyboardMarkup(
             [[InlineKeyboardButton(
                 translate("learning_show_meaning", locale),
@@ -5383,11 +5418,18 @@ def format_block_summary(ud) -> str:
     award_xp(XP_SESSION)
     save_progress(PROGRESS)
     xp_earned = correct * XP_CORRECT + len(wrong_indices) * XP_WRONG + XP_SESSION
-    lvl, title, next_xp = get_level(PROGRESS["xp"])
+    locale = learning_card_locale(ud)
+    lvl, _title, next_xp = get_level(PROGRESS["xp"])
+    title = translate(f"stats_level_title_{lvl}", locale)
 
-    text = f"📊 *Результат: {correct}/{total}*"
+    text = translate(
+        "block_summary_result",
+        locale,
+        correct=correct,
+        total=total,
+    )
     if wrong_indices:
-        text += "\n\n❌ Ошибки:"
+        text += f"\n\n{translate('block_summary_errors', locale)}"
         pack = active_content_pack()
         for idx in wrong_indices:
             w = W()[idx]
@@ -5400,14 +5442,32 @@ def format_block_summary(ud) -> str:
                 f"*{escape_markdown(format_target_word(w, pack))}*"
             )
     else:
-        text += "\n\n🎉 Без ошибок!"
+        text += f"\n\n{translate('block_summary_perfect', locale)}"
 
-    text += f"\n\n⭐ +{xp_earned} XP за урок | Всего: {PROGRESS['xp']} XP"
-    text += f"\n📈 Уровень {lvl} · {title}"
+    text += "\n\n" + translate(
+        "block_summary_xp",
+        locale,
+        earned=xp_earned,
+        total=PROGRESS["xp"],
+    )
+    text += "\n" + translate(
+        "block_summary_level",
+        locale,
+        level=lvl,
+        title=title,
+    )
     if next_xp:
-        text += f" ({next_xp - PROGRESS['xp']} XP до следующего)"
+        text += translate(
+            "block_summary_next",
+            locale,
+            remaining=next_xp - PROGRESS["xp"],
+        )
     if PROGRESS["streak"] > 0:
-        text += f"\n🔥 Серия: {PROGRESS['streak']} дн."
+        text += "\n" + translate(
+            "block_summary_streak",
+            locale,
+            streak=PROGRESS["streak"],
+        )
     return text
 
 
@@ -5451,35 +5511,55 @@ def track_lesson_completion(user_data: dict) -> None:
 def build_block_summary_keyboard(user_data: dict) -> InlineKeyboardMarkup:
     rows = []
     session_id = user_data["block_session"]
+    locale = learning_card_locale(user_data)
     if user_data["block_wrong"]:
         rows.append([InlineKeyboardButton(
-            "🔄 Повторить ошибки", callback_data=f"bretry:{session_id}"
+            translate("block_retry_errors", locale),
+            callback_data=f"bretry:{session_id}",
         )])
     if AI_SETTINGS.enabled:
         rows.append([
-            InlineKeyboardButton("✨ AI-репетитор", callback_data=f"bai:{session_id}")
+            InlineKeyboardButton(
+                f"✨ {translate('block_ai_tutor', locale)}",
+                callback_data=f"bai:{session_id}",
+            )
         ])
     if VOICE_SETTINGS.enabled:
         rows.append([
             InlineKeyboardButton(
-                "🗣 Произношение", callback_data=f"bvoice:{session_id}"
+                translate("block_pronunciation", locale),
+                callback_data=f"bvoice:{session_id}",
             ),
             InlineKeyboardButton(
-                "💬 Фразы", callback_data=f"bconversation:{session_id}"
+                translate("block_phrases", locale),
+                callback_data=f"bconversation:{session_id}",
             ),
         ])
     if user_data.get("lesson_kind"):
         rows.append([InlineKeyboardButton(
-            "▶️ Ещё урок", callback_data="start:daily"
+            translate("block_another_lesson", locale),
+            callback_data="start:daily",
         )])
         rows.append([
-            InlineKeyboardButton("📚 Темы", callback_data=f"btopics:{session_id}"),
-            InlineKeyboardButton("⚙️ Настройки", callback_data="start:settings"),
+            InlineKeyboardButton(
+                translate("block_topics", locale),
+                callback_data=f"btopics:{session_id}",
+            ),
+            InlineKeyboardButton(
+                translate("block_settings", locale),
+                callback_data="start:settings",
+            ),
         ])
     else:
         rows.append([
-            InlineKeyboardButton("➡️ Следующий блок", callback_data=f"bnext:{session_id}"),
-            InlineKeyboardButton("📚 Темы", callback_data=f"btopics:{session_id}"),
+            InlineKeyboardButton(
+                translate("block_next", locale),
+                callback_data=f"bnext:{session_id}",
+            ),
+            InlineKeyboardButton(
+                translate("block_topics", locale),
+                callback_data=f"btopics:{session_id}",
+            ),
         ])
     return InlineKeyboardMarkup(rows)
 
@@ -5695,8 +5775,16 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ud, indices, pack.target_language, topic, pack.pack_id
     )
     await query.edit_message_text(
-        format_block_intro(indices, topic),
-        reply_markup=build_study_buttons(indices, ud["block_session"]),
+        format_block_intro(
+            indices,
+            topic,
+            locale=learning_card_locale(ud),
+        ),
+        reply_markup=build_study_buttons(
+            indices,
+            ud["block_session"],
+            locale=learning_card_locale(ud),
+        ),
         parse_mode="Markdown",
     )
     record_product_event(
