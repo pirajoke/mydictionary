@@ -42,10 +42,13 @@ class CuratedLanguagePairTest(unittest.TestCase):
             )
 
             details = bot.format_word_details(idx)
+            study_list = bot.format_study_list([idx])
 
             self.assertEqual(details.splitlines()[0], "🇫🇷 *cuisine*")
             self.assertNotIn("🇷🇺", details)
             self.assertNotIn("кухня", details)
+            self.assertIn("cuisine", study_list)
+            self.assertNotIn("кухня", study_list)
         finally:
             bot._ACTIVE_RUNTIME.reset(token)
 
@@ -133,6 +136,48 @@ class LanguagePairOnboardingTest(unittest.IsolatedAsyncioTestCase):
             ),
         )
         return update, query
+
+    def test_legacy_french_profile_with_japanese_pack_keeps_russian_meaning(self):
+        user = SimpleNamespace(
+            id=9703,
+            username=None,
+            first_name="Marc",
+            last_name=None,
+            language_code="fr-FR",
+        )
+        self.store.ensure_user(user)
+        self.store.activate_pack(
+            user.id,
+            pack_id="ja-basics-100",
+            language="ja",
+            source="legacy_profile",
+        )
+        self.store.update_product_profile(
+            user.id,
+            native_language="fr",
+            learning_goal="personal",
+            daily_word_goal=5,
+            complete_onboarding=True,
+        )
+
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "LEGACY_USER_ID", None),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+        ):
+            runtime = bot._runtime_for_user(user)
+            token = bot._ACTIVE_RUNTIME.set(runtime)
+            try:
+                idx = next(
+                    index for index, word in enumerate(bot.W())
+                    if target_text(word) == "私"
+                )
+                details = bot.format_word_details(idx)
+            finally:
+                bot._ACTIVE_RUNTIME.reset(token)
+
+        self.assertEqual(details.splitlines()[0], "🇷🇺 *я*")
+        self.assertNotIn("—", details)
 
     async def test_ac_lang_02_begin_asks_meaning_language_without_persisting_it(self):
         update, query = self._update()
@@ -223,6 +268,10 @@ class LanguagePairOnboardingTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(profile["active_pack_id"], "en-basics-100")
         self.assertEqual(profile["daily_word_goal"], 5)
         self.assertIsNotNone(profile["onboarding_completed_at"])
+        pack = bot.CATALOG.require("en-basics-100")
+        completion_text = query.edit_message_text.await_args.args[0]
+        self.assertIn(pack.label, completion_text)
+        self.assertNotIn(pack.title, completion_text)
 
 
 if __name__ == "__main__":

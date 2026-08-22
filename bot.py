@@ -530,6 +530,29 @@ def save_answer_state(index: int) -> None:
     save_progress(PROGRESS)
 
 
+def resolve_runtime_meaning_language(
+    product: Mapping[str, Any],
+    progress: Mapping[str, Any],
+) -> str:
+    """Keep completed legacy profiles on a safe, available meaning language."""
+    requested = str(product.get("native_language") or "ru").strip().lower()
+    if product.get("onboarding_completed_at") is None or requested == "ru":
+        return requested
+
+    pack_id = product.get("active_pack_id") or progress.get("active_pack_id")
+    active_pack = CATALOG.get(str(pack_id or ""))
+    compatible_ids = {
+        pack.pack_id
+        for pack in CATALOG.compatible_packs(
+            requested,
+            str(product.get("role") or "learner"),
+        )
+    }
+    if active_pack is not None and active_pack.pack_id in compatible_ids:
+        return requested
+    return "ru"
+
+
 def _runtime_for_user(telegram_user) -> LearnerRuntime:
     store = get_store()
     user_id = int(telegram_user.id)
@@ -568,11 +591,12 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
             complete_onboarding=True,
         )
         product = store.product_profile(user_id)
+    progress = store.load_profile(user_id, PROGRESS_DEFAULTS)
     return LearnerRuntime(
         user_id=user_id,
         store=store,
-        progress=store.load_profile(user_id, PROGRESS_DEFAULTS),
-        meaning_language=product["native_language"] or "ru",
+        progress=progress,
+        meaning_language=resolve_runtime_meaning_language(product, progress),
         role=product["role"],
         access_status=product["access_status"],
         onboarding_completed=product["onboarding_completed_at"] is not None,
@@ -1419,7 +1443,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
         )
         await query.edit_message_text(
-            translate("onboarding_complete", locale, title=pack.title)
+            translate("onboarding_complete", locale, title=pack.label)
         )
         await send_start_message(
             query.message,
