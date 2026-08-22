@@ -1,8 +1,9 @@
-# Local release tooling
+# Release and recovery tooling
 
-The files in this directory are the version-controlled source for the Mac mini
-deployment wrappers. Production copies are installed only during a separately
-approved production change. Render is not part of this deployment model.
+The files in this directory are version-controlled release, backup, monitoring
+and billing primitives. The legacy autodeploy/admin launchers were built for
+Mac mini launchd and are not the current OVH Docker orchestrator. Production
+copies or wrappers are installed only during a separately approved change.
 
 ## Components
 
@@ -206,8 +207,9 @@ python ops/mydictionary_telegram_security.py \
   --sanitize-to /absolute/private/bot.sanitized.log --execute
 ```
 
-See [the production runbook](../docs/runbooks/mac-mini-deployment.md) before
-installing, enabling, clearing quarantine, or recovering a failed release.
+See [the OVH production runbook](../docs/runbooks/ovh-deployment.md) for current
+releases. Use the historical Mac mini runbook only when examining old launchd
+recovery evidence.
 
 ## Billing operations
 

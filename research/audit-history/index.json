@@ -49,6 +49,18 @@
       "source": "research/product-data-audit.html",
       "repo_commit": "9e2370fad4ff40ca49e4f567d7b3fb3f7a62b4cb",
       "repo_dirty": true
+    },
+    {
+      "id": "2026-08-22T14-44-22Z--6980587815d9",
+      "captured_at": "2026-08-22T14:44:22Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — функции готовы, доказательства релиза ещё собираются",
+      "snapshot": "2026-08-22T14-44-22Z--mydictionary--6980587815d9.html",
+      "sha256": "6980587815d932f2cef61b02b19c54fdd2941b35acce57a1511d3be8a55b8e54",
+      "bytes": 53620,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "32ede87286ca7581743d14abaceb7f4204bb2ad4",
+      "repo_dirty": true
     }
   ]
 }

@@ -4,6 +4,7 @@ Append-only снимки канонического `research/product-data-audit
 
 | Дата UTC | Заголовок | SHA-256 | Git commit | Снимок |
 |---|---|---|---|---|
+| 2026-08-22T14:44:22Z | MY DICTIONARY — функции готовы, доказательства релиза ещё собираются | `6980587815d9` | `32ede87286ca +dirty` | [2026-08-22T14-44-22Z--mydictionary--6980587815d9.html](2026-08-22T14-44-22Z--mydictionary--6980587815d9.html) |
 | 2026-08-22T13:21:57Z | MY DICTIONARY — продуктовый аудит после переноса на OVH | `88a8e555460d` | `9e2370fad4ff +dirty` | [2026-08-22T13-21-57Z--mydictionary--88a8e555460d.html](2026-08-22T13-21-57Z--mydictionary--88a8e555460d.html) |
 | 2026-08-22T13:17:40Z | MY DICTIONARY — продуктовый аудит после переноса на OVH | `445874672aff` | `c811cd599043 +dirty` | [2026-08-22T13-17-40Z--mydictionary--445874672aff.html](2026-08-22T13-17-40Z--mydictionary--445874672aff.html) |
 | 2026-08-22T12:50:10Z | MY DICTIONARY — продуктовый аудит после переноса на OVH | `505de4b02e13` | `6cce028a2f7a +dirty` | [2026-08-22T12-50-10Z--mydictionary--505de4b02e13.html](2026-08-22T12-50-10Z--mydictionary--505de4b02e13.html) |

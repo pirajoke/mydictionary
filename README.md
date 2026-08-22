@@ -10,17 +10,18 @@ console.
   Russian, and Spanish, plus the existing Vietnamese pack.
 - Topic-based 10-word learning blocks, flashcards, written and multiple-choice
   tests, XP, streaks, and scheduled review.
-- Russian meanings, target-language spelling, Latin transcription, and
-  text-to-speech pronunciation.
+- Curated meaning languages selected during onboarding, target-language
+  spelling, Latin transcription, and text-to-speech pronunciation. Legacy
+  packs without a curated pair keep an explicit Russian fallback.
 - PostgreSQL multi-user storage with Alembic migrations and an explicit
   local-only SQLite mode.
 - A server-rendered admin console for learner access, pilot D1/D7 retention,
   privacy-safe product analytics, credit operations, and audit history.
-- Optional AI tutor, voice practice, and Telegram Stars billing. All three are
-  fail-closed and remain off until their separate rollout gates are approved.
+- Optional metered AI tutor, voice practice, and Telegram Stars billing. Each
+  has an independent fail-closed rollout gate.
 - Verified local PostgreSQL backups, encrypted off-site replication tooling,
-  retention controls, health monitoring, and a migration-aware Mac mini
-  release process.
+  retention controls, health monitoring, and a migration-aware OVH release
+  contract.
 
 ## Local development
 
@@ -74,19 +75,19 @@ migrations, isolated persistence, and concurrent credit reservations.
 | `mydictionary/` | Storage, catalog, learning, billing, privacy, AI, voice, and admin services |
 | `migrations/` | Alembic database migrations |
 | `content/`, `words*.json` | Versioned vocabulary sources and generated packs |
-| `ops/` | Mac mini deploy, backup, monitoring, retention, and billing wrappers |
+| `ops/` | Deployment, backup, monitoring, retention, and billing wrappers |
 | `tests/` | Product, storage, operations, safety, and provider-contract tests |
 | `docs/product-foundation.md` | Product principles and rollout boundary |
 | `docs/pilot-operations.md` | Controlled cohort and D1/D7 measurement |
 | `docs/launch-readiness.md` | Paid and voice release gates |
 | `docs/mirror-control-plane-v1.md` | Mirror modes, quality analytics, and voice translation gates |
-| `docs/runbooks/mac-mini-deployment.md` | Production deployment and recovery runbook |
+| `docs/runbooks/ovh-deployment.md` | Canonical production deployment and rollback runbook |
+| `docs/runbooks/mac-mini-deployment.md` | Historical Mac mini release contract |
 | `docs/runbooks/ovh-cloudflare-tunnel.md` | Owner-gated OVH public-route recovery with token-file handling |
 
 Production currently runs in owner-controlled Docker services on OVH. The Mac
-mini runbook remains the historical release/recovery contract, while the OVH
-public route has its own gated recovery runbook. `render.yaml` is an obsolete
-artifact and is not a supported or deployable production configuration.
+mini and Render artifacts are historical and unsupported. The OVH application
+release and Cloudflare route deliberately use separate runbooks and gates.
 
 ## Security and privacy
 

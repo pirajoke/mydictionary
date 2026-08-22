@@ -1,4 +1,9 @@
-# Mac mini deployment runbook
+# Historical Mac mini deployment runbook
+
+> **Not current production.** MY DICTIONARY now runs on OVH. Use
+> [`ovh-deployment.md`](ovh-deployment.md) for current releases. This file is
+> retained only for historical recovery evidence and must not be used to infer
+> live state.
 
 This runbook covers MY DICTIONARY production releases. It does not authorize a
 merge, deploy, service restart, database restore, access-mode change, AI call,
