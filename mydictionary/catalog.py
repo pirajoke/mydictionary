@@ -117,6 +117,12 @@ class ContentCatalog:
         self.root = root
         self._by_id = {pack.pack_id: pack for pack in packs}
         self._entries = dict(entries)
+        self._entries_by_id = {
+            pack_id: {
+                str(entry.get("entry_id") or ""): entry for entry in pack_entries
+            }
+            for pack_id, pack_entries in self._entries.items()
+        }
 
     def get(self, pack_id: str) -> ContentPack | None:
         return self._by_id.get(pack_id)
@@ -142,6 +148,85 @@ class ContentCatalog:
 
     def words(self, pack: ContentPack) -> list[dict[str, Any]]:
         return [dict(entry) for entry in self._entries[pack.pack_id]]
+
+    def aligned_pack_for_language(
+        self, language: str, role: str
+    ) -> ContentPack | None:
+        """Return the published v2 pack that can act as an aligned dictionary."""
+        return next(
+            (
+                pack
+                for pack in self.visible_packs(role)
+                if pack.target_language == language and pack.content_schema == 2
+            ),
+            None,
+        )
+
+    def compatible_packs(
+        self, meaning_language: str, role: str
+    ) -> tuple[ContentPack, ...]:
+        """Return target packs with complete curated meanings in one language."""
+        language = str(meaning_language or "").strip().lower()
+        visible = self.visible_packs(role)
+        if language == "ru":
+            return tuple(
+                pack
+                for pack in visible
+                if pack.meaning_language == "ru" and pack.target_language != "ru"
+            )
+
+        source = self.aligned_pack_for_language(language, role)
+        if source is None:
+            return ()
+        source_ids = set(self._entries_by_id[source.pack_id])
+        return tuple(
+            pack
+            for pack in visible
+            if pack.content_schema == 2
+            and pack.target_language != language
+            and set(self._entries_by_id[pack.pack_id]).issubset(source_ids)
+        )
+
+    def meaning_languages(self, role: str) -> tuple[str, ...]:
+        """Return languages that support at least one curated target pair."""
+        candidates = ["ru"]
+        for pack in self.visible_packs(role):
+            language = pack.target_language
+            if (
+                pack.content_schema == 2
+                and language not in candidates
+                and self.compatible_packs(language, role)
+            ):
+                candidates.append(language)
+        return tuple(candidates)
+
+    def meaning_entry(
+        self,
+        word: Mapping[str, Any],
+        *,
+        meaning_language: str,
+        target_pack: ContentPack,
+        role: str,
+    ) -> Mapping[str, Any] | None:
+        """Resolve an aligned meaning entry without runtime translation."""
+        language = str(meaning_language or "").strip().lower()
+        if language == "ru":
+            return word
+        if target_pack not in self.compatible_packs(language, role):
+            return None
+        source = self.aligned_pack_for_language(language, role)
+        if source is None:
+            return None
+        entry_id = str(word.get("entry_id") or "")
+        return self._entries_by_id[source.pack_id].get(entry_id)
+
+    def flag_for_language(self, language: str, role: str) -> str | None:
+        pack = self.aligned_pack_for_language(language, role)
+        if pack is not None:
+            return pack.flag
+        if language == "ru":
+            return "🇷🇺"
+        return None
 
 
 def _has_unsafe_text(value: str) -> bool:
