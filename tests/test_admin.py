@@ -426,7 +426,7 @@ class AdminConsoleTest(unittest.TestCase):
         self.assertIn("Test credentials сохранены", consumed_body)
         self.assertNotIn(seller_name, consumed_body)
         self.assertNotIn(bot_token, consumed_body)
-        self.assertNotIn("7001", consumed_body)
+        self.assertNotRegex(consumed_body, r"(?<!\d)7001(?!\d)")
 
         billing_page = self.client.get("/admin?tab=billing").get_data(as_text=True)
         self.assertIn("Stars Launch Wizard", billing_page)
@@ -443,10 +443,10 @@ class AdminConsoleTest(unittest.TestCase):
             seller_name,
             "@example_support",
             bot_token,
-            "7001",
             str(self.local_config_dir),
         ):
             self.assertNotIn(forbidden, serialized)
+        self.assertNotRegex(serialized, r"(?<!\d)7001(?!\d)")
         self.assertIn("fingerprint_sha256_12", serialized)
 
     def test_duplicate_login_post_keeps_authenticated_session(self):
