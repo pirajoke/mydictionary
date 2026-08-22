@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "project": "mydictionary",
+  "entries": [
+    {
+      "id": "2026-08-22T12-42-25Z--163fe838d8e8",
+      "captured_at": "2026-08-22T12:42:25Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — продуктовый аудит Telegram-бота",
+      "snapshot": "2026-08-22T12-42-25Z--mydictionary--163fe838d8e8.html",
+      "sha256": "163fe838d8e8b3ad1b7caa4a5d2fe02b0121944afef9f98604f3d2171239d143",
+      "bytes": 64839,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "a034f5b82da2a9ae5271dd1ace1a83bcbf580d18",
+      "repo_dirty": false
+    },
+    {
+      "id": "2026-08-22T12-50-10Z--505de4b02e13",
+      "captured_at": "2026-08-22T12:50:10Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — продуктовый аудит после переноса на OVH",
+      "snapshot": "2026-08-22T12-50-10Z--mydictionary--505de4b02e13.html",
+      "sha256": "505de4b02e13d5ccec42c1ba106619c140ef55fb2a11af23b6d8ad4bd1c0489c",
+      "bytes": 53108,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "6cce028a2f7a3d21712973442d570aa91536ce64",
+      "repo_dirty": true
+    },
+    {
+      "id": "2026-08-22T13-17-40Z--445874672aff",
+      "captured_at": "2026-08-22T13:17:40Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — продуктовый аудит после переноса на OVH",
+      "snapshot": "2026-08-22T13-17-40Z--mydictionary--445874672aff.html",
+      "sha256": "445874672afff3e04ec38471d1dc75ad8a2cfad6a41a82225ae05bddc5e1f881",
+      "bytes": 54510,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "c811cd599043be145259d68ba78837125f7440f4",
+      "repo_dirty": true
+    },
+    {
+      "id": "2026-08-22T13-21-57Z--88a8e555460d",
+      "captured_at": "2026-08-22T13:21:57Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — продуктовый аудит после переноса на OVH",
+      "snapshot": "2026-08-22T13-21-57Z--mydictionary--88a8e555460d.html",
+      "sha256": "88a8e555460dde4bc3bab695f28f43331c30dcc7e65ab9012e63866bbc0d9d8e",
+      "bytes": 54510,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "9e2370fad4ff40ca49e4f567d7b3fb3f7a62b4cb",
+      "repo_dirty": true
+    }
+  ]
+}
