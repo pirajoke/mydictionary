@@ -730,23 +730,32 @@ def card_progress_text(user_data: dict) -> str:
     return f"{'▰' * filled}{'▱' * (5 - filled)}"
 
 
+def learning_card_locale(user_data: Mapping[str, Any]) -> str:
+    """Return the remembered UI locale, preserving Russian legacy calls."""
+    return normalize_locale(user_data.get("interface_locale"), fallback="ru")
+
+
 def format_learning_card_front(user_data: dict, idx: int) -> str:
     total = len(user_data.get("block_indices", []))
     position = int(user_data.get("block_pos", 0)) + 1
+    locale = learning_card_locale(user_data)
     return (
         f"{card_topic_visual(idx)}\n\n"
-        f"*Карточка {position} из {total}*  ·  {card_progress_text(user_data)}\n\n"
+        f"*{translate('learning_card_position', locale, position=position, total=total)}*"
+        f"  ·  {card_progress_text(user_data)}\n\n"
         f"{format_word_label(idx)}\n\n"
-        "Сначала вспомни значение."
+        f"{translate('learning_card_hint', locale)}"
     )
 
 
 def format_learning_card_back(user_data: dict, idx: int) -> str:
     total = len(user_data.get("block_indices", []))
     position = int(user_data.get("block_pos", 0)) + 1
+    locale = learning_card_locale(user_data)
     return (
         f"{card_topic_visual(idx)}\n\n"
-        f"*Карточка {position} из {total}*  ·  {card_progress_text(user_data)}\n\n"
+        f"*{translate('learning_card_position', locale, position=position, total=total)}*"
+        f"  ·  {card_progress_text(user_data)}\n\n"
         f"{format_word_details(idx)}{get_example(idx)}"
     )
 
@@ -1621,9 +1630,11 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     action = query.data.split(":", 1)[1]
     chat_id = query.message.chat_id
     if action in {"daily"}:
+        context.user_data["interface_locale"] = interface_locale_for_update(update)
         await start_home_lesson(query, context, lesson_kind="daily")
         return
     if action == "review":
+        context.user_data["interface_locale"] = interface_locale_for_update(update)
         await start_home_lesson(query, context, lesson_kind="review")
         return
     if action in {"topics", "learn"}:
@@ -5036,6 +5047,7 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if not await validate_block_callback(query, ud, session_id):
         return
+    ud["interface_locale"] = interface_locale_for_update(update)
     activate_block_language(ud)
     start_block_attempt(ud, mode)
     record_product_event(
@@ -5085,9 +5097,10 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
 
     elif mode == "flash":
         session_id = ud["block_session"]
+        locale = learning_card_locale(ud)
         btn = InlineKeyboardMarkup(
             [[InlineKeyboardButton(
-                "👁 Показать значение",
+                translate("learning_show_meaning", locale),
                 callback_data=f"bflash_show:{session_id}:{idx}",
             )]]
         )
@@ -5165,9 +5178,10 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
 
     elif mode == "flash":
         session_id = ud["block_session"]
+        locale = learning_card_locale(ud)
         btn = InlineKeyboardMarkup(
             [[InlineKeyboardButton(
-                "👁 Показать значение",
+                translate("learning_show_meaning", locale),
                 callback_data=f"bflash_show:{session_id}:{idx}",
             )]]
         )
@@ -5360,6 +5374,7 @@ async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     user_data = context.user_data
     activate_block_language(user_data)
+    locale = learning_card_locale(user_data)
     record_product_event(
         "card_revealed",
         properties=card_event_properties(user_data, idx),
@@ -5368,16 +5383,19 @@ async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
     buttons = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🔊 Слушать ещё", callback_data=f"bplay:{session_id}:{idx}"
+                translate("learning_listen_again", locale),
+                callback_data=f"bplay:{session_id}:{idx}",
             ),
             forvo_button(idx),
         ],
         [
             InlineKeyboardButton(
-                "😵 Не знаю", callback_data=f"bflash_didnt:{session_id}:{idx}"
+                translate("learning_dont_know", locale),
+                callback_data=f"bflash_didnt:{session_id}:{idx}",
             ),
             InlineKeyboardButton(
-                "✅ Знаю", callback_data=f"bflash_knew:{session_id}:{idx}"
+                translate("learning_know", locale),
+                callback_data=f"bflash_knew:{session_id}:{idx}",
             ),
         ]
     ])
