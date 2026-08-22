@@ -78,7 +78,12 @@ from mydictionary.content import (
 )
 from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
-from mydictionary.localization import language_name, normalize_locale, translate
+from mydictionary.localization import (
+    INTERFACE_LOCALES,
+    language_name,
+    normalize_locale,
+    translate,
+)
 from mydictionary.mirror_assistant import (
     MIRROR_ANSWER_DEPTHS,
     MIRROR_ADMIN_DEFAULTS,
@@ -679,13 +684,27 @@ def award_xp(amount: int) -> int:
     PROGRESS["level"] = lvl
     return PROGRESS["xp"]
 
-def format_xp_line(xp_earned: int, streak_bonus: int = 0) -> str:
+def format_xp_line(
+    xp_earned: int,
+    streak_bonus: int = 0,
+    *,
+    locale: str = "ru",
+) -> str:
     """Format XP feedback line."""
     parts = [f"+{xp_earned} XP"]
     if streak_bonus > 0:
-        parts.append(f"+{streak_bonus} за серию")
-    lvl, title, _ = get_level(PROGRESS["xp"])
-    parts.append(f"[Уровень {lvl} · {title}]")
+        parts.append(
+            translate("legacy_streak_bonus", locale, bonus=streak_bonus)
+        )
+    lvl, _title, _ = get_level(PROGRESS["xp"])
+    parts.append(
+        translate(
+            "legacy_level",
+            locale,
+            level=lvl,
+            title=translate(f"stats_level_title_{lvl}", locale),
+        )
+    )
     return " | ".join(parts)
 
 def get_example(idx: int) -> str:
@@ -1119,14 +1138,10 @@ def auth(func):
             telegram_user = update.poll_answer.user
         if telegram_user is None:
             return
-        interface_locale = normalize_locale(
-            getattr(telegram_user, "language_code", None),
-            fallback=(
-                "ru"
-                if getattr(telegram_user, "language_code", None) is None
-                else "en"
-            ),
-        )
+        interface_locale = interface_locale_for_update(update)
+        user_data = getattr(context, "user_data", None)
+        if isinstance(user_data, MutableMapping):
+            user_data["interface_locale"] = interface_locale
         user_id = int(telegram_user.id)
         configured = user_id in ALLOWED_USER_IDS or user_id in ADMIN_USER_IDS
         store = get_store()
@@ -1249,8 +1264,19 @@ def start_source(args) -> str:
 
 
 def interface_locale_for_update(update: Update) -> str:
-    raw = getattr(getattr(update, "effective_user", None), "language_code", None)
-    return normalize_locale(raw, fallback="ru" if raw is None else "en")
+    telegram_user = getattr(update, "effective_user", None)
+    if telegram_user is None:
+        pre_checkout = getattr(update, "pre_checkout_query", None)
+        telegram_user = getattr(pre_checkout, "from_user", None)
+    if telegram_user is None:
+        poll_answer = getattr(update, "poll_answer", None)
+        telegram_user = getattr(poll_answer, "user", None)
+    # Legacy unit/direct calls may provide a minimal user object without the
+    # Telegram language_code field. Real Telegram users always expose it; an
+    # explicit missing/empty value follows the English EC-1 fallback.
+    if telegram_user is None or not hasattr(telegram_user, "language_code"):
+        return "ru"
+    return normalize_locale(getattr(telegram_user, "language_code", None))
 
 
 def onboarding_intro_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
@@ -1608,12 +1634,15 @@ async def send_start_message(
 
 @auth
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(get_bot_profile()["bot_help_text"])
+    await update.message.reply_text(
+        translate("bot_help", interface_locale_for_update(update))
+    )
 
 
 @auth
 async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     store = get_store()
+    locale = interface_locale_for_update(update)
     voice_consent = store.has_consent(
         int(update.effective_user.id),
         consent_type="voice_processing",
@@ -1628,38 +1657,40 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     )
     if MIRROR_MEMORY_SETTINGS.enabled:
-        mirror_memory_text = (
-            "Контекст Mirror: до 20 последних реплик, "
-            f"хранение {MIRROR_MEMORY_SETTINGS.retention_days} дней."
+        mirror_memory_text = translate(
+            "privacy_mirror_enabled",
+            locale,
+            days=MIRROR_MEMORY_SETTINGS.retention_days,
         )
     else:
-        mirror_memory_text = "Долговременный контекст Mirror: выключен."
+        mirror_memory_text = translate("privacy_mirror_disabled", locale)
     await update.effective_message.reply_text(
-        "Приватность MY DICTIONARY\n\n"
-        "Учебная история, события продукта и AI-запросы удаляются по "
-        "ограниченным срокам хранения. Ты можешь стереть свои учебные данные "
-        "сразу. Платёжные и аудиторские записи сохраняются для возвратов, "
-        "сверки и защиты от мошенничества. После удаления доступ будет заблокирован.\n\n"
-        + (
-            "AI-согласие: принято."
-            if ai_consent
-            else "AI-согласие: не выдано."
-        )
-        + f"\n{mirror_memory_text}",
+        translate(
+            "privacy_overview",
+            locale,
+            ai_consent=translate(
+                "privacy_ai_granted" if ai_consent else "privacy_ai_missing",
+                locale,
+            ),
+            mirror_memory=mirror_memory_text,
+        ),
         reply_markup=InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
-                        "Удалить мои учебные данные",
+                        translate("privacy_delete_learning", locale),
                         callback_data="privacy:request",
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        (
-                            "Отозвать согласие на обработку голоса"
-                            if voice_consent
-                            else "Согласие на обработку голоса не выдано"
+                        translate(
+                            (
+                                "privacy_voice_revoke"
+                                if voice_consent
+                                else "privacy_voice_missing"
+                            ),
+                            locale,
                         ),
                         callback_data=(
                             "privacy:voice_revoke"
@@ -1670,10 +1701,13 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ],
                 [
                     InlineKeyboardButton(
-                        (
-                            "AI-согласие принято — отозвать"
-                            if ai_consent
-                            else "AI-согласие не выдано"
+                        translate(
+                            (
+                                "privacy_ai_revoke"
+                                if ai_consent
+                                else "privacy_ai_missing_action"
+                            ),
+                            locale,
                         ),
                         callback_data=(
                             "privacy:ai_revoke"
@@ -1691,9 +1725,10 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     action = query.data.split(":", 1)[1]
+    locale = interface_locale_for_update(update)
     if action == "voice_status":
         await query.answer(
-            "Согласие можно выдать при запуске /voice.", show_alert=True
+            translate("privacy_voice_status", locale), show_alert=True
         )
         return
     if action == "voice_revoke":
@@ -1707,15 +1742,14 @@ async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "voice_consent_revoked",
             properties={"consent_type": "voice_processing"},
         )
-        await query.answer("Согласие отозвано.")
+        await query.answer(translate("privacy_consent_revoked", locale))
         await query.edit_message_text(
-            "Согласие на обработку голоса отозвано. Активная голосовая "
-            f"сессия остановлена. Изменено записей: {changed}."
+            translate("privacy_voice_revoked", locale, changed=changed)
         )
         return
     if action == "ai_status":
         await query.answer(
-            "Согласие можно выдать при запуске /ai.", show_alert=True
+            translate("privacy_ai_status", locale), show_alert=True
         )
         return
     if action == "ai_revoke":
@@ -1727,34 +1761,37 @@ async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "ai_consent_revoked",
             properties={"consent_type": "ai_processing"},
         )
-        await query.answer("Согласие отозвано.")
+        await query.answer(translate("privacy_consent_revoked", locale))
         await query.edit_message_text(
-            "Согласие на обработку AI отозвано. Новые AI-запросы не будут "
-            f"отправлены до повторного согласия. Изменено записей: {changed}."
+            translate("privacy_ai_revoked", locale, changed=changed)
         )
         return
     if action == "request":
         await query.answer()
         await query.edit_message_text(
-            "Удалить учебный профиль, прогресс, аналитику и историю AI? "
-            "Восстановить эти данные будет нельзя.",
+            translate("privacy_delete_prompt", locale),
             reply_markup=InlineKeyboardMarkup(
                 [[
                     InlineKeyboardButton(
-                        "Подтвердить удаление",
+                        translate("privacy_confirm_delete", locale),
                         callback_data="privacy:confirm",
                     ),
-                    InlineKeyboardButton("Отмена", callback_data="privacy:cancel"),
+                    InlineKeyboardButton(
+                        translate("privacy_cancel", locale),
+                        callback_data="privacy:cancel",
+                    ),
                 ]]
             ),
         )
         return
     if action == "cancel":
-        await query.answer("Удаление отменено.")
-        await query.edit_message_text("Учебные данные не изменены.")
+        await query.answer(translate("privacy_deletion_cancelled", locale))
+        await query.edit_message_text(translate("privacy_data_unchanged", locale))
         return
     if action != "confirm":
-        await query.answer("Неизвестное действие.", show_alert=True)
+        await query.answer(
+            translate("privacy_unknown_action", locale), show_alert=True
+        )
         return
     runtime = _ACTIVE_RUNTIME.get()
     result = erase_user_learning_data(
@@ -1763,10 +1800,13 @@ async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         actor="telegram-self-service",
     )
     context.user_data.clear()
-    await query.answer("Данные удалены.")
+    await query.answer(translate("privacy_data_deleted", locale))
     await query.edit_message_text(
-        "Учебные данные удалены. Сохранён только обязательный платёжный и "
-        f"аудиторский след. Номер операции: {result.user_reference}."
+        translate(
+            "privacy_deletion_complete",
+            locale,
+            reference=result.user_reference,
+        )
     )
 
 
@@ -1827,15 +1867,12 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if action == "about":
         await context.bot.send_message(
             chat_id=chat_id,
-            text=(
-                "Как проходит обучение\n\n"
-                "1. Нажми «Урок на сегодня».\n"
-                "2. Вспомни значение слова и открой карточку.\n"
-                "3. Отметь «Знаю» или «Не знаю».\n"
-                "4. Бот сохранит ответ и сам назначит повторение."
-            ),
+            text=translate("start_about_text", locale),
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("▶️ Начать урок", callback_data="start:daily")]]
+                [[InlineKeyboardButton(
+                    translate("start_about_button", locale),
+                    callback_data="start:daily",
+                )]]
             ),
         )
 
@@ -1848,7 +1885,7 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         _, setting, value = query.data.split(":")
     except ValueError:
-        await query.answer("Настройка устарела.", show_alert=True)
+        await query.answer(translate("settings_stale", locale), show_alert=True)
         return
     runtime = _ACTIVE_RUNTIME.get()
     try:
@@ -1861,7 +1898,7 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
     mirror_policy = AdminStore(runtime.store).get_mirror_control_plane()
     if setting == "pace" and value in {"5", "10", "20"}:
-        await query.answer("Ритм сохранён")
+        await query.answer(translate("settings_pace_saved", locale))
         product = runtime.store.update_product_profile(
             runtime.user_id, daily_word_goal=int(value)
         )
@@ -1878,20 +1915,41 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             runtime.user_id, **preferences
         )
         saved = saved_preferences["mode"]
-        await query.answer(f"Стиль: {MIRROR_STYLE_LABELS[saved]}")
+        await query.answer(
+            translate(
+                "settings_style_saved",
+                locale,
+                style=translate(f"mirror_style_{saved}", locale),
+            )
+        )
         product = runtime.store.product_profile(runtime.user_id)
     elif setting == "mirror-depth" and value in MIRROR_ANSWER_DEPTHS:
         preferences["depth"] = value
         runtime.store.set_mirror_preferences(runtime.user_id, **preferences)
-        await query.answer(f"Глубина: {value}")
+        await query.answer(
+            translate(
+                "settings_depth_saved",
+                locale,
+                depth=translate(f"mirror_depth_{value}", locale),
+            )
+        )
         product = runtime.store.product_profile(runtime.user_id)
     elif setting == "mirror-level" and value in MIRROR_LEARNER_LEVELS:
         preferences["level"] = value
         runtime.store.set_mirror_preferences(runtime.user_id, **preferences)
-        await query.answer(f"Уровень: {value.upper()}")
+        level = (
+            translate("mirror_level_adaptive", locale)
+            if value == "adaptive"
+            else value.upper()
+        )
+        await query.answer(
+            translate("settings_level_saved", locale, level=level)
+        )
         product = runtime.store.product_profile(runtime.user_id)
     else:
-        await query.answer("Настройка недоступна.", show_alert=True)
+        await query.answer(
+            translate("settings_unavailable", locale), show_alert=True
+        )
         return
     current = active_content_pack()
     product.update(runtime.store.get_mirror_preferences(runtime.user_id))
@@ -2086,28 +2144,41 @@ def voice_prompt_text(
     position: int,
     total: int,
     mode: str,
+    locale: str = "ru",
 ) -> str:
     target = _directional_text(word.target, pack.direction)
     reading = f" {word.transcription}" if word.transcription else ""
-    title = "Фразы" if mode == "conversation" else "Произношение"
+    title = translate(
+        (
+            "voice_prompt_conversation"
+            if mode == "conversation"
+            else "voice_prompt_pronunciation"
+        ),
+        locale,
+    )
     focus = ""
     if mode == "conversation" and word.focus_target:
-        focus = (
-            f"\nКлючевое слово: {word.focus_target}"
-            f" {word.focus_transcription or ''}"
+        focus = "\n" + translate(
+            "voice_prompt_focus",
+            locale,
+            target=word.focus_target,
+            transcription=word.focus_transcription or "",
         ).rstrip()
-    instruction = (
-        "Скажи всю фразу одним голосовым."
-        if mode == "conversation"
-        else "Скажи только это слово одним голосовым."
+    instruction = translate(
+        (
+            "voice_prompt_conversation_instruction"
+            if mode == "conversation"
+            else "voice_prompt_pronunciation_instruction"
+        ),
+        locale,
     )
     return (
         f"🎤 {title} · {position}/{total}\n\n"
         f"🇷🇺 {word.meaning_ru}\n"
         f"{pack.flag} {target}{reading}{focus}\n\n"
         f"{instruction}\n"
-        "Я распознаю речь, подскажу исправление и сам дам следующее задание.\n"
-        "Проверяется распознанный текст, а не акцент."
+        f"{translate('voice_prompt_feedback', locale)}\n"
+        f"{translate('voice_prompt_evaluation', locale)}"
     )
 
 
@@ -2125,7 +2196,12 @@ async def send_voice_prompt(
     await context.bot.send_message(
         chat_id=chat_id,
         text=voice_prompt_text(
-            pack, word, position=position, total=total, mode=mode
+            pack,
+            word,
+            position=position,
+            total=total,
+            mode=mode,
+            locale=learning_card_locale(getattr(context, "user_data", {})),
         ),
     )
     await send_voice_reference(
@@ -2168,16 +2244,16 @@ async def send_voice_reference(
         )
 
 
-def voice_feedback_text(result) -> str:
+def voice_feedback_text(result, *, locale: str = "ru") -> str:
     labels = {
-        "exact": "✅ Верно. Перехожу к следующему слову.",
-        "close": "🟡 Близко. Сверь написание выше; продолжаем.",
-        "retry": "🔁 Попробуй это же слово ещё раз.",
+        "exact": translate("voice_feedback_exact", locale),
+        "close": translate("voice_feedback_close", locale),
+        "retry": translate("voice_feedback_retry", locale),
     }
     feedback = result.feedback
     lines = [
-        f"Распознано: {feedback.transcript}",
-        f"Значение: {feedback.expected.meaning_ru}",
+        translate("voice_feedback_recognized", locale, value=feedback.transcript),
+        translate("voice_feedback_meaning", locale, value=feedback.expected.meaning_ru),
     ]
     if (
         feedback.expected.focus_target
@@ -2185,16 +2261,24 @@ def voice_feedback_text(result) -> str:
     ):
         lines.extend(
             [
-                f"Фраза: {feedback.expected.target}",
-                f"Ключевое слово: {feedback.expected.focus_target}",
-                f"Транскрипция слова: {feedback.expected.focus_transcription or ''}",
+                translate("voice_feedback_phrase", locale, value=feedback.expected.target),
+                translate("voice_feedback_focus", locale, value=feedback.expected.focus_target),
+                translate(
+                    "voice_feedback_focus_transcription",
+                    locale,
+                    value=feedback.expected.focus_transcription or "",
+                ),
             ]
         )
     else:
         lines.extend(
             [
-                f"Слово: {feedback.expected.target}",
-                f"Транскрипция: {feedback.expected.transcription}",
+                translate("voice_feedback_word", locale, value=feedback.expected.target),
+                translate(
+                    "voice_feedback_transcription",
+                    locale,
+                    value=feedback.expected.transcription,
+                ),
             ]
         )
     lines.extend(["", labels[feedback.code]])
@@ -2203,13 +2287,21 @@ def voice_feedback_text(result) -> str:
         and feedback.matched.vocabulary_id != feedback.expected.vocabulary_id
     ):
         lines.append(
-            f"Похоже на другое слово блока: {feedback.matched.target} — "
-            f"{feedback.matched.meaning_ru}."
+            translate(
+                "voice_feedback_other_word",
+                locale,
+                target=feedback.matched.target,
+                meaning=feedback.matched.meaning_ru,
+            )
         )
     lines.extend(
         [
-            "Это сравнение текста распознавания, а не акустическая оценка акцента.",
-            f"AI-кредиты: {result.available_credits}",
+            translate("voice_feedback_text_notice", locale),
+            translate(
+                "voice_feedback_credits",
+                locale,
+                credits=result.available_credits,
+            ),
         ]
     )
     return "\n".join(lines)
@@ -2220,6 +2312,7 @@ async def request_voice_processing_consent(
     context: ContextTypes.DEFAULT_TYPE,
     *,
     mode: str,
+    locale: str = "ru",
 ) -> None:
     user_data = getattr(context, "user_data", None)
     if not isinstance(user_data, dict):
@@ -2230,19 +2323,29 @@ async def request_voice_processing_consent(
         "block_session": user_data.get("block_session"),
         "expires_at": int(time.time()) + 600,
     }
-    action = "продолжить" if mode == "assistant" else "начать"
     await message.reply_text(
-        "Согласие на обработку голоса\n\n"
-        f"{VOICE_SETTINGS.processing_notice}\n\n"
-        f"Версия: {VOICE_SETTINGS.consent_version}",
+        translate(
+            "voice_consent",
+            locale,
+            notice=VOICE_SETTINGS.processing_notice,
+            version=VOICE_SETTINGS.consent_version,
+        ),
         reply_markup=InlineKeyboardMarkup(
             [[
                 InlineKeyboardButton(
-                    f"Согласен и {action}",
+                    translate(
+                        (
+                            "voice_consent_accept_continue"
+                            if mode == "assistant"
+                            else "voice_consent_accept_start"
+                        ),
+                        locale,
+                    ),
                     callback_data="voiceconsent:accept",
                 ),
                 InlineKeyboardButton(
-                    "Отмена", callback_data="voiceconsent:cancel"
+                    translate("voice_consent_cancel", locale),
+                    callback_data="voiceconsent:cancel",
                 ),
             ]]
         ),
@@ -2256,14 +2359,13 @@ async def start_voice_mode(
     mode: str,
 ) -> None:
     message = update.effective_message
+    locale = interface_locale_for_update(update)
     if not VOICE_SETTINGS.enabled:
-        await message.reply_text("Голосовой тренажёр пока выключен.")
+        await message.reply_text(translate("voice_practice_disabled", locale))
         return
     block = active_voice_block(context.user_data, mode=mode)
     if block is None:
-        await message.reply_text(
-            "Сначала выбери тему и создай блок из 10 слов через /learn."
-        )
+        await message.reply_text(translate("voice_need_block", locale))
         return
     user_id = int(update.effective_user.id)
     if not get_store().has_consent(
@@ -2275,6 +2377,7 @@ async def start_voice_mode(
             message,
             context,
             mode=mode,
+            locale=interface_locale_for_update(update),
         )
         return
     await launch_voice_mode(update, context, mode=mode)
@@ -2287,11 +2390,10 @@ async def launch_voice_mode(
     mode: str,
 ) -> None:
     message = update.effective_message
+    locale = interface_locale_for_update(update)
     block = active_voice_block(context.user_data, mode=mode)
     if block is None:
-        await message.reply_text(
-            "Блок устарел. Выбери тему и создай новый блок через /learn."
-        )
+        await message.reply_text(translate("voice_block_stale", locale))
         return
     pack, indexed_words = block
     state = get_voice_tutor_service().start_session(
@@ -2328,14 +2430,17 @@ async def launch_voice_mode(
 @auth
 async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     if not VOICE_SETTINGS.enabled:
         context.user_data.pop("pending_voice_consent", None)
-        await query.answer("Голосовая практика пока выключена.", show_alert=True)
+        await query.answer(
+            translate("voice_practice_disabled", locale), show_alert=True
+        )
         return
     action = query.data.split(":", 1)[1]
     if action == "cancel":
         context.user_data.pop("pending_voice_consent", None)
-        await query.answer("Голосовая практика отменена.")
+        await query.answer(translate("voice_practice_cancelled", locale))
         await query.edit_message_reply_markup(reply_markup=None)
         return
     pending = context.user_data.pop("pending_voice_consent", None)
@@ -2354,7 +2459,9 @@ async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             != context.user_data.get("block_session")
         )
     ):
-        await query.answer("Запрос устарел. Запусти /voice снова.", show_alert=True)
+        await query.answer(
+            translate("voice_request_stale", locale), show_alert=True
+        )
         return
     user_id = int(update.effective_user.id)
     changed = get_store().grant_consent(
@@ -2371,11 +2478,11 @@ async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "document_version": VOICE_SETTINGS.consent_version,
             },
         )
-    await query.answer("Согласие сохранено.")
+    await query.answer(translate("consent_saved", locale))
     await query.edit_message_reply_markup(reply_markup=None)
     if pending["mode"] == "assistant":
         await query.message.reply_text(
-            "Готово. Отправь голосовое ещё раз — я распознаю его и отвечу по контексту."
+            translate("voice_consent_resend", locale)
         )
         return
     await launch_voice_mode(update, context, mode=pending["mode"])
@@ -2383,19 +2490,20 @@ async def voice_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def cmd_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    locale = interface_locale_for_update(update)
     rows = []
     if VOICE_SETTINGS.enabled:
         rows.extend(
             [
                 [
                     InlineKeyboardButton(
-                        "🎤 Произнести 10 слов",
+                        translate("voice_entry_pronunciation", locale),
                         callback_data="voice-mode:pronunciation",
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        "💬 Фразы по блоку",
+                        translate("voice_entry_phrases", locale),
                         callback_data="voice-mode:guided-phrase",
                     )
                 ],
@@ -2405,19 +2513,18 @@ async def cmd_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rows.append(
             [
                 InlineKeyboardButton(
-                    "🌐 Перевести голосовое",
+                    translate("voice_entry_translation", locale),
                     callback_data="voice-mode:translation",
                 )
             ]
         )
     if not rows:
-        await update.effective_message.reply_text("Голосовые функции пока выключены.")
+        await update.effective_message.reply_text(
+            translate("voice_entry_disabled", locale)
+        )
         return
     await update.effective_message.reply_text(
-        "🎙 Голосовые сообщения\n\n"
-        "Просто отправь голосовое с вопросом — AI распознает речь и ответит по контексту.\n\n"
-        "Для произношения выбери тренировку ниже. Одно голосовое — одно слово. "
-        "После проверки я сам покажу следующее.",
+        translate("voice_entry", locale),
         reply_markup=InlineKeyboardMarkup(rows),
     )
 
@@ -2425,12 +2532,15 @@ async def cmd_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def voice_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     await query.answer()
     selected = str(query.data).split(":", 1)[1]
     if selected == "translation":
         if not VOICE_TRANSLATION_SETTINGS.enabled:
             context.user_data.pop("voice_entry_mode", None)
-            await query.edit_message_text("Перевод голосовых пока выключен.")
+            await query.edit_message_text(
+                translate("voice_translation_disabled", locale)
+            )
             return
         context.user_data["voice_entry_mode"] = "translation"
         user_id = int(update.effective_user.id)
@@ -2443,24 +2553,28 @@ async def voice_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "expires_at": int(time.time()) + 600
             }
             await query.edit_message_text(
-                "Согласие на распознавание и перевод\n\n"
-                f"{VOICE_TRANSLATION_SETTINGS.processing_notice}\n\n"
-                f"Версия: {VOICE_TRANSLATION_SETTINGS.consent_version}",
+                translate(
+                    "voice_translation_consent",
+                    locale,
+                    notice=VOICE_TRANSLATION_SETTINGS.processing_notice,
+                    version=VOICE_TRANSLATION_SETTINGS.consent_version,
+                ),
                 reply_markup=InlineKeyboardMarkup(
                     [[
                         InlineKeyboardButton(
-                            "Согласен", callback_data="voicetransconsent:accept"
+                            translate("consent_accept", locale),
+                            callback_data="voicetransconsent:accept",
                         ),
                         InlineKeyboardButton(
-                            "Отмена", callback_data="voicetransconsent:cancel"
+                            translate("consent_cancel", locale),
+                            callback_data="voicetransconsent:cancel",
                         ),
                     ]]
                 ),
             )
             return
         await query.edit_message_text(
-            "Отправь голосовое. Русская речь будет переведена на активный язык, "
-            "а речь на другом языке — на русский."
+            translate("voice_translation_instruction", locale)
         )
         return
     context.user_data["voice_entry_mode"] = (
@@ -2475,10 +2589,11 @@ async def voice_translation_consent_cb(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     action = str(query.data).split(":", 1)[1]
     pending = context.user_data.pop("pending_voice_translation_consent", None)
     if action == "cancel":
-        await query.answer("Перевод отменён.")
+        await query.answer(translate("voice_translation_cancelled", locale))
         await query.edit_message_reply_markup(reply_markup=None)
         return
     if (
@@ -2487,7 +2602,9 @@ async def voice_translation_consent_cb(
         or not isinstance(pending, dict)
         or int(pending.get("expires_at", 0)) < int(time.time())
     ):
-        await query.answer("Запрос устарел. Запусти /voice снова.", show_alert=True)
+        await query.answer(
+            translate("voice_request_stale", locale), show_alert=True
+        )
         return
     get_store().grant_consent(
         int(update.effective_user.id),
@@ -2496,9 +2613,9 @@ async def voice_translation_consent_cb(
         source="telegram",
     )
     context.user_data["voice_entry_mode"] = "translation"
-    await query.answer("Согласие сохранено.")
+    await query.answer(translate("consent_saved", locale))
     await query.edit_message_text(
-        "Отправь голосовое для распознавания и перевода."
+        translate("voice_translation_send", locale)
     )
 
 
@@ -2510,19 +2627,21 @@ async def cmd_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def cmd_voice_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     stopped = get_voice_tutor_service().stop_session(int(update.effective_user.id))
+    locale = interface_locale_for_update(update)
     await update.message.reply_text(
-        "Голосовая сессия остановлена. Транскрипт: /voice_transcript."
+        translate("voice_stop_active", locale)
         if stopped
-        else "Активной голосовой сессии нет."
+        else translate("voice_stop_inactive", locale)
     )
 
 
 @auth
 async def cmd_voice_transcript(update: Update, context: ContextTypes.DEFAULT_TYPE):
     service = get_voice_tutor_service()
+    locale = interface_locale_for_update(update)
     state = service.latest_session(int(update.effective_user.id))
     if state is None:
-        await update.message.reply_text("Голосовых сессий пока нет.")
+        await update.message.reply_text(translate("voice_sessions_empty", locale))
         return
     pack, words = restore_voice_block(state)
     by_id = {word.vocabulary_id: word for _, word in words}
@@ -2530,22 +2649,30 @@ async def cmd_voice_transcript(update: Update, context: ContextTypes.DEFAULT_TYP
         user_id=int(update.effective_user.id), session_id=state.session_id
     )
     lines = [
-        f"Транскрипт голосовой сессии · {pack.label}",
-        f"Статус: {state.status}",
+        translate("voice_transcript_header", locale, pack=pack.label),
+        translate("voice_transcript_status", locale, status=state.status),
         "",
     ]
     for position, turn in enumerate(turns, 1):
         expected = by_id.get(turn["expected_vocabulary_id"])
         lines.extend(
             [
-                f"{position}. 🇷🇺 {expected.meaning_ru if expected else 'слово из блока'}",
+                f"{position}. 🇷🇺 {expected.meaning_ru if expected else translate('voice_transcript_missing_word', locale)}",
                 f"   {pack.flag} {expected.target if expected else turn['expected_vocabulary_id']}",
-                f"   Распознано: {str(turn['transcript'])[:300]}",
-                f"   Результат: {turn['feedback_code']}",
+                translate(
+                    "voice_transcript_recognized",
+                    locale,
+                    value=str(turn["transcript"])[:300],
+                ),
+                translate(
+                    "voice_transcript_result",
+                    locale,
+                    value=turn["feedback_code"],
+                ),
             ]
         )
     if not turns:
-        lines.append("Сохранённых реплик нет или срок хранения истёк.")
+        lines.append(translate("voice_transcript_empty", locale))
     rendered = "\n".join(lines)
     for start in range(0, len(rendered), 3900):
         await update.message.reply_text(rendered[start:start + 3900])
@@ -2568,7 +2695,7 @@ async def send_voice_translation_reference(
     return sent
 
 
-def voice_translation_result_text(result) -> str:
+def voice_translation_result_text(result, *, locale: str = "ru") -> str:
     source = str(result.source_transcript).strip()
     translation = str(result.translation).strip()
     transcription = str(result.latin_transcription).strip()
@@ -2589,15 +2716,33 @@ def voice_translation_result_text(result) -> str:
         "zh": "🇨🇳",
     }
     if detected == "ru":
-        lines = [f"🇷🇺 Исходная фраза: {source}"]
+        lines = [translate("voice_translation_source_ru", locale, value=source)]
         if translation:
             lines.extend(["", f"{flags.get(target, '🌐')} {translation}"])
     else:
-        lines = [f"🇷🇺 Перевод: {translation}" if translation else "🇷🇺 Перевод не получен"]
-        lines.extend(["", f"{flags.get(detected, '🌐')} Исходная фраза: {source}"])
+        lines = [
+            translate("voice_translation_translation", locale, value=translation)
+            if translation
+            else translate("voice_translation_missing", locale)
+        ]
+        lines.extend([
+            "",
+            translate(
+                "voice_translation_source",
+                locale,
+                flag=flags.get(detected, "🌐"),
+                value=source,
+            ),
+        ])
     if transcription:
-        lines.append(f"Латиницей: {transcription}")
-    lines.extend(["", f"Распознан язык: {detected or 'не определён'}."])
+        lines.append(
+            translate("voice_translation_latin", locale, value=transcription)
+        )
+    detected_label = detected or translate("voice_translation_unknown", locale)
+    lines.extend([
+        "",
+        translate("voice_translation_detected", locale, value=detected_label),
+    ])
     notice = str(getattr(result, "notice_ru", "") or "").strip()
     if notice:
         lines.extend(["", notice])
@@ -2642,7 +2787,9 @@ async def process_voice_practice_turn(
         duration_seconds=duration,
         words=[word for _, word in indexed_words],
     )
-    await update.message.reply_text(voice_feedback_text(result))
+    await update.message.reply_text(
+        voice_feedback_text(result, locale=interface_locale_for_update(update))
+    )
     record_product_event(
         "voice_turn_completed",
         properties={
@@ -2664,7 +2811,9 @@ async def process_voice_practice_turn(
         return
     if result.session_status == "completed":
         await update.message.reply_text(
-            "✅ Голосовой блок завершён. Все 10 слов проверены."
+            translate(
+                "voice_block_complete", interface_locale_for_update(update)
+            )
         )
         return
     await send_voice_prompt(
@@ -2693,7 +2842,11 @@ async def process_voice_translation(
         duration_seconds=duration,
         active_language=str(profile.get("active_lang") or "en"),
     )
-    await update.message.reply_text(voice_translation_result_text(translated))
+    await update.message.reply_text(
+        voice_translation_result_text(
+            translated, locale=interface_locale_for_update(update)
+        )
+    )
     if not translated.translation:
         return
 
@@ -2723,10 +2876,13 @@ async def voice_message_handler(
 ):
     store = get_store()
     user_id = int(update.effective_user.id)
+    locale = interface_locale_for_update(update)
     raw_profile = store.product_profile(user_id)
     profile = raw_profile if isinstance(raw_profile, Mapping) else {}
     if profile.get("access_status") not in {None, "active"}:
-        await update.message.reply_text("Голосовые функции сейчас недоступны.")
+        await update.message.reply_text(
+            translate("voice_access_unavailable", locale)
+        )
         return
 
     voice = update.message.voice
@@ -2742,9 +2898,7 @@ async def voice_message_handler(
 
     if VOICE_SETTINGS.enabled and entry_mode != "translation":
         if not voice_note_within_limits(voice, VOICE_SETTINGS):
-            await update.message.reply_text(
-                "Голосовое не принято: длительность или размер вне допустимого лимита."
-            )
+            await update.message.reply_text(translate("voice_invalid", locale))
             return
         if not store.has_consent(
             user_id,
@@ -2755,6 +2909,7 @@ async def voice_message_handler(
                 update.message,
                 context,
                 mode="assistant",
+                locale=interface_locale_for_update(update),
             )
             return
 
@@ -2762,9 +2917,7 @@ async def voice_message_handler(
     state = practice_service.active_session(user_id) if practice_service else None
     if state is not None:
         if not voice_note_within_limits(voice, VOICE_SETTINGS):
-            await update.message.reply_text(
-                "Голосовое не принято: длительность или размер вне допустимого лимита."
-            )
+            await update.message.reply_text(translate("voice_invalid", locale))
             return
         if not store.has_consent(
             user_id,
@@ -2775,6 +2928,7 @@ async def voice_message_handler(
                 update.message,
                 context,
                 mode=state.mode,
+                locale=interface_locale_for_update(update),
             )
             return
         try:
@@ -2807,31 +2961,31 @@ async def voice_message_handler(
         except VoiceUsageRecoveryError:
             logger.exception("Voice credit reservation recovery failed")
             await update.message.reply_text(
-                "Не удалось подтвердить возврат AI-кредита. Проверь /ai_stats."
+                translate("ai_credit_recovery_error", locale)
             )
         except (VoiceProviderError, VoiceSessionError, ValueError) as exc:
             logger.warning("Voice turn rejected: error_type=%s", type(exc).__name__)
             await update.message.reply_text(
-                "Не удалось безопасно обработать голосовое. AI-кредит не списан."
+                translate("voice_safe_error", locale)
             )
         except (TelegramError, VoiceConfigurationError) as exc:
             logger.warning(
                 "Voice service unavailable: error_type=%s", type(exc).__name__
             )
-            await update.message.reply_text("Голосовой тренажёр временно недоступен.")
+            await update.message.reply_text(
+                translate("voice_practice_unavailable", locale)
+            )
         except Exception as exc:
             logger.warning("Voice request failed: error_type=%s", type(exc).__name__)
             await update.message.reply_text(
-                "Голосовой тренажёр временно недоступен. AI-кредит не списан."
+                translate("voice_practice_unavailable_no_charge", locale)
             )
         return
 
     if entry_mode == "translation" and VOICE_TRANSLATION_SETTINGS.enabled:
         settings = VOICE_TRANSLATION_SETTINGS
         if not voice_note_within_limits(voice, settings):
-            await update.message.reply_text(
-                "Голосовое не принято: длительность или размер вне допустимого лимита."
-            )
+            await update.message.reply_text(translate("voice_invalid", locale))
             return
         if not store.has_consent(
             user_id,
@@ -2839,7 +2993,7 @@ async def voice_message_handler(
             document_version=settings.consent_version,
         ):
             await update.message.reply_text(
-                "Нужно актуальное согласие на распознавание и перевод. Запусти /voice."
+                translate("voice_translation_consent_required", locale)
             )
             return
         try:
@@ -2870,7 +3024,7 @@ async def voice_message_handler(
             )
         except VoiceUsageRecoveryError:
             await update.message.reply_text(
-                "Не удалось подтвердить состояние AI-кредитов. Проверь /ai_stats."
+                translate("ai_credit_state_error", locale)
             )
         except (
             TelegramError,
@@ -2882,17 +3036,15 @@ async def voice_message_handler(
                 "Voice translation rejected: error_type=%s", type(exc).__name__
             )
             await update.message.reply_text(
-                "Не удалось безопасно обработать голосовое. Текст не сохранён."
+                translate("voice_translation_safe_error", locale)
             )
         return
 
     if not VOICE_SETTINGS.enabled or practice_service is None:
-        await update.message.reply_text("Голосовой AI пока выключен.")
+        await update.message.reply_text(translate("voice_ai_disabled", locale))
         return
     if not voice_note_within_limits(voice, VOICE_SETTINGS):
-        await update.message.reply_text(
-            "Голосовое не принято: длительность или размер вне допустимого лимита."
-        )
+        await update.message.reply_text(translate("voice_invalid", locale))
         return
     if not store.has_consent(
         user_id,
@@ -2903,6 +3055,7 @@ async def voice_message_handler(
             update.message,
             context,
             mode="assistant",
+            locale=interface_locale_for_update(update),
         )
         return
     if not profile.get("onboarding_completed_at"):
@@ -2911,7 +3064,7 @@ async def voice_message_handler(
         )
         return
     if not AI_SETTINGS.enabled:
-        await update.message.reply_text("AI-репетитор пока выключен.")
+        await update.message.reply_text(translate("ai_disabled", locale))
         return
     consent_version = str(getattr(AI_SETTINGS, "consent_version", "") or "")
     if not consent_version or not store.has_consent(
@@ -2922,12 +3075,13 @@ async def voice_message_handler(
         if not consent_version or not str(
             getattr(AI_SETTINGS, "processing_notice", "") or ""
         ).strip():
-            await update.message.reply_text("AI-репетитор временно недоступен.")
+            await update.message.reply_text(translate("ai_unavailable", locale))
             return
         await request_ai_processing_consent(
             update.message,
             context,
             request_kind="voice_assistant",
+            locale=interface_locale_for_update(update),
         )
         return
     try:
@@ -2958,19 +3112,19 @@ async def voice_message_handler(
     except VoiceUsageRecoveryError:
         logger.exception("Voice assistant credit reservation recovery failed")
         await update.message.reply_text(
-            "Не удалось подтвердить состояние AI-кредитов. Проверь /ai_stats."
+            translate("ai_credit_state_error", locale)
         )
         return
     except (TelegramError, VoiceProviderError, VoiceConfigurationError, ValueError) as exc:
         logger.warning("Voice assistant rejected: error_type=%s", type(exc).__name__)
         await update.message.reply_text(
-            "Не удалось распознать голосовое. AI-кредит не списан."
+            translate("voice_transcription_failed", locale)
         )
         return
     except Exception as exc:
         logger.warning("Voice assistant failed: error_type=%s", type(exc).__name__)
         await update.message.reply_text(
-            "Голосовой AI временно недоступен. AI-кредит не списан."
+            translate("voice_ai_unavailable_no_charge", locale)
         )
         return
 
@@ -2993,11 +3147,11 @@ async def send_ai_tutor_answer(
     message, context, question: str, *, user_id: int, locale: str = "ru"
 ) -> None:
     if not AI_SETTINGS.enabled:
-        await message.reply_text("AI-репетитор пока выключен.")
+        await message.reply_text(translate("ai_disabled", locale))
         return
     tutor_context = active_tutor_context(context.user_data)
     if tutor_context is None:
-        await message.reply_text("Сначала выбери тему и создай блок через /learn.")
+        await message.reply_text(translate("ai_need_block", locale))
         return
     try:
         result = await get_ai_tutor_service().ask(
@@ -3021,24 +3175,24 @@ async def send_ai_tutor_answer(
         return
     except AIConfigurationError:
         logger.exception("AI tutor configuration error")
-        await message.reply_text("AI-репетитор временно недоступен.")
+        await message.reply_text(translate("ai_unavailable", locale))
         return
     except AIUsageRecoveryError:
         logger.exception("AI tutor credit reservation recovery failed")
         await message.reply_text(
-            "Не удалось подтвердить возврат AI-кредита. Проверь /ai_stats."
+            translate("ai_credit_recovery_error", locale)
         )
         return
     except (AIProviderError, ValueError) as exc:
         logger.warning("AI tutor rejected response: %s", type(exc).__name__)
         await message.reply_text(
-            "Не удалось подготовить безопасный ответ. AI-кредит не списан."
+            translate("ai_safe_error", locale)
         )
         return
     except Exception as exc:
         logger.warning("AI tutor request failed: %s", type(exc).__name__)
         await message.reply_text(
-            "AI-репетитор временно недоступен. AI-кредит не списан."
+            translate("ai_unavailable_no_charge", locale)
         )
         return
     rendered = render_tutor_answer(result)
@@ -3059,6 +3213,7 @@ async def request_ai_processing_consent(
     *,
     request_kind: str,
     question: str = "",
+    locale: str = "ru",
 ) -> None:
     context.user_data["pending_ai_consent"] = {
         "request_kind": request_kind,
@@ -3067,16 +3222,22 @@ async def request_ai_processing_consent(
         "expires_at": int(time.time()) + 600,
     }
     await message.reply_text(
-        "Согласие на обработку AI\n\n"
-        f"{AI_SETTINGS.processing_notice}\n\n"
-        f"Версия: {AI_SETTINGS.consent_version}",
+        translate(
+            "ai_processing_consent",
+            locale,
+            notice=AI_SETTINGS.processing_notice,
+            version=AI_SETTINGS.consent_version,
+        ),
         reply_markup=InlineKeyboardMarkup(
             [[
                 InlineKeyboardButton(
-                    "Согласен и продолжить",
+                    translate("ai_consent_accept", locale),
                     callback_data="aiconsent:accept",
                 ),
-                InlineKeyboardButton("Отмена", callback_data="aiconsent:cancel"),
+                InlineKeyboardButton(
+                    translate("ai_consent_cancel", locale),
+                    callback_data="aiconsent:cancel",
+                ),
             ]]
         ),
     )
@@ -3093,12 +3254,12 @@ async def request_ai_tutor_answer(
 ) -> None:
     """Require current, versioned processing consent before any AI work."""
     if not AI_SETTINGS.enabled:
-        await message.reply_text("AI-репетитор пока выключен.")
+        await message.reply_text(translate("ai_disabled", locale))
         return
     consent_version = AI_SETTINGS.consent_version
     processing_notice = AI_SETTINGS.processing_notice
     if not consent_version or not processing_notice:
-        await message.reply_text("AI-репетитор временно недоступен.")
+        await message.reply_text(translate("ai_unavailable", locale))
         return
     if get_store().has_consent(
         int(user_id),
@@ -3118,6 +3279,7 @@ async def request_ai_tutor_answer(
         context,
         request_kind=request_kind,
         question=question,
+        locale=locale,
     )
 
 
@@ -3129,6 +3291,7 @@ async def send_mirror_response(
     voice_enabled: bool,
     speech_consented: bool,
     voice_renderer=None,
+    locale: str = "ru",
 ) -> None:
     """Deliver Mirror text/audio without touching the pronunciation cache."""
     safe_text = str(text).strip()
@@ -3139,10 +3302,12 @@ async def send_mirror_response(
     if not voice_enabled or not speech_consented or voice_renderer is None:
         if selected == "both":
             await message.reply_text(safe_text)
-            await message.reply_text("Голосовой ответ сейчас недоступен.")
+            await message.reply_text(
+                translate("mirror_voice_unavailable", locale)
+            )
         else:
             await message.reply_text(
-                f"{safe_text}\n\nГолосовой ответ сейчас недоступен."
+                f"{safe_text}\n\n{translate('mirror_voice_unavailable', locale)}"
             )
         return
     if selected == "both":
@@ -3158,10 +3323,12 @@ async def send_mirror_response(
         )
         if selected == "voice":
             await message.reply_text(
-                f"{safe_text}\n\nГолосовой ответ сейчас недоступен."
+                f"{safe_text}\n\n{translate('mirror_voice_unavailable', locale)}"
             )
         else:
-            await message.reply_text("Голосовой ответ сейчас недоступен.")
+            await message.reply_text(
+                translate("mirror_voice_unavailable", locale)
+            )
 
 
 def _mirror_mode(store, user_id: int) -> str:
@@ -3210,17 +3377,23 @@ def _mirror_control_policy(store) -> dict[str, Any]:
     return {**MIRROR_CONTROL_PLANE_DEFAULTS, "snapshot_id": None}
 
 
-def mirror_feedback_keyboard(request_id: str) -> InlineKeyboardMarkup:
+def mirror_feedback_keyboard(
+    request_id: str,
+    *,
+    locale: str = "ru",
+) -> InlineKeyboardMarkup:
     safe_id = str(request_id).strip()
     if not 1 <= len(safe_id) <= 64 or ":" in safe_id:
         raise ValueError("Mirror feedback request id is invalid")
     return InlineKeyboardMarkup(
         [[
             InlineKeyboardButton(
-                "Полезно", callback_data=f"mirrorfb:{safe_id}:helpful"
+                translate("mirror_feedback_helpful", locale),
+                callback_data=f"mirrorfb:{safe_id}:helpful",
             ),
             InlineKeyboardButton(
-                "Не помогло", callback_data=f"mirrorfb:{safe_id}:not-helpful"
+                translate("mirror_feedback_unhelpful", locale),
+                callback_data=f"mirrorfb:{safe_id}:not-helpful",
             ),
         ]]
     )
@@ -3229,6 +3402,7 @@ def mirror_feedback_keyboard(request_id: str) -> InlineKeyboardMarkup:
 @auth
 async def mirror_feedback_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     try:
         _, request_id, rating = str(query.data).split(":", 2)
         helpful = {"helpful": True, "not-helpful": False}[rating]
@@ -3238,25 +3412,35 @@ async def mirror_feedback_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
             helpful=helpful,
         )
     except (KeyError, PermissionError, TypeError, ValueError):
-        await query.answer("Оценка недоступна.", show_alert=True)
+        await query.answer(
+            translate("mirror_feedback_unavailable", locale), show_alert=True
+        )
         return
-    await query.answer("Спасибо" if changed else "Оценка уже учтена")
+    await query.answer(
+        translate(
+            "mirror_feedback_thanks" if changed else "mirror_feedback_recorded",
+            locale,
+        )
+    )
     await query.edit_message_reply_markup(reply_markup=None)
 
 
 @auth
 async def cmd_mirror_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode = " ".join(getattr(context, "args", [])).strip().lower()
+    locale = interface_locale_for_update(update)
     try:
         saved = get_store().set_mirror_response_mode(
             int(update.effective_user.id), mode
         )
     except ValueError:
         await update.message.reply_text(
-            "Выбери формат ответа: /response text, /response voice или /response both."
+            translate("mirror_response_choose", locale)
         )
         return
-    await update.message.reply_text(f"Формат ответов Mirror: {saved}.")
+    await update.message.reply_text(
+        translate("mirror_response_saved", locale, mode=saved)
+    )
 
 
 @auth
@@ -3294,12 +3478,14 @@ async def handle_mirror_question(
     """Answer one typed or transcribed question through the same Mirror path."""
     message = getattr(update, "effective_message", None) or update.message
     question = str(question).strip()
+    interface_locale = interface_locale_for_update(update)
     if not question:
-        await message.reply_text("Не удалось распознать вопрос.")
+        await message.reply_text(
+            translate("mirror_question_unrecognized", interface_locale)
+        )
         return
     store = get_store()
     user_id = int(update.effective_user.id)
-    interface_locale = interface_locale_for_update(update)
     profile = store.product_profile(user_id)
     if profile.get("access_status") != "active":
         await message.reply_text(
@@ -3479,6 +3665,7 @@ async def handle_mirror_question(
         voice_enabled=voice_enabled,
         speech_consented=speech_consented,
         voice_renderer=voice_renderer,
+        locale=interface_locale,
     )
     if intent not in {"greeting", "capabilities"} and MIRROR_MEMORY_SETTINGS.enabled:
         try:
@@ -3496,23 +3683,27 @@ async def handle_mirror_question(
     append_mirror_turn(context.user_data, role="assistant", text=response)
     if request_id:
         await message.reply_text(
-            "Ответ был полезен?",
-            reply_markup=mirror_feedback_keyboard(str(request_id)),
+            translate("mirror_feedback_question", interface_locale),
+            reply_markup=mirror_feedback_keyboard(
+                str(request_id),
+                locale=interface_locale,
+            ),
         )
 
 
 @auth
 async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     if not AI_SETTINGS.enabled:
         context.user_data.pop("pending_ai_consent", None)
-        await query.answer("AI-репетитор пока выключен.", show_alert=True)
+        await query.answer(translate("ai_disabled", locale), show_alert=True)
         return
     parts = str(query.data).split(":", 1)
     action = parts[1] if len(parts) == 2 else ""
     if action == "cancel":
         context.user_data.pop("pending_ai_consent", None)
-        await query.answer("AI-запрос отменён.")
+        await query.answer(translate("ai_request_cancelled", locale))
         await query.edit_message_reply_markup(reply_markup=None)
         return
     pending = context.user_data.pop("pending_ai_consent", None)
@@ -3532,7 +3723,9 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             != context.user_data.get("block_session")
         )
     ):
-        await query.answer("Запрос устарел. Запусти /ai снова.", show_alert=True)
+        await query.answer(
+            translate("ai_request_stale", locale), show_alert=True
+        )
         return
     user_id = int(update.effective_user.id)
     get_store().grant_consent(
@@ -3541,37 +3734,38 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         document_version=AI_SETTINGS.consent_version,
         source="telegram",
     )
-    await query.answer("Согласие сохранено.")
+    await query.answer(translate("consent_saved", locale))
     await query.edit_message_reply_markup(reply_markup=None)
     if pending["request_kind"] == "voice_assistant":
         await query.message.reply_text(
-            "Готово. Отправь голосовое ещё раз — AI ответит по его содержанию."
+            translate("ai_voice_resend", locale)
         )
         return
     question = str(pending.get("question") or "").strip()
     if not question:
-        question = "Объясни главные связи между словами этого блока."
+        question = translate("ai_default_question", locale)
     await send_ai_tutor_answer(
         query.message,
         context,
         question,
         user_id=user_id,
-        locale=interface_locale_for_update(update),
+        locale=locale,
     )
 
 
 @auth
 async def cmd_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    locale = interface_locale_for_update(update)
     question = " ".join(getattr(context, "args", [])).strip()
     if not question:
-        question = "Объясни главные связи между словами этого блока."
+        question = translate("ai_default_question", locale)
     await request_ai_tutor_answer(
         update.message,
         context,
         question,
         user_id=int(update.effective_user.id),
         request_kind="command",
-        locale=interface_locale_for_update(update),
+        locale=locale,
     )
 
 
@@ -3582,12 +3776,15 @@ async def cmd_ai_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         initial_credits=AI_SETTINGS.initial_credits,
     )
     await update.message.reply_text(
-        "AI-использование\n\n"
-        f"Доступно кредитов: {summary['available_credits']}\n"
-        f"Зарезервировано: {summary['reserved_credits']}\n"
-        f"Использовано: {summary['spent_credits']}\n"
-        f"Запросы: {summary['completed_requests']} успешно, "
-        f"{summary['failed_requests']} с возвратом"
+        translate(
+            "ai_usage_stats",
+            interface_locale_for_update(update),
+            available=summary["available_credits"],
+            reserved=summary["reserved_credits"],
+            spent=summary["spent_credits"],
+            completed=summary["completed_requests"],
+            failed=summary["failed_requests"],
+        )
     )
 
 
@@ -3680,7 +3877,9 @@ async def send_ai_credit_paywall(
 @auth
 async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not BILLING_SETTINGS.enabled:
-        await update.message.reply_text("Покупка AI-кредитов пока недоступна.")
+        await update.message.reply_text(
+            translate("billing_disabled", interface_locale_for_update(update))
+        )
         return
     record_product_event("buy_opened", source="command")
     if not get_store().has_consent(
@@ -3688,61 +3887,71 @@ async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
         consent_type="billing_terms",
         document_version=BILLING_SETTINGS.terms_version,
     ):
-        await send_billing_terms(update.message)
+        await send_billing_terms(
+            update.message,
+            locale=interface_locale_for_update(update),
+        )
         return
-    await send_billing_products(update.message)
+    await send_billing_products(
+        update.message,
+        locale=interface_locale_for_update(update),
+    )
 
 
-def billing_terms_keyboard() -> InlineKeyboardMarkup:
+def billing_terms_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [[
             InlineKeyboardButton(
-                "Принимаю и начать сразу",
+                translate("billing_terms_accept", locale),
                 callback_data="billing:accept_terms",
             )
         ]]
     )
 
 
-async def send_billing_terms(message) -> None:
-    instruction = (
-        "Нажимая кнопку, ты подтверждаешь, что прочитал и принимаешь условия."
-        if BILLING_SETTINGS.enabled
-        else "Покупка AI-кредитов сейчас выключена."
+async def send_billing_terms(message, *, locale: str = "ru") -> None:
+    instruction = translate(
+        (
+            "billing_terms_instruction"
+            if BILLING_SETTINGS.enabled
+            else "billing_terms_disabled"
+        ),
+        locale,
     )
     seller = (
         "\n".join(
             (
-                f"Продавец: {BILLING_SETTINGS.seller_legal_name}",
-                f"Адрес: {BILLING_SETTINGS.seller_address}",
-                f"Email: {BILLING_SETTINGS.seller_email}",
-                f"Телефон: {BILLING_SETTINGS.seller_phone}",
-                f"Поддержка платежей: {BILLING_SETTINGS.support_contact}",
+                translate("billing_seller", locale, value=BILLING_SETTINGS.seller_legal_name),
+                translate("billing_address", locale, value=BILLING_SETTINGS.seller_address),
+                translate("billing_email", locale, value=BILLING_SETTINGS.seller_email),
+                translate("billing_phone", locale, value=BILLING_SETTINGS.seller_phone),
+                translate("billing_support_contact", locale, value=BILLING_SETTINGS.support_contact),
             )
         )
         if BILLING_SETTINGS.seller_legal_name
-        else "Реквизиты продавца ещё не опубликованы."
+        else translate("billing_seller_missing", locale)
     )
-    consent = (
-        "Я принимаю условия и прошу начать оказание цифровой услуги сразу "
-        "после оплаты. Я понимаю, что после полного предоставления услуги "
-        "право на отказ может быть утрачено в предусмотренных законом случаях."
-    )
+    consent = translate("billing_terms_consent", locale)
     await message.reply_text(
-        "Условия покупки AI-кредитов\n\n"
-        f"{BILLING_SETTINGS.terms_text}\n\n"
-        f"{seller}\n\n"
-        f"Версия: {BILLING_SETTINGS.terms_version}\n"
-        f"{consent}\n\n"
-        f"{instruction}",
-        reply_markup=(billing_terms_keyboard() if BILLING_SETTINGS.enabled else None),
+        translate(
+            "billing_terms_text",
+            locale,
+            terms=BILLING_SETTINGS.terms_text,
+            seller=seller,
+            version=BILLING_SETTINGS.terms_version,
+            consent=consent,
+            instruction=instruction,
+        ),
+        reply_markup=(
+            billing_terms_keyboard(locale) if BILLING_SETTINGS.enabled else None
+        ),
     )
 
 
-async def send_billing_products(message) -> None:
+async def send_billing_products(message, *, locale: str = "ru") -> None:
     products = await asyncio.to_thread(get_billing_service().active_products)
     if not products:
-        await message.reply_text("Пакеты AI-кредитов пока не опубликованы.")
+        await message.reply_text(translate("billing_products_empty", locale))
         return
     keyboard = InlineKeyboardMarkup(
         [
@@ -3756,9 +3965,9 @@ async def send_billing_products(message) -> None:
         ]
     )
     heading = (
-        "Тестовая среда Telegram Stars. Выбери тестовый пакет AI-кредитов:"
+        translate("billing_products_test", locale)
         if TELEGRAM_RUNTIME.is_test
-        else "Выбери пакет AI-кредитов:"
+        else translate("billing_products_choose", locale)
     )
     await message.reply_text(heading, reply_markup=keyboard)
 
@@ -3766,8 +3975,11 @@ async def send_billing_products(message) -> None:
 @auth
 async def billing_open_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     if not BILLING_SETTINGS.enabled:
-        await query.answer("Покупка AI-кредитов пока выключена.", show_alert=True)
+        await query.answer(
+            translate("billing_disabled_callback", locale), show_alert=True
+        )
         return
     await query.answer()
     if not get_store().has_consent(
@@ -3775,9 +3987,9 @@ async def billing_open_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         consent_type="billing_terms",
         document_version=BILLING_SETTINGS.terms_version,
     ):
-        await send_billing_terms(query.message)
+        await send_billing_terms(query.message, locale=locale)
         return
-    await send_billing_products(query.message)
+    await send_billing_products(query.message, locale=locale)
 
 
 @auth
@@ -3801,11 +4013,16 @@ async def billing_resume_ai_cb(
 @auth
 async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     if not BILLING_SETTINGS.enabled:
-        await query.answer("Покупка AI-кредитов пока выключена.", show_alert=True)
+        await query.answer(
+            translate("billing_disabled_callback", locale), show_alert=True
+        )
         return
     if query.data != "billing:accept_terms":
-        await query.answer("Неизвестное действие.", show_alert=True)
+        await query.answer(
+            translate("privacy_unknown_action", locale), show_alert=True
+        )
         return
     changed = get_store().grant_consent(
         int(update.effective_user.id),
@@ -3821,21 +4038,28 @@ async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "document_version": BILLING_SETTINGS.terms_version,
             },
         )
-    await query.answer("Условия приняты.")
+    await query.answer(translate("billing_terms_accepted", locale))
     await query.edit_message_reply_markup(reply_markup=None)
-    await send_billing_products(query.message)
+    if locale == "ru":
+        await send_billing_products(query.message)
+    else:
+        await send_billing_products(query.message, locale=locale)
 
 
 @auth
 async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     await query.answer()
     if not get_store().has_consent(
         int(update.effective_user.id),
         consent_type="billing_terms",
         document_version=BILLING_SETTINGS.terms_version,
     ):
-        await send_billing_terms(query.message)
+        await send_billing_terms(
+            query.message,
+            locale=interface_locale_for_update(update),
+        )
         return
     product_id = query.data.split(":", 1)[1]
     record_product_event(
@@ -3850,7 +4074,9 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except (BillingConfigurationError, BillingValidationError, ValueError):
         logger.warning("Stars invoice creation rejected for product=%s", product_id)
-        await query.message.reply_text("Этот пакет сейчас недоступен.")
+        await query.message.reply_text(
+            translate("billing_product_unavailable", locale)
+        )
         return
     await context.bot.send_invoice(
         **{
@@ -3865,7 +4091,9 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "currency": "XTR",
             "prices": [
                 LabeledPrice(
-                    label=f"{order.credits} AI-кредитов",
+                    label=translate(
+                        "billing_credit_label", locale, credits=order.credits
+                    ),
                     amount=order.amount_xtr,
                 )
             ],
@@ -3890,6 +4118,7 @@ async def pre_checkout_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.pre_checkout_query
+    locale = interface_locale_for_update(update)
     try:
         await asyncio.wait_for(
             asyncio.to_thread(
@@ -3907,7 +4136,7 @@ async def pre_checkout_handler(
         )
         await query.answer(
             ok=False,
-            error_message="Не удалось подтвердить цену. Создай новый счёт через /buy.",
+            error_message=translate("billing_precheckout_error", locale),
         )
         return
     await query.answer(ok=True)
@@ -3917,6 +4146,7 @@ async def successful_payment_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     payment = update.message.successful_payment
+    locale = interface_locale_for_update(update)
     try:
         result = await asyncio.to_thread(
             get_billing_service().fulfill_successful_payment,
@@ -3937,12 +4167,15 @@ async def successful_payment_handler(
     except Exception as exc:
         logger.error("Stars fulfillment failed: error_type=%s", type(exc).__name__)
         await update.message.reply_text(
-            "Платёж получен, но начисление требует проверки. Напиши /paysupport."
+            translate("billing_payment_review", locale)
         )
         return
     if result.created:
-        prefix = "Тестовая " if TELEGRAM_RUNTIME.is_test else ""
-        locale = interface_locale_for_update(update)
+        key = (
+            "billing_test_payment_success"
+            if TELEGRAM_RUNTIME.is_test
+            else "billing_payment_success"
+        )
         resume_markup = (
             InlineKeyboardMarkup(
                 [[
@@ -3961,54 +4194,79 @@ async def successful_payment_handler(
             user_id=int(update.effective_user.id),
         )
         await update.message.reply_text(
-            f"{prefix}оплата подтверждена. "
-            f"Начислено {result.credits} AI-кредитов.\n"
-            f"Доступно: {result.available_credits}.",
+            translate(
+                key,
+                locale,
+                credits=result.credits,
+                available=result.available_credits,
+            ),
             reply_markup=resume_markup,
         )
     else:
         await update.message.reply_text(
-            f"Этот платёж уже учтён. Доступно: {result.available_credits}.",
+            translate(
+                "billing_payment_already",
+                locale,
+                available=result.available_credits,
+            ),
             reply_markup=None,
         )
 
 
 async def cmd_terms(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await send_billing_terms(update.message)
+    await send_billing_terms(
+        update.message,
+        locale=interface_locale_for_update(update),
+    )
 
 
 async def cmd_paysupport(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    locale = interface_locale_for_update(update)
     contact = BILLING_SETTINGS.support_contact
     if contact:
         await update.message.reply_text(
-            "Поддержка по платежам\n\n"
-            f"Контакт: {contact}\n"
-            f"Продавец: {BILLING_SETTINGS.seller_legal_name}\n"
-            f"Email: {BILLING_SETTINGS.seller_email}\n"
-            f"Телефон: {BILLING_SETTINGS.seller_phone}"
+            translate(
+                "billing_support_text",
+                locale,
+                contact=contact,
+                seller=BILLING_SETTINGS.seller_legal_name,
+                email=BILLING_SETTINGS.seller_email,
+                phone=BILLING_SETTINGS.seller_phone,
+            )
         )
     else:
-        await update.message.reply_text("Платежи пока выключены.")
+        await update.message.reply_text(translate("billing_payments_disabled", locale))
 
 
 @auth
 async def cmd_subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    locale = interface_locale_for_update(update)
     subscriptions = await asyncio.to_thread(
         get_billing_service().subscriptions_for_user,
         int(update.effective_user.id),
     )
     if not subscriptions:
-        await update.message.reply_text("Активных Stars-подписок пока нет.")
+        await update.message.reply_text(
+            translate("billing_subscriptions_empty", locale)
+        )
         return
     for subscription in subscriptions:
         cancelled = subscription["status"] == "cancelled"
         action = "restore" if cancelled else "cancel"
-        label = "Возобновить" if cancelled else "Отключить автопродление"
+        label = translate(
+            "billing_subscription_restore"
+            if cancelled
+            else "billing_subscription_cancel",
+            locale,
+        )
         period_end = subscription["current_period_end"].strftime("%Y-%m-%d")
         await update.message.reply_text(
-            "Stars-подписка\n"
-            f"Статус: {subscription['status']}\n"
-            f"Оплачено до: {period_end}",
+            translate(
+                "billing_subscription_text",
+                locale,
+                status=subscription["status"],
+                period_end=period_end,
+            ),
             reply_markup=InlineKeyboardMarkup(
                 [[
                     InlineKeyboardButton(
@@ -4025,6 +4283,7 @@ async def cmd_subscriptions(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def subscription_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     _, action, subscription_id = query.data.split(":", 2)
     is_canceled = action == "cancel"
     try:
@@ -4039,13 +4298,15 @@ async def subscription_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Stars subscription update failed: error_type=%s",
             type(exc).__name__,
         )
-        await query.answer("Не удалось изменить подписку.", show_alert=True)
+        await query.answer(
+            translate("billing_subscription_failed", locale), show_alert=True
+        )
         return
-    await query.answer("Настройка подписки обновлена.")
+    await query.answer(translate("billing_subscription_updated", locale))
     await query.message.reply_text(
-        "Автопродление отключено до конца оплаченного периода."
+        translate("billing_autorenew_disabled", locale)
         if is_canceled
-        else "Автопродление подписки снова включено."
+        else translate("billing_autorenew_enabled", locale)
     )
 
 
@@ -4054,8 +4315,9 @@ async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Switch active language."""
     invalidate_block_session(context.user_data)
     current = active_content_pack()
+    locale = learning_card_locale(context.user_data)
     await update.message.reply_text(
-        f"Текущий набор: *{current.title}*\n\nВыбери язык:",
+        translate("legacy_language_picker", locale, pack=current.label),
         reply_markup=language_picker_keyboard(),
         parse_mode="Markdown"
     )
@@ -4063,12 +4325,13 @@ async def cmd_lang(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
     await query.answer()
     invalidate_block_session(context.user_data)
     requested = query.data.split(":", 1)[1]
     pack = CATALOG.get(requested) or visible_pack_for_language(requested)
     if pack is None or pack not in switchable_packs():
-        await query.edit_message_text("Этот набор недоступен.")
+        await query.edit_message_text(translate("pack_unavailable", locale))
         return
     activate_content_pack(pack, source="catalog")
     record_product_event(
@@ -4079,7 +4342,12 @@ async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         },
     )
     await query.edit_message_text(
-        f"Подключён набор *{pack.title}* ({pack.entry_count} слов)",
+        translate(
+            "legacy_pack_activated",
+            locale,
+            pack=pack.label,
+            count=pack.entry_count,
+        ),
         parse_mode="Markdown"
     )
     # Send persistent keyboard
@@ -4095,6 +4363,7 @@ async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
     idx = pick_word()
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
 
     # Build 4 options: 1 correct + 3 distractors
     correct_meaning = primary_meaning_for_word(word)
@@ -4120,7 +4389,7 @@ async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
 
     await update.message.reply_text(
-        f"{format_word_label(idx)}\n\nВыбери правильный перевод:",
+        f"{format_word_label(idx)}\n\n{translate('legacy_quiz_prompt', locale)}",
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode="Markdown"
     )
@@ -4136,16 +4405,27 @@ async def quiz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = int(parts[1])
     is_correct = parts[2] == "1"
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
 
     if is_correct:
         xp, sb = mark_correct(idx)
-        text = f"✅ Правильно!\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = (
+            f"{translate('legacy_correct', locale)}\n"
+            f"{format_word_details(idx)}{get_example(idx)}\n"
+            f"{format_xp_line(xp, sb, locale=locale)}"
+        )
     else:
         xp, sb = mark_wrong(idx)
-        text = f"❌ Ошибка!\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = (
+            f"{translate('legacy_wrong', locale)}\n"
+            f"{format_word_details(idx)}{get_example(idx)}\n"
+            f"{format_xp_line(xp, sb, locale=locale)}"
+        )
 
     next_btn = InlineKeyboardMarkup([
-        [forvo_button(idx), InlineKeyboardButton("Дальше ➡️", callback_data="next_quiz")]
+        [forvo_button(idx), InlineKeyboardButton(
+            translate("legacy_next", locale), callback_data="next_quiz"
+        )]
     ])
     await query.edit_message_text(text, reply_markup=next_btn, parse_mode="Markdown")
     await send_pronunciation(query.message.chat_id, idx, context)
@@ -4158,6 +4438,7 @@ async def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = pick_word()
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
 
     correct_meaning = primary_meaning_for_word(word)
     distractors = set()
@@ -4181,7 +4462,7 @@ async def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
 
     await query.edit_message_text(
-        f"{format_word_label(idx)}\n\nВыбери правильный перевод:",
+        f"{format_word_label(idx)}\n\n{translate('legacy_quiz_prompt', locale)}",
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode="Markdown"
     )
@@ -4194,8 +4475,9 @@ async def cmd_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     context.user_data["type_idx"] = idx
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
     await update.message.reply_text(
-        f"{format_word_label(idx)}\n\nНапиши перевод по-русски:",
+        f"{format_word_label(idx)}\n\n{translate('legacy_type_prompt', locale)}",
         parse_mode="Markdown"
     )
     await send_pronunciation(update.message.chat_id, idx, context)
@@ -4204,6 +4486,7 @@ async def cmd_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle language switch via persistent keyboard buttons."""
     text = update.message.text
+    locale = interface_locale_for_update(update)
     pack = CATALOG.get(PACK_SWITCH_TEXTS.get(text, ""))
     if pack is None or pack not in switchable_packs():
         return
@@ -4217,7 +4500,12 @@ async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE)
         },
     )
     await update.message.reply_text(
-        f"Подключён набор *{pack.title}* ({pack.entry_count} слов)",
+        translate(
+            "legacy_pack_activated",
+            locale,
+            pack=pack.label,
+            count=pack.entry_count,
+        ),
         parse_mode="Markdown",
         reply_markup=get_lang_keyboard(),
     )
@@ -4236,10 +4524,10 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     word = W()[idx]
     answer = update.message.text.strip().lower()
     is_correct = meaning_answer_matches(word, answer)
+    locale = learning_card_locale(context.user_data)
 
     # Block type mode
     if context.user_data.get("block_typing"):
-        locale = learning_card_locale(context.user_data)
         if is_correct:
             text = f"✅\n{format_word_details(idx)}"
         else:
@@ -4259,12 +4547,22 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["type_idx"] = None
         if is_correct:
             xp, sb = mark_correct(idx)
-            text = f"✅\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+            text = (
+                f"✅\n{format_word_details(idx)}{get_example(idx)}\n"
+                f"{format_xp_line(xp, sb, locale=locale)}"
+            )
         else:
             xp, sb = mark_wrong(idx)
-            text = f"❌\n{format_word_details(idx)}\nТвой ответ: _{answer}_{get_example(idx)}\n{format_xp_line(xp, sb)}"
+            text = (
+                f"❌\n{format_word_details(idx)}\n"
+                f"{translate('legacy_your_answer', locale, answer=answer)}"
+                f"{get_example(idx)}\n"
+                f"{format_xp_line(xp, sb, locale=locale)}"
+            )
         next_btn = InlineKeyboardMarkup([
-            [forvo_button(idx), InlineKeyboardButton("Дальше ➡️", callback_data="next_smart")]
+            [forvo_button(idx), InlineKeyboardButton(
+                translate("legacy_next", locale), callback_data="next_smart"
+            )]
         ])
         await update.message.reply_text(text, reply_markup=next_btn, parse_mode="Markdown")
         await send_pronunciation(update.message.chat_id, idx, context)
@@ -4273,15 +4571,27 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Regular type mode
     if is_correct:
         xp, sb = mark_correct(idx)
-        text = f"✅ Правильно!\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = (
+            f"{translate('legacy_correct', locale)}\n"
+            f"{format_word_details(idx)}{get_example(idx)}\n"
+            f"{format_xp_line(xp, sb, locale=locale)}"
+        )
     else:
         xp, sb = mark_wrong(idx)
-        text = f"❌ Ошибка!\n{format_word_details(idx)}\nТвой ответ: _{answer}_{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = (
+            f"{translate('legacy_wrong', locale)}\n"
+            f"{format_word_details(idx)}\n"
+            f"{translate('legacy_your_answer', locale, answer=answer)}"
+            f"{get_example(idx)}\n"
+            f"{format_xp_line(xp, sb, locale=locale)}"
+        )
 
     context.user_data["type_idx"] = None
 
     next_btn = InlineKeyboardMarkup([
-        [forvo_button(idx), InlineKeyboardButton("Дальше ➡️", callback_data="next_type")]
+        [forvo_button(idx), InlineKeyboardButton(
+            translate("legacy_next", locale), callback_data="next_type"
+        )]
     ])
     await update.message.reply_text(text, reply_markup=next_btn, parse_mode="Markdown")
     await send_pronunciation(update.message.chat_id, idx, context)
@@ -4295,8 +4605,9 @@ async def next_type(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     context.user_data["type_idx"] = idx
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
     await query.edit_message_text(
-        f"{format_word_label(idx)}\n\nНапиши перевод по-русски:",
+        f"{format_word_label(idx)}\n\n{translate('legacy_type_prompt', locale)}",
         parse_mode="Markdown"
     )
     await send_pronunciation(query.message.chat_id, idx, context)
@@ -4308,7 +4619,13 @@ async def cmd_flash(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     word = W()[idx]
     btn = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("👁 Показать значение", callback_data=f"flash_show:{idx}")]]
+        [[InlineKeyboardButton(
+            translate(
+                "learning_show_meaning",
+                interface_locale_for_update(update),
+            ),
+            callback_data=f"flash_show:{idx}",
+        )]]
     )
     await update.message.reply_text(
         f"{format_word_label(idx)}",
@@ -4324,12 +4641,19 @@ async def flash_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
     idx = int(query.data.split(":")[1])
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
 
     buttons = InlineKeyboardMarkup([
         [forvo_button(idx)],
         [
-            InlineKeyboardButton("😵 Не знаю", callback_data=f"flash_didnt:{idx}"),
-            InlineKeyboardButton("✅ Знаю", callback_data=f"flash_knew:{idx}"),
+            InlineKeyboardButton(
+                translate("learning_dont_know", locale),
+                callback_data=f"flash_didnt:{idx}",
+            ),
+            InlineKeyboardButton(
+                translate("learning_know", locale),
+                callback_data=f"flash_knew:{idx}",
+            ),
         ]
     ])
     await query.edit_message_text(
@@ -4346,14 +4670,20 @@ async def flash_knew(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
     idx = int(query.data.split(":")[1])
     xp, sb = mark_correct(idx)
+    locale = learning_card_locale(context.user_data)
 
     new_idx = pick_word(exclude_idx=idx)
     word = W()[new_idx]
     btn = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("👁 Показать значение", callback_data=f"flash_show:{new_idx}")]]
+        [[InlineKeyboardButton(
+            translate("learning_show_meaning", locale),
+            callback_data=f"flash_show:{new_idx}",
+        )]]
     )
     await query.edit_message_text(
-        f"✅ Отлично! {format_xp_line(xp, sb)}\n\n{format_word_label(new_idx)}",
+        f"{translate('legacy_flash_known', locale)} "
+        f"{format_xp_line(xp, sb, locale=locale)}\n\n"
+        f"{format_word_label(new_idx)}",
         reply_markup=btn,
         parse_mode="Markdown"
     )
@@ -4365,14 +4695,20 @@ async def flash_didnt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
     idx = int(query.data.split(":")[1])
     xp, sb = mark_wrong(idx)
+    locale = learning_card_locale(context.user_data)
 
     new_idx = pick_word(exclude_idx=idx)
     word = W()[new_idx]
     btn = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("👁 Показать значение", callback_data=f"flash_show:{new_idx}")]]
+        [[InlineKeyboardButton(
+            translate("learning_show_meaning", locale),
+            callback_data=f"flash_show:{new_idx}",
+        )]]
     )
     await query.edit_message_text(
-        f"🔁 Ещё повторим! {format_xp_line(xp, sb)}\n\n{format_word_label(new_idx)}",
+        f"{translate('legacy_flash_retry', locale)} "
+        f"{format_xp_line(xp, sb, locale=locale)}\n\n"
+        f"{format_word_label(new_idx)}",
         reply_markup=btn,
         parse_mode="Markdown"
     )
@@ -4458,12 +4794,14 @@ async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     mode = adaptive_mode(idx)
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
 
     if mode == "type":
         context.user_data["type_idx"] = idx
         context.user_data["smart_mode"] = True
         await update.message.reply_text(
-            f"✍️ {format_word_label(idx)}\n\nНапиши перевод:",
+            f"✍️ {format_word_label(idx)}\n\n"
+            f"{translate('legacy_type_prompt', locale)}",
             parse_mode="Markdown"
         )
     else:
@@ -4474,7 +4812,8 @@ async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await update.message.reply_text(
-            f"❓ {format_word_label(idx)}\n\nВыбери перевод:",
+            f"❓ {format_word_label(idx)}\n\n"
+            f"{translate('legacy_smart_prompt', locale)}",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode="Markdown"
         )
@@ -4488,16 +4827,25 @@ async def smart_quiz_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = int(parts[1])
     is_correct = parts[2] == "1"
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
 
     if is_correct:
         xp, sb = mark_correct(idx)
-        text = f"✅\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = (
+            f"✅\n{format_word_details(idx)}{get_example(idx)}\n"
+            f"{format_xp_line(xp, sb, locale=locale)}"
+        )
     else:
         xp, sb = mark_wrong(idx)
-        text = f"❌\n{format_word_details(idx)}{get_example(idx)}\n{format_xp_line(xp, sb)}"
+        text = (
+            f"❌\n{format_word_details(idx)}{get_example(idx)}\n"
+            f"{format_xp_line(xp, sb, locale=locale)}"
+        )
 
     next_btn = InlineKeyboardMarkup([
-        [forvo_button(idx), InlineKeyboardButton("Дальше ➡️", callback_data="next_smart")]
+        [forvo_button(idx), InlineKeyboardButton(
+            translate("legacy_next", locale), callback_data="next_smart"
+        )]
     ])
     await query.edit_message_text(text, reply_markup=next_btn, parse_mode="Markdown")
     await send_pronunciation(query.message.chat_id, idx, context)
@@ -4511,12 +4859,14 @@ async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     mode = adaptive_mode(idx)
     word = W()[idx]
+    locale = learning_card_locale(context.user_data)
 
     if mode == "type":
         context.user_data["type_idx"] = idx
         context.user_data["smart_mode"] = True
         await query.edit_message_text(
-            f"✍️ {format_word_label(idx)}\n\nНапиши перевод:",
+            f"✍️ {format_word_label(idx)}\n\n"
+            f"{translate('legacy_type_prompt', locale)}",
             parse_mode="Markdown"
         )
     else:
@@ -4527,7 +4877,8 @@ async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await query.edit_message_text(
-            f"❓ {format_word_label(idx)}\n\nВыбери перевод:",
+            f"❓ {format_word_label(idx)}\n\n"
+            f"{translate('legacy_smart_prompt', locale)}",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode="Markdown"
         )
@@ -4543,9 +4894,10 @@ async def cmd_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     word = W()[idx]
     options, correct_pos = build_quiz_options(idx)
+    locale = learning_card_locale(context.user_data)
 
     msg = await update.message.reply_poll(
-        question=f"{format_plain_word_prompt(idx)} — перевод?",
+        question=f"{format_plain_word_prompt(idx)} — {translate('legacy_poll_translation', locale)}",
         options=options,
         type="quiz",
         correct_option_id=correct_pos,
@@ -4608,7 +4960,10 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     opts, new_correct = build_quiz_options(new_idx)
     msg = await context.bot.send_poll(
         chat_id=answer.user.id,
-        question=f"{format_plain_word_prompt(new_idx)} — перевод?",
+        question=(
+            f"{format_plain_word_prompt(new_idx)} — "
+            f"{translate('legacy_poll_translation', learning_card_locale(context.user_data))}"
+        ),
         options=opts,
         type="quiz",
         correct_option_id=new_correct,
@@ -4732,7 +5087,7 @@ async def start_home_lesson(query, context, *, lesson_kind: str) -> None:
     if not indices:
         await context.bot.send_message(
             chat_id=query.message.chat_id,
-            text="В этом наборе пока нет доступных слов.",
+            text=translate("learning_no_words", locale),
         )
         return
 
@@ -5053,9 +5408,10 @@ async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pack = active_content_pack()
     context.user_data["block_lang"] = pack.target_language
     context.user_data["block_pack_id"] = pack.pack_id
+    locale = learning_card_locale(context.user_data)
     await update.message.reply_text(
-        f"📚 *{pack.label}*\n\nВыбери тему:",
-        reply_markup=build_topic_keyboard(pack),
+        f"📚 *{pack.label}*\n\n{translate('topic_prompt', locale)}",
+        reply_markup=build_topic_keyboard(pack, locale=locale),
         parse_mode="Markdown",
     )
 
@@ -5070,11 +5426,11 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         _, requested_pack, topic_id = query.data.split(":", 2)
     except ValueError:
-        await query.edit_message_text("Выбор темы устарел. Отправь /learn.")
+        await query.edit_message_text(translate("topic_stale", locale))
         return
     pack = CATALOG.get(requested_pack) or visible_pack_for_language(requested_pack)
     if pack is None or pack not in visible_packs():
-        await query.edit_message_text("Этот набор недоступен.")
+        await query.edit_message_text(translate("pack_unavailable", locale))
         return
     topic = None if topic_id == "all" else topic_id
     if topic and topic not in CATALOG.topic_labels:
@@ -5087,7 +5443,7 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     if not indices:
         await query.edit_message_text(
-            "В этой теме пока нет слов.",
+            translate("topic_empty", locale),
             reply_markup=build_topic_keyboard(pack, locale=locale),
         )
         return
@@ -5125,10 +5481,11 @@ async def block_topics_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pack = CATALOG.get(context.user_data.get("block_pack_id", ""))
     if pack is None or pack not in visible_packs():
         pack = active_content_pack()
+    locale = learning_card_locale(context.user_data)
     invalidate_block_session(context.user_data)
     await query.edit_message_text(
-        f"📚 *{pack.label}*\n\nВыбери тему:",
-        reply_markup=build_topic_keyboard(pack),
+        f"📚 *{pack.label}*\n\n{translate('topic_prompt', locale)}",
+        reply_markup=build_topic_keyboard(pack, locale=locale),
         parse_mode="Markdown",
     )
 
@@ -5190,7 +5547,7 @@ async def block_ai_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await request_ai_tutor_answer(
             query.message,
             context,
-            "Объясни главные связи между словами этого блока.",
+            translate("ai_default_question", interface_locale_for_update(update)),
             user_id=user_id,
             request_kind="active_block",
             locale=interface_locale_for_update(update),
@@ -5208,7 +5565,8 @@ async def _authorized_block_ai_cb(
     if not await validate_block_callback(query, context.user_data, parts[1]):
         return
     activate_block_language(context.user_data)
-    question = "Объясни главные связи между словами этого блока."
+    locale = interface_locale_for_update(update)
+    question = translate("ai_default_question", locale)
     if AI_SETTINGS.enabled:
         await request_ai_tutor_answer(
             query.message,
@@ -5216,7 +5574,7 @@ async def _authorized_block_ai_cb(
             question,
             user_id=int(update.effective_user.id),
             request_kind="active_block",
-            locale=interface_locale_for_update(update),
+            locale=locale,
         )
     else:
         await send_ai_tutor_answer(
@@ -5224,7 +5582,7 @@ async def _authorized_block_ai_cb(
             context,
             question,
             user_id=int(update.effective_user.id),
-            locale=interface_locale_for_update(update),
+            locale=locale,
         )
 
 
@@ -5237,7 +5595,10 @@ async def block_voice_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ):
         return
     if not VOICE_SETTINGS.enabled:
-        await query.answer("Голосовой тренажёр пока выключен.", show_alert=True)
+        await query.answer(
+            translate("voice_practice_disabled", interface_locale_for_update(update)),
+            show_alert=True,
+        )
         return
     mode = "conversation" if parts[0] == "bconversation" else "pronunciation"
     activate_block_language(context.user_data)
@@ -5803,20 +6164,24 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Main
 # ---------------------------------------------------------------------------
 
-def build_bot_commands(*, ai_enabled: bool) -> list[BotCommand]:
+def build_bot_commands(
+    *,
+    ai_enabled: bool,
+    locale: str | None = None,
+) -> list[BotCommand]:
     """Return a stable, compact command menu; legacy handlers stay callable."""
     commands = [
-        BotCommand("start", "Урок на сегодня"),
-        BotCommand("learn", "Выбрать тему"),
-        BotCommand("lang", "Сменить язык"),
-        BotCommand("stats", "Мой прогресс"),
+        BotCommand("start", translate("command_start", locale)),
+        BotCommand("learn", translate("command_learn", locale)),
+        BotCommand("lang", translate("command_lang", locale)),
+        BotCommand("stats", translate("command_stats", locale)),
     ]
     if ai_enabled:
-        commands.append(BotCommand("ai", "AI-репетитор"))
+        commands.append(BotCommand("ai", translate("command_ai", locale)))
     commands.extend(
         [
-            BotCommand("privacy", "Данные и приватность"),
-            BotCommand("help", "Помощь"),
+            BotCommand("privacy", translate("command_privacy", locale)),
+            BotCommand("help", translate("command_help", locale)),
         ]
     )
     return commands
@@ -5831,6 +6196,15 @@ async def sync_telegram_profile(telegram_bot) -> None:
     profile = get_bot_profile()
     operations = (
         ("commands", telegram_bot.set_my_commands, (BOT_COMMANDS,), {}),
+        *(
+            (
+                f"commands:{locale}",
+                telegram_bot.set_my_commands,
+                (build_bot_commands(ai_enabled=AI_SETTINGS.enabled, locale=locale),),
+                {"language_code": locale},
+            )
+            for locale in sorted(INTERFACE_LOCALES)
+        ),
         ("name", telegram_bot.set_my_name, (profile["bot_name"],), {}),
         (
             "short_description",
@@ -5856,11 +6230,8 @@ async def sync_telegram_profile(telegram_bot) -> None:
             )
 
 
-TELEGRAM_NOTIFICATION_TEXTS = {
-    "pilot_access_approved": (
-        "Доступ к бесплатному пилоту MY DICTIONARY открыт. "
-        "Отправь /start, выбери язык и начни первый блок."
-    )
+TELEGRAM_NOTIFICATION_TEXT_KEYS = {
+    "pilot_access_approved": "pilot_access_approved_notification",
 }
 
 
@@ -5889,10 +6260,11 @@ async def deliver_telegram_notifications(
     for notification in notifications:
         notification_id = notification["notification_id"]
         profile = store.access_profile(notification["telegram_user_id"])
-        text = TELEGRAM_NOTIFICATION_TEXTS.get(notification["kind"])
-        if not profile or profile["access_status"] != "active" or not text:
+        text_key = TELEGRAM_NOTIFICATION_TEXT_KEYS.get(notification["kind"])
+        if not profile or profile["access_status"] != "active" or not text_key:
             store.cancel_telegram_notification(notification_id)
             continue
+        text = translate(text_key, profile.get("language_code"))
         try:
             await telegram_bot.send_message(
                 chat_id=notification["telegram_user_id"],

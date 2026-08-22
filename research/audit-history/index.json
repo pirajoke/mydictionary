@@ -61,6 +61,18 @@
       "source": "research/product-data-audit.html",
       "repo_commit": "32ede87286ca7581743d14abaceb7f4204bb2ad4",
       "repo_dirty": true
+    },
+    {
+      "id": "2026-08-22T15-34-54Z--31b554f18630",
+      "captured_at": "2026-08-22T15:34:54Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — интерфейс готов, внешние доказательства ещё собираются",
+      "snapshot": "2026-08-22T15-34-54Z--mydictionary--31b554f18630.html",
+      "sha256": "31b554f18630d2a1ef010f194279429930a38851148a89d99ac60dd50a4b035d",
+      "bytes": 54195,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "51e86d4ce294e482fc8e6fb71e7e785bf6aa6076",
+      "repo_dirty": true
     }
   ]
 }

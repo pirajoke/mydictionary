@@ -1528,6 +1528,7 @@ class DatabaseStore:
                 "role": user.role,
                 "access_status": user.access_status,
                 "access_status_updated_at": user.access_status_updated_at,
+                "language_code": user.language_code,
             }
 
     def activate_user_access(self, user_id: int) -> None:
