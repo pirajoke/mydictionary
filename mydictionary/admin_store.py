@@ -1059,7 +1059,8 @@ class AdminStore:
 
     def product_funnel(self, *, days: int = 30) -> dict[str, Any]:
         days = max(1, min(int(days), 365))
-        since = datetime.now(timezone.utc) - timedelta(days=days)
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(days=days)
         event_steps = [
             ("start_received", "Открыли /start"),
             ("onboarding_completed", "Завершили настройку"),
@@ -1072,6 +1073,41 @@ class AdminStore:
         ]
         event_names = [name for name, _ in event_steps]
         with self.store.Session() as session:
+            cohort_rows = session.execute(
+                select(
+                    AnalyticsEvent.telegram_user_id,
+                    func.min(AnalyticsEvent.occurred_at),
+                )
+                .join(
+                    User,
+                    User.telegram_user_id == AnalyticsEvent.telegram_user_id,
+                )
+                .where(
+                    AnalyticsEvent.event_name == "onboarding_started",
+                    User.role == "learner",
+                )
+                .group_by(AnalyticsEvent.telegram_user_id)
+                .having(func.min(AnalyticsEvent.occurred_at) >= since)
+            ).all()
+            cohort_started_at = {
+                int(user_id): _as_utc(started_at)
+                for user_id, started_at in cohort_rows
+            }
+            cohort_ids = set(cohort_started_at)
+            activity_rows = (
+                session.execute(
+                    select(
+                        AnalyticsEvent.telegram_user_id,
+                        AnalyticsEvent.occurred_at,
+                    ).where(
+                        AnalyticsEvent.telegram_user_id.in_(cohort_ids),
+                        AnalyticsEvent.event_name.in_(PILOT_ACTIVITY_EVENTS),
+                        AnalyticsEvent.occurred_at >= since,
+                    )
+                ).all()
+                if cohort_ids
+                else []
+            )
             rows = session.execute(
                 select(
                     AnalyticsEvent.event_name,
@@ -1140,6 +1176,36 @@ class AdminStore:
                     func.coalesce(func.sum(payment_counts.c.payment_count), 0),
                 ).where(payment_counts.c.payment_count >= 2)
             ).one()
+        activity_by_user: dict[int, list[datetime]] = {
+            user_id: [] for user_id in cohort_ids
+        }
+        for user_id, occurred_at in activity_rows:
+            activity_by_user[int(user_id)].append(_as_utc(occurred_at))
+
+        def public_retention(day: int) -> dict[str, float | int]:
+            eligible = {
+                user_id
+                for user_id, started_at in cohort_started_at.items()
+                if started_at <= now - timedelta(days=day)
+            }
+            retained = {
+                user_id
+                for user_id in eligible
+                if any(
+                    cohort_started_at[user_id] + timedelta(days=day)
+                    <= observed_at
+                    < cohort_started_at[user_id] + timedelta(days=day + 1)
+                    for observed_at in activity_by_user[user_id]
+                )
+            }
+            return {
+                "eligible": len(eligible),
+                "users": len(retained),
+                "rate": (
+                    len(retained) / len(eligible) * 100 if eligible else 0
+                ),
+            }
+
         aggregates = {
             row[0]: {"events": int(row[1]), "users": int(row[2])}
             for row in rows
@@ -1193,6 +1259,12 @@ class AdminStore:
         return {
             "days": days,
             "steps": steps,
+            "retention": {
+                "cohort": len(cohort_ids),
+                "entry_event": "onboarding_started",
+                "d1": public_retention(1),
+                "d7": public_retention(7),
+            },
             "commercial": {
                 "orders": int(order_events or 0),
                 "payments": int(payment_events or 0),

@@ -152,6 +152,10 @@
           <article><span>Stars получено</span><strong>{{ funnel.commercial.gross_xtr|number }}</strong><small>{{ funnel.commercial.net_xtr }} после возвратов</small></article>
           <article><span>Оценочная маржа</span><strong>{% if funnel.commercial.estimated_contribution_margin_bps is not none %}{{ (funnel.commercial.estimated_contribution_margin_bps / 100)|round(1) }}%{% else %}—{% endif %}</strong><small>AI {{ funnel.commercial.ai_provider_cost_micro_usd|usd }} · вклад {{ funnel.commercial.estimated_contribution_micro_usd|usd }}</small></article>
         </section>
+        <section class="metric-grid" aria-label="Retention от начала onboarding">
+          <article><span>Retention D1</span><strong>{{ funnel.retention.d1.rate|round(1) }}%</strong><small>{{ funnel.retention.d1.users }}/{{ funnel.retention.d1.eligible }} eligible</small></article>
+          <article><span>Retention D7</span><strong>{{ funnel.retention.d7.rate|round(1) }}%</strong><small>{{ funnel.retention.d7.users }}/{{ funnel.retention.d7.eligible }} eligible</small></article>
+        </section>
         <section class="metric-grid" aria-label="Воронка за 30 дней">
           {% for step in funnel.steps %}<article>
             <span>{{ step.label }}</span><strong>{{ step.users|number }}</strong>

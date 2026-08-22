@@ -830,6 +830,146 @@ class AdminConsoleTest(unittest.TestCase):
         self.assertIn("Воронка когорты", page)
         self.assertIn("pilot_student", page)
 
+    def _record_public_retention_cohort(self, user_id: int) -> None:
+        now = datetime.now(timezone.utc)
+        cohort_at = now - timedelta(days=8, hours=2)
+        self.store.ensure_user(
+            SimpleNamespace(
+                id=user_id,
+                username=f"public_{user_id}",
+                first_name="Public",
+                last_name=None,
+                language_code="fr",
+            )
+        )
+        onboarding_id = self.store.record_event(
+            user_id,
+            "onboarding_started",
+            source="direct",
+        )
+        d1_activity_id = self.store.record_event(
+            user_id,
+            "block_started",
+        )
+        d7_activity_id = self.store.record_event(
+            user_id,
+            "language_switched",
+        )
+        with self.store.Session.begin() as session:
+            session.get(AnalyticsEvent, onboarding_id).occurred_at = cohort_at
+            session.get(AnalyticsEvent, d1_activity_id).occurred_at = (
+                cohort_at + timedelta(days=1, hours=1)
+            )
+            session.get(AnalyticsEvent, d7_activity_id).occurred_at = (
+                cohort_at + timedelta(days=7, hours=1)
+            )
+
+    def test_public_retention_uses_onboarding_cohort_without_entering_pilot(self):
+        self._record_public_retention_cohort(870001)
+        self.store.ensure_user(SimpleNamespace(id=870002), role="admin")
+        self.store.record_event(870002, "onboarding_started", source="admin")
+        admin_store = AdminStore(self.store)
+
+        funnel = admin_store.product_funnel(days=30)
+        pilot = admin_store.pilot_overview(days=30)
+
+        self.assertEqual(pilot["cohort"], 0)
+        self.assertEqual(
+            pilot["retention"],
+            {
+                "d1": {"eligible": 0, "users": 0, "rate": 0},
+                "d7": {"eligible": 0, "users": 0, "rate": 0},
+            },
+        )
+        self.assertEqual(funnel["retention"]["cohort"], 1)
+        self.assertEqual(
+            set(funnel["retention"]),
+            {"cohort", "entry_event", "d1", "d7"},
+        )
+        self.assertEqual(
+            funnel["retention"]["entry_event"],
+            "onboarding_started",
+        )
+        self.assertEqual(
+            funnel["retention"]["d1"],
+            {"eligible": 1, "users": 1, "rate": 100},
+        )
+        self.assertEqual(
+            funnel["retention"]["d7"],
+            {"eligible": 1, "users": 1, "rate": 100},
+        )
+
+    def test_public_retention_excludes_repeat_onboarding_outside_cohort_window(self):
+        user_id = 870003
+        now = datetime.now(timezone.utc)
+        recent_onboarding_at = now - timedelta(days=8, hours=2)
+        self.store.ensure_user(SimpleNamespace(id=user_id))
+        first_onboarding_id = self.store.record_event(
+            user_id,
+            "onboarding_started",
+            source="direct",
+        )
+        repeated_onboarding_id = self.store.record_event(
+            user_id,
+            "onboarding_started",
+            source="direct",
+        )
+        d1_activity_id = self.store.record_event(user_id, "block_started")
+        d7_activity_id = self.store.record_event(user_id, "language_switched")
+        with self.store.Session.begin() as session:
+            session.get(AnalyticsEvent, first_onboarding_id).occurred_at = (
+                now - timedelta(days=45)
+            )
+            session.get(AnalyticsEvent, repeated_onboarding_id).occurred_at = (
+                recent_onboarding_at
+            )
+            session.get(AnalyticsEvent, d1_activity_id).occurred_at = (
+                recent_onboarding_at + timedelta(days=1, hours=1)
+            )
+            session.get(AnalyticsEvent, d7_activity_id).occurred_at = (
+                recent_onboarding_at + timedelta(days=7, hours=1)
+            )
+
+        retention = AdminStore(self.store).product_funnel(days=30)["retention"]
+
+        self.assertEqual(
+            retention,
+            {
+                "cohort": 0,
+                "entry_event": "onboarding_started",
+                "d1": {"eligible": 0, "users": 0, "rate": 0},
+                "d7": {"eligible": 0, "users": 0, "rate": 0},
+            },
+        )
+
+    def test_public_retention_renders_as_privacy_safe_funnel_aggregate(self):
+        user_id = 987654321
+        self._record_public_retention_cohort(user_id)
+        self.login()
+
+        page = self.client.get("/admin?tab=funnel").get_data(as_text=True)
+
+        with self.subTest(metric="d1"):
+            self.assertTrue(
+                "Retention D1" in page,
+                "funnel page does not render aggregate Retention D1",
+            )
+        with self.subTest(metric="d7"):
+            self.assertTrue(
+                "Retention D7" in page,
+                "funnel page does not render aggregate Retention D7",
+            )
+        with self.subTest(metric="eligible"):
+            self.assertTrue(
+                page.count("1/1 eligible") >= 2,
+                "funnel page does not render both eligible aggregates",
+            )
+        with self.subTest(metric="rate"):
+            self.assertTrue(
+                page.count("100.0%") >= 2,
+                "funnel page does not render both retention rates",
+            )
+
     def test_administrator_access_cannot_be_restricted(self):
         user_id = 5503
         self.store.ensure_user(SimpleNamespace(id=user_id), role="admin")
