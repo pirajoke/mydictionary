@@ -652,6 +652,228 @@ class DailyLessonTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(record.call_args.args[0], "card_revealed")
 
 
+class FrenchLearningBlockLocaleTest(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        bot.PROGRESS["active_lang"] = "ja"
+        bot.PROGRESS["active_pack_id"] = "ja-basics-100"
+        self.pack = bot.CATALOG.require("ja-basics-100")
+        self.indices = list(range(10))
+
+    async def test_topic_block_localizes_study_intro_and_buttons(self):
+        query = SimpleNamespace(
+            data="ltopic:ja-basics-100:food",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=1, language_code="fr"),
+        )
+        context = SimpleNamespace(user_data={}, bot=SimpleNamespace())
+
+        with (
+            patch.object(bot, "activate_content_pack"),
+            patch.object(bot, "active_content_pack", return_value=self.pack),
+            patch.object(bot, "pick_block", return_value=self.indices),
+            patch.object(bot, "record_product_event"),
+            patch.object(bot, "AI_SETTINGS", SimpleNamespace(enabled=True)),
+            patch.object(bot, "VOICE_SETTINGS", SimpleNamespace(enabled=True)),
+        ):
+            await bot.learn_topic_cb.__wrapped__(update, context)
+
+        payload = query.edit_message_text.await_args
+        text = payload.args[0]
+        self.assertIn("🍽 Alimentation et boissons", text)
+        self.assertIn("Mémorisez 10 mots :", text)
+        button_texts = [
+            button.text
+            for row in payload.kwargs["reply_markup"].inline_keyboard
+            for button in row
+        ]
+        for expected in (
+            "Quiz · 4 choix",
+            "Par écrit",
+            "Tuteur IA",
+            "🎤 Prononcer 10 mots",
+            "Thèmes 📚",
+        ):
+            self.assertIn(expected, button_texts)
+        combined = f"{text} {' '.join(button_texts)}"
+        for russian_ui in (
+            "Еда и напитки",
+            "Запомни",
+            "Тест · 4 варианта",
+            "Письменно",
+            "AI-репетитор",
+            "Произнести 10 слов",
+            "Темы 📚",
+        ):
+            self.assertNotIn(russian_ui, combined)
+
+    async def test_quiz_and_written_question_prompts_follow_french_locale(self):
+        quiz_data = {"interface_locale": "fr"}
+        bot.reset_block_state(
+            quiz_data, self.indices, "ja", "food", self.pack.pack_id
+        )
+        quiz_data["interface_locale"] = "fr"
+        bot.start_block_attempt(quiz_data, "quiz")
+        quiz_query = SimpleNamespace(
+            edit_message_text=AsyncMock(),
+            message=SimpleNamespace(chat_id=123),
+        )
+
+        type_data = {"interface_locale": "fr"}
+        bot.reset_block_state(
+            type_data, self.indices, "ja", "food", self.pack.pack_id
+        )
+        type_data["interface_locale"] = "fr"
+        bot.start_block_attempt(type_data, "type")
+        type_message = SimpleNamespace(chat_id=123, reply_text=AsyncMock())
+
+        with (
+            patch.object(bot, "active_content_pack", return_value=self.pack),
+            patch.object(bot, "record_product_event"),
+            patch.object(bot, "send_pronunciation", new=AsyncMock()),
+        ):
+            await bot.block_send_question(
+                quiz_query,
+                SimpleNamespace(user_data=quiz_data),
+            )
+            await bot.block_send_question_msg(
+                type_message,
+                SimpleNamespace(user_data=type_data),
+            )
+
+        quiz_text = quiz_query.edit_message_text.await_args.args[0]
+        type_text = type_message.reply_text.await_args.args[0]
+        for mode, text, expected, russian_ui in (
+            (
+                "quiz",
+                quiz_text,
+                "Choisissez la traduction :",
+                "Выбери перевод",
+            ),
+            (
+                "written",
+                type_text,
+                "Écrivez la traduction :",
+                "Напиши перевод",
+            ),
+        ):
+            with self.subTest(mode=mode):
+                self.assertIn(expected, text)
+                self.assertNotIn(russian_ui, text)
+
+    async def test_wrong_written_answer_localizes_label_but_keeps_learning_content(self):
+        user_data = {"interface_locale": "fr"}
+        bot.reset_block_state(
+            user_data, [10, 21], "ja", "people", self.pack.pack_id
+        )
+        user_data["interface_locale"] = "fr"
+        bot.start_block_attempt(user_data, "type")
+        user_data["block_typing"] = True
+        user_data["type_idx"] = 10
+        message = SimpleNamespace(
+            text="mauvaise réponse",
+            chat_id=123,
+            reply_text=AsyncMock(),
+        )
+        update = SimpleNamespace(
+            message=message,
+            effective_user=SimpleNamespace(id=1, language_code="fr"),
+        )
+        context = SimpleNamespace(user_data=user_data)
+
+        with (
+            patch.object(bot, "active_content_pack", return_value=self.pack),
+            patch.object(bot, "send_pronunciation", new=AsyncMock()),
+            patch.object(bot, "block_advance", new=AsyncMock()),
+        ):
+            await bot.handle_type_answer.__wrapped__(update, context)
+
+        text = message.reply_text.await_args.args[0]
+        self.assertIn("Votre réponse : _mauvaise réponse_", text)
+        self.assertNotIn("Твой ответ", text)
+        self.assertIn("🇷🇺 *я*", text)
+
+    async def test_completed_lesson_localizes_summary_and_all_enabled_buttons(self):
+        user_data = {"interface_locale": "fr"}
+        bot.reset_block_state(
+            user_data,
+            [10, 21],
+            "ja",
+            "people",
+            self.pack.pack_id,
+            lesson_kind="daily",
+        )
+        user_data["interface_locale"] = "fr"
+        bot.start_block_attempt(user_data, "quiz")
+        user_data["block_pos"] = 2
+        user_data["block_correct"] = 1
+        user_data["block_wrong"] = [21]
+        query = SimpleNamespace(edit_message_text=AsyncMock())
+        context = SimpleNamespace(user_data=user_data)
+
+        progress = {
+            "active_lang": "ja",
+            "active_pack_id": self.pack.pack_id,
+            "sessions": 0,
+            "xp": 0,
+            "streak": 2,
+        }
+        with (
+            patch.dict(bot.PROGRESS, progress, clear=False),
+            patch.object(bot, "active_content_pack", return_value=self.pack),
+            patch.object(bot, "save_progress"),
+            patch.object(bot, "record_product_event"),
+            patch.object(bot, "AI_SETTINGS", SimpleNamespace(enabled=True)),
+            patch.object(bot, "VOICE_SETTINGS", SimpleNamespace(enabled=True)),
+        ):
+            await bot.block_summary(query, context)
+
+        payload = query.edit_message_text.await_args
+        text = payload.args[0]
+        self.assertIn("📊 *Résultat : 1/2*", text)
+        self.assertIn("❌ Erreurs :", text)
+        self.assertIn("XP pour la leçon", text)
+        self.assertIn("Total :", text)
+        self.assertIn("Niveau 1 · Débutant", text)
+        self.assertIn("Série : 2 j", text)
+        button_texts = [
+            button.text
+            for row in payload.kwargs["reply_markup"].inline_keyboard
+            for button in row
+        ]
+        for expected in (
+            "🔄 Revoir les erreurs",
+            "✨ Tuteur IA",
+            "🗣 Prononciation",
+            "💬 Phrases",
+            "▶️ Encore une leçon",
+            "📚 Thèmes",
+            "⚙️ Réglages",
+        ):
+            self.assertIn(expected, button_texts)
+        combined = f"{text} {' '.join(button_texts)}"
+        for russian_ui in (
+            "Результат",
+            "Ошибки:",
+            "за урок",
+            "Всего:",
+            "Уровень",
+            "до следующего",
+            "Серия:",
+            "Повторить ошибки",
+            "AI-репетитор",
+            "Произношение",
+            "Фразы",
+            "Ещё урок",
+            "📚 Темы",
+            "⚙️ Настройки",
+        ):
+            self.assertNotIn(russian_ui, combined)
+
+
 class GlobalCallbackIsolationTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         bot.PROGRESS["active_lang"] = "ja"
