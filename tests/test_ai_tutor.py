@@ -91,7 +91,9 @@ def settings(
     )
     snapshot["snapshot_id"] = f"test-ai-{uuid4()}"
     snapshot["status"] = "approved"
-    snapshot["reviewed_on"] = reviewed_on or date.today().isoformat()
+    snapshot["reviewed_on"] = (
+        reviewed_on or datetime.now(timezone.utc).date().isoformat()
+    )
     snapshot["ai"]["status"] = "approved"
     snapshot["ai"]["model"] = "test-model"
     snapshot["ai"]["credit_policy"]["initial_credits"] = initial_credits
