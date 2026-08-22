@@ -13,13 +13,16 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_intro": (
             "MY DICTIONARY brings short vocabulary lessons, flashcards and "
             "pronunciation practice to Telegram. The basic packs are free.\n\n"
-            "Two quick steps and your first lesson is ready."
+            "Three quick steps and your first lesson is ready."
         ),
         "onboarding_try": "Try for free ✨",
         "onboarding_done": "Setup is already complete.",
-        "onboarding_choose_pack": "Step 1 of 2. Which language do you want to learn?",
+        "onboarding_choose_native": (
+            "Step 1 of 3. In which language would you like to see word meanings?"
+        ),
+        "onboarding_choose_pack": "Step 2 of 3. Which language do you want to learn?",
         "onboarding_choose_pace": (
-            "Step 2 of 2. How many cards would you like to study each day?"
+            "Step 3 of 3. How many cards would you like to study each day?"
         ),
         "onboarding_pack_words": "{label} · {count} words",
         "pace_5": "5 cards · easy",
@@ -59,13 +62,16 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_intro": (
             "MY DICTIONARY propose dans Telegram de courtes leçons de "
             "vocabulaire, des cartes et la prononciation. Les packs de base "
-            "sont gratuits.\n\nDeux étapes rapides et votre première leçon est prête."
+            "sont gratuits.\n\nTrois étapes rapides et votre première leçon est prête."
         ),
         "onboarding_try": "Essayer gratuitement ✨",
         "onboarding_done": "La configuration est déjà terminée.",
-        "onboarding_choose_pack": "Étape 1 sur 2. Quelle langue voulez-vous apprendre ?",
+        "onboarding_choose_native": (
+            "Étape 1 sur 3. Dans quelle langue voulez-vous voir le sens des mots ?"
+        ),
+        "onboarding_choose_pack": "Étape 2 sur 3. Quelle langue voulez-vous apprendre ?",
         "onboarding_choose_pace": (
-            "Étape 2 sur 2. Combien de cartes voulez-vous étudier par jour ?"
+            "Étape 3 sur 3. Combien de cartes voulez-vous étudier par jour ?"
         ),
         "onboarding_pack_words": "{label} · {count} mots",
         "pace_5": "5 cartes · facile",
@@ -105,13 +111,16 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_intro": (
             "MY DICTIONARY bietet kurze Vokabellektionen, Karteikarten und "
             "Aussprache direkt in Telegram. Die Basispakete sind kostenlos.\n\n"
-            "Zwei kurze Schritte, dann ist deine erste Lektion bereit."
+            "Drei kurze Schritte, dann ist deine erste Lektion bereit."
         ),
         "onboarding_try": "Kostenlos testen ✨",
         "onboarding_done": "Die Einrichtung ist bereits abgeschlossen.",
-        "onboarding_choose_pack": "Schritt 1 von 2. Welche Sprache möchtest du lernen?",
+        "onboarding_choose_native": (
+            "Schritt 1 von 3. In welcher Sprache möchtest du die Wortbedeutungen sehen?"
+        ),
+        "onboarding_choose_pack": "Schritt 2 von 3. Welche Sprache möchtest du lernen?",
         "onboarding_choose_pace": (
-            "Schritt 2 von 2. Wie viele Karten möchtest du täglich lernen?"
+            "Schritt 3 von 3. Wie viele Karten möchtest du täglich lernen?"
         ),
         "onboarding_pack_words": "{label} · {count} Wörter",
         "pace_5": "5 Karten · leicht",
@@ -150,12 +159,13 @@ _CATALOG: dict[str, dict[str, str]] = {
     "ja": {
         "onboarding_intro": (
             "MY DICTIONARYでは、Telegramで短い単語レッスン、カード、発音練習ができます。"
-            "基本パックは無料です。\n\n2つの簡単な設定で、最初のレッスンを始められます。"
+            "基本パックは無料です。\n\n3つの簡単な設定で、最初のレッスンを始められます。"
         ),
         "onboarding_try": "無料で試す ✨",
         "onboarding_done": "設定はすでに完了しています。",
-        "onboarding_choose_pack": "ステップ1/2：学びたい言語を選んでください。",
-        "onboarding_choose_pace": "ステップ2/2：1日に何枚のカードを学びますか？",
+        "onboarding_choose_native": "ステップ1/3：単語の意味を何語で表示しますか？",
+        "onboarding_choose_pack": "ステップ2/3：学びたい言語を選んでください。",
+        "onboarding_choose_pace": "ステップ3/3：1日に何枚のカードを学びますか？",
         "onboarding_pack_words": "{label} · {count}語",
         "pace_5": "5枚 · やさしい",
         "pace_10": "10枚 · 標準",
@@ -191,12 +201,13 @@ _CATALOG: dict[str, dict[str, str]] = {
     "ar": {
         "onboarding_intro": (
             "يقدّم MY DICTIONARY دروس مفردات قصيرة وبطاقات وتدريباً على النطق "
-            "داخل Telegram. الحزم الأساسية مجانية.\n\nخطوتان سريعتان وتصبح حصتك الأولى جاهزة."
+            "داخل Telegram. الحزم الأساسية مجانية.\n\nثلاث خطوات سريعة وتصبح حصتك الأولى جاهزة."
         ),
         "onboarding_try": "جرّب مجاناً ✨",
         "onboarding_done": "اكتمل الإعداد بالفعل.",
-        "onboarding_choose_pack": "الخطوة 1 من 2. ما اللغة التي تريد تعلّمها؟",
-        "onboarding_choose_pace": "الخطوة 2 من 2. كم بطاقة تريد دراستها يومياً؟",
+        "onboarding_choose_native": "الخطوة 1 من 3. بأي لغة تريد رؤية معاني الكلمات؟",
+        "onboarding_choose_pack": "الخطوة 2 من 3. ما اللغة التي تريد تعلّمها؟",
+        "onboarding_choose_pace": "الخطوة 3 من 3. كم بطاقة تريد دراستها يومياً؟",
         "onboarding_pack_words": "{label} · {count} كلمة",
         "pace_5": "5 بطاقات · سهل",
         "pace_10": "10 بطاقات · عادي",
@@ -229,12 +240,13 @@ _CATALOG: dict[str, dict[str, str]] = {
     "zh": {
         "onboarding_intro": (
             "MY DICTIONARY 在 Telegram 中提供短词汇课、卡片和发音练习。基础词包免费。"
-            "\n\n只需两个简单步骤，第一课即可开始。"
+            "\n\n只需三个简单步骤，第一课即可开始。"
         ),
         "onboarding_try": "免费试用 ✨",
         "onboarding_done": "设置已经完成。",
-        "onboarding_choose_pack": "第 1/2 步：你想学习哪种语言？",
-        "onboarding_choose_pace": "第 2/2 步：你每天想学习多少张卡片？",
+        "onboarding_choose_native": "第 1/3 步：你想用哪种语言查看单词含义？",
+        "onboarding_choose_pack": "第 2/3 步：你想学习哪种语言？",
+        "onboarding_choose_pace": "第 3/3 步：你每天想学习多少张卡片？",
         "onboarding_pack_words": "{label} · {count} 个词",
         "pace_5": "5 张 · 轻松",
         "pace_10": "10 张 · 标准",
@@ -267,13 +279,16 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_intro": (
             "MY DICTIONARY — короткие уроки со словами, карточками и "
             "произношением прямо в Telegram. Базовые наборы бесплатны.\n\n"
-            "Два коротких шага — и первый урок готов."
+            "Три коротких шага — и первый урок готов."
         ),
         "onboarding_try": "Попробовать бесплатно ✨",
         "onboarding_done": "Настройка уже завершена.",
-        "onboarding_choose_pack": "Шаг 1 из 2. Какой язык хочешь учить?",
+        "onboarding_choose_native": (
+            "Шаг 1 из 3. На каком языке показывать значения слов?"
+        ),
+        "onboarding_choose_pack": "Шаг 2 из 3. Какой язык хочешь учить?",
         "onboarding_choose_pace": (
-            "Шаг 2 из 2. Сколько карточек удобно проходить в день?"
+            "Шаг 3 из 3. Сколько карточек удобно проходить в день?"
         ),
         "onboarding_pack_words": "{label} · {count} слов",
         "pace_5": "5 карточек · легко",
@@ -313,13 +328,16 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_intro": (
             "MY DICTIONARY ofrece lecciones breves de vocabulario, tarjetas y "
             "pronunciación dentro de Telegram. Los paquetes básicos son gratis."
-            "\n\nDos pasos rápidos y tu primera lección estará lista."
+            "\n\nTres pasos rápidos y tu primera lección estará lista."
         ),
         "onboarding_try": "Probar gratis ✨",
         "onboarding_done": "La configuración ya está completa.",
-        "onboarding_choose_pack": "Paso 1 de 2. ¿Qué idioma quieres aprender?",
+        "onboarding_choose_native": (
+            "Paso 1 de 3. ¿En qué idioma quieres ver el significado de las palabras?"
+        ),
+        "onboarding_choose_pack": "Paso 2 de 3. ¿Qué idioma quieres aprender?",
         "onboarding_choose_pace": (
-            "Paso 2 de 2. ¿Cuántas tarjetas quieres estudiar al día?"
+            "Paso 3 de 3. ¿Cuántas tarjetas quieres estudiar al día?"
         ),
         "onboarding_pack_words": "{label} · {count} palabras",
         "pace_5": "5 tarjetas · fácil",
@@ -425,6 +443,296 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
 }
 
 for _locale, _messages in _LEARNING_CARD_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
+_HOME_SURFACE_COPY: dict[str, dict[str, str]] = {
+    "en": {
+        "topic_prompt": "Choose a topic:",
+        "topic_all": "🌐 All words",
+        "review_empty": "Everything is reviewed for today. You can start a new lesson.",
+        "review_start_lesson": "▶️ Start a new lesson",
+        "mirror_style_teacher": "Teacher",
+        "mirror_style_conversation": "Conversation",
+        "mirror_style_coach": "Coach",
+        "mirror_style_brief": "Concise",
+        "mirror_style_practice": "Practice",
+        "mirror_style_exam": "Exam",
+        "mirror_depth_compact": "Short",
+        "mirror_depth_balanced": "Balanced",
+        "mirror_depth_deep": "In depth",
+        "mirror_level_adaptive": "Auto",
+        "settings_text": (
+            "⚙️ *Settings*\n\nLanguage: *{pack}*\nCards per lesson: *{pace}*\n"
+            "AI style: *{style}*\n\nDepth: *{depth}* · level: *{level}*\n\n"
+            "Choose a language, pace, or response format:"
+        ),
+        "stats_weak_empty": "None for now",
+        "stats_next_level": " ({remaining} to level {level})",
+        "stats_text": (
+            "📊 *Statistics* ({pack})\n\n📈 *Level {level} · {title}* — {xp_line}\n"
+            "🔥 Streak: {streak} days (best: {streak_best})\n⭐ Today: +{today_xp} XP\n\n"
+            "📚 Words: {total} | Studied: {seen} | Mastered: {learned}\n"
+            "⏰ Due for review: {overdue}\n\n✅ Correct: {correct} | ❌ Errors: {wrong}\n"
+            "🎯 Accuracy: {accuracy}%\n\n*Words to strengthen:*\n{weak_text}"
+        ),
+    },
+    "fr": {
+        "topic_prompt": "Choisissez un thème :",
+        "topic_all": "🌐 Tous les mots",
+        "review_empty": "Tout est révisé pour aujourd’hui. Vous pouvez commencer une nouvelle leçon.",
+        "review_start_lesson": "▶️ Commencer une nouvelle leçon",
+        "mirror_style_teacher": "Professeur",
+        "mirror_style_conversation": "Conversation",
+        "mirror_style_coach": "Coach",
+        "mirror_style_brief": "Concis",
+        "mirror_style_practice": "Pratique",
+        "mirror_style_exam": "Examen",
+        "mirror_depth_compact": "Court",
+        "mirror_depth_balanced": "Équilibré",
+        "mirror_depth_deep": "Approfondi",
+        "mirror_level_adaptive": "Auto",
+        "settings_text": (
+            "⚙️ *Réglages*\n\nLangue : *{pack}*\nCartes par leçon : *{pace}*\n"
+            "Style IA : *{style}*\n\nProfondeur : *{depth}* · niveau : *{level}*\n\n"
+            "Choisissez une langue, un rythme ou un format de réponse :"
+        ),
+        "stats_weak_empty": "Aucun pour le moment",
+        "stats_next_level": " ({remaining} avant le niveau {level})",
+        "stats_text": (
+            "📊 *Statistiques* ({pack})\n\n📈 *Niveau {level} · {title}* — {xp_line}\n"
+            "🔥 Série : {streak} j (record : {streak_best})\n⭐ Aujourd’hui : +{today_xp} XP\n\n"
+            "📚 Mots : {total} | Étudiés : {seen} | Maîtrisés : {learned}\n"
+            "⏰ À réviser : {overdue}\n\n✅ Bonnes réponses : {correct} | ❌ Erreurs : {wrong}\n"
+            "🎯 Précision : {accuracy}%\n\n*Mots à renforcer:*\n{weak_text}"
+        ),
+    },
+    "de": {
+        "topic_prompt": "Wähle ein Thema:",
+        "topic_all": "🌐 Alle Wörter",
+        "review_empty": "Für heute ist alles wiederholt. Du kannst eine neue Lektion starten.",
+        "review_start_lesson": "▶️ Neue Lektion starten",
+        "mirror_style_teacher": "Lehrer",
+        "mirror_style_conversation": "Gespräch",
+        "mirror_style_coach": "Coach",
+        "mirror_style_brief": "Kurz",
+        "mirror_style_practice": "Übung",
+        "mirror_style_exam": "Prüfung",
+        "mirror_depth_compact": "Kompakt",
+        "mirror_depth_balanced": "Ausgewogen",
+        "mirror_depth_deep": "Vertieft",
+        "mirror_level_adaptive": "Auto",
+        "settings_text": (
+            "⚙️ *Einstellungen*\n\nSprache: *{pack}*\nKarten pro Lektion: *{pace}*\n"
+            "KI-Stil: *{style}*\n\nTiefe: *{depth}* · Niveau: *{level}*\n\n"
+            "Wähle Sprache, Tempo oder Antwortformat:"
+        ),
+        "stats_weak_empty": "Derzeit keine",
+        "stats_next_level": " ({remaining} bis Stufe {level})",
+        "stats_text": (
+            "📊 *Statistik* ({pack})\n\n📈 *Stufe {level} · {title}* — {xp_line}\n"
+            "🔥 Serie: {streak} Tage (Rekord: {streak_best})\n⭐ Heute: +{today_xp} XP\n\n"
+            "📚 Wörter: {total} | Gelernt: {seen} | Beherrscht: {learned}\n"
+            "⏰ Zu wiederholen: {overdue}\n\n✅ Richtig: {correct} | ❌ Fehler: {wrong}\n"
+            "🎯 Genauigkeit: {accuracy}%\n\n*Zu stärkende Wörter:*\n{weak_text}"
+        ),
+    },
+    "ja": {
+        "topic_prompt": "トピックを選んでください：",
+        "topic_all": "🌐 すべての単語",
+        "review_empty": "今日の復習はすべて完了しました。新しいレッスンを始められます。",
+        "review_start_lesson": "▶️ 新しいレッスンを始める",
+        "mirror_style_teacher": "先生",
+        "mirror_style_conversation": "会話",
+        "mirror_style_coach": "コーチ",
+        "mirror_style_brief": "簡潔",
+        "mirror_style_practice": "練習",
+        "mirror_style_exam": "試験",
+        "mirror_depth_compact": "短め",
+        "mirror_depth_balanced": "標準",
+        "mirror_depth_deep": "詳しく",
+        "mirror_level_adaptive": "自動",
+        "settings_text": (
+            "⚙️ *設定*\n\n言語：*{pack}*\n1レッスンのカード：*{pace}*\n"
+            "AIスタイル：*{style}*\n\n詳しさ：*{depth}*・レベル：*{level}*\n\n"
+            "言語、ペース、回答形式を選んでください："
+        ),
+        "stats_weak_empty": "今のところありません",
+        "stats_next_level": "（レベル{level}まであと{remaining}）",
+        "stats_text": (
+            "📊 *統計*（{pack}）\n\n📈 *レベル{level}・{title}* — {xp_line}\n"
+            "🔥 連続：{streak}日（最高：{streak_best}）\n⭐ 今日：+{today_xp} XP\n\n"
+            "📚 単語：{total}｜学習済み：{seen}｜習得：{learned}\n"
+            "⏰ 復習予定：{overdue}\n\n✅ 正解：{correct}｜❌ 間違い：{wrong}\n"
+            "🎯 正答率：{accuracy}%\n\n*強化する単語：*\n{weak_text}"
+        ),
+    },
+    "ar": {
+        "topic_prompt": "اختر موضوعاً:",
+        "topic_all": "🌐 كل الكلمات",
+        "review_empty": "اكتملت مراجعة اليوم. يمكنك بدء درس جديد.",
+        "review_start_lesson": "▶️ ابدأ درساً جديداً",
+        "mirror_style_teacher": "معلّم",
+        "mirror_style_conversation": "محادثة",
+        "mirror_style_coach": "مدرّب",
+        "mirror_style_brief": "موجز",
+        "mirror_style_practice": "تدريب",
+        "mirror_style_exam": "اختبار",
+        "mirror_depth_compact": "قصير",
+        "mirror_depth_balanced": "متوازن",
+        "mirror_depth_deep": "متعمّق",
+        "mirror_level_adaptive": "تلقائي",
+        "settings_text": (
+            "⚙️ *الإعدادات*\n\nاللغة: *{pack}*\nالبطاقات في الدرس: *{pace}*\n"
+            "أسلوب الذكاء الاصطناعي: *{style}*\n\nالتفصيل: *{depth}* · المستوى: *{level}*\n\n"
+            "اختر اللغة أو الوتيرة أو تنسيق الإجابة:"
+        ),
+        "stats_weak_empty": "لا يوجد حالياً",
+        "stats_next_level": " ({remaining} إلى المستوى {level})",
+        "stats_text": (
+            "📊 *الإحصاءات* ({pack})\n\n📈 *المستوى {level} · {title}* — {xp_line}\n"
+            "🔥 السلسلة: {streak} يوم (الأفضل: {streak_best})\n⭐ اليوم: +{today_xp} XP\n\n"
+            "📚 الكلمات: {total} | دُرست: {seen} | أُتقنت: {learned}\n"
+            "⏰ للمراجعة: {overdue}\n\n✅ صحيحة: {correct} | ❌ أخطاء: {wrong}\n"
+            "🎯 الدقة: {accuracy}%\n\n*كلمات تحتاج إلى تقوية:*\n{weak_text}"
+        ),
+    },
+    "zh": {
+        "topic_prompt": "选择一个主题：",
+        "topic_all": "🌐 所有单词",
+        "review_empty": "今天的复习已全部完成，可以开始新课程。",
+        "review_start_lesson": "▶️ 开始新课程",
+        "mirror_style_teacher": "老师",
+        "mirror_style_conversation": "对话",
+        "mirror_style_coach": "教练",
+        "mirror_style_brief": "简洁",
+        "mirror_style_practice": "练习",
+        "mirror_style_exam": "考试",
+        "mirror_depth_compact": "简短",
+        "mirror_depth_balanced": "平衡",
+        "mirror_depth_deep": "深入",
+        "mirror_level_adaptive": "自动",
+        "settings_text": (
+            "⚙️ *设置*\n\n语言：*{pack}*\n每课卡片：*{pace}*\n"
+            "AI 风格：*{style}*\n\n详细程度：*{depth}* · 等级：*{level}*\n\n"
+            "请选择语言、节奏或回答格式："
+        ),
+        "stats_weak_empty": "目前没有",
+        "stats_next_level": "（距离等级 {level} 还差 {remaining}）",
+        "stats_text": (
+            "📊 *统计*（{pack}）\n\n📈 *等级 {level} · {title}* — {xp_line}\n"
+            "🔥 连续学习：{streak} 天（纪录：{streak_best}）\n⭐ 今天：+{today_xp} XP\n\n"
+            "📚 单词：{total} | 已学习：{seen} | 已掌握：{learned}\n"
+            "⏰ 待复习：{overdue}\n\n✅ 正确：{correct} | ❌ 错误：{wrong}\n"
+            "🎯 准确率：{accuracy}%\n\n*需要加强的单词：*\n{weak_text}"
+        ),
+    },
+    "ru": {
+        "topic_prompt": "Выбери тему:",
+        "topic_all": "🌐 Все слова",
+        "review_empty": "На сегодня всё повторено. Можно начать новый урок.",
+        "review_start_lesson": "▶️ Начать новый урок",
+        "mirror_style_teacher": "Преподаватель",
+        "mirror_style_conversation": "Собеседник",
+        "mirror_style_coach": "Коуч",
+        "mirror_style_brief": "Кратко",
+        "mirror_style_practice": "Практика",
+        "mirror_style_exam": "Экзамен",
+        "mirror_depth_compact": "Кратко",
+        "mirror_depth_balanced": "Баланс",
+        "mirror_depth_deep": "Глубоко",
+        "mirror_level_adaptive": "Авто",
+        "settings_text": (
+            "⚙️ *Настройки*\n\nЯзык: *{pack}*\nКарточек в уроке: *{pace}*\n"
+            "Стиль AI: *{style}*\n\nГлубина: *{depth}* · уровень: *{level}*\n\n"
+            "Выбери язык, ритм или формат ответа:"
+        ),
+        "stats_weak_empty": "Пока нет",
+        "stats_next_level": " ({remaining} до уровня {level})",
+        "stats_text": (
+            "📊 *Статистика* ({pack})\n\n📈 *Уровень {level} · {title}* — {xp_line}\n"
+            "🔥 Серия: {streak} дн. (рекорд: {streak_best})\n⭐ Сегодня: +{today_xp} XP\n\n"
+            "📚 Слов: {total} | Изучено: {seen} | Выучено: {learned}\n"
+            "⏰ На повторение: {overdue}\n\n✅ Правильных: {correct} | ❌ Ошибок: {wrong}\n"
+            "🎯 Точность: {accuracy}%\n\n*Слабые слова:*\n{weak_text}"
+        ),
+    },
+    "es": {
+        "topic_prompt": "Elige un tema:",
+        "topic_all": "🌐 Todas las palabras",
+        "review_empty": "Ya está todo repasado por hoy. Puedes empezar una lección nueva.",
+        "review_start_lesson": "▶️ Empezar una lección nueva",
+        "mirror_style_teacher": "Profesor",
+        "mirror_style_conversation": "Conversación",
+        "mirror_style_coach": "Entrenador",
+        "mirror_style_brief": "Conciso",
+        "mirror_style_practice": "Práctica",
+        "mirror_style_exam": "Examen",
+        "mirror_depth_compact": "Corto",
+        "mirror_depth_balanced": "Equilibrado",
+        "mirror_depth_deep": "Profundo",
+        "mirror_level_adaptive": "Auto",
+        "settings_text": (
+            "⚙️ *Ajustes*\n\nIdioma: *{pack}*\nTarjetas por lección: *{pace}*\n"
+            "Estilo de IA: *{style}*\n\nProfundidad: *{depth}* · nivel: *{level}*\n\n"
+            "Elige un idioma, ritmo o formato de respuesta:"
+        ),
+        "stats_weak_empty": "Ninguna por ahora",
+        "stats_next_level": " ({remaining} para el nivel {level})",
+        "stats_text": (
+            "📊 *Estadísticas* ({pack})\n\n📈 *Nivel {level} · {title}* — {xp_line}\n"
+            "🔥 Racha: {streak} días (récord: {streak_best})\n⭐ Hoy: +{today_xp} XP\n\n"
+            "📚 Palabras: {total} | Estudiadas: {seen} | Dominadas: {learned}\n"
+            "⏰ Para repasar: {overdue}\n\n✅ Correctas: {correct} | ❌ Errores: {wrong}\n"
+            "🎯 Precisión: {accuracy}%\n\n*Palabras por reforzar:*\n{weak_text}"
+        ),
+    },
+}
+
+_TOPIC_NAMES = {
+    "en": ("Greetings", "Communication", "People & family", "Food & drink", "Home", "Travel", "Time & numbers", "Work & study", "Business & finance", "Health & body", "Nature & science", "Technology", "Actions", "Descriptions & emotions", "General"),
+    "fr": ("Salutations", "Communication", "Personnes et famille", "Alimentation et boissons", "Maison", "Voyages", "Temps et nombres", "Travail et études", "Affaires et finances", "Santé et corps", "Nature et sciences", "Technologie", "Actions", "Descriptions et émotions", "Divers"),
+    "de": ("Begrüßungen", "Kommunikation", "Menschen und Familie", "Essen und Trinken", "Zuhause", "Reisen", "Zeit und Zahlen", "Arbeit und Lernen", "Geschäft und Finanzen", "Gesundheit und Körper", "Natur und Wissenschaft", "Technologie", "Handlungen", "Beschreibungen und Gefühle", "Allgemein"),
+    "ja": ("あいさつ", "コミュニケーション", "人と家族", "食べ物と飲み物", "家と暮らし", "旅行", "時間と数字", "仕事と学習", "ビジネスと金融", "健康と身体", "自然と科学", "テクノロジー", "動作", "説明と感情", "その他"),
+    "ar": ("التحيات", "التواصل", "الناس والعائلة", "الطعام والشراب", "المنزل", "السفر", "الوقت والأرقام", "العمل والدراسة", "الأعمال والمال", "الصحة والجسم", "الطبيعة والعلوم", "التكنولوجيا", "الأفعال", "الأوصاف والمشاعر", "عام"),
+    "zh": ("问候", "交流", "人物与家庭", "饮食", "家居生活", "旅行", "时间与数字", "工作与学习", "商业与金融", "健康与身体", "自然与科学", "科技", "动作", "描述与情感", "其他"),
+    "ru": ("Приветствия", "Общение", "Люди и семья", "Еда и напитки", "Дом и быт", "Места и поездки", "Время и числа", "Работа и учёба", "Бизнес и финансы", "Здоровье и тело", "Природа и наука", "Технологии", "Действия", "Описания и эмоции", "Разное"),
+    "es": ("Saludos", "Comunicación", "Personas y familia", "Comida y bebida", "Hogar", "Viajes", "Tiempo y números", "Trabajo y estudio", "Negocios y finanzas", "Salud y cuerpo", "Naturaleza y ciencia", "Tecnología", "Acciones", "Descripciones y emociones", "General"),
+}
+_TOPIC_IDS = ("greetings", "communication", "people", "food", "home", "travel", "time", "work", "business", "health", "nature", "technology", "actions", "descriptions", "general")
+_TOPIC_ICONS = ("👋", "💬", "👥", "🍽", "🏠", "🧭", "🕒", "📚", "💼", "🩺", "🌿", "💻", "🏃", "🎨", "📦")
+
+_LEVEL_NAMES = {
+    "en": ("Beginner", "Learner", "Student", "Expert", "Linguist", "Polyglot", "Sage", "Master", "Legend"),
+    "fr": ("Débutant", "Apprenti", "Étudiant", "Expert", "Linguiste", "Polyglotte", "Sage", "Maître", "Légende"),
+    "de": ("Anfänger", "Lernender", "Student", "Kenner", "Linguist", "Polyglott", "Weiser", "Meister", "Legende"),
+    "ja": ("初心者", "学習者", "学生", "上級者", "言語学者", "多言語話者", "賢者", "達人", "伝説"),
+    "ar": ("مبتدئ", "متعلّم", "طالب", "خبير", "لغوي", "متعدد اللغات", "حكيم", "محترف", "أسطورة"),
+    "zh": ("初学者", "学习者", "学生", "专家", "语言学家", "多语者", "智者", "大师", "传奇"),
+    "ru": ("Новичок", "Ученик", "Студент", "Знаток", "Лингвист", "Полиглот", "Мудрец", "Мастер", "Легенда"),
+    "es": ("Principiante", "Aprendiz", "Estudiante", "Experto", "Lingüista", "Políglota", "Sabio", "Maestro", "Leyenda"),
+}
+
+_EXTRA_MIRROR_STYLES = {
+    "en": ("Coach", "Exam"),
+    "fr": ("Coach", "Examen"),
+    "de": ("Coach", "Prüfung"),
+    "ja": ("コーチ", "試験"),
+    "ar": ("مدرّب", "اختبار"),
+    "zh": ("教练", "考试"),
+    "ru": ("Коуч", "Экзамен"),
+    "es": ("Entrenador", "Examen"),
+}
+
+for _locale, _messages in _HOME_SURFACE_COPY.items():
+    _messages["mirror_style_coach"], _messages["mirror_style_exam"] = (
+        _EXTRA_MIRROR_STYLES[_locale]
+    )
+    for _topic_id, _icon, _name in zip(
+        _TOPIC_IDS, _TOPIC_ICONS, _TOPIC_NAMES[_locale]
+    ):
+        _messages[f"topic_{_topic_id}"] = f"{_icon} {_name}"
+    for _level, _name in enumerate(_LEVEL_NAMES[_locale], 1):
+        _messages[f"stats_level_title_{_level}"] = _name
     _CATALOG[_locale].update(_messages)
 
 _LANGUAGE_NAMES: dict[str, dict[str, str]] = {

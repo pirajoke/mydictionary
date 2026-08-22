@@ -121,7 +121,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             await bot.cmd_start(update, context)
 
         text = message.reply_text.await_args.args[0]
-        self.assertIn("Два коротких шага", text)
+        self.assertIn("Три коротких шага", text)
         self.assertEqual(
             message.reply_text.await_args.kwargs["reply_markup"]
             .inline_keyboard[0][0]
@@ -194,7 +194,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "LEGACY_USER_ID", None),
         ):
             await bot.cmd_start(update, context)
-        self.assertIn("Два коротких шага", message.reply_text.await_args.args[0])
+        self.assertIn("Три коротких шага", message.reply_text.await_args.args[0])
 
         AdminStore(self.store).set_user_access_status(
             user_id, status="blocked", actor="owner"
@@ -275,6 +275,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
         context = SimpleNamespace(user_data={})
         steps = (
             "onboarding:begin",
+            "onboarding:native:ru",
             "onboarding:pack:ja-basics-100",
             "onboarding:pace:10",
         )
@@ -312,7 +313,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
         )
         message.reply_photo.assert_awaited_once()
 
-    async def test_onboarding_begin_goes_directly_to_language_selection(self):
+    async def test_onboarding_begin_asks_for_meaning_language(self):
         user_id = 9904
         message = SimpleNamespace(chat_id=9)
         query = SimpleNamespace(
@@ -337,10 +338,12 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
         text = query.edit_message_text.await_args.args[0]
         keyboard = query.edit_message_text.await_args.kwargs["reply_markup"]
         callbacks = [row[0].callback_data for row in keyboard.inline_keyboard]
-        self.assertIn("Шаг 1 из 2", text)
-        self.assertTrue(all(value.startswith("onboarding:pack:") for value in callbacks))
+        self.assertIn("Шаг 1 из 3", text)
+        self.assertTrue(
+            all(value.startswith("onboarding:native:") for value in callbacks)
+        )
         profile = self.store.product_profile(user_id)
-        self.assertEqual(profile["native_language"], "ru")
+        self.assertIsNone(profile["native_language"])
         self.assertEqual(profile["learning_goal"], "basics")
 
 

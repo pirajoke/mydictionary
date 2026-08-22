@@ -66,17 +66,19 @@ from mydictionary.billing import (
 from mydictionary.bot_profile import render_start_text
 from mydictionary.catalog import ContentPack, load_catalog
 from mydictionary.content import (
+    accepted_meanings,
     answer_matches,
     example_meaning_text,
     example_target_text,
     meaning_display_text,
     meaning_text,
+    normalize_meaning_answer,
     speech_text,
     target_text,
 )
 from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
-from mydictionary.localization import normalize_locale, translate
+from mydictionary.localization import language_name, normalize_locale, translate
 from mydictionary.mirror_assistant import (
     MIRROR_ANSWER_DEPTHS,
     MIRROR_ADMIN_DEFAULTS,
@@ -330,6 +332,7 @@ class LearnerRuntime:
     user_id: int
     store: DatabaseStore
     progress: dict
+    meaning_language: str = "ru"
     role: str = "learner"
     access_status: str = "pending"
     onboarding_completed: bool = False
@@ -421,6 +424,14 @@ def W(language: str | None = None) -> list[dict]:
 def visible_packs() -> tuple[ContentPack, ...]:
     runtime = _ACTIVE_RUNTIME.get()
     return CATALOG.visible_packs(runtime.role if runtime else "admin")
+
+
+def switchable_packs() -> tuple[ContentPack, ...]:
+    """Return packs compatible with the learner's selected meaning language."""
+    runtime = _ACTIVE_RUNTIME.get()
+    if runtime is None:
+        return visible_packs()
+    return CATALOG.compatible_packs(runtime.meaning_language, runtime.role)
 
 
 def visible_pack_for_language(language: str) -> ContentPack | None:
@@ -561,6 +572,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
         user_id=user_id,
         store=store,
         progress=store.load_profile(user_id, PROGRESS_DEFAULTS),
+        meaning_language=product["native_language"] or "ru",
         role=product["role"],
         access_status=product["access_status"],
         onboarding_completed=product["onboarding_completed_at"] is not None,
@@ -656,7 +668,9 @@ def get_example(idx: int) -> str:
     """Return example sentence if available."""
     word = W()[idx]
     target_example = example_target_text(word)
-    meaning_example = example_meaning_text(word)
+    meaning_example = (
+        example_meaning_text(word) if active_meaning_language() == "ru" else ""
+    )
     if not target_example:
         return ""
     example = target_example
@@ -705,12 +719,67 @@ def format_word_label(idx: int) -> str:
     return f"{pack.flag} *{escape_markdown(format_target_word(w, pack))}*"
 
 
+def active_meaning_language() -> str:
+    runtime = _ACTIVE_RUNTIME.get()
+    return runtime.meaning_language if runtime else "ru"
+
+
+def compatible_onboarding_packs(
+    meaning_language: str, role: str = "learner"
+) -> tuple[ContentPack, ...]:
+    return CATALOG.compatible_packs(meaning_language, role)
+
+
+def meaning_values(word: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return the curated answers for the active learner's language pair."""
+    runtime = _ACTIVE_RUNTIME.get()
+    language = active_meaning_language()
+    if language == "ru":
+        return accepted_meanings(word)
+    pack = active_content_pack()
+    aligned = CATALOG.meaning_entry(
+        word,
+        meaning_language=language,
+        target_pack=pack,
+        role=runtime.role if runtime else "admin",
+    )
+    value = target_text(aligned or {})
+    return (value,) if value else ()
+
+
+def meaning_display_for_word(word: Mapping[str, Any]) -> str:
+    values = meaning_values(word)
+    return " / ".join(values) if values else "—"
+
+
+def primary_meaning_for_word(word: Mapping[str, Any]) -> str:
+    values = meaning_values(word)
+    return values[0] if values else "—"
+
+
+def meaning_answer_matches(word: Mapping[str, Any], answer: str) -> bool:
+    if active_meaning_language() == "ru":
+        return answer_matches(word, answer)
+    normalized = normalize_meaning_answer(answer)
+    return bool(normalized) and any(
+        normalized == normalize_meaning_answer(value)
+        for value in meaning_values(word)
+    )
+
+
+def active_meaning_flag() -> str:
+    runtime = _ACTIVE_RUNTIME.get()
+    role = runtime.role if runtime else "admin"
+    return CATALOG.flag_for_language(active_meaning_language(), role) or "🏳️"
+
+
 def format_word_details(idx: int) -> str:
     """Format a revealed card: meaning first, then target and transcription."""
     word = W()[idx]
     pack = active_content_pack()
     lines = [
-        f"{pack.meaning_flag} *{escape_markdown(meaning_display_text(word))}*",
+        f"{active_meaning_flag()} "
+        f"*{escape_markdown(meaning_display_for_word(word))}*",
         f"{pack.flag} *{escape_markdown(format_target_word(word, pack))}*",
     ]
     return "\n".join(lines)
@@ -768,7 +837,7 @@ def format_plain_word_prompt(idx: int) -> str:
 
 def get_lang_keyboard():
     """Return one-time ReplyKeyboardMarkup with language buttons."""
-    buttons = [pack.label for pack in visible_packs()]
+    buttons = [pack.label for pack in switchable_packs()]
     rows = [buttons[index:index + 2] for index in range(0, len(buttons), 2)]
     return ReplyKeyboardMarkup(
         rows,
@@ -780,7 +849,7 @@ def get_lang_keyboard():
 def language_picker_keyboard() -> InlineKeyboardMarkup:
     current_pack_id = PROGRESS.get("active_pack_id")
     rows = []
-    for pack in visible_packs():
+    for pack in switchable_packs():
         marker = " ✓" if pack.pack_id == current_pack_id else ""
         learned = sum(
             1 for word in W(pack.pack_id) if word["correct_count"] >= 3
@@ -907,18 +976,18 @@ def adaptive_mode(idx: int) -> str:
 
 def build_quiz_options(idx: int) -> tuple[list[str], int]:
     """Build 4 options for a quiz question. Returns (options, correct_index)."""
-    correct_ru = meaning_text(W()[idx])
+    correct_meaning = primary_meaning_for_word(W()[idx])
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        candidate = meaning_text(r)
-        if candidate != correct_ru:
+        candidate = primary_meaning_for_word(r)
+        if candidate != correct_meaning:
             distractors.add(candidate)
         attempts += 1
-    options = list(distractors) + [correct_ru]
+    options = list(distractors) + [correct_meaning]
     random.shuffle(options)
-    correct_pos = options.index(correct_ru)
+    correct_pos = options.index(correct_meaning)
     return options, correct_pos
 
 # ---------------------------------------------------------------------------
@@ -1183,19 +1252,41 @@ ONBOARDING_GOALS = {
 }
 
 
-def onboarding_pack_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
+def onboarding_meaning_language_keyboard(
+    locale: str = "ru",
+) -> InlineKeyboardMarkup:
+    languages = list(CATALOG.meaning_languages("learner"))
+    if locale in languages:
+        languages.remove(locale)
+        languages.insert(0, locale)
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                f"{CATALOG.flag_for_language(language, 'learner') or '🏳️'} "
+                f"{language_name(language, locale)}",
+                callback_data=f"onboarding:native:{language}",
+            )]
+            for language in languages
+        ]
+    )
+
+
+def onboarding_pack_keyboard(
+    locale: str = "ru", meaning_language: str = "ru"
+) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(
                 translate(
                     "onboarding_pack_words",
                     locale,
-                    label=pack.label,
+                    label=f"{pack.flag} "
+                    f"{language_name(pack.target_language, locale)}",
                     count=pack.entry_count,
                 ),
                 callback_data=f"onboarding:pack:{pack.pack_id}",
             )]
-            for pack in CATALOG.visible_packs("learner")
+            for pack in compatible_onboarding_packs(meaning_language)
         ]
     )
 
@@ -1230,13 +1321,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         record_product_event("onboarding_started")
         runtime.store.update_product_profile(
             runtime.user_id,
-            native_language=locale,
             learning_goal="basics",
-        )
-        record_product_event(
-            "onboarding_native_selected",
-            properties={"language": locale},
-            source="default",
         )
         record_product_event(
             "onboarding_goal_selected",
@@ -1244,28 +1329,43 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             source="default",
         )
         await query.edit_message_text(
-            translate("onboarding_choose_pack", locale),
-            reply_markup=onboarding_pack_keyboard(locale),
+            translate("onboarding_choose_native", locale),
+            reply_markup=onboarding_meaning_language_keyboard(locale),
         )
         return
-    # Compatibility for buttons sent by the previous onboarding version.
-    if len(parts) == 3 and parts[1] == "native" and parts[2] == "ru":
+    if len(parts) == 3 and parts[1] == "native":
+        meaning_language = parts[2]
+        if meaning_language not in CATALOG.meaning_languages("learner"):
+            await query.edit_message_text(translate("pack_unavailable", locale))
+            return
         runtime.store.update_product_profile(
             runtime.user_id,
-            native_language=parts[2],
+            native_language=meaning_language,
             learning_goal="basics",
         )
+        runtime.meaning_language = meaning_language
+        context.user_data["onboarding_native_language"] = meaning_language
         record_product_event(
-            "onboarding_native_selected", properties={"language": parts[2]}
+            "onboarding_native_selected",
+            properties={"language": meaning_language},
         )
         await query.edit_message_text(
             translate("onboarding_choose_pack", locale),
-            reply_markup=onboarding_pack_keyboard(locale),
+            reply_markup=onboarding_pack_keyboard(locale, meaning_language),
         )
         return
     if len(parts) == 3 and parts[1] == "pack":
         pack = CATALOG.get(parts[2])
-        if pack is None or not pack.visible_to("learner"):
+        product = runtime.store.product_profile(runtime.user_id)
+        meaning_language = (
+            context.user_data.get("onboarding_native_language")
+            or product["native_language"]
+        )
+        compatible_ids = {
+            candidate.pack_id
+            for candidate in compatible_onboarding_packs(meaning_language or "")
+        }
+        if pack is None or pack.pack_id not in compatible_ids:
             await query.edit_message_text(translate("pack_unavailable", locale))
             return
         activate_content_pack(pack, source="onboarding")
@@ -1358,11 +1458,15 @@ def start_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
 
 
 def settings_keyboard(
-    product: dict, *, mirror_policy: Mapping[str, Any] | None = None
+    product: dict,
+    *,
+    mirror_policy: Mapping[str, Any] | None = None,
+    locale: str = "ru",
 ) -> InlineKeyboardMarkup:
+    locale = normalize_locale(locale, fallback="ru")
     current_pack_id = PROGRESS.get("active_pack_id")
     language_rows = []
-    for pack in visible_packs():
+    for pack in switchable_packs():
         marker = " ✓" if pack.pack_id == current_pack_id else ""
         language_rows.append([
             InlineKeyboardButton(
@@ -1388,11 +1492,12 @@ def settings_keyboard(
     style_rows = [
         [
             InlineKeyboardButton(
-                f"{label}{' ✓' if style == selected_style else ''}",
+                f"{translate(f'mirror_style_{style}', locale)}"
+                f"{' ✓' if style == selected_style else ''}",
                 callback_data=f"settings:mirror:{style}",
             )
         ]
-        for style, label in MIRROR_STYLE_LABELS.items()
+        for style in MIRROR_STYLE_LABELS
         if style in enabled_modes
     ]
     selected_depth = str(product.get("mirror_depth") or "balanced")
@@ -1402,15 +1507,15 @@ def settings_keyboard(
             callback_data=f"settings:mirror-depth:{value}",
         )
         for value, label in (
-            ("compact", "Кратко"),
-            ("balanced", "Баланс"),
-            ("deep", "Глубоко"),
+            ("compact", translate("mirror_depth_compact", locale)),
+            ("balanced", translate("mirror_depth_balanced", locale)),
+            ("deep", translate("mirror_depth_deep", locale)),
         )
     ]
     selected_level = str(product.get("mirror_level") or "adaptive")
     level_rows = [
         [InlineKeyboardButton(
-            f"{value.upper() if value != 'adaptive' else 'Авто'}"
+            f"{value.upper() if value != 'adaptive' else translate('mirror_level_adaptive', locale)}"
             f"{' ✓' if value == selected_level else ''}",
             callback_data=f"settings:mirror-level:{value}",
         )]
@@ -1421,18 +1526,36 @@ def settings_keyboard(
     )
 
 
-def settings_text(current: ContentPack, product: Mapping[str, Any]) -> str:
+def settings_text(
+    current: ContentPack,
+    product: Mapping[str, Any],
+    *,
+    locale: str = "ru",
+) -> str:
+    locale = normalize_locale(locale, fallback="ru")
     style = str(product.get("mirror_mode") or product.get("mirror_style") or "teacher")
-    style_label = MIRROR_STYLE_LABELS.get(style, MIRROR_STYLE_LABELS["teacher"])
+    if style not in MIRROR_STYLE_LABELS:
+        style = "teacher"
+    style_label = translate(f"mirror_style_{style}", locale)
     depth = str(product.get("mirror_depth") or "balanced")
     level = str(product.get("mirror_level") or "adaptive")
-    return (
-        f"⚙️ *Настройки*\n\n"
-        f"Язык: *{current.title}*\n"
-        f"Карточек в уроке: *{product['daily_word_goal']}*\n"
-        f"Стиль AI: *{style_label}*\n\n"
-        f"Глубина: *{depth}* · уровень: *{level.upper()}*\n\n"
-        "Выбери язык, ритм или формат ответа:"
+    depth_label = translate(
+        f"mirror_depth_{depth if depth in MIRROR_ANSWER_DEPTHS else 'balanced'}",
+        locale,
+    )
+    level_label = (
+        translate("mirror_level_adaptive", locale)
+        if level == "adaptive"
+        else level.upper()
+    )
+    return translate(
+        "settings_text",
+        locale,
+        pack=current.label,
+        pace=product["daily_word_goal"],
+        style=style_label,
+        depth=depth_label,
+        level=level_label,
     )
 
 
@@ -1629,12 +1752,12 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     action = query.data.split(":", 1)[1]
     chat_id = query.message.chat_id
+    locale = interface_locale_for_update(update)
+    context.user_data["interface_locale"] = locale
     if action in {"daily"}:
-        context.user_data["interface_locale"] = interface_locale_for_update(update)
         await start_home_lesson(query, context, lesson_kind="daily")
         return
     if action == "review":
-        context.user_data["interface_locale"] = interface_locale_for_update(update)
         await start_home_lesson(query, context, lesson_kind="review")
         return
     if action in {"topics", "learn"}:
@@ -1644,8 +1767,8 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["block_pack_id"] = pack.pack_id
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"📚 *{pack.label}*\n\nВыбери тему:",
-            reply_markup=build_topic_keyboard(pack),
+            text=f"📚 *{pack.label}*\n\n{translate('topic_prompt', locale)}",
+            reply_markup=build_topic_keyboard(pack, locale=locale),
             parse_mode="Markdown",
         )
         return
@@ -1661,15 +1784,19 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mirror_policy = AdminStore(runtime.store).get_mirror_control_plane()
         await context.bot.send_message(
             chat_id=chat_id,
-            text=settings_text(current, product),
-            reply_markup=settings_keyboard(product, mirror_policy=mirror_policy),
+            text=settings_text(current, product, locale=locale),
+            reply_markup=settings_keyboard(
+                product,
+                mirror_policy=mirror_policy,
+                locale=locale,
+            ),
             parse_mode="Markdown",
         )
         return
     if action == "stats":
         await context.bot.send_message(
             chat_id=chat_id,
-            text=format_stats_text(),
+            text=format_stats_text(locale=locale),
             parse_mode="Markdown",
         )
         return
@@ -1692,6 +1819,8 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @auth
 async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    locale = interface_locale_for_update(update)
+    context.user_data["interface_locale"] = locale
     try:
         _, setting, value = query.data.split(":")
     except ValueError:
@@ -1744,8 +1873,12 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     product.update(runtime.store.get_mirror_preferences(runtime.user_id))
     product["mirror_mode"] = product.pop("mode")
     await query.edit_message_text(
-        settings_text(current, product),
-        reply_markup=settings_keyboard(product, mirror_policy=mirror_policy),
+        settings_text(current, product, locale=locale),
+        reply_markup=settings_keyboard(
+            product,
+            mirror_policy=mirror_policy,
+            locale=locale,
+        ),
         parse_mode="Markdown",
     )
 
@@ -3910,7 +4043,7 @@ async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
     requested = query.data.split(":", 1)[1]
     pack = CATALOG.get(requested) or visible_pack_for_language(requested)
-    if pack is None or pack not in visible_packs():
+    if pack is None or pack not in switchable_packs():
         await query.edit_message_text("Этот набор недоступен.")
         return
     activate_content_pack(pack, source="catalog")
@@ -3940,26 +4073,26 @@ async def cmd_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     word = W()[idx]
 
     # Build 4 options: 1 correct + 3 distractors
-    correct_ru = meaning_text(word)
+    correct_meaning = primary_meaning_for_word(word)
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        candidate = meaning_text(r)
-        if candidate != correct_ru:
+        candidate = primary_meaning_for_word(r)
+        if candidate != correct_meaning:
             distractors.add(candidate)
         attempts += 1
 
-    options = list(distractors) + [correct_ru]
+    options = list(distractors) + [correct_meaning]
     random.shuffle(options)
 
     buttons = []
     for opt in options:
-        cb = f"quiz:{idx}:{'1' if opt == correct_ru else '0'}:{opt}"
+        cb = f"quiz:{idx}:{'1' if opt == correct_meaning else '0'}:{opt}"
         # Telegram callback_data max 64 bytes — truncate if needed
         if len(cb.encode()) > 64:
             short = opt[:15]
-            cb = f"quiz:{idx}:{'1' if opt == correct_ru else '0'}:{short}"
+            cb = f"quiz:{idx}:{'1' if opt == correct_meaning else '0'}:{short}"
         buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
 
     await update.message.reply_text(
@@ -4002,25 +4135,25 @@ async def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = pick_word()
     word = W()[idx]
 
-    correct_ru = meaning_text(word)
+    correct_meaning = primary_meaning_for_word(word)
     distractors = set()
     attempts = 0
     while len(distractors) < 3 and attempts < 50:
         r = random.choice(W())
-        candidate = meaning_text(r)
-        if candidate != correct_ru:
+        candidate = primary_meaning_for_word(r)
+        if candidate != correct_meaning:
             distractors.add(candidate)
         attempts += 1
 
-    options = list(distractors) + [correct_ru]
+    options = list(distractors) + [correct_meaning]
     random.shuffle(options)
 
     buttons = []
     for opt in options:
-        cb = f"quiz:{idx}:{'1' if opt == correct_ru else '0'}:{opt}"
+        cb = f"quiz:{idx}:{'1' if opt == correct_meaning else '0'}:{opt}"
         if len(cb.encode()) > 64:
             short = opt[:15]
-            cb = f"quiz:{idx}:{'1' if opt == correct_ru else '0'}:{short}"
+            cb = f"quiz:{idx}:{'1' if opt == correct_meaning else '0'}:{short}"
         buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
 
     await query.edit_message_text(
@@ -4048,7 +4181,7 @@ async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """Handle language switch via persistent keyboard buttons."""
     text = update.message.text
     pack = CATALOG.get(PACK_SWITCH_TEXTS.get(text, ""))
-    if pack is None or pack not in visible_packs():
+    if pack is None or pack not in switchable_packs():
         return
     invalidate_block_session(context.user_data)
     activate_content_pack(pack, source="reply_keyboard")
@@ -4078,7 +4211,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     word = W()[idx]
     answer = update.message.text.strip().lower()
-    is_correct = answer_matches(word, answer)
+    is_correct = meaning_answer_matches(word, answer)
 
     # Block type mode
     if context.user_data.get("block_typing"):
@@ -4218,10 +4351,14 @@ async def flash_didnt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(format_stats_text(), parse_mode="Markdown")
+    await update.message.reply_text(
+        format_stats_text(locale=interface_locale_for_update(update)),
+        parse_mode="Markdown",
+    )
 
 
-def format_stats_text() -> str:
+def format_stats_text(*, locale: str = "ru") -> str:
+    locale = normalize_locale(locale, fallback="ru")
     total = len(W())
     learned = sum(1 for w in W() if w["correct_count"] >= 3)
     seen = sum(1 for w in W() if w["last_seen"] is not None)
@@ -4237,34 +4374,49 @@ def format_stats_text() -> str:
     )[:10]
     weak_text = (
         "\n".join(
-            f"  • {meaning_text(word)} — {target_text(word)}" for word in weak
+            f"  • {meaning_display_for_word(word)} — {target_text(word)}"
+            for word in weak
         )
         if weak
-        else "  Пока нет"
+        else f"  {translate('stats_weak_empty', locale)}"
     )
 
     # Overdue
     now = datetime.now().isoformat()
     overdue = sum(1 for w in W() if w["next_review"] and w["next_review"] <= now)
 
-    lvl, title, next_xp = get_level(PROGRESS["xp"])
+    lvl, _title, next_xp = get_level(PROGRESS["xp"])
+    title = translate(f"stats_level_title_{lvl}", locale)
     xp_line = f"{PROGRESS['xp']} XP"
     if next_xp:
-        xp_line += f" ({next_xp - PROGRESS['xp']} до уровня {lvl + 1})"
+        xp_line += translate(
+            "stats_next_level",
+            locale,
+            remaining=next_xp - PROGRESS["xp"],
+            level=lvl + 1,
+        )
     streak = PROGRESS.get("streak", 0)
     streak_best = PROGRESS.get("streak_best", 0)
     today_xp = PROGRESS.get("today_xp", 0)
 
-    return (
-        f"📊 *Статистика* ({active_content_pack().label})\n\n"
-        f"📈 *Уровень {lvl} · {title}* — {xp_line}\n"
-        f"🔥 Серия: {streak} дн. (рекорд: {streak_best})\n"
-        f"⭐ Сегодня: +{today_xp} XP\n\n"
-        f"📚 Слов: {total} | Изучено: {seen} | Выучено (3+): {learned}\n"
-        f"⏰ На повторение: {overdue}\n\n"
-        f"✅ Правильных: {tc} | ❌ Ошибок: {tw}\n"
-        f"🎯 Точность: {accuracy:.1f}%\n\n"
-        f"*Слабые слова:*\n{weak_text}"
+    return translate(
+        "stats_text",
+        locale,
+        pack=active_content_pack().label,
+        level=lvl,
+        title=title,
+        xp_line=xp_line,
+        streak=streak,
+        streak_best=streak_best,
+        today_xp=today_xp,
+        total=total,
+        seen=seen,
+        learned=learned,
+        overdue=overdue,
+        correct=tc,
+        wrong=tw,
+        accuracy=f"{accuracy:.1f}",
+        weak_text=weak_text,
     )
 
 # ---------------------------------------------------------------------------
@@ -4290,7 +4442,7 @@ async def cmd_smart(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options, correct_pos = build_quiz_options(idx)
         buttons = []
         for opt in options:
-            is_right = "1" if opt == meaning_text(word) else "0"
+            is_right = "1" if opt == primary_meaning_for_word(word) else "0"
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await update.message.reply_text(
@@ -4343,7 +4495,7 @@ async def next_smart_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         options, _ = build_quiz_options(idx)
         buttons = []
         for opt in options:
-            is_right = "1" if opt == meaning_text(word) else "0"
+            is_right = "1" if opt == primary_meaning_for_word(word) else "0"
             cb = f"smart:{idx}:{is_right}"
             buttons.append([InlineKeyboardButton(opt, callback_data=cb)])
         await query.edit_message_text(
@@ -4370,7 +4522,7 @@ async def cmd_poll(update: Update, context: ContextTypes.DEFAULT_TYPE):
         type="quiz",
         correct_option_id=correct_pos,
         explanation=example_target_text(word)
-        or f"{meaning_text(word)} — {target_text(word)}",
+        or f"{meaning_display_for_word(word)} — {target_text(word)}",
         open_period=15,
         is_anonymous=False,
     )
@@ -4433,7 +4585,7 @@ async def poll_answer_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         type="quiz",
         correct_option_id=new_correct,
         explanation=example_target_text(new_word)
-        or f"{meaning_text(new_word)} — {target_text(new_word)}",
+        or f"{meaning_display_for_word(new_word)} — {target_text(new_word)}",
         open_period=15,
         is_anonymous=False,
     )
@@ -4524,6 +4676,7 @@ async def start_home_lesson(query, context, *, lesson_kind: str) -> None:
     """Start the primary daily or due-only lesson from the home screen."""
     invalidate_block_session(context.user_data)
     pack = active_content_pack()
+    locale = learning_card_locale(context.user_data)
     size = daily_lesson_size()
     if lesson_kind == "review":
         indices = due_word_indices(size)
@@ -4537,13 +4690,11 @@ async def start_home_lesson(query, context, *, lesson_kind: str) -> None:
             )
             await context.bot.send_message(
                 chat_id=query.message.chat_id,
-                text=(
-                    "🎉 На сегодня всё повторено.\n\n"
-                    "Можно пройти новый урок — бот сам добавит свежие слова."
-                ),
+                text=translate("review_empty", locale),
                 reply_markup=InlineKeyboardMarkup([[
                     InlineKeyboardButton(
-                        "▶️ Начать новый урок", callback_data="start:daily"
+                        translate("review_start_lesson", locale),
+                        callback_data="start:daily",
                     )
                 ]]),
             )
@@ -4599,12 +4750,16 @@ def format_study_list(indices: list[int]) -> str:
     for n, idx in enumerate(indices, 1):
         w = W()[idx]
         target = escape_markdown(format_target_word(w, pack))
-        meaning = escape_markdown(meaning_display_text(w))
+        meaning = escape_markdown(meaning_display_for_word(w))
         lines.append(f"{n}. *{target}* — {meaning}")
     return "\n".join(lines)
 
 
-def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardMarkup:
+def build_topic_keyboard(
+    pack_or_language: ContentPack | str,
+    *,
+    locale: str = "ru",
+) -> InlineKeyboardMarkup:
     """Build a topic picker for one language using actual dictionary counts."""
     if isinstance(pack_or_language, ContentPack):
         pack = pack_or_language
@@ -4614,6 +4769,7 @@ def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardM
         )
     if pack is None or pack not in visible_packs():
         raise PermissionError("Content pack is not available to this user")
+    locale = normalize_locale(locale, fallback="ru")
     words = PACK_DICTS[pack.pack_id]
     counts = topic_counts(
         words,
@@ -4621,12 +4777,12 @@ def build_topic_keyboard(pack_or_language: ContentPack | str) -> InlineKeyboardM
         topic_labels=CATALOG.topic_labels,
     )
     rows = [[InlineKeyboardButton(
-        f"🌐 Все слова ({len(words)})",
+        f"{translate('topic_all', locale)} ({len(words)})",
         callback_data=f"ltopic:{pack.pack_id}:all",
     )]]
     topic_buttons = [
         InlineKeyboardButton(
-            f"{CATALOG.topic_labels[topic]} ({count})",
+            f"{translate(f'topic_{topic}', locale)} ({count})",
             callback_data=f"ltopic:{pack.pack_id}:{topic}",
         )
         for topic, count in counts.items()
@@ -4754,24 +4910,25 @@ async def validate_block_callback(
 
 def build_block_quiz_options(indices: list[int], idx: int) -> list[str]:
     """Build quiz options exclusively from the active block attempt."""
-    correct_ru = meaning_text(W()[idx])
+    correct_meaning = primary_meaning_for_word(W()[idx])
     distractors = list({
-        meaning_text(W()[candidate])
+        primary_meaning_for_word(W()[candidate])
         for candidate in indices
-        if candidate != idx and meaning_text(W()[candidate]) != correct_ru
+        if candidate != idx
+        and primary_meaning_for_word(W()[candidate]) != correct_meaning
     })
     random.shuffle(distractors)
-    options = distractors[:3] + [correct_ru]
+    options = distractors[:3] + [correct_meaning]
     random.shuffle(options)
     return options
 
 
 def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup:
-    correct_ru = meaning_text(W()[idx])
+    correct_meaning = primary_meaning_for_word(W()[idx])
     session_id = user_data["block_session"]
     buttons = []
     for option in build_block_quiz_options(user_data["block_all_indices"], idx):
-        is_right = "1" if option == correct_ru else "0"
+        is_right = "1" if option == correct_meaning else "0"
         callback_data = f"bquiz:{session_id}:{idx}:{is_right}"
         buttons.append([InlineKeyboardButton(option, callback_data=callback_data)])
     return InlineKeyboardMarkup(buttons)
@@ -5211,8 +5368,8 @@ def format_block_summary(ud) -> str:
         for idx in wrong_indices:
             w = W()[idx]
             text += (
-                f"\n  • {pack.meaning_flag} "
-                f"*{escape_markdown(meaning_text(w))}*"
+                f"\n  • {active_meaning_flag()} "
+                f"*{escape_markdown(meaning_display_for_word(w))}*"
             )
             text += (
                 f"\n    {pack.flag} "

@@ -1,5 +1,7 @@
 import os
 import unittest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
 
 os.environ.setdefault("BOT_TOKEN", "123456:TESTTOKEN")
@@ -55,8 +57,180 @@ class LocaleContractTest(unittest.TestCase):
             with self.subTest(locale=locale):
                 if locale != "ru":
                     self.assertNotEqual(translate("onboarding_intro", locale), russian)
+                self.assertTrue(translate("onboarding_choose_native", locale))
                 self.assertTrue(translate("onboarding_choose_pack", locale))
                 self.assertTrue(translate("onboarding_choose_pace", locale))
+
+
+class HomeSurfaceLocaleTest(unittest.IsolatedAsyncioTestCase):
+    async def test_french_topics_home_action_localizes_prompt_and_topics(self):
+        pack = bot.CATALOG.require("ja-basics-100")
+        query = SimpleNamespace(
+            data="start:topics",
+            answer=AsyncMock(),
+            message=SimpleNamespace(chat_id=123),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=1, language_code="fr"),
+        )
+        context = SimpleNamespace(
+            user_data={},
+            bot=SimpleNamespace(send_message=AsyncMock()),
+        )
+
+        with patch.object(bot, "active_content_pack", return_value=pack):
+            await bot.start_menu_cb.__wrapped__(update, context)
+
+        payload = context.bot.send_message.await_args.kwargs
+        self.assertIn("Choisissez un thème :", payload["text"])
+        button_texts = [
+            button.text
+            for row in payload["reply_markup"].inline_keyboard
+            for button in row
+        ]
+        self.assertIn("🌐 Tous les mots (100)", button_texts)
+        self.assertIn("👋 Salutations (10)", button_texts)
+        self.assertNotRegex(" ".join(button_texts), r"[А-Яа-яЁё]")
+        self.assertNotIn("Выбери тему", payload["text"])
+
+    async def test_french_empty_review_localizes_message_and_cta(self):
+        pack = bot.CATALOG.require("ja-basics-100")
+        context = SimpleNamespace(
+            user_data={"interface_locale": "fr"},
+            bot=SimpleNamespace(send_message=AsyncMock()),
+        )
+        query = SimpleNamespace(message=SimpleNamespace(chat_id=123))
+
+        with (
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.object(bot, "daily_lesson_size", return_value=5),
+            patch.object(bot, "due_word_indices", return_value=[]),
+            patch.object(bot, "record_product_event"),
+        ):
+            await bot.start_home_lesson(query, context, lesson_kind="review")
+
+        payload = context.bot.send_message.await_args.kwargs
+        self.assertIn("Tout est révisé pour aujourd’hui", payload["text"])
+        self.assertIn("commencer une nouvelle leçon", payload["text"])
+        button = payload["reply_markup"].inline_keyboard[0][0]
+        self.assertEqual(button.text, "▶️ Commencer une nouvelle leçon")
+        self.assertNotIn("всё повторено", payload["text"])
+        self.assertNotIn("Начать новый урок", button.text)
+
+    def test_french_settings_localize_labels_styles_and_depth(self):
+        pack = bot.CATALOG.require("ja-basics-100")
+        product = {
+            "daily_word_goal": 10,
+            "mirror_mode": "teacher",
+            "mirror_depth": "balanced",
+            "mirror_level": "adaptive",
+        }
+        mirror_policy = {
+            "enabled_modes": ["teacher", "conversation", "brief", "practice"]
+        }
+
+        text = bot.settings_text(pack, product, locale="fr")
+        keyboard = bot.settings_keyboard(
+            product,
+            mirror_policy=mirror_policy,
+            locale="fr",
+        )
+
+        self.assertIn("⚙️ *Réglages*", text)
+        self.assertIn(f"Langue : *{pack.label}*", text)
+        self.assertNotIn(pack.title, text)
+        self.assertIn("Cartes par leçon", text)
+        self.assertIn("Style IA : *Professeur*", text)
+        self.assertIn("Profondeur", text)
+        self.assertIn("niveau : *Auto*", text)
+        button_texts = [
+            button.text
+            for row in keyboard.inline_keyboard
+            for button in row
+        ]
+        for expected in (
+            "Professeur ✓",
+            "Conversation",
+            "Concis",
+            "Pratique",
+            "Court",
+            "Équilibré ✓",
+            "Approfondi",
+            "Auto ✓",
+        ):
+            self.assertIn(expected, button_texts)
+        combined = f"{text} {' '.join(button_texts)}"
+        for russian_ui in (
+            "Настройки",
+            "Карточек в уроке",
+            "Преподаватель",
+            "Собеседник",
+            "Кратко",
+            "Практика",
+            "Баланс",
+            "Глубоко",
+            "Авто",
+            "Выбери язык",
+        ):
+            self.assertNotIn(russian_ui, combined)
+
+    def test_french_stats_localize_metrics_and_empty_weak_words(self):
+        pack = bot.CATALOG.require("ja-basics-100")
+        words = [{
+            "correct_count": 0,
+            "wrong_count": 0,
+            "last_seen": None,
+            "next_review": None,
+        }]
+        progress = {
+            "xp": 0,
+            "streak": 0,
+            "streak_best": 0,
+            "today_xp": 0,
+            "total_correct": 0,
+            "total_wrong": 0,
+        }
+
+        with (
+            patch.object(bot, "W", return_value=words),
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.dict(bot.PROGRESS, progress, clear=False),
+        ):
+            text = bot.format_stats_text(locale="fr")
+
+        for expected in (
+            "📊 *Statistiques*",
+            "Niveau 1 · Débutant",
+            "Série",
+            "Aujourd’hui",
+            "Mots",
+            "Étudiés",
+            "Maîtrisés",
+            "À réviser",
+            "Bonnes réponses",
+            "Erreurs",
+            "Précision",
+            "*Mots à renforcer:*",
+            "Aucun pour le moment",
+        ):
+            self.assertIn(expected, text)
+        for russian_ui in (
+            "Статистика",
+            "Новичок",
+            "Серия",
+            "Сегодня",
+            "Изучено",
+            "Выучено",
+            "На повторение",
+            "Правильных",
+            "Ошибок",
+            "Точность",
+            "Слабые слова",
+            "Пока нет",
+            "до уровня",
+        ):
+            self.assertNotIn(russian_ui, text)
 
 
 class MirrorLocaleContractTest(unittest.TestCase):
