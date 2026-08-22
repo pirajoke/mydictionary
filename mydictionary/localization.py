@@ -357,6 +357,76 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
 }
 
+_LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
+    "en": {
+        "learning_card_position": "Card {position} of {total}",
+        "learning_card_hint": "First, try to recall the meaning.",
+        "learning_show_meaning": "👁 Show meaning",
+        "learning_listen_again": "🔊 Listen again",
+        "learning_dont_know": "😵 I don't know",
+        "learning_know": "✅ I know",
+    },
+    "fr": {
+        "learning_card_position": "Carte {position} sur {total}",
+        "learning_card_hint": "Essayez d’abord de vous rappeler le sens.",
+        "learning_show_meaning": "👁 Afficher le sens",
+        "learning_listen_again": "🔊 Réécouter",
+        "learning_dont_know": "😵 Je ne sais pas",
+        "learning_know": "✅ Je sais",
+    },
+    "de": {
+        "learning_card_position": "Karte {position} von {total}",
+        "learning_card_hint": "Versuche zuerst, dich an die Bedeutung zu erinnern.",
+        "learning_show_meaning": "👁 Bedeutung anzeigen",
+        "learning_listen_again": "🔊 Noch einmal anhören",
+        "learning_dont_know": "😵 Weiß ich nicht",
+        "learning_know": "✅ Weiß ich",
+    },
+    "ja": {
+        "learning_card_position": "カード {position}/{total}",
+        "learning_card_hint": "まず意味を思い出してみましょう。",
+        "learning_show_meaning": "👁 意味を表示",
+        "learning_listen_again": "🔊 もう一度聞く",
+        "learning_dont_know": "😵 わからない",
+        "learning_know": "✅ わかる",
+    },
+    "ar": {
+        "learning_card_position": "البطاقة {position} من {total}",
+        "learning_card_hint": "حاول أولاً تذكّر المعنى.",
+        "learning_show_meaning": "👁 إظهار المعنى",
+        "learning_listen_again": "🔊 الاستماع مجدداً",
+        "learning_dont_know": "😵 لا أعرف",
+        "learning_know": "✅ أعرف",
+    },
+    "zh": {
+        "learning_card_position": "卡片 {position}/{total}",
+        "learning_card_hint": "先试着回想它的意思。",
+        "learning_show_meaning": "👁 显示释义",
+        "learning_listen_again": "🔊 再听一次",
+        "learning_dont_know": "😵 不知道",
+        "learning_know": "✅ 知道",
+    },
+    "ru": {
+        "learning_card_position": "Карточка {position} из {total}",
+        "learning_card_hint": "Сначала вспомни значение.",
+        "learning_show_meaning": "👁 Показать значение",
+        "learning_listen_again": "🔊 Слушать ещё",
+        "learning_dont_know": "😵 Не знаю",
+        "learning_know": "✅ Знаю",
+    },
+    "es": {
+        "learning_card_position": "Tarjeta {position} de {total}",
+        "learning_card_hint": "Primero intenta recordar el significado.",
+        "learning_show_meaning": "👁 Mostrar significado",
+        "learning_listen_again": "🔊 Escuchar de nuevo",
+        "learning_dont_know": "😵 No lo sé",
+        "learning_know": "✅ Lo sé",
+    },
+}
+
+for _locale, _messages in _LEARNING_CARD_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
 _LANGUAGE_NAMES: dict[str, dict[str, str]] = {
     "en": {"en": "English", "fr": "French", "de": "German", "ja": "Japanese", "ar": "Arabic", "zh": "Chinese", "ru": "Russian", "es": "Spanish"},
     "fr": {"en": "l'anglais", "fr": "le français", "de": "l'allemand", "ja": "le japonais", "ar": "l'arabe", "zh": "le chinois", "ru": "le russe", "es": "l'espagnol"},

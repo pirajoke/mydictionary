@@ -497,6 +497,87 @@ class DailyLessonTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         bot.PROGRESS["active_lang"] = "ja"
 
+    async def start_french_lesson(self):
+        message = SimpleNamespace(chat_id=123, reply_text=AsyncMock())
+        query = SimpleNamespace(
+            data="start:daily",
+            answer=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=1, language_code="fr"),
+        )
+        context = SimpleNamespace(
+            user_data={},
+            bot=SimpleNamespace(send_message=AsyncMock()),
+        )
+        pack = bot.CATALOG.require("ja-basics-100")
+        with (
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.object(bot, "daily_lesson_size", return_value=5),
+            patch.object(bot, "pick_block", return_value=[10, 21, 22, 23, 24]),
+            patch.object(bot, "send_pronunciation", new=AsyncMock()),
+            patch.object(bot, "record_product_event"),
+        ):
+            await bot.start_menu_cb.__wrapped__(update, context)
+        return context, message
+
+    async def test_french_home_lesson_localizes_flashcard_front(self):
+        _context, message = await self.start_french_lesson()
+
+        payload = message.reply_text.await_args
+        self.assertIn("Carte 1 sur 5", payload.args[0])
+        self.assertIn(
+            "Essayez d’abord de vous rappeler le sens.", payload.args[0]
+        )
+        button = payload.kwargs["reply_markup"].inline_keyboard[0][0]
+        self.assertEqual(button.text, "👁 Afficher le sens")
+        for russian_ui in (
+            "Карточка",
+            "Сначала вспомни значение",
+            "Показать значение",
+        ):
+            self.assertNotIn(russian_ui, payload.args[0])
+            self.assertNotIn(russian_ui, button.text)
+
+    async def test_french_home_lesson_localizes_flashcard_reveal(self):
+        context, _message = await self.start_french_lesson()
+        session_id = context.user_data["block_session"]
+        idx = context.user_data["block_indices"][0]
+        query = SimpleNamespace(
+            data=f"bflash_show:{session_id}:{idx}",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=SimpleNamespace(chat_id=123),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=1, language_code="fr"),
+        )
+        with patch.object(bot, "record_product_event"):
+            await bot.block_flash_show_cb.__wrapped__(update, context)
+
+        payload = query.edit_message_text.await_args
+        self.assertIn("Carte 1 sur 5", payload.args[0])
+        buttons = payload.kwargs["reply_markup"].inline_keyboard
+        self.assertEqual(buttons[0][0].text, "🔊 Réécouter")
+        self.assertEqual(
+            [button.text for button in buttons[1]],
+            ["😵 Je ne sais pas", "✅ Je sais"],
+        )
+        for russian_ui in (
+            "Карточка",
+            "Слушать ещё",
+            "Не знаю",
+            "Знаю",
+        ):
+            self.assertNotIn(russian_ui, payload.args[0])
+            self.assertNotIn(
+                russian_ui,
+                " ".join(button.text for row in buttons for button in row),
+            )
+
     async def test_home_lesson_starts_directly_in_flashcard_mode(self):
         message = SimpleNamespace(chat_id=123, reply_text=AsyncMock())
         query = SimpleNamespace(message=message)
