@@ -81,10 +81,12 @@ migrations, isolated persistence, and concurrent credit reservations.
 | `docs/launch-readiness.md` | Paid and voice release gates |
 | `docs/mirror-control-plane-v1.md` | Mirror modes, quality analytics, and voice translation gates |
 | `docs/runbooks/mac-mini-deployment.md` | Production deployment and recovery runbook |
+| `docs/runbooks/ovh-cloudflare-tunnel.md` | Owner-gated OVH public-route recovery with token-file handling |
 
-Production runs on an owner-controlled Mac mini. `render.yaml` is an obsolete
-historical artifact and is not a supported or deployable production
-configuration.
+Production currently runs in owner-controlled Docker services on OVH. The Mac
+mini runbook remains the historical release/recovery contract, while the OVH
+public route has its own gated recovery runbook. `render.yaml` is an obsolete
+artifact and is not a supported or deployable production configuration.
 
 ## Security and privacy
 
