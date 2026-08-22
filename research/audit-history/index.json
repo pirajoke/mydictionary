@@ -37,6 +37,18 @@
       "source": "research/product-data-audit.html",
       "repo_commit": "c811cd599043be145259d68ba78837125f7440f4",
       "repo_dirty": true
+    },
+    {
+      "id": "2026-08-22T13-21-57Z--88a8e555460d",
+      "captured_at": "2026-08-22T13:21:57Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — продуктовый аудит после переноса на OVH",
+      "snapshot": "2026-08-22T13-21-57Z--mydictionary--88a8e555460d.html",
+      "sha256": "88a8e555460dde4bc3bab695f28f43331c30dcc7e65ab9012e63866bbc0d9d8e",
+      "bytes": 54510,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "9e2370fad4ff40ca49e4f567d7b3fb3f7a62b4cb",
+      "repo_dirty": true
     }
   ]
 }
