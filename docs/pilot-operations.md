@@ -33,6 +33,13 @@ Retention counts at least one allowlisted product activity from hour 24 to 48
 for D1, or hour 168 to 192 for D7. The admin view always displays both the
 retained and eligible counts next to the percentage.
 
+The `Product funnel` tab reports a separate public cohort. Its anchor is each
+learner's first `onboarding_started` event in the selected period, so public
+learners are measurable without manufacturing a pilot waitlist event. It uses
+the same D1 and D7 activity windows, excludes admin accounts, and returns only
+aggregate cohort, eligible, retained, and rate values. The historical pilot
+cohort and its waitlist semantics are unchanged.
+
 ## Notification outbox
 
 Approving a learner queues the fixed `pilot_access_approved` notification.
