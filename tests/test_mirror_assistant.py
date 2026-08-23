@@ -305,6 +305,11 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "get_store", return_value=store),
             patch.object(bot, "get_bot_profile", return_value=mirror_profile()),
             patch.object(bot, "get_ai_tutor_service", return_value=service),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(enabled=True, consent_version=AI_CONSENT_VERSION),
+            ),
         ):
             await invoke_handler(handler, update, context)
 
@@ -400,6 +405,11 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "get_store", return_value=store),
             patch.object(bot, "get_bot_profile", return_value=mirror_profile()),
             patch.object(bot, "get_ai_tutor_service", return_value=service),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(enabled=True, consent_version=AI_CONSENT_VERSION),
+            ),
         ):
             await invoke_handler(handler, update, context)
 

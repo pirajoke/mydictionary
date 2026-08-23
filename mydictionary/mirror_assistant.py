@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+from types import MappingProxyType
 from typing import Any, Mapping, Sequence
 
 from sqlalchemy import func, select
@@ -59,7 +60,28 @@ MIRROR_ADMIN_DEFAULTS = {
 MIRROR_RESPONSE_MODES = frozenset({"text", "voice", "both"})
 MIRROR_DIALOGUE_KEY = "mirror_recent_dialogue"
 MIRROR_DIALOGUE_LIMIT = 20
+MIRROR_PROVIDER_DIALOGUE_LIMIT = 8
 MIRROR_TURN_TEXT_LIMIT = 500
+MIRROR_COMPACT_REPLY_POLICY = MappingProxyType(
+    {
+        "max_short_paragraphs": 2,
+        "max_optional_examples": 1,
+        "max_next_steps": 1,
+        "paragraph_style": "short",
+    }
+)
+_COMPANION_CONTEXT_FIELDS = frozenset(
+    {
+        "onboarding_completed",
+        "target_language",
+        "active_pack_id",
+        "learning_goal",
+        "daily_word_goal",
+        "learner_level",
+        "learning_stage",
+        "has_active_block",
+    }
+)
 MIRROR_COMMUNICATION_MODES = (
     "teacher",
     "conversation",
@@ -124,6 +146,12 @@ _CAPABILITY_PATTERNS = (
     "что ты умеешь",
     "как ты можешь помочь",
     "what can you do",
+    "que peux-tu faire",
+    "was kannst du",
+    "qué puedes hacer",
+    "何ができますか",
+    "你能做什么",
+    "ماذا يمكنك أن تفعل",
 )
 _GREETING_PATTERNS = frozenset(
     {
@@ -136,6 +164,13 @@ _GREETING_PATTERNS = frozenset(
         "hello",
         "hi",
         "hey",
+        "bonjour",
+        "salut",
+        "hallo",
+        "hola",
+        "こんにちは",
+        "你好",
+        "مرحبا",
     }
 )
 _LANGUAGE_NAMES_RU = {
@@ -159,6 +194,77 @@ _PROGRESS_PATTERNS = (
     "resume",
     "weak",
 )
+_LATIN_LOCALE_MARKERS = {
+    "en": frozenset(
+        {
+            "please",
+            "explain",
+            "why",
+            "this",
+            "word",
+            "used",
+            "here",
+            "form",
+            "what",
+            "can",
+            "you",
+            "do",
+        }
+    ),
+    "fr": frozenset(
+        {
+            "bonjour",
+            "pourquoi",
+            "utilise",
+            "emploie",
+            "mot",
+            "dans",
+            "cette",
+            "phrase",
+            "est",
+            "que",
+            "peux",
+            "tu",
+            "faire",
+        }
+    ),
+    "de": frozenset(
+        {
+            "warum",
+            "verwendet",
+            "dieses",
+            "wort",
+            "diesem",
+            "satz",
+            "ist",
+            "hier",
+            "was",
+            "kannst",
+            "du",
+        }
+    ),
+    "es": frozenset(
+        {
+            "por",
+            "qué",
+            "usa",
+            "esta",
+            "palabra",
+            "frase",
+            "explica",
+            "aquí",
+            "puedes",
+            "hacer",
+        }
+    ),
+}
+_UNAMBIGUOUS_LATIN_GREETINGS = {
+    "bonjour": "fr",
+    "salut": "fr",
+    "hallo": "de",
+    "hola": "es",
+    "hello": "en",
+}
 
 
 @dataclass(frozen=True)
@@ -299,6 +405,172 @@ def validate_mirror_admin_settings(values: Mapping[str, str]) -> dict[str, str]:
         "mirror_capabilities_version": version,
         "mirror_capabilities_text": capabilities,
         "mirror_persona_guidance": persona,
+    }
+
+
+def resolve_companion_locale(
+    text: str | None,
+    *,
+    interface_locale: str | None,
+) -> str:
+    """Resolve a confident message language or use the canonical UI fallback."""
+    fallback = normalize_locale(interface_locale)
+    value = str(text or "").strip()
+    if len(value) < 3:
+        return fallback
+
+    has_latin = bool(re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", value))
+    has_cyrillic = bool(re.search(r"[А-Яа-яЁё]", value))
+    has_arabic = bool(re.search(r"[\u0600-\u06ff]", value))
+    has_kana = bool(re.search(r"[\u3040-\u30ff]", value))
+    has_han = bool(re.search(r"[\u3400-\u4dbf\u4e00-\u9fff]", value))
+    non_latin_scripts = sum((has_cyrillic, has_arabic, has_kana or has_han))
+    if non_latin_scripts > 1 or (has_latin and non_latin_scripts):
+        return fallback
+    if has_cyrillic:
+        return "ru"
+    if has_arabic:
+        return "ar"
+    if has_kana:
+        return "ja"
+    if has_han:
+        return "zh"
+    if not has_latin:
+        return fallback
+
+    words = set(
+        re.findall(r"[a-zà-öø-ÿ]+", value.casefold(), flags=re.UNICODE)
+    )
+    if len(words) == 1:
+        greeting_locale = _UNAMBIGUOUS_LATIN_GREETINGS.get(next(iter(words)))
+        if greeting_locale is not None:
+            return greeting_locale
+    scores = {
+        locale: len(words & markers)
+        for locale, markers in _LATIN_LOCALE_MARKERS.items()
+    }
+    confident_locales = [locale for locale, score in scores.items() if score >= 2]
+    return confident_locales[0] if len(confident_locales) == 1 else fallback
+
+
+def resolve_learning_stage(grounded_progress: Mapping[str, Any]) -> str:
+    """Return one deterministic coaching stage from privacy-safe progress."""
+    if not isinstance(grounded_progress, Mapping):
+        raise ValueError("Grounded progress must be a mapping")
+    if not bool(grounded_progress.get("has_progress")):
+        return "starting"
+    try:
+        due_count = int(grounded_progress.get("due_count") or 0)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Grounded due count is invalid") from exc
+    if due_count < 0:
+        raise ValueError("Grounded due count is invalid")
+    if due_count:
+        return "review_due"
+    weak_terms = grounded_progress.get("weak_terms", [])
+    if isinstance(weak_terms, (str, bytes)) or not isinstance(weak_terms, Sequence):
+        raise ValueError("Grounded weak terms are invalid")
+    return "needs_practice" if weak_terms else "building_habit"
+
+
+def _bounded_companion_text(value: Any, field: str) -> str:
+    text = str(value or "").strip()
+    if len(text) > 128:
+        text = text[:128]
+    if "\x00" in text:
+        raise ValueError(f"Companion {field} is invalid")
+    return text
+
+
+def build_companion_learner_context(
+    *,
+    product_profile: Mapping[str, Any],
+    grounded_progress: Mapping[str, Any],
+    has_active_block: bool,
+    learner_level: str,
+) -> dict[str, Any]:
+    """Build the bounded identity-free context consumed by Mirror V3."""
+    if not isinstance(product_profile, Mapping):
+        raise ValueError("Product profile must be a mapping")
+    if not isinstance(grounded_progress, Mapping):
+        raise ValueError("Grounded progress must be a mapping")
+    target_language = _bounded_companion_text(
+        product_profile.get("active_lang"), "target language"
+    ).lower()
+    if not re.fullmatch(r"[a-z]{2,8}", target_language):
+        raise ValueError("Companion target language is invalid")
+    level = str(learner_level or "").strip().lower()
+    if level not in MIRROR_LEARNER_LEVELS:
+        raise ValueError("Companion learner level is invalid")
+    raw_goal = product_profile.get("daily_word_goal")
+    if raw_goal is None:
+        raw_goal = 5
+    if isinstance(raw_goal, bool):
+        raise ValueError("Companion daily word goal is invalid")
+    try:
+        daily_word_goal = int(raw_goal)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Companion daily word goal is invalid") from exc
+    if not 1 <= daily_word_goal <= 100:
+        raise ValueError("Companion daily word goal is invalid")
+    return {
+        "onboarding_completed": bool(
+            product_profile.get("onboarding_completed_at")
+        ),
+        "target_language": target_language,
+        "active_pack_id": _bounded_companion_text(
+            product_profile.get("active_pack_id"), "active pack"
+        ),
+        "learning_goal": _bounded_companion_text(
+            product_profile.get("learning_goal"), "learning goal"
+        ),
+        "daily_word_goal": daily_word_goal,
+        "learner_level": level,
+        "learning_stage": resolve_learning_stage(grounded_progress),
+        "has_active_block": bool(has_active_block),
+    }
+
+
+def normalize_companion_learner_context(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != _COMPANION_CONTEXT_FIELDS:
+        raise ValueError("Companion learner context fields are invalid")
+    stage = str(value["learning_stage"]).strip()
+    if stage not in {"starting", "review_due", "needs_practice", "building_habit"}:
+        raise ValueError("Companion learning stage is invalid")
+    level = str(value["learner_level"]).strip().lower()
+    if level not in MIRROR_LEARNER_LEVELS:
+        raise ValueError("Companion learner level is invalid")
+    target_language = str(value["target_language"]).strip().lower()
+    if not re.fullmatch(r"[a-z]{2,8}", target_language):
+        raise ValueError("Companion target language is invalid")
+    raw_goal = value["daily_word_goal"]
+    if isinstance(raw_goal, bool):
+        raise ValueError("Companion daily word goal is invalid")
+    try:
+        daily_word_goal = int(raw_goal)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Companion daily word goal is invalid") from exc
+    if not 1 <= daily_word_goal <= 100:
+        raise ValueError("Companion daily word goal is invalid")
+    if not isinstance(value["onboarding_completed"], bool) or not isinstance(
+        value["has_active_block"], bool
+    ):
+        raise ValueError("Companion boolean context is invalid")
+    return {
+        "onboarding_completed": value["onboarding_completed"],
+        "target_language": target_language,
+        "active_pack_id": _bounded_companion_text(
+            value["active_pack_id"], "active pack"
+        ),
+        "learning_goal": _bounded_companion_text(
+            value["learning_goal"], "learning goal"
+        ),
+        "daily_word_goal": daily_word_goal,
+        "learner_level": level,
+        "learning_stage": stage,
+        "has_active_block": value["has_active_block"],
     }
 
 
@@ -491,6 +763,7 @@ def build_mirror_provider_payload(
     admin_guidance: str,
     grounded_snapshot: Mapping[str, Any],
     learning_context: Mapping[str, Any] | None = None,
+    learner_context: Mapping[str, Any] | None = None,
     recent_dialogue: Sequence[Mapping[str, Any]] | None = None,
     response_style: str = "teacher",
     task_kind: str | None = None,
@@ -525,15 +798,30 @@ def build_mirror_provider_payload(
         "general_conversation",
     }:
         raise ValueError("Mirror task kind is invalid")
+    normalized_dialogue = normalize_mirror_dialogue(recent_dialogue)
+    normalized_learner_context = None
+    if learner_context is not None:
+        normalized_learner_context = normalize_companion_learner_context(
+            learner_context
+        )
+        normalized_dialogue = normalized_dialogue[-MIRROR_PROVIDER_DIALOGUE_LIMIT:]
     payload = {
         "safety_envelope": MIRROR_SAFETY_ENVELOPE,
         "admin_guidance": clean_guidance,
         "question": clean_question,
         "grounded_snapshot": dict(grounded_snapshot),
         "learning_context": _normalize_learning_context(learning_context),
-        "recent_dialogue": normalize_mirror_dialogue(recent_dialogue),
+        "recent_dialogue": normalized_dialogue,
         "response_style": selected_mode,
     }
+    if normalized_learner_context is not None:
+        payload.update(
+            {
+                "learner_context": normalized_learner_context,
+                "compact_reply_policy": dict(MIRROR_COMPACT_REPLY_POLICY),
+                "style_guidance": MIRROR_STYLE_GUIDANCE[selected_mode],
+            }
+        )
     if interface_locale is not None:
         selected_locale = require_interface_locale(interface_locale)
         payload.update(
@@ -553,12 +841,15 @@ def build_mirror_provider_payload(
                 "learner_level": selected_level,
             }
         )
-    while (
-        len(json.dumps(payload, ensure_ascii=False, separators=(",", ":"))) > 12000
-        and payload["recent_dialogue"]
-    ):
+    serialized_payload = json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":")
+    )
+    while len(serialized_payload) > 12000 and payload["recent_dialogue"]:
         payload["recent_dialogue"].pop(0)
-    if len(json.dumps(payload, ensure_ascii=False, separators=(",", ":"))) > 12000:
+        serialized_payload = json.dumps(
+            payload, ensure_ascii=False, separators=(",", ":")
+        )
+    if len(serialized_payload) > 12000:
         raise ValueError("Mirror provider payload exceeds the safe bound")
     return payload
 

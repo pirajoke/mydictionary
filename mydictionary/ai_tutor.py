@@ -24,7 +24,12 @@ from .economics import (
     require_current_review,
 )
 from .localization import response_language_instruction
-from .mirror_assistant import MIRROR_SAFETY_ENVELOPE, MIRROR_STYLE_GUIDANCE
+from .mirror_assistant import (
+    MIRROR_COMPACT_REPLY_POLICY,
+    MIRROR_SAFETY_ENVELOPE,
+    MIRROR_STYLE_GUIDANCE,
+    normalize_companion_learner_context,
+)
 from .prompt_contracts import load_prompt_contract
 from .storage import AIQuotaExceeded, DatabaseStore
 
@@ -143,7 +148,7 @@ MIRROR_RESPONSE_SCHEMA = {
 
 _PROMPT_ROOT = Path(__file__).resolve().parents[1] / "prompts"
 TUTOR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v1.txt")
-MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v2.txt")
+MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v3.txt")
 
 
 class AIConfigurationError(RuntimeError):
@@ -1405,11 +1410,20 @@ class AITutorService:
             "interface_locale",
             "response_language_instruction",
         }
+        companion_fields = {
+            "learner_context",
+            "compact_reply_policy",
+            "style_guidance",
+        }
         valid_field_sets = (
             legacy_fields,
             control_fields,
             legacy_fields | locale_fields,
             control_fields | locale_fields,
+            legacy_fields | companion_fields,
+            control_fields | companion_fields,
+            legacy_fields | locale_fields | companion_fields,
+            control_fields | locale_fields | companion_fields,
         )
         if set(payload) not in valid_field_sets:
             raise ValueError("Mirror provider payload is invalid")
@@ -1419,7 +1433,11 @@ class AITutorService:
         if response_style not in MIRROR_STYLE_GUIDANCE:
             raise ValueError("Mirror response style is invalid")
         provider_payload = dict(payload)
-        provider_payload["style_guidance"] = MIRROR_STYLE_GUIDANCE[response_style]
+        if companion_fields.issubset(payload):
+            if payload["style_guidance"] != MIRROR_STYLE_GUIDANCE[response_style]:
+                raise ValueError("Mirror style guidance is invalid")
+        else:
+            provider_payload["style_guidance"] = MIRROR_STYLE_GUIDANCE[response_style]
         if control_fields.issubset(payload):
             if payload["communication_mode"] != response_style:
                 raise ValueError("Mirror communication mode is inconsistent")
@@ -1430,6 +1448,20 @@ class AITutorService:
                 raise ValueError("Mirror interface locale is invalid")
             if instruction != response_language_instruction(locale):
                 raise ValueError("Mirror response language instruction is invalid")
+        if companion_fields.issubset(payload):
+            if payload["compact_reply_policy"] != dict(
+                MIRROR_COMPACT_REPLY_POLICY
+            ):
+                raise ValueError("Mirror compact reply policy is invalid")
+            learner_context = payload["learner_context"]
+            try:
+                normalized_context = normalize_companion_learner_context(
+                    learner_context
+                )
+            except ValueError as exc:
+                raise ValueError("Mirror learner context is invalid") from exc
+            if normalized_context != learner_context:
+                raise ValueError("Mirror learner context is invalid")
         question = str(payload["question"]).strip()
         if not 1 <= len(question) <= 500:
             raise ValueError("Mirror question must contain 1-500 characters")
