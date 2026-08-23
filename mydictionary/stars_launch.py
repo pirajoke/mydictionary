@@ -499,7 +499,7 @@ def build_production_stars_canary_receipt(
         "canary_enabled": False,
         "state": "refunded",
         "product_id": "ai-mini",
-        "amount_xtr": 69,
+        "amount_xtr": 10,
         "payment_completed": True,
         "refund_pending": False,
         "refund_completed": True,
