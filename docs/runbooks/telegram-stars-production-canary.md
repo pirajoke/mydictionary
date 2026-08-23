@@ -15,13 +15,16 @@ TELEGRAM_STARS_ENABLED=false
 STARS_PRODUCTION_CANARY_ENABLED=true
 STARS_PRODUCTION_CANARY_OWNER_ID=<one-positive-owner-telegram-id>
 STARS_PRODUCTION_CANARY_PRODUCT_ID=ai-mini
-STARS_PRODUCTION_CANARY_AMOUNT_XTR=69
+STARS_PRODUCTION_CANARY_AMOUNT_XTR=10
 ```
 
 The existing billing profile must also have current approved terms, complete
 seller details, a valid payload secret, current economics review and an active
-one-time `ai-mini` product with exactly 20 credits at 69 XTR. Aliases such as
-`STARS_CANARY_ENABLED` are intentionally ignored.
+one-time public `ai-mini` product with exactly 20 credits at 69 XTR. The 10 XTR
+amount applies only to the owner canary invoice; it never reprices that public
+product. Aliases such as `STARS_CANARY_ENABLED` are intentionally ignored.
+The 10 XTR attempt uses the versioned v2 claim. Preserve any unpaid 69 XTR v1
+marker and order unchanged; v2 status and receipts deliberately ignore them.
 
 ## Reviewed operator entrypoint
 
@@ -75,8 +78,8 @@ rollback boundary from the canonical OVH runbook—do not arm or recover.
 2. Obtain exact owner approval for the canary configuration and production
    restart. Enable only the five values above; public checkout stays off.
 3. Confirm a non-owner cannot open terms, products or checkout. The owner may
-   create exactly one `ai-mini` invoice. The durable database claim prevents a
-   second invoice even under concurrent taps.
+   create exactly one 10 XTR `ai-mini` invoice for 20 credits. The durable v2
+   database claim prevents a second invoice even under concurrent taps.
 4. On successful payment, verify one credit grant, one refund request and one
    immediate gateway refund attempt. Do not repeat a failed automatic attempt.
 5. For a failed or uncertain refund, obtain a new explicit owner recovery

@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ENTRYPOINT = ROOT / "ops" / "mydictionary_stars_production_canary.py"
 RUNBOOK = ROOT / "docs" / "runbooks" / "telegram-stars-production-canary.md"
 OWNER_ID = 7001
+CANARY_AMOUNT_XTR = 10
+CATALOG_AMOUNT_XTR = 69
 PRIVATE_ORDER = "PRIVATE-CANARY-ORDER-ID"
 PRIVATE_PAYMENT = "PRIVATE-CANARY-PAYMENT-ID"
 PRIVATE_REFUND = "PRIVATE-CANARY-REFUND-ID"
@@ -57,7 +59,7 @@ def refunded_status():
         "canary_enabled": False,
         "state": "refunded",
         "product_id": "ai-mini",
-        "amount_xtr": 69,
+        "amount_xtr": CANARY_AMOUNT_XTR,
         "payment_completed": True,
         "refund_pending": False,
         "refund_completed": True,
@@ -415,6 +417,16 @@ class ProductionStarsCanaryOperatorContractTest(
 
     def test_ac_11_runbook_uses_exact_ovh_bot_container_operator_commands(self):
         runbook = RUNBOOK.read_text(encoding="utf-8")
+        self.assertIn(
+            f"STARS_PRODUCTION_CANARY_AMOUNT_XTR={CANARY_AMOUNT_XTR}",
+            runbook,
+        )
+        self.assertNotIn(
+            f"STARS_PRODUCTION_CANARY_AMOUNT_XTR={CATALOG_AMOUNT_XTR}",
+            runbook,
+        )
+        self.assertIn(f"{CATALOG_AMOUNT_XTR} XTR", runbook)
+        self.assertIn("20 credits", runbook)
         expected_commands = (
             f"{COMPOSE_PREFIX} python "
             "ops/mydictionary_stars_production_canary.py status",

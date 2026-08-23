@@ -45,9 +45,10 @@ TELEGRAM_STAR_CONSERVATIVE_NET_MICRO_USD = (
     TELEGRAM_STAR_REWARD_MICRO_USD - 3_000
 )
 PRIVATE_CHAT_TOPICS_FEE_BPS = 1_500
-PRODUCTION_STARS_CANARY_MARKER_KEY = "telegram_stars_production_canary_v1"
+PRODUCTION_STARS_CANARY_MARKER_KEY = "telegram_stars_production_canary_v2"
 PRODUCTION_STARS_CANARY_PRODUCT_ID = "ai-mini"
-PRODUCTION_STARS_CANARY_AMOUNT_XTR = 69
+PRODUCTION_STARS_CANARY_AMOUNT_XTR = 10
+PRODUCTION_STARS_CANARY_CATALOG_AMOUNT_XTR = 69
 PRODUCTION_STARS_CANARY_CREDITS = 20
 
 
@@ -300,7 +301,7 @@ class ProductionStarsCanarySettings:
     enabled: bool
     owner_user_id: int | None = None
     product_id: str = "ai-mini"
-    amount_xtr: int = 69
+    amount_xtr: int = 10
     public_checkout_enabled: bool = False
 
     @classmethod
@@ -351,11 +352,11 @@ class ProductionStarsCanarySettings:
             amount_xtr = int(raw_amount)
         except ValueError as exc:
             raise BillingConfigurationError(
-                "Production Stars canary amount must be 69 XTR"
+                "Production Stars canary amount must be 10 XTR"
             ) from exc
-        if raw_amount != "69" or amount_xtr != 69:
+        if raw_amount != "10" or amount_xtr != 10:
             raise BillingConfigurationError(
-                "Production Stars canary amount must be 69 XTR"
+                "Production Stars canary amount must be 10 XTR"
             )
         return cls(
             enabled=True,
@@ -1374,7 +1375,8 @@ class ProductionStarsCanaryService(BillingService):
         if (
             str(product.get("product_id")) != cls.PRODUCT_ID
             or int(product.get("credits") or 0) != cls.CREDITS
-            or int(product.get("price_xtr") or 0) != cls.AMOUNT_XTR
+            or int(product.get("price_xtr") or 0)
+            != PRODUCTION_STARS_CANARY_CATALOG_AMOUNT_XTR
             or str(product.get("billing_mode")) != "one_time"
             or product.get("subscription_period_seconds") is not None
             or str(product.get("status")) != "active"
@@ -1395,7 +1397,7 @@ class ProductionStarsCanaryService(BillingService):
                 "Production Stars canary product is unavailable"
             )
         self._require_product_shape(products[0])
-        return products
+        return [{**products[0], "price_xtr": self.AMOUNT_XTR}]
 
     def _is_canary_order_id(self, order_id: str) -> bool:
         with self.store.Session() as session:
@@ -1487,7 +1489,7 @@ class ProductionStarsCanaryService(BillingService):
                         product_title=product.title,
                         product_description=product.description,
                         credits_snapshot=product.credits,
-                        amount_xtr=product.price_xtr,
+                        amount_xtr=self.AMOUNT_XTR,
                         currency="XTR",
                         terms_version=self.settings.terms_version,
                         invoice_payload=payload,

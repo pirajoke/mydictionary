@@ -9,8 +9,11 @@ the result as the canonical Telegram Test launch receipt.
 ## Authorization boundary
 
 - One owner-only production canary.
-- Maximum and exact invoice amount: 69 XTR.
+- Maximum and exact canary invoice amount: 10 XTR.
 - Exact product: `ai-mini`, 20 AI credits, one-time purchase only.
+- The reviewed public `ai-mini` catalog price remains 69 XTR; the 10 XTR
+  amount is a temporary owner-only canary override and never reprices the
+  public product.
 - Request the refund immediately after durable, idempotent fulfillment.
 - Public checkout remains disabled before, during and after the canary.
 - No subscription, other product, other payer, public launch, credential
@@ -21,7 +24,7 @@ the result as the canonical Telegram Test launch receipt.
 1. `TELEGRAM_STARS_ENABLED=false` continues to mean public billing is off.
 2. A separate canary configuration fails closed unless it is explicitly
    enabled with exactly one positive owner Telegram ID, product `ai-mini`, and
-   amount `69` XTR.
+   canary amount `10` XTR.
 3. Only the configured owner can open billing terms/products, accept current
    terms, select `ai-mini`, receive an invoice, pass pre-checkout and reach
    fulfillment while canary mode is active.
@@ -31,8 +34,10 @@ the result as the canonical Telegram Test launch receipt.
    through the ordinary idempotent fulfillment path, because a payer must
    never be charged without fulfillment after a feature flag changes. Normal
    cards, AI and Voice behavior outside billing are unchanged.
-5. The canary catalog exposes only the one-time `ai-mini` product at exactly
-   69 XTR and 20 credits. Subscription metadata is rejected.
+5. The canary catalog exposes only the one-time `ai-mini` product and creates
+   an owner-only invoice at exactly 10 XTR for 20 credits. The underlying
+   reviewed `ai-mini` product remains active at 69 XTR; subscription metadata,
+   a repriced public product or any other catalog mutation is rejected.
 6. A successful payment grants credits exactly once. Duplicate Telegram
    delivery cannot grant additional credits or enqueue a second refund. Two
    concurrent owner taps cannot create two payable canary orders or invoices;
@@ -40,6 +45,9 @@ the result as the canonical Telegram Test launch receipt.
    by an unlocked read-before-write check.
    Every marker consumer also validates the fixed canary actor/provenance; a
    generic or tampered `app_settings` row cannot reclassify an older purchase.
+   The new 10 XTR canary uses a new versioned claim and may coexist with the
+   preserved, unpaid 69 XTR v1 order; that historical record is never deleted,
+   rewritten, made payable or included in v2 status/evidence.
 7. The first durable successful canary payment creates exactly one pending
    refund request. Processing it through the existing Telegram gateway is
    idempotent, deducts/restores the canary credit grant according to existing
@@ -74,13 +82,16 @@ the result as the canonical Telegram Test launch receipt.
 ## Error and edge cases
 
 - Missing, zero, multiple or malformed owner IDs fail configuration.
-- Amount below or above 69, another product, archived product, subscription,
+- Any canary amount other than 10, another product, an underlying `ai-mini`
+  catalog price other than 69, archived product, subscription,
   stale terms, missing seller profile, stale economics or unsigned order fail
   before Telegram accepts payment.
 - Refund failure stops the operation and leaves durable pending evidence for
   manual recovery; it is never retried blindly.
 - Canary orders carry durable provenance independent of owner/product/amount,
   so historical matching purchases cannot contaminate status or evidence.
+- A historical v1 marker/order at 69 XTR does not block creation of the v2
+  10 XTR claim and is never mutated by v2 operations.
 - The owner receives an explicit canary-refunded confirmation, never the
   generic message that credits remain available.
 - No logs, receipts, commands or durable writebacks include Telegram IDs,

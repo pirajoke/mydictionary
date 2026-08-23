@@ -45,11 +45,13 @@ from mydictionary.storage import (
 OWNER_ID = 7001
 NON_OWNER_ID = 7002
 PRODUCT_ID = "ai-mini"
-AMOUNT_XTR = 69
+CANARY_AMOUNT_XTR = 10
+CATALOG_AMOUNT_XTR = 69
 CREDITS = 20
 TERMS_VERSION = "stars-production-canary-v1"
 TERMS_TEXT = "Owner-only production canary terms for immediate digital delivery."
 PRIVATE_CHARGE = "PRIVATE-CANARY-CHARGE-ID"
+LEGACY_CANARY_MARKER_KEY = "telegram_stars_production_canary_v1"
 
 
 def required_public(testcase, owner, name):
@@ -67,7 +69,7 @@ def canary_environment(**overrides):
         "STARS_PRODUCTION_CANARY_ENABLED": "true",
         "STARS_PRODUCTION_CANARY_OWNER_ID": str(OWNER_ID),
         "STARS_PRODUCTION_CANARY_PRODUCT_ID": PRODUCT_ID,
-        "STARS_PRODUCTION_CANARY_AMOUNT_XTR": str(AMOUNT_XTR),
+        "STARS_PRODUCTION_CANARY_AMOUNT_XTR": str(CANARY_AMOUNT_XTR),
     }
     values.update(overrides)
     return values
@@ -78,7 +80,7 @@ def handler_canary_settings():
         enabled=True,
         owner_user_id=OWNER_ID,
         product_id=PRODUCT_ID,
-        amount_xtr=AMOUNT_XTR,
+        amount_xtr=CANARY_AMOUNT_XTR,
         public_checkout_enabled=False,
         is_owner=lambda user_id: int(user_id) == OWNER_ID,
         allows_user=lambda user_id: int(user_id) == OWNER_ID,
@@ -134,11 +136,17 @@ def callback_update(user_id, data):
     return update, query
 
 
-def successful_payment_update(user_id, payload, charge_id):
+def successful_payment_update(
+    user_id,
+    payload,
+    charge_id,
+    *,
+    total_amount=CANARY_AMOUNT_XTR,
+):
     payment = SimpleNamespace(
         invoice_payload=payload,
         currency="XTR",
-        total_amount=AMOUNT_XTR,
+        total_amount=total_amount,
         telegram_payment_charge_id=charge_id,
         provider_payment_charge_id="",
         is_recurring=False,
@@ -162,7 +170,7 @@ def remote_canary_row(*, refunded=False):
         "telegram_payment_charge_id": PRIVATE_CHARGE,
         "user_id": OWNER_ID,
         "currency": "XTR",
-        "total_amount": AMOUNT_XTR,
+        "total_amount": CANARY_AMOUNT_XTR,
         "is_refund": bool(refunded),
         "subscription_period": None,
     }
@@ -180,7 +188,7 @@ class ProductionStarsCanarySettingsContractTest(unittest.TestCase):
         self.assertFalse(settings.public_checkout_enabled)
         self.assertEqual(settings.owner_user_id, OWNER_ID)
         self.assertEqual(settings.product_id, PRODUCT_ID)
-        self.assertEqual(settings.amount_xtr, AMOUNT_XTR)
+        self.assertEqual(settings.amount_xtr, CANARY_AMOUNT_XTR)
         self.assertTrue(settings.is_owner(OWNER_ID))
         self.assertFalse(settings.is_owner(NON_OWNER_ID))
         self.assertFalse(BillingSettings.from_env({}).enabled)
@@ -196,8 +204,9 @@ class ProductionStarsCanarySettingsContractTest(unittest.TestCase):
             {"STARS_PRODUCTION_CANARY_OWNER_ID": "owner"},
             {"STARS_PRODUCTION_CANARY_OWNER_ID": f"{OWNER_ID},{NON_OWNER_ID}"},
             {"STARS_PRODUCTION_CANARY_PRODUCT_ID": "ai-starter"},
-            {"STARS_PRODUCTION_CANARY_AMOUNT_XTR": "68"},
-            {"STARS_PRODUCTION_CANARY_AMOUNT_XTR": "70"},
+            {"STARS_PRODUCTION_CANARY_AMOUNT_XTR": "9"},
+            {"STARS_PRODUCTION_CANARY_AMOUNT_XTR": "11"},
+            {"STARS_PRODUCTION_CANARY_AMOUNT_XTR": str(CATALOG_AMOUNT_XTR)},
             {"TELEGRAM_STARS_ENABLED": "true"},
         )
         for override in invalid:
@@ -221,7 +230,7 @@ class ProductionStarsCanarySettingsContractTest(unittest.TestCase):
                 "STARS_CANARY_ENABLED": "true",
                 "STARS_CANARY_OWNER_ID": str(OWNER_ID),
                 "STARS_CANARY_PRODUCT_ID": PRODUCT_ID,
-                "STARS_CANARY_AMOUNT_XTR": str(AMOUNT_XTR),
+                "STARS_CANARY_AMOUNT_XTR": str(CANARY_AMOUNT_XTR),
             }
         )
         self.assertFalse(alias_only.enabled)
@@ -289,7 +298,7 @@ class ProductionStarsCanaryHandlerContractTest(unittest.IsolatedAsyncioTestCase)
             title="AI Mini",
             description="20 AI credits",
             credits=CREDITS,
-            amount_xtr=AMOUNT_XTR,
+            amount_xtr=CANARY_AMOUNT_XTR,
             payload="md1.canary.signed-payload",
         )
         service.fulfill_successful_payment.return_value = FulfillmentResult(
@@ -323,7 +332,7 @@ class ProductionStarsCanaryHandlerContractTest(unittest.IsolatedAsyncioTestCase)
             )
             invoice = context.bot.send_invoice.await_args.kwargs
             self.assertEqual(invoice["currency"], "XTR")
-            self.assertEqual(invoice["prices"][0].amount, AMOUNT_XTR)
+            self.assertEqual(invoice["prices"][0].amount, CANARY_AMOUNT_XTR)
             self.assertNotIn("subscription_period", invoice)
             self.assertNotIn("provider_token", invoice)
             self.assertIsNone(query.answer.await_args.kwargs.get("show_alert"))
@@ -334,7 +343,7 @@ class ProductionStarsCanaryHandlerContractTest(unittest.IsolatedAsyncioTestCase)
                 from_user=SimpleNamespace(id=OWNER_ID, language_code="en"),
                 invoice_payload="md1.canary.signed-payload",
                 currency="XTR",
-                total_amount=AMOUNT_XTR,
+                total_amount=CANARY_AMOUNT_XTR,
                 answer=AsyncMock(),
             )
             update = SimpleNamespace(
@@ -359,7 +368,7 @@ class ProductionStarsCanaryHandlerContractTest(unittest.IsolatedAsyncioTestCase)
             payment = SimpleNamespace(
                 invoice_payload="md1.canary.signed-payload",
                 currency="XTR",
-                total_amount=AMOUNT_XTR,
+                total_amount=CANARY_AMOUNT_XTR,
                 telegram_payment_charge_id=PRIVATE_CHARGE,
                 provider_payment_charge_id="",
                 is_recurring=False,
@@ -411,7 +420,7 @@ class ProductionStarsCanaryHandlerContractTest(unittest.IsolatedAsyncioTestCase)
                     title="AI Mini",
                     description="20 AI credits",
                     credits=CREDITS,
-                    amount_xtr=AMOUNT_XTR,
+                    amount_xtr=CANARY_AMOUNT_XTR,
                     payload="md1.forbidden.signed",
                 )
                 service.fulfill_successful_payment.return_value = FulfillmentResult(
@@ -474,7 +483,7 @@ class ProductionStarsCanaryHandlerContractTest(unittest.IsolatedAsyncioTestCase)
                             ),
                             invoice_payload="md1.forged.payload",
                             currency="XTR",
-                            total_amount=AMOUNT_XTR,
+                            total_amount=CANARY_AMOUNT_XTR,
                             answer=AsyncMock(),
                         )
                         update = SimpleNamespace(
@@ -487,7 +496,7 @@ class ProductionStarsCanaryHandlerContractTest(unittest.IsolatedAsyncioTestCase)
                         payment = SimpleNamespace(
                             invoice_payload="md1.forged.payload",
                             currency="XTR",
-                            total_amount=AMOUNT_XTR,
+                            total_amount=CANARY_AMOUNT_XTR,
                             telegram_payment_charge_id=PRIVATE_CHARGE,
                             provider_payment_charge_id="",
                         )
@@ -551,7 +560,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             title="AI Mini",
             description="20 one-time AI credits",
             credits=CREDITS,
-            price_xtr=AMOUNT_XTR,
+            price_xtr=CATALOG_AMOUNT_XTR,
             status="active",
             estimated_cost_micro_usd=289_000,
             target_margin_bps=5_000,
@@ -575,7 +584,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             title="AI Monthly",
             description="Subscription product",
             credits=20,
-            price_xtr=69,
+            price_xtr=CATALOG_AMOUNT_XTR,
             status="active",
             estimated_cost_micro_usd=289_000,
             target_margin_bps=5_000,
@@ -619,7 +628,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             user_id=OWNER_ID,
             payload=order.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CANARY_AMOUNT_XTR,
             telegram_payment_charge_id=PRIVATE_CHARGE,
         )
         self.assertTrue(result.created)
@@ -640,7 +649,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
                 user_id=OWNER_ID,
                 payload=order.payload,
                 currency="XTR",
-                total_amount=AMOUNT_XTR,
+                total_amount=CANARY_AMOUNT_XTR,
                 telegram_payment_charge_id=PRIVATE_CHARGE,
             )
         with self.subTest(surface="status"):
@@ -790,7 +799,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             user_id=OWNER_ID,
             payload=historical_order.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CATALOG_AMOUNT_XTR,
             telegram_payment_charge_id="PRIVATE-HISTORICAL-CHARGE-ID",
         )
         historical_refund_id = ordinary.request_refund(
@@ -898,7 +907,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             from_user=SimpleNamespace(id=NON_OWNER_ID, language_code="en"),
             invoice_payload=legacy_order.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CATALOG_AMOUNT_XTR,
             answer=AsyncMock(),
         )
         precheckout_update = SimpleNamespace(
@@ -909,11 +918,13 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             NON_OWNER_ID,
             legacy_order.payload,
             "PRIVATE-LEGACY-CHARGE-ID",
+            total_amount=CATALOG_AMOUNT_XTR,
         )
         forged_update, forged_message = successful_payment_update(
             NON_OWNER_ID,
             f"{legacy_order.payload}x",
             "PRIVATE-FORGED-CHARGE-ID",
+            total_amount=CATALOG_AMOUNT_XTR,
         )
         with (
             patch.object(
@@ -1030,6 +1041,13 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
     def test_ac_4_ac_5_catalog_order_and_precheckout_are_exact_owner_only(self):
         service = self.service()
 
+        with self.store.Session() as session:
+            underlying = session.get(billing.BillingProduct, PRODUCT_ID)
+            self.assertEqual(underlying.price_xtr, CATALOG_AMOUNT_XTR)
+            self.assertEqual(underlying.credits, CREDITS)
+            self.assertEqual(underlying.status, "active")
+            self.assertEqual(underlying.billing_mode, "one_time")
+
         products = service.active_products(user_id=OWNER_ID)
         self.assertEqual(len(products), 1)
         self.assertEqual(
@@ -1046,7 +1064,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             {
                 "product_id": PRODUCT_ID,
                 "credits": CREDITS,
-                "price_xtr": AMOUNT_XTR,
+                "price_xtr": CANARY_AMOUNT_XTR,
                 "billing_mode": "one_time",
                 "subscription_period_seconds": None,
             },
@@ -1063,41 +1081,48 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
         order = service.create_order(user_id=OWNER_ID, product_id=PRODUCT_ID)
         self.assertEqual(order.product_id, PRODUCT_ID)
         self.assertEqual(order.credits, CREDITS)
-        self.assertEqual(order.amount_xtr, AMOUNT_XTR)
+        self.assertEqual(order.amount_xtr, CANARY_AMOUNT_XTR)
         self.assertIsNone(order.subscription_period_seconds)
+        with self.store.Session() as session:
+            persisted_order = session.get(PaymentOrder, order.order_id)
+            self.assertEqual(persisted_order.amount_xtr, CANARY_AMOUNT_XTR)
+            self.assertEqual(
+                session.get(billing.BillingProduct, PRODUCT_ID).price_xtr,
+                CATALOG_AMOUNT_XTR,
+            )
         with self.assertRaises(BillingValidationError):
             service.validate_pre_checkout(
                 user_id=NON_OWNER_ID,
                 payload=order.payload,
                 currency="XTR",
-                total_amount=AMOUNT_XTR,
+                total_amount=CANARY_AMOUNT_XTR,
             )
         with self.assertRaises(BillingValidationError):
             service.validate_pre_checkout(
                 user_id=OWNER_ID,
                 payload=order.payload,
                 currency="XTR",
-                total_amount=AMOUNT_XTR + 1,
+                total_amount=CANARY_AMOUNT_XTR + 1,
             )
         with self.assertRaises(BillingValidationError):
             service.validate_pre_checkout(
                 user_id=OWNER_ID,
                 payload=f"{order.payload}x",
                 currency="XTR",
-                total_amount=AMOUNT_XTR,
+                total_amount=CANARY_AMOUNT_XTR,
             )
         service.validate_pre_checkout(
             user_id=OWNER_ID,
             payload=order.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CANARY_AMOUNT_XTR,
         )
         with self.assertRaises(BillingValidationError):
             service.fulfill_successful_payment(
                 user_id=OWNER_ID,
                 payload=order.payload,
                 currency="XTR",
-                total_amount=AMOUNT_XTR,
+                total_amount=CANARY_AMOUNT_XTR,
                 telegram_payment_charge_id="recurring-is-forbidden",
                 is_recurring=True,
                 is_first_recurring=True,
@@ -1106,6 +1131,19 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
                 ),
             )
 
+    def test_error_repricing_base_catalog_to_canary_amount_fails_closed(self):
+        service = self.service()
+        with self.store.Session.begin() as session:
+            session.get(
+                billing.BillingProduct,
+                PRODUCT_ID,
+            ).price_xtr = CANARY_AMOUNT_XTR
+
+        with self.assertRaises(BillingValidationError):
+            service.active_products(user_id=OWNER_ID)
+        with self.assertRaises(BillingValidationError):
+            service.create_order(user_id=OWNER_ID, product_id=PRODUCT_ID)
+
     async def test_ac_6_ac_7_fulfillment_and_refund_request_are_idempotent(self):
         service = self.service()
         order = service.create_order(user_id=OWNER_ID, product_id=PRODUCT_ID)
@@ -1113,21 +1151,21 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             user_id=OWNER_ID,
             payload=order.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CANARY_AMOUNT_XTR,
         )
 
         first = service.fulfill_successful_payment(
             user_id=OWNER_ID,
             payload=order.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CANARY_AMOUNT_XTR,
             telegram_payment_charge_id=PRIVATE_CHARGE,
         )
         duplicate = service.fulfill_successful_payment(
             user_id=OWNER_ID,
             payload=order.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CANARY_AMOUNT_XTR,
             telegram_payment_charge_id=PRIVATE_CHARGE,
         )
 
@@ -1199,7 +1237,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             user_id=OWNER_ID,
             payload=order.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CANARY_AMOUNT_XTR,
             telegram_payment_charge_id=PRIVATE_CHARGE,
         )
         with self.store.Session() as session:
@@ -1310,6 +1348,90 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             self.assertEqual(wallet.balance_credits, 0)
             self.assertEqual(wallet.reserved_credits, 0)
 
+    async def test_ac_6_v2_claim_preserves_unpaid_v1_order_and_evidence_ignores_it(
+        self,
+    ):
+        ordinary = self.ordinary_service()
+        legacy_order = ordinary.create_order(
+            user_id=OWNER_ID,
+            product_id=PRODUCT_ID,
+        )
+        self.assertEqual(legacy_order.amount_xtr, CATALOG_AMOUNT_XTR)
+        with self.store.Session.begin() as session:
+            session.add(
+                AppSetting(
+                    key=LEGACY_CANARY_MARKER_KEY,
+                    value=legacy_order.order_id,
+                    updated_by="stars_canary",
+                )
+            )
+        with self.store.Session() as session:
+            legacy_before = session.get(PaymentOrder, legacy_order.order_id)
+            legacy_snapshot = (
+                legacy_before.invoice_payload,
+                legacy_before.amount_xtr,
+                legacy_before.status,
+            )
+
+        service = self.service()
+        self.assertNotEqual(service.MARKER_KEY, LEGACY_CANARY_MARKER_KEY)
+        v2_order = service.create_order(user_id=OWNER_ID, product_id=PRODUCT_ID)
+        self.assertEqual(v2_order.amount_xtr, CANARY_AMOUNT_XTR)
+        self.assertNotEqual(v2_order.order_id, legacy_order.order_id)
+        with self.assertRaises(BillingValidationError):
+            service.validate_pre_checkout(
+                user_id=OWNER_ID,
+                payload=legacy_order.payload,
+                currency="XTR",
+                total_amount=CATALOG_AMOUNT_XTR,
+            )
+
+        result = service.fulfill_successful_payment(
+            user_id=OWNER_ID,
+            payload=v2_order.payload,
+            currency="XTR",
+            total_amount=CANARY_AMOUNT_XTR,
+            telegram_payment_charge_id=PRIVATE_CHARGE,
+        )
+        gateway = AsyncMock()
+        gateway.refund_star_payment.return_value = True
+        self.assertTrue(
+            await service.process_refund(
+                refund_id=result.refund_id,
+                gateway=gateway,
+            )
+        )
+        disabled = billing.ProductionStarsCanarySettings.from_env(
+            {
+                "TELEGRAM_STARS_ENABLED": "false",
+                "STARS_PRODUCTION_CANARY_ENABLED": "false",
+            }
+        )
+        evidence = billing.read_production_stars_canary_status(
+            store=self.store,
+            canary_settings=disabled,
+        )
+        self.assertEqual(evidence["state"], "refunded")
+        self.assertEqual(evidence["amount_xtr"], CANARY_AMOUNT_XTR)
+        receipt = stars_launch.build_production_stars_canary_receipt(evidence)
+        self.assertEqual(receipt["status"]["amount_xtr"], CANARY_AMOUNT_XTR)
+
+        with self.store.Session() as session:
+            legacy_after = session.get(PaymentOrder, legacy_order.order_id)
+            legacy_marker = session.get(AppSetting, LEGACY_CANARY_MARKER_KEY)
+            v2_marker = session.get(AppSetting, service.MARKER_KEY)
+            self.assertEqual(
+                (
+                    legacy_after.invoice_payload,
+                    legacy_after.amount_xtr,
+                    legacy_after.status,
+                ),
+                legacy_snapshot,
+            )
+            self.assertEqual(legacy_marker.value, legacy_order.order_id)
+            self.assertEqual(legacy_marker.updated_by, "stars_canary")
+            self.assertEqual(v2_marker.value, v2_order.order_id)
+
     def test_ac_7_ac_8_historical_matching_purchase_is_not_canary_provenance(
         self,
     ):
@@ -1322,7 +1444,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
             user_id=OWNER_ID,
             payload=historical.payload,
             currency="XTR",
-            total_amount=AMOUNT_XTR,
+            total_amount=CATALOG_AMOUNT_XTR,
             telegram_payment_charge_id="PRIVATE-HISTORICAL-CHARGE-ID",
         )
 
@@ -1373,7 +1495,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
                 "canary_enabled": False,
                 "state": "refunded",
                 "product_id": PRODUCT_ID,
-                "amount_xtr": AMOUNT_XTR,
+                "amount_xtr": CANARY_AMOUNT_XTR,
                 "payment_completed": True,
                 "refund_pending": False,
                 "refund_completed": True,
@@ -1416,7 +1538,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
                 user_id=OWNER_ID,
                 payload="unsigned-canary-order",
                 currency="XTR",
-                total_amount=AMOUNT_XTR,
+                total_amount=CANARY_AMOUNT_XTR,
             )
 
     def test_ac_8_status_is_aggregate_and_contains_no_identifiers(self):
@@ -1441,7 +1563,7 @@ class ProductionStarsCanaryServiceContractTest(unittest.IsolatedAsyncioTestCase)
         self.assertEqual(status["canary_enabled"], True)
         self.assertEqual(status["state"], "armed")
         self.assertEqual(status["product_id"], PRODUCT_ID)
-        self.assertEqual(status["amount_xtr"], AMOUNT_XTR)
+        self.assertEqual(status["amount_xtr"], CANARY_AMOUNT_XTR)
         serialized = json.dumps(status, ensure_ascii=False, sort_keys=True)
         for forbidden in (
             str(OWNER_ID),
@@ -1469,7 +1591,7 @@ class ProductionStarsCanaryEvidenceContractTest(unittest.TestCase):
             "canary_enabled": False,
             "state": "refunded",
             "product_id": PRODUCT_ID,
-            "amount_xtr": AMOUNT_XTR,
+            "amount_xtr": CANARY_AMOUNT_XTR,
             "payment_completed": True,
             "refund_pending": False,
             "refund_completed": True,
@@ -1507,7 +1629,7 @@ class ProductionStarsCanaryEvidenceContractTest(unittest.TestCase):
             "canary_enabled": False,
             "state": "refunded",
             "product_id": PRODUCT_ID,
-            "amount_xtr": AMOUNT_XTR,
+            "amount_xtr": CANARY_AMOUNT_XTR,
             "payment_completed": True,
             "refund_pending": False,
             "refund_completed": True,
