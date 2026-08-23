@@ -159,7 +159,7 @@ class RuntimePromptContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             responses.kwargs["instructions"],
-            normalized_reviewed_prompt(ROOT / "prompts/mirror-v2.txt"),
+            normalized_reviewed_prompt(ROOT / "prompts/mirror-v3.txt"),
         )
 
 
@@ -256,7 +256,7 @@ class PromptLibraryDocumentationTest(unittest.TestCase):
                 "tests/fixtures/ai_tutor_eval.json",
             ),
             (
-                "mirror-v2.txt",
+                "mirror-v3.txt",
                 "openairesponsesprovider.generate_mirror",
                 "tests/fixtures/mirror_quality_v2.json",
             ),

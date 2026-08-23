@@ -92,6 +92,7 @@ from mydictionary.mirror_assistant import (
     MIRROR_STYLE_LABELS,
     MirrorMemorySettings,
     append_mirror_turn,
+    build_companion_learner_context,
     build_mirror_progress_summary,
     build_mirror_provider_payload,
     classify_mirror_intent,
@@ -99,6 +100,7 @@ from mydictionary.mirror_assistant import (
     grounded_progress_snapshot,
     normalize_mirror_style,
     recent_mirror_dialogue,
+    resolve_companion_locale,
     render_mirror_capabilities,
     render_mirror_greeting,
 )
@@ -3487,14 +3489,18 @@ async def handle_mirror_question(
     store = get_store()
     user_id = int(update.effective_user.id)
     profile = store.product_profile(user_id)
+    reply_locale = resolve_companion_locale(
+        question,
+        interface_locale=interface_locale,
+    )
     if profile.get("access_status") != "active":
         await message.reply_text(
-            translate("mirror_unavailable", interface_locale)
+            translate("mirror_unavailable", reply_locale)
         )
         return
     if not profile.get("onboarding_completed_at"):
         await message.reply_text(
-            translate("onboarding_required", interface_locale)
+            translate("onboarding_required", reply_locale)
         )
         return
 
@@ -3521,7 +3527,7 @@ async def handle_mirror_question(
             ),
             active_pack_title=active_pack.title if active_pack is not None else None,
             has_active_block=active_tutor_context(context.user_data) is not None,
-            locale=interface_locale,
+            locale=reply_locale,
             first_name=getattr(update.effective_user, "first_name", None),
         )
     elif intent == "capabilities":
@@ -3530,10 +3536,13 @@ async def handle_mirror_question(
                 "mirror_capabilities_text",
                 MIRROR_ADMIN_DEFAULTS["mirror_capabilities_text"],
             ),
-            locale=interface_locale,
+            locale=reply_locale,
         )
     else:
         response = ""
+        if not AI_SETTINGS.enabled:
+            await message.reply_text(translate("ai_disabled", reply_locale))
+            return
         consent_version = AI_SETTINGS.consent_version or "unversioned"
         try:
             consented = store.has_consent(
@@ -3545,7 +3554,7 @@ async def handle_mirror_question(
             consented = False
         if not consented:
             await message.reply_text(
-                translate("ai_consent_required", interface_locale)
+                translate("ai_consent_required", reply_locale)
             )
             return
         try:
@@ -3562,7 +3571,7 @@ async def handle_mirror_question(
             )
             if MIRROR_MEMORY_SETTINGS.enabled:
                 try:
-                    dialogue = store.get_mirror_dialogue(user_id, limit=20)
+                    dialogue = store.get_mirror_dialogue(user_id, limit=8)
                 except Exception as exc:
                     logger.warning(
                         "Mirror memory read failed: error_type=%s",
@@ -3583,14 +3592,23 @@ async def handle_mirror_question(
                 )
             ).strip()
             combined_guidance = f"{persona}\n\n{mode_guidance}"[:1000]
+            learning_context = build_mirror_learning_context(
+                profile,
+                context.user_data,
+                snapshot,
+            )
             payload = build_mirror_provider_payload(
                 question=question,
                 admin_guidance=combined_guidance,
                 grounded_snapshot=snapshot,
-                learning_context=build_mirror_learning_context(
-                    profile,
-                    context.user_data,
-                    snapshot,
+                learning_context=learning_context,
+                learner_context=build_companion_learner_context(
+                    product_profile=profile,
+                    grounded_progress=snapshot,
+                    has_active_block=(
+                        learning_context.get("source") == "active_block"
+                    ),
+                    learner_level=preferences["level"],
                 ),
                 recent_dialogue=dialogue,
                 response_style=preferences["mode"],
@@ -3598,7 +3616,7 @@ async def handle_mirror_question(
                 communication_mode=preferences["mode"],
                 answer_depth=preferences["depth"],
                 learner_level=preferences["level"],
-                interface_locale=interface_locale,
+                interface_locale=reply_locale,
             )
             service = get_ai_tutor_service()
             result = await service.ask(
@@ -3615,13 +3633,13 @@ async def handle_mirror_question(
                 message,
                 context,
                 user_id=user_id,
-                locale=interface_locale,
+                locale=reply_locale,
                 question=question,
             )
             return
         except AIQuotaExceeded:
             await message.reply_text(
-                translate("ai_limit_reached", interface_locale)
+                translate("ai_limit_reached", reply_locale)
             )
             return
         except Exception as exc:
@@ -3630,7 +3648,7 @@ async def handle_mirror_question(
                 response = build_mirror_progress_summary(store, user_id)
             else:
                 await message.reply_text(
-                    translate("ai_failure", interface_locale)
+                    translate("ai_failure", reply_locale)
                 )
                 return
 
@@ -3665,7 +3683,7 @@ async def handle_mirror_question(
         voice_enabled=voice_enabled,
         speech_consented=speech_consented,
         voice_renderer=voice_renderer,
-        locale=interface_locale,
+        locale=reply_locale,
     )
     if intent not in {"greeting", "capabilities"} and MIRROR_MEMORY_SETTINGS.enabled:
         try:
@@ -3679,14 +3697,15 @@ async def handle_mirror_question(
             logger.warning(
                 "Mirror memory write failed: error_type=%s", type(exc).__name__
             )
-    append_mirror_turn(context.user_data, role="user", text=question)
-    append_mirror_turn(context.user_data, role="assistant", text=response)
+    if intent not in {"greeting", "capabilities"}:
+        append_mirror_turn(context.user_data, role="user", text=question)
+        append_mirror_turn(context.user_data, role="assistant", text=response)
     if request_id:
         await message.reply_text(
-            translate("mirror_feedback_question", interface_locale),
+            translate("mirror_feedback_question", reply_locale),
             reply_markup=mirror_feedback_keyboard(
                 str(request_id),
-                locale=interface_locale,
+                locale=reply_locale,
             ),
         )
 
