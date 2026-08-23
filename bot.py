@@ -60,7 +60,10 @@ from mydictionary.billing import (
     BillingConfigurationError,
     BillingService,
     BillingSettings,
+    BillingStateError,
     BillingValidationError,
+    ProductionStarsCanaryService,
+    ProductionStarsCanarySettings,
     TelegramStarsGateway,
 )
 from mydictionary.bot_profile import render_start_text
@@ -203,6 +206,7 @@ MIRROR_MEMORY_SETTINGS = MirrorMemorySettings.from_env(
     ai_processing_notice=AI_SETTINGS.processing_notice,
 )
 BILLING_SETTINGS = BillingSettings.from_env()
+STARS_PRODUCTION_CANARY_SETTINGS = ProductionStarsCanarySettings.from_env()
 SAFETY_SETTINGS = SafetySettings.from_env()
 VOICE_SETTINGS = VoiceTutorSettings.from_env()
 VOICE_TRANSLATION_SETTINGS = VoiceTranslationSettings.from_env(
@@ -264,7 +268,7 @@ PACK_DICTS: dict[str, list[dict]] = {
 _FALLBACK_PROGRESS: dict = load_progress()
 _STORE: DatabaseStore | None = None
 _AI_TUTOR: AITutorService | None = None
-_BILLING: BillingService | None = None
+_BILLING: BillingService | ProductionStarsCanaryService | None = None
 _VOICE_TUTOR: VoiceTutorService | None = None
 _VOICE_TRANSLATION: VoiceTranslationService | None = None
 LAST_PRONUNCIATION_MESSAGES_KEY = "last_pronunciation_messages"
@@ -311,10 +315,17 @@ def get_ai_tutor_service() -> AITutorService:
     return _AI_TUTOR
 
 
-def get_billing_service() -> BillingService:
+def get_billing_service() -> BillingService | ProductionStarsCanaryService:
     global _BILLING
     if _BILLING is None:
-        _BILLING = BillingService(get_store(), BILLING_SETTINGS)
+        if STARS_PRODUCTION_CANARY_SETTINGS.enabled:
+            _BILLING = ProductionStarsCanaryService(
+                get_store(),
+                BILLING_SETTINGS,
+                STARS_PRODUCTION_CANARY_SETTINGS,
+            )
+        else:
+            _BILLING = BillingService(get_store(), BILLING_SETTINGS)
     return _BILLING
 
 
@@ -3893,16 +3904,38 @@ async def send_ai_credit_paywall(
     )
 
 
+def _stars_canary_allows_user(user_id: int) -> bool:
+    try:
+        return bool(
+            STARS_PRODUCTION_CANARY_SETTINGS.enabled
+            and STARS_PRODUCTION_CANARY_SETTINGS.allows_user(user_id)
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def _stars_canary_blocks_user(user_id: int) -> bool:
+    return bool(
+        STARS_PRODUCTION_CANARY_SETTINGS.enabled
+        and not _stars_canary_allows_user(user_id)
+    )
+
+
+def _billing_entry_enabled_for(user_id: int) -> bool:
+    return bool(BILLING_SETTINGS.enabled or _stars_canary_allows_user(user_id))
+
+
 @auth
 async def cmd_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not BILLING_SETTINGS.enabled:
+    user_id = int(update.effective_user.id)
+    if not _billing_entry_enabled_for(user_id):
         await update.message.reply_text(
             translate("billing_disabled", interface_locale_for_update(update))
         )
         return
     record_product_event("buy_opened", source="command")
     if not get_store().has_consent(
-        int(update.effective_user.id),
+        user_id,
         consent_type="billing_terms",
         document_version=BILLING_SETTINGS.terms_version,
     ):
@@ -3929,10 +3962,21 @@ def billing_terms_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
 
 
 async def send_billing_terms(message, *, locale: str = "ru") -> None:
+    message_user_id = getattr(message, "chat_id", None)
+    if (
+        STARS_PRODUCTION_CANARY_SETTINGS.enabled
+        and not _stars_canary_allows_user(message_user_id)
+    ):
+        await message.reply_text(translate("billing_disabled", locale))
+        return
+    checkout_available = bool(
+        BILLING_SETTINGS.enabled
+        or _stars_canary_allows_user(message_user_id)
+    )
     instruction = translate(
         (
             "billing_terms_instruction"
-            if BILLING_SETTINGS.enabled
+            if checkout_available
             else "billing_terms_disabled"
         ),
         locale,
@@ -3962,13 +4006,20 @@ async def send_billing_terms(message, *, locale: str = "ru") -> None:
             instruction=instruction,
         ),
         reply_markup=(
-            billing_terms_keyboard(locale) if BILLING_SETTINGS.enabled else None
+            billing_terms_keyboard(locale) if checkout_available else None
         ),
     )
 
 
 async def send_billing_products(message, *, locale: str = "ru") -> None:
-    products = await asyncio.to_thread(get_billing_service().active_products)
+    service = get_billing_service()
+    if STARS_PRODUCTION_CANARY_SETTINGS.enabled:
+        products = await asyncio.to_thread(
+            service.active_products,
+            user_id=int(message.chat_id),
+        )
+    else:
+        products = await asyncio.to_thread(service.active_products)
     if not products:
         await message.reply_text(translate("billing_products_empty", locale))
         return
@@ -3995,14 +4046,15 @@ async def send_billing_products(message, *, locale: str = "ru") -> None:
 async def billing_open_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     locale = interface_locale_for_update(update)
-    if not BILLING_SETTINGS.enabled:
+    user_id = int(update.effective_user.id)
+    if not _billing_entry_enabled_for(user_id):
         await query.answer(
             translate("billing_disabled_callback", locale), show_alert=True
         )
         return
     await query.answer()
     if not get_store().has_consent(
-        int(update.effective_user.id),
+        user_id,
         consent_type="billing_terms",
         document_version=BILLING_SETTINGS.terms_version,
     ):
@@ -4033,7 +4085,8 @@ async def billing_resume_ai_cb(
 async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     locale = interface_locale_for_update(update)
-    if not BILLING_SETTINGS.enabled:
+    user_id = int(update.effective_user.id)
+    if not _billing_entry_enabled_for(user_id):
         await query.answer(
             translate("billing_disabled_callback", locale), show_alert=True
         )
@@ -4044,7 +4097,7 @@ async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
         return
     changed = get_store().grant_consent(
-        int(update.effective_user.id),
+        user_id,
         consent_type="billing_terms",
         document_version=BILLING_SETTINGS.terms_version,
         source="telegram",
@@ -4069,9 +4122,15 @@ async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     locale = interface_locale_for_update(update)
+    user_id = int(update.effective_user.id)
+    if _stars_canary_blocks_user(user_id):
+        await query.answer(
+            translate("billing_disabled_callback", locale), show_alert=True
+        )
+        return
     await query.answer()
     if not get_store().has_consent(
-        int(update.effective_user.id),
+        user_id,
         consent_type="billing_terms",
         document_version=BILLING_SETTINGS.terms_version,
     ):
@@ -4081,6 +4140,14 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     product_id = query.data.split(":", 1)[1]
+    if (
+        STARS_PRODUCTION_CANARY_SETTINGS.enabled
+        and product_id != STARS_PRODUCTION_CANARY_SETTINGS.product_id
+    ):
+        await query.message.reply_text(
+            translate("billing_product_unavailable", locale)
+        )
+        return
     record_product_event(
         "billing_package_selected",
         properties={"product_id": product_id},
@@ -4088,10 +4155,15 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         order = await asyncio.to_thread(
             get_billing_service().create_order,
-            user_id=int(update.effective_user.id),
+            user_id=user_id,
             product_id=product_id,
         )
-    except (BillingConfigurationError, BillingValidationError, ValueError):
+    except (
+        BillingConfigurationError,
+        BillingStateError,
+        BillingValidationError,
+        ValueError,
+    ):
         logger.warning("Stars invoice creation rejected for product=%s", product_id)
         await query.message.reply_text(
             translate("billing_product_unavailable", locale)
@@ -4138,11 +4210,18 @@ async def pre_checkout_handler(
 ):
     query = update.pre_checkout_query
     locale = interface_locale_for_update(update)
+    user_id = int(query.from_user.id)
+    if _stars_canary_blocks_user(user_id):
+        await query.answer(
+            ok=False,
+            error_message=translate("billing_precheckout_error", locale),
+        )
+        return
     try:
         await asyncio.wait_for(
             asyncio.to_thread(
                 get_billing_service().validate_pre_checkout,
-                user_id=int(query.from_user.id),
+                user_id=user_id,
                 payload=query.invoice_payload,
                 currency=query.currency,
                 total_amount=query.total_amount,
@@ -4166,10 +4245,20 @@ async def successful_payment_handler(
 ):
     payment = update.message.successful_payment
     locale = interface_locale_for_update(update)
+    user_id = int(update.effective_user.id)
+    service = get_billing_service()
+    if (
+        _stars_canary_blocks_user(user_id)
+        and not isinstance(service, ProductionStarsCanaryService)
+    ):
+        await update.message.reply_text(
+            translate("billing_payment_review", locale)
+        )
+        return
     try:
         result = await asyncio.to_thread(
-            get_billing_service().fulfill_successful_payment,
-            user_id=int(update.effective_user.id),
+            service.fulfill_successful_payment,
+            user_id=user_id,
             payload=payment.invoice_payload,
             currency=payment.currency,
             total_amount=payment.total_amount,
@@ -4187,6 +4276,43 @@ async def successful_payment_handler(
         logger.error("Stars fulfillment failed: error_type=%s", type(exc).__name__)
         await update.message.reply_text(
             translate("billing_payment_review", locale)
+        )
+        return
+    refund_id = getattr(result, "refund_id", None)
+    if (
+        result.created
+        and refund_id
+        and _stars_canary_allows_user(user_id)
+    ):
+        bot_api = getattr(context, "bot", None)
+        if bot_api is None:
+            logger.error("Stars canary refund deferred: missing Telegram gateway")
+            await update.message.reply_text(
+                translate("billing_payment_review", locale)
+            )
+            return
+        try:
+            refunded = await service.process_refund(
+                refund_id=str(refund_id),
+                gateway=TelegramStarsGateway(bot_api),
+            )
+        except Exception as exc:
+            logger.error(
+                "Stars canary refund failed: error_type=%s", type(exc).__name__
+            )
+            refunded = False
+        if not refunded:
+            await update.message.reply_text(
+                translate("billing_payment_review", locale)
+            )
+            return
+        record_product_event(
+            "stars_canary_refunded",
+            properties={"credits": result.credits},
+            user_id=user_id,
+        )
+        await update.message.reply_text(
+            translate("billing_canary_refund_success", locale)
         )
         return
     if result.created:
@@ -4210,7 +4336,7 @@ async def successful_payment_handler(
         record_product_event(
             "stars_payment_completed",
             properties={"credits": result.credits},
-            user_id=int(update.effective_user.id),
+            user_id=user_id,
         )
         await update.message.reply_text(
             translate(
@@ -4233,6 +4359,13 @@ async def successful_payment_handler(
 
 
 async def cmd_terms(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = getattr(update, "effective_user", None)
+    user_id = int(getattr(user, "id", 0) or 0)
+    if not _billing_entry_enabled_for(user_id):
+        await update.message.reply_text(
+            translate("billing_disabled", interface_locale_for_update(update))
+        )
+        return
     await send_billing_terms(
         update.message,
         locale=interface_locale_for_update(update),

@@ -2653,6 +2653,20 @@ if set(_USER_SURFACE_CYCLE4_COPY) != set(INTERFACE_LOCALES):
 for _locale, _messages in _USER_SURFACE_CYCLE4_COPY.items():
     _CATALOG[_locale].update(_messages)
 
+_PRODUCTION_STARS_CANARY_COPY = {
+    "en": "Canary payment confirmed and refunded in full.",
+    "fr": "Le paiement canari est confirmé et intégralement remboursé.",
+    "de": "Die Canary-Zahlung wurde bestätigt und vollständig erstattet.",
+    "ja": "Canary決済を確認し、全額返金しました。",
+    "ar": "تم تأكيد دفعة الاختبار المحدود وردّها بالكامل.",
+    "zh": "Canary 付款已确认并全额退款。",
+    "ru": "Canary-платёж подтверждён и полностью возвращён.",
+    "es": "El pago canario se confirmó y se reembolsó por completo.",
+}
+
+for _locale, _message in _PRODUCTION_STARS_CANARY_COPY.items():
+    _CATALOG[_locale]["billing_canary_refund_success"] = _message
+
 _SERVICE_COPY = {
     "en": {
         "access_waitlist": "Your free pilot request is registered. After approval, open /start again.",

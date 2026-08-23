@@ -463,6 +463,60 @@ def _test_credentials_fingerprint(path: Path) -> str:
     return _fingerprint(normalized)
 
 
+def build_production_stars_canary_receipt(
+    status: Mapping[str, Any], *, completed_at: datetime | None = None
+) -> dict[str, Any]:
+    """Build aggregate evidence that is deliberately not a test-launch receipt."""
+    expected_fields = {
+        "public_checkout_enabled",
+        "canary_enabled",
+        "state",
+        "product_id",
+        "amount_xtr",
+        "payment_completed",
+        "refund_pending",
+        "refund_completed",
+    }
+    if not isinstance(status, Mapping) or set(status) != expected_fields:
+        raise StarsLaunchError("Production Stars canary status schema is invalid")
+    boolean_fields = {
+        "public_checkout_enabled",
+        "canary_enabled",
+        "payment_completed",
+        "refund_pending",
+        "refund_completed",
+    }
+    if any(not isinstance(status[field], bool) for field in boolean_fields):
+        raise StarsLaunchError("Production Stars canary status schema is invalid")
+    if (
+        not isinstance(status["state"], str)
+        or not isinstance(status["product_id"], str)
+        or type(status["amount_xtr"]) is not int
+    ):
+        raise StarsLaunchError("Production Stars canary status schema is invalid")
+    final_status = {
+        "public_checkout_enabled": False,
+        "canary_enabled": False,
+        "state": "refunded",
+        "product_id": "ai-mini",
+        "amount_xtr": 69,
+        "payment_completed": True,
+        "refund_pending": False,
+        "refund_completed": True,
+    }
+    if any(status[field] != value for field, value in final_status.items()):
+        raise StarsLaunchError(
+            "Production Stars canary receipt requires disabled refunded status"
+        )
+    timestamp = _utc(completed_at).isoformat().replace("+00:00", "Z")
+    return {
+        "schema_version": 1,
+        "environment": "telegram_production_canary",
+        "completed_at": timestamp,
+        "status": {field: status[field] for field in sorted(expected_fields)},
+    }
+
+
 def validate_stars_test_receipt(
     path: Path, *, now: datetime | None = None, max_age_days: int = 30
 ) -> dict[str, Any]:

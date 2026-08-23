@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import hmac
@@ -14,12 +14,14 @@ from typing import Any, Mapping, Protocol, Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from mydictionary.economics import parse_reviewed_on, require_current_review
 from mydictionary.stars_launch import StarsLaunchError, load_billing_launch_profile
 from mydictionary.storage import (
     AIUsageStateError,
     AdminAuditLog,
+    AppSetting,
     BillingCreditLedger,
     BillingProduct,
     DatabaseStore,
@@ -43,6 +45,10 @@ TELEGRAM_STAR_CONSERVATIVE_NET_MICRO_USD = (
     TELEGRAM_STAR_REWARD_MICRO_USD - 3_000
 )
 PRIVATE_CHAT_TOPICS_FEE_BPS = 1_500
+PRODUCTION_STARS_CANARY_MARKER_KEY = "telegram_stars_production_canary_v1"
+PRODUCTION_STARS_CANARY_PRODUCT_ID = "ai-mini"
+PRODUCTION_STARS_CANARY_AMOUNT_XTR = 69
+PRODUCTION_STARS_CANARY_CREDITS = 20
 
 
 def _aware_utc(value: datetime) -> datetime:
@@ -288,6 +294,88 @@ class BillingSettings:
 
 
 @dataclass(frozen=True)
+class ProductionStarsCanarySettings:
+    """One exact owner-only purchase while public Stars checkout stays off."""
+
+    enabled: bool
+    owner_user_id: int | None = None
+    product_id: str = "ai-mini"
+    amount_xtr: int = 69
+    public_checkout_enabled: bool = False
+
+    @classmethod
+    def from_env(
+        cls, values: Mapping[str, str] | None = None
+    ) -> "ProductionStarsCanarySettings":
+        env = values if values is not None else os.environ
+        public_checkout_enabled = _env_bool(
+            env.get("TELEGRAM_STARS_ENABLED", "false")
+        )
+        enabled = _env_bool(
+            env.get("STARS_PRODUCTION_CANARY_ENABLED", "false"),
+            setting_name="STARS_PRODUCTION_CANARY_ENABLED",
+        )
+        if not enabled:
+            return cls(
+                enabled=False,
+                public_checkout_enabled=public_checkout_enabled,
+            )
+        if public_checkout_enabled:
+            raise BillingConfigurationError(
+                "Production Stars canary requires public checkout to remain disabled"
+            )
+        raw_owner = str(
+            env.get("STARS_PRODUCTION_CANARY_OWNER_ID", "")
+        ).strip()
+        try:
+            if not raw_owner or not raw_owner.isascii() or not raw_owner.isdecimal():
+                raise ValueError
+            owner_user_id = int(raw_owner)
+            if owner_user_id <= 0 or str(owner_user_id) != raw_owner:
+                raise ValueError
+        except (TypeError, ValueError) as exc:
+            raise BillingConfigurationError(
+                "Production Stars canary requires one positive numeric owner ID"
+            ) from exc
+        product_id = str(
+            env.get("STARS_PRODUCTION_CANARY_PRODUCT_ID", "")
+        ).strip()
+        if product_id != "ai-mini":
+            raise BillingConfigurationError(
+                "Production Stars canary product must be ai-mini"
+            )
+        raw_amount = str(
+            env.get("STARS_PRODUCTION_CANARY_AMOUNT_XTR", "")
+        ).strip()
+        try:
+            amount_xtr = int(raw_amount)
+        except ValueError as exc:
+            raise BillingConfigurationError(
+                "Production Stars canary amount must be 69 XTR"
+            ) from exc
+        if raw_amount != "69" or amount_xtr != 69:
+            raise BillingConfigurationError(
+                "Production Stars canary amount must be 69 XTR"
+            )
+        return cls(
+            enabled=True,
+            owner_user_id=owner_user_id,
+            product_id=product_id,
+            amount_xtr=amount_xtr,
+            public_checkout_enabled=False,
+        )
+
+    def is_owner(self, user_id: int) -> bool:
+        try:
+            return self.owner_user_id is not None and int(user_id) == self.owner_user_id
+        except (TypeError, ValueError):
+            return False
+
+    def allows_user(self, user_id: int) -> bool:
+        return self.enabled and self.is_owner(user_id)
+
+
+@dataclass(frozen=True)
 class InvoiceOrder:
     order_id: str
     product_id: str
@@ -307,6 +395,7 @@ class FulfillmentResult:
     available_credits: int
     created: bool
     subscription_id: str | None = None
+    refund_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -622,12 +711,24 @@ class BillingService:
         is_recurring: bool = False,
         is_first_recurring: bool = False,
         subscription_expiration_date: datetime | None = None,
+        auto_refund_reason: str | None = None,
+        auto_refund_actor: str | None = None,
     ) -> FulfillmentResult:
         """Grant credits exactly once, including after the feature flag is disabled."""
         order_id = self._order_id_from_payload(payload)
         charge_id = str(telegram_payment_charge_id).strip()
         if not charge_id or len(charge_id) > 255:
             raise BillingValidationError("Telegram payment charge ID is invalid")
+        if (auto_refund_reason is None) != (auto_refund_actor is None):
+            raise BillingValidationError("Automatic refund metadata is incomplete")
+        if auto_refund_reason is not None:
+            auto_refund_reason = str(auto_refund_reason).strip()
+            auto_refund_actor = str(auto_refund_actor).strip()
+            if not 3 <= len(auto_refund_reason) <= 255:
+                raise BillingValidationError("Automatic refund reason is invalid")
+            if not 1 <= len(auto_refund_actor) <= 64:
+                raise BillingValidationError("Automatic refund actor is invalid")
+        refund_id = None
         with self.store.Session.begin() as session:
             order = session.execute(
                 select(PaymentOrder)
@@ -667,6 +768,11 @@ class BillingService:
                 if existing_charge.order_id != order.order_id:
                     raise BillingStateError("Telegram charge is already used")
                 wallet = self.store._ensure_ai_wallet(session, user_id)
+                existing_refund = session.execute(
+                    select(RefundRequest).where(
+                        RefundRequest.payment_id == existing_charge.payment_id
+                    )
+                ).scalar_one_or_none()
                 return FulfillmentResult(
                     payment_id=existing_charge.payment_id,
                     order_id=order.order_id,
@@ -676,6 +782,11 @@ class BillingService:
                     ),
                     created=False,
                     subscription_id=existing_charge.subscription_id,
+                    refund_id=(
+                        existing_refund.refund_id
+                        if existing_refund is not None
+                        else None
+                    ),
                 )
             subscription = session.execute(
                 select(StarsSubscription)
@@ -725,26 +836,25 @@ class BillingService:
             wallet.balance_credits += order.credits_snapshot
             wallet.updated_at = utcnow()
             payment_id = str(uuid4())
-            session.add(
-                StarsPayment(
-                    payment_id=payment_id,
-                    order_id=order.order_id,
-                    telegram_user_id=int(user_id),
-                    currency="XTR",
-                    total_amount=order.amount_xtr,
-                    telegram_payment_charge_id=charge_id,
-                    provider_payment_charge_id=(
-                        str(provider_payment_charge_id)[:255]
-                        if provider_payment_charge_id
-                        else None
-                    ),
-                    subscription_id=subscription_id,
-                    is_recurring=recurring,
-                    is_first_recurring=bool(is_first_recurring),
-                    subscription_expiration_date=expiration,
-                    status="paid",
-                )
+            payment = StarsPayment(
+                payment_id=payment_id,
+                order_id=order.order_id,
+                telegram_user_id=int(user_id),
+                currency="XTR",
+                total_amount=order.amount_xtr,
+                telegram_payment_charge_id=charge_id,
+                provider_payment_charge_id=(
+                    str(provider_payment_charge_id)[:255]
+                    if provider_payment_charge_id
+                    else None
+                ),
+                subscription_id=subscription_id,
+                is_recurring=recurring,
+                is_first_recurring=bool(is_first_recurring),
+                subscription_expiration_date=expiration,
+                status="paid",
             )
+            session.add(payment)
             session.add(
                 BillingCreditLedger(
                     entry_id=str(uuid4()),
@@ -775,6 +885,13 @@ class BillingService:
             if order.paid_at is None:
                 order.paid_at = utcnow()
             order.updated_at = utcnow()
+            if auto_refund_reason is not None and auto_refund_actor is not None:
+                refund_id = self._request_refund_in_session(
+                    session,
+                    payment=payment,
+                    reason=auto_refund_reason,
+                    actor=auto_refund_actor,
+                )
             available = wallet.balance_credits - wallet.reserved_credits
         return FulfillmentResult(
             payment_id=payment_id,
@@ -783,7 +900,67 @@ class BillingService:
             available_credits=available,
             created=True,
             subscription_id=subscription_id,
+            refund_id=refund_id,
         )
+
+    def _request_refund_in_session(
+        self,
+        session: Any,
+        *,
+        payment: StarsPayment,
+        reason: str,
+        actor: str,
+    ) -> str:
+        existing = session.execute(
+            select(RefundRequest)
+            .where(RefundRequest.payment_id == payment.payment_id)
+            .with_for_update()
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing.refund_id
+        if payment.status != "paid":
+            raise BillingStateError("Stars payment is not refundable")
+        order = session.execute(
+            select(PaymentOrder)
+            .where(PaymentOrder.order_id == payment.order_id)
+            .with_for_update()
+        ).scalar_one()
+        wallet = self.store._ensure_ai_wallet(session, payment.telegram_user_id)
+        available = wallet.balance_credits - wallet.reserved_credits
+        if available < order.credits_snapshot:
+            raise BillingStateError(
+                "Purchased credits are already reserved or spent; manual review required"
+            )
+        wallet.reserved_credits += order.credits_snapshot
+        wallet.updated_at = utcnow()
+        refund_id = str(uuid4())
+        session.add(
+            RefundRequest(
+                refund_id=refund_id,
+                payment_id=payment.payment_id,
+                telegram_user_id=payment.telegram_user_id,
+                credits=order.credits_snapshot,
+                status="requested",
+                reason=reason,
+                requested_by=actor[:64],
+            )
+        )
+        payment.status = "refund_pending"
+        if payment.subscription_id is None:
+            order.status = "refund_pending"
+        session.add(
+            AdminAuditLog(
+                actor=actor[:64],
+                action="stars_refund_requested",
+                target_type="stars_payment",
+                target_id=payment.payment_id,
+                details_json=(
+                    '{"credits":%d,"refund_id":"%s"}'
+                    % (order.credits_snapshot, refund_id)
+                ),
+            )
+        )
+        return refund_id
 
     def request_refund(
         self, *, payment_id: str, reason: str, actor: str
@@ -799,56 +976,12 @@ class BillingService:
             ).scalar_one_or_none()
             if payment is None:
                 raise BillingValidationError("Stars payment does not exist")
-            existing = session.execute(
-                select(RefundRequest).where(
-                    RefundRequest.payment_id == payment.payment_id
-                )
-            ).scalar_one_or_none()
-            if existing is not None:
-                return existing.refund_id
-            if payment.status != "paid":
-                raise BillingStateError("Stars payment is not refundable")
-            order = session.execute(
-                select(PaymentOrder)
-                .where(PaymentOrder.order_id == payment.order_id)
-                .with_for_update()
-            ).scalar_one()
-            wallet = self.store._ensure_ai_wallet(session, payment.telegram_user_id)
-            available = wallet.balance_credits - wallet.reserved_credits
-            if available < order.credits_snapshot:
-                raise BillingStateError(
-                    "Purchased credits are already reserved or spent; manual review required"
-                )
-            wallet.reserved_credits += order.credits_snapshot
-            wallet.updated_at = utcnow()
-            refund_id = str(uuid4())
-            session.add(
-                RefundRequest(
-                    refund_id=refund_id,
-                    payment_id=payment.payment_id,
-                    telegram_user_id=payment.telegram_user_id,
-                    credits=order.credits_snapshot,
-                    status="requested",
-                    reason=reason,
-                    requested_by=actor[:64],
-                )
+            return self._request_refund_in_session(
+                session,
+                payment=payment,
+                reason=reason,
+                actor=actor,
             )
-            payment.status = "refund_pending"
-            if payment.subscription_id is None:
-                order.status = "refund_pending"
-            session.add(
-                AdminAuditLog(
-                    actor=actor[:64],
-                    action="stars_refund_requested",
-                    target_type="stars_payment",
-                    target_id=payment.payment_id,
-                    details_json=(
-                        '{"credits":%d,"refund_id":"%s"}'
-                        % (order.credits_snapshot, refund_id)
-                    ),
-                )
-            )
-            return refund_id
 
     async def process_refund(
         self, *, refund_id: str, gateway: TelegramStarsGatewayProtocol
@@ -890,12 +1023,20 @@ class BillingService:
                     refund.error_code = type(exc).__name__[:128]
                     refund.updated_at = utcnow()
             return False
+        return self._complete_refund(refund_id=str(refund_id))
+
+    def _complete_refund(self, *, refund_id: str) -> bool:
+        """Finalize local refund accounting after Telegram confirms the refund."""
         with self.store.Session.begin() as session:
             refund = session.execute(
                 select(RefundRequest)
                 .where(RefundRequest.refund_id == str(refund_id))
                 .with_for_update()
             ).scalar_one()
+            if refund.status == "completed":
+                return True
+            if refund.status not in {"requested", "processing", "failed"}:
+                raise BillingStateError("Refund request cannot be finalized")
             payment = session.execute(
                 select(StarsPayment)
                 .where(StarsPayment.payment_id == refund.payment_id)
@@ -1149,3 +1290,606 @@ class BillingService:
                         )
                     )
         return issues
+
+
+class ProductionStarsCanaryService(BillingService):
+    """Fail-closed owner canary layered over the existing billing ledger."""
+
+    MARKER_KEY = PRODUCTION_STARS_CANARY_MARKER_KEY
+    PRODUCT_ID = PRODUCTION_STARS_CANARY_PRODUCT_ID
+    AMOUNT_XTR = PRODUCTION_STARS_CANARY_AMOUNT_XTR
+    CREDITS = PRODUCTION_STARS_CANARY_CREDITS
+    REFUND_REASON = "Production Stars owner canary immediate refund"
+    REFUND_ACTOR = "stars_canary"
+    RECOVERY_PAGE_SIZE = 100
+    RECOVERY_MAX_TRANSACTIONS = 1_000
+
+    def __init__(
+        self,
+        store: DatabaseStore,
+        billing_settings: BillingSettings,
+        canary_settings: ProductionStarsCanarySettings,
+    ):
+        if not canary_settings.enabled or canary_settings.owner_user_id is None:
+            raise BillingConfigurationError("Production Stars canary is disabled")
+        if billing_settings.enabled or canary_settings.public_checkout_enabled:
+            raise BillingConfigurationError(
+                "Production Stars canary requires public checkout to remain disabled"
+            )
+        if (
+            canary_settings.product_id != self.PRODUCT_ID
+            or canary_settings.amount_xtr != self.AMOUNT_XTR
+        ):
+            raise BillingConfigurationError(
+                "Production Stars canary configuration is not exact"
+            )
+        self._validate_canary_billing_profile(billing_settings)
+        self.public_billing_settings = billing_settings
+        self.canary_settings = canary_settings
+        super().__init__(store, replace(billing_settings, enabled=True))
+
+    @staticmethod
+    def _validate_canary_billing_profile(settings: BillingSettings) -> None:
+        if (
+            not settings.payload_secret
+            or len(settings.payload_secret) < 32
+            or not settings.terms_approved
+            or not settings.seller_identity_complete
+            or not 1 <= len(settings.terms_text) <= 3500
+            or not re.fullmatch(
+                r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", settings.terms_version
+            )
+            or not re.fullmatch(r"[a-f0-9]{64}", settings.terms_sha256)
+            or hashlib.sha256(settings.terms_text.encode("utf-8")).hexdigest()
+            != settings.terms_sha256
+            or not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", settings.seller_email)
+            or len(re.sub(r"\D", "", settings.seller_phone)) < 6
+            or settings.net_micro_usd_per_xtr <= 0
+        ):
+            raise BillingConfigurationError(
+                "Production Stars canary billing profile is incomplete"
+            )
+        maximum_net = TELEGRAM_STAR_CONSERVATIVE_NET_MICRO_USD
+        if settings.private_chat_topics_enabled:
+            maximum_net = maximum_net * (10_000 - PRIVATE_CHAT_TOPICS_FEE_BPS) // 10_000
+        if settings.net_micro_usd_per_xtr > maximum_net:
+            raise BillingConfigurationError(
+                "Production Stars canary economics exceed the reviewed net cap"
+            )
+        try:
+            require_current_review(
+                settings.economics_reviewed_on,
+                max_age_days=settings.economics_max_age_days,
+                setting_name="BILLING_ECONOMICS_REVIEWED_ON",
+            )
+        except ValueError as exc:
+            raise BillingConfigurationError(str(exc)) from exc
+
+    def _require_owner(self, user_id: int) -> None:
+        if not self.canary_settings.allows_user(user_id):
+            raise BillingValidationError("Production Stars canary is owner-only")
+
+    @classmethod
+    def _require_product_shape(cls, product: Mapping[str, Any]) -> None:
+        if (
+            str(product.get("product_id")) != cls.PRODUCT_ID
+            or int(product.get("credits") or 0) != cls.CREDITS
+            or int(product.get("price_xtr") or 0) != cls.AMOUNT_XTR
+            or str(product.get("billing_mode")) != "one_time"
+            or product.get("subscription_period_seconds") is not None
+            or str(product.get("status")) != "active"
+        ):
+            raise BillingValidationError(
+                "Production Stars canary product is unavailable"
+            )
+
+    def active_products(self, *, user_id: int) -> list[dict[str, Any]]:
+        self._require_owner(user_id)
+        products = [
+            product
+            for product in super().active_products()
+            if product["product_id"] == self.PRODUCT_ID
+        ]
+        if len(products) != 1:
+            raise BillingValidationError(
+                "Production Stars canary product is unavailable"
+            )
+        self._require_product_shape(products[0])
+        return products
+
+    def _is_canary_order_id(self, order_id: str) -> bool:
+        with self.store.Session() as session:
+            marker = session.get(AppSetting, self.MARKER_KEY)
+            if marker is None or marker.value != str(order_id):
+                return False
+            if marker.updated_by != self.REFUND_ACTOR:
+                raise BillingValidationError(
+                    "Production Stars canary provenance is invalid"
+                )
+            return True
+
+    def _require_canary_order(
+        self, *, user_id: int, payload: str, require_active_product: bool
+    ) -> PaymentOrder:
+        order_id = self._order_id_from_payload(payload)
+        with self.store.Session() as session:
+            order = session.get(PaymentOrder, order_id)
+            marker = session.get(AppSetting, self.MARKER_KEY)
+            if order is None:
+                raise BillingValidationError("Payment order does not exist")
+            self._validate_payload(order, payload)
+            if (
+                marker is None
+                or marker.updated_by != self.REFUND_ACTOR
+                or marker.value != order.order_id
+                or order.telegram_user_id != int(user_id)
+                or order.product_id != self.PRODUCT_ID
+                or order.credits_snapshot != self.CREDITS
+                or order.amount_xtr != self.AMOUNT_XTR
+                or order.currency != "XTR"
+                or order.billing_mode != "one_time"
+                or order.subscription_period_seconds is not None
+                or order.terms_version != self.settings.terms_version
+            ):
+                raise BillingValidationError(
+                    "Payment order is outside the production canary"
+                )
+            if require_active_product:
+                product = session.get(BillingProduct, self.PRODUCT_ID)
+                if product is None:
+                    raise BillingValidationError(
+                        "Production Stars canary product is unavailable"
+                    )
+                self._require_product_shape(self._product_dict(product))
+            session.expunge(order)
+            return order
+
+    def create_order(self, *, user_id: int, product_id: str) -> InvoiceOrder:
+        self._require_owner(user_id)
+        if str(product_id) != self.PRODUCT_ID:
+            raise BillingValidationError(
+                "Production Stars canary exposes only ai-mini"
+            )
+        self.store.ensure_user_id(user_id)
+        try:
+            with self.store.Session.begin() as session:
+                self._lock_current_terms_consent(session, user_id)
+                product = session.get(BillingProduct, self.PRODUCT_ID)
+                if product is None:
+                    raise BillingValidationError(
+                        "Production Stars canary product is unavailable"
+                    )
+                self._require_product_shape(self._product_dict(product))
+                margin_bps = self.product_margin_bps(product)
+                if margin_bps is None or margin_bps < product.target_margin_bps:
+                    raise BillingConfigurationError(
+                        "Billing product does not satisfy its configured margin floor"
+                    )
+                order_id = str(uuid4())
+                payload = self._payload(
+                    order_id=order_id,
+                    user_id=user_id,
+                    amount_xtr=self.AMOUNT_XTR,
+                    credits=self.CREDITS,
+                )
+                session.add(
+                    AppSetting(
+                        key=self.MARKER_KEY,
+                        value=order_id,
+                        updated_by=self.REFUND_ACTOR,
+                    )
+                )
+                session.add(
+                    PaymentOrder(
+                        order_id=order_id,
+                        telegram_user_id=int(user_id),
+                        product_id=product.product_id,
+                        product_title=product.title,
+                        product_description=product.description,
+                        credits_snapshot=product.credits,
+                        amount_xtr=product.price_xtr,
+                        currency="XTR",
+                        terms_version=self.settings.terms_version,
+                        invoice_payload=payload,
+                        billing_mode="one_time",
+                        subscription_period_seconds=None,
+                        status="created",
+                        expires_at=utcnow()
+                        + timedelta(seconds=self.settings.order_ttl_seconds),
+                    )
+                )
+                session.flush()
+                title = product.title
+                description = product.description
+        except IntegrityError as exc:
+            raise BillingStateError(
+                "Production Stars canary order already exists"
+            ) from exc
+        return InvoiceOrder(
+            order_id=order_id,
+            product_id=self.PRODUCT_ID,
+            title=title,
+            description=description,
+            credits=self.CREDITS,
+            amount_xtr=self.AMOUNT_XTR,
+            payload=payload,
+            subscription_period_seconds=None,
+        )
+
+    def validate_pre_checkout(
+        self,
+        *,
+        user_id: int,
+        payload: str,
+        currency: str,
+        total_amount: int,
+    ) -> str:
+        self._require_owner(user_id)
+        if str(currency) != "XTR" or int(total_amount) != self.AMOUNT_XTR:
+            raise BillingValidationError("Production Stars canary amount mismatch")
+        self._require_canary_order(
+            user_id=user_id,
+            payload=payload,
+            require_active_product=True,
+        )
+        return super().validate_pre_checkout(
+            user_id=user_id,
+            payload=payload,
+            currency=currency,
+            total_amount=total_amount,
+        )
+
+    def fulfill_successful_payment(
+        self,
+        *,
+        user_id: int,
+        payload: str,
+        currency: str,
+        total_amount: int,
+        telegram_payment_charge_id: str,
+        provider_payment_charge_id: str | None = None,
+        is_recurring: bool = False,
+        is_first_recurring: bool = False,
+        subscription_expiration_date: datetime | None = None,
+    ) -> FulfillmentResult:
+        order_id = self._order_id_from_payload(payload)
+        if not self._is_canary_order_id(order_id):
+            return super().fulfill_successful_payment(
+                user_id=user_id,
+                payload=payload,
+                currency=currency,
+                total_amount=total_amount,
+                telegram_payment_charge_id=telegram_payment_charge_id,
+                provider_payment_charge_id=provider_payment_charge_id,
+                is_recurring=is_recurring,
+                is_first_recurring=is_first_recurring,
+                subscription_expiration_date=subscription_expiration_date,
+            )
+        self._require_owner(user_id)
+        if (
+            str(currency) != "XTR"
+            or int(total_amount) != self.AMOUNT_XTR
+            or is_recurring
+            or is_first_recurring
+            or subscription_expiration_date is not None
+        ):
+            raise BillingValidationError(
+                "Production Stars canary accepts one-time ai-mini only"
+            )
+        self._require_canary_order(
+            user_id=user_id,
+            payload=payload,
+            require_active_product=False,
+        )
+        return super().fulfill_successful_payment(
+            user_id=user_id,
+            payload=payload,
+            currency=currency,
+            total_amount=total_amount,
+            telegram_payment_charge_id=telegram_payment_charge_id,
+            provider_payment_charge_id=provider_payment_charge_id,
+            is_recurring=False,
+            is_first_recurring=False,
+            subscription_expiration_date=None,
+            auto_refund_reason=self.REFUND_REASON,
+            auto_refund_actor=self.REFUND_ACTOR,
+        )
+
+    async def process_refund(
+        self, *, refund_id: str, gateway: TelegramStarsGatewayProtocol
+    ) -> bool:
+        status, _charge_id = self._canary_refund_context(refund_id)
+        if status == "completed":
+            return True
+        if status != "requested":
+            return False
+        return await super().process_refund(refund_id=refund_id, gateway=gateway)
+
+    def _canary_refund_context(self, refund_id: str) -> tuple[str, str]:
+        with self.store.Session() as session:
+            marker = session.get(AppSetting, self.MARKER_KEY)
+            refund = session.get(RefundRequest, str(refund_id))
+            payment = (
+                session.get(StarsPayment, refund.payment_id)
+                if refund is not None
+                else None
+            )
+            order = (
+                session.get(PaymentOrder, payment.order_id)
+                if payment is not None
+                else None
+            )
+            if (
+                marker is None
+                or marker.updated_by != self.REFUND_ACTOR
+                or refund is None
+                or payment is None
+                or order is None
+                or marker.value != order.order_id
+                or refund.telegram_user_id
+                != self.canary_settings.owner_user_id
+                or refund.credits != self.CREDITS
+                or refund.requested_by != self.REFUND_ACTOR
+                or payment.telegram_user_id
+                != self.canary_settings.owner_user_id
+                or payment.currency != "XTR"
+                or payment.total_amount != self.AMOUNT_XTR
+                or payment.subscription_id is not None
+                or order.telegram_user_id
+                != self.canary_settings.owner_user_id
+                or order.product_id != self.PRODUCT_ID
+                or order.amount_xtr != self.AMOUNT_XTR
+                or order.credits_snapshot != self.CREDITS
+                or order.billing_mode != "one_time"
+                or order.subscription_period_seconds is not None
+            ):
+                raise BillingValidationError(
+                    "Refund request is outside the production canary"
+                )
+            return str(refund.status), payment.telegram_payment_charge_id
+
+    async def recover_current_refund(
+        self,
+        *,
+        gateway: TelegramStarsGatewayProtocol,
+    ) -> bool:
+        """Discover the sole provenance-valid refund before recovery."""
+        with self.store.Session() as session:
+            marker = session.get(AppSetting, self.MARKER_KEY)
+            if marker is None:
+                raise BillingStateError("Production Stars canary claim is missing")
+            if marker.updated_by != self.REFUND_ACTOR:
+                raise BillingValidationError(
+                    "Production Stars canary provenance is invalid"
+                )
+            order = session.get(PaymentOrder, marker.value)
+            if (
+                order is None
+                or order.telegram_user_id
+                != self.canary_settings.owner_user_id
+                or order.product_id != self.PRODUCT_ID
+                or order.amount_xtr != self.AMOUNT_XTR
+                or order.credits_snapshot != self.CREDITS
+                or order.billing_mode != "one_time"
+                or order.subscription_period_seconds is not None
+            ):
+                raise BillingValidationError(
+                    "Production Stars canary order provenance is invalid"
+                )
+            payments = session.execute(
+                select(StarsPayment).where(
+                    StarsPayment.order_id == order.order_id
+                )
+            ).scalars().all()
+            if len(payments) != 1:
+                raise BillingStateError(
+                    "Production Stars canary payment is missing or ambiguous"
+                )
+            payment = payments[0]
+            if (
+                payment.telegram_user_id
+                != self.canary_settings.owner_user_id
+                or payment.currency != "XTR"
+                or payment.total_amount != self.AMOUNT_XTR
+                or payment.subscription_id is not None
+            ):
+                raise BillingValidationError(
+                    "Production Stars canary payment provenance is invalid"
+                )
+            refunds = session.execute(
+                select(RefundRequest).where(
+                    RefundRequest.payment_id == payment.payment_id
+                )
+            ).scalars().all()
+            if len(refunds) != 1:
+                raise BillingStateError(
+                    "Production Stars canary refund is missing or ambiguous"
+                )
+            refund = refunds[0]
+            if (
+                refund.telegram_user_id
+                != self.canary_settings.owner_user_id
+                or refund.credits != self.CREDITS
+                or refund.requested_by != self.REFUND_ACTOR
+            ):
+                raise BillingValidationError(
+                    "Production Stars canary refund provenance is invalid"
+                )
+            refund_id = refund.refund_id
+        return await self.recover_refund(
+            user_id=int(self.canary_settings.owner_user_id),
+            refund_id=refund_id,
+            gateway=gateway,
+        )
+
+    async def recover_refund(
+        self,
+        *,
+        user_id: int,
+        refund_id: str,
+        gateway: TelegramStarsGatewayProtocol,
+    ) -> bool:
+        """Reconcile Telegram before one explicit recovery attempt."""
+        self._require_owner(user_id)
+        status, charge_id = self._canary_refund_context(refund_id)
+        if status == "completed":
+            return True
+        if status not in {"requested", "processing", "failed"}:
+            raise BillingStateError("Refund request is not recoverable")
+        charge_rows: list[Mapping[str, Any]] = []
+        offset = 0
+        history_complete = False
+        while offset < self.RECOVERY_MAX_TRANSACTIONS:
+            limit = min(
+                self.RECOVERY_PAGE_SIZE,
+                self.RECOVERY_MAX_TRANSACTIONS - offset,
+            )
+            page = await asyncio.wait_for(
+                gateway.get_star_transactions(offset=offset, limit=limit),
+                timeout=8,
+            )
+            fetched_count = int(page.fetched_count)
+            if fetched_count < 0 or fetched_count > limit:
+                raise BillingStateError(
+                    "Telegram refund history is uncertain"
+                )
+            charge_rows.extend(
+                row
+                for row in page.rows
+                if str(row.get("telegram_payment_charge_id") or "")
+                == charge_id
+            )
+            if any(bool(row.get("is_refund")) for row in charge_rows) and any(
+                not bool(row.get("is_refund")) for row in charge_rows
+            ):
+                break
+            if fetched_count < limit:
+                history_complete = True
+                break
+            offset += fetched_count
+        if not history_complete and not (
+            any(bool(row.get("is_refund")) for row in charge_rows)
+            and any(not bool(row.get("is_refund")) for row in charge_rows)
+        ):
+            raise BillingStateError(
+                "Telegram refund history is capped and uncertain"
+            )
+        if not charge_rows:
+            raise BillingStateError(
+                "Canary payment is absent from Telegram transaction history"
+            )
+        if any(
+            int(row.get("user_id") or 0)
+            != self.canary_settings.owner_user_id
+            or str(row.get("currency") or "") != "XTR"
+            or int(row.get("total_amount") or 0) != self.AMOUNT_XTR
+            or row.get("subscription_period") is not None
+            for row in charge_rows
+        ):
+            raise BillingValidationError(
+                "Telegram transaction does not match the production canary"
+            )
+        if any(bool(row.get("is_refund")) for row in charge_rows):
+            return self._complete_refund(refund_id=str(refund_id))
+        if not any(not bool(row.get("is_refund")) for row in charge_rows):
+            raise BillingStateError(
+                "Telegram payment evidence is incomplete"
+            )
+        if status == "processing":
+            with self.store.Session.begin() as session:
+                refund = session.execute(
+                    select(RefundRequest)
+                    .where(RefundRequest.refund_id == str(refund_id))
+                    .with_for_update()
+                ).scalar_one()
+                if refund.status == "completed":
+                    return True
+                if refund.status != "processing":
+                    raise BillingStateError(
+                        "Refund recovery state changed during reconciliation"
+                    )
+                refund.status = "failed"
+                refund.error_code = "explicit_recovery"
+                refund.updated_at = utcnow()
+        return await super().process_refund(
+            refund_id=str(refund_id), gateway=gateway
+        )
+
+    def status(self) -> dict[str, Any]:
+        return read_production_stars_canary_status(
+            store=self.store,
+            canary_settings=self.canary_settings,
+        )
+
+
+def read_production_stars_canary_status(
+    *,
+    store: DatabaseStore,
+    canary_settings: ProductionStarsCanarySettings,
+) -> dict[str, Any]:
+    """Read aggregate canary evidence even after the runtime gate is disabled."""
+    with store.Session() as session:
+        marker = session.get(AppSetting, PRODUCTION_STARS_CANARY_MARKER_KEY)
+        order = (
+            session.get(PaymentOrder, marker.value)
+            if marker is not None
+            else None
+        )
+        if (
+            order is None
+            or marker.updated_by != ProductionStarsCanaryService.REFUND_ACTOR
+            or order.product_id != PRODUCTION_STARS_CANARY_PRODUCT_ID
+            or order.amount_xtr != PRODUCTION_STARS_CANARY_AMOUNT_XTR
+            or order.credits_snapshot != PRODUCTION_STARS_CANARY_CREDITS
+            or order.billing_mode != "one_time"
+            or order.subscription_period_seconds is not None
+        ):
+            order = None
+        payment = (
+            session.execute(
+                select(StarsPayment).where(
+                    StarsPayment.order_id == order.order_id
+                )
+            ).scalars().first()
+            if order is not None
+            else None
+        )
+        refund = (
+            session.execute(
+                select(RefundRequest).where(
+                    RefundRequest.payment_id == payment.payment_id
+                )
+            ).scalar_one_or_none()
+            if payment is not None
+            else None
+        )
+        if refund is not None and (
+            refund.telegram_user_id != order.telegram_user_id
+            or refund.credits != PRODUCTION_STARS_CANARY_CREDITS
+            or refund.requested_by != ProductionStarsCanaryService.REFUND_ACTOR
+        ):
+            refund = None
+    payment_completed = payment is not None
+    refund_completed = refund is not None and refund.status == "completed"
+    refund_pending = refund is not None and refund.status in {
+        "requested",
+        "processing",
+        "failed",
+    }
+    state = (
+        "refunded"
+        if refund_completed
+        else "completed" if payment_completed else "armed"
+    )
+    return {
+        "public_checkout_enabled": bool(
+            canary_settings.public_checkout_enabled
+        ),
+        "canary_enabled": bool(canary_settings.enabled),
+        "state": state,
+        "product_id": PRODUCTION_STARS_CANARY_PRODUCT_ID,
+        "amount_xtr": PRODUCTION_STARS_CANARY_AMOUNT_XTR,
+        "payment_completed": payment_completed,
+        "refund_pending": refund_pending,
+        "refund_completed": refund_completed,
+    }
