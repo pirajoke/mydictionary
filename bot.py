@@ -83,6 +83,7 @@ from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
 from mydictionary.localization import (
     INTERFACE_LOCALES,
+    billing_product_display_copy,
     language_name,
     normalize_locale,
     translate,
@@ -4023,15 +4024,28 @@ async def send_billing_products(message, *, locale: str = "ru") -> None:
     if not products:
         await message.reply_text(translate("billing_products_empty", locale))
         return
+    localized_products = [
+        (
+            product,
+            billing_product_display_copy(
+                product["product_id"],
+                locale,
+                title=product["title"],
+                description=product.get("description", ""),
+                credits=product.get("credits", 0),
+            ),
+        )
+        for product in products
+    ]
     keyboard = InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
-                    f"{product['title']} · {product['price_xtr']} ⭐",
+                    f"{display_copy[0]} · {product['price_xtr']} ⭐",
                     callback_data=f"buy:{product['product_id']}",
                 )
             ]
-            for product in products
+            for product, display_copy in localized_products
         ]
     )
     heading = (
@@ -4169,14 +4183,21 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             translate("billing_product_unavailable", locale)
         )
         return
+    invoice_title, invoice_description = billing_product_display_copy(
+        order.product_id,
+        locale,
+        title=order.title,
+        description=order.description,
+        credits=order.credits,
+    )
     await context.bot.send_invoice(
         **{
             "chat_id": query.message.chat_id,
-            "title": order.title,
+            "title": invoice_title,
             "description": (
-                f"[TEST] {order.description}"[:255]
+                f"[TEST] {invoice_description}"[:255]
                 if TELEGRAM_RUNTIME.is_test
-                else order.description
+                else invoice_description
             ),
             "payload": order.payload,
             "currency": "XTR",

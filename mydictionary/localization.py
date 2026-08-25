@@ -2667,6 +2667,99 @@ _PRODUCTION_STARS_CANARY_COPY = {
 for _locale, _message in _PRODUCTION_STARS_CANARY_COPY.items():
     _CATALOG[_locale]["billing_canary_refund_success"] = _message
 
+_BILLING_PRODUCT_COPY: dict[str, dict[str, tuple[str, str]]] = {
+    "en": {
+        "ai-mini": ("Mini", "{credits} AI credits to try the tutor"),
+        "ai-starter": ("Starter", "{credits} AI credits for tutor requests"),
+        "ai-value": ("Value", "{credits} AI credits for regular practice"),
+        "ai-monthly": ("Monthly", "{credits} AI credits every 30 days"),
+    },
+    "fr": {
+        "ai-mini": ("Mini", "{credits} crédits IA pour découvrir le tuteur"),
+        "ai-starter": (
+            "Découverte",
+            "{credits} crédits IA pour les demandes au tuteur",
+        ),
+        "ai-value": (
+            "Avantage",
+            "{credits} crédits IA pour la pratique régulière",
+        ),
+        "ai-monthly": ("Mensuel", "{credits} crédits IA tous les 30 jours"),
+    },
+    "de": {
+        "ai-mini": (
+            "Mini",
+            "{credits} KI-Credits, um den Tutor kennenzulernen",
+        ),
+        "ai-starter": (
+            "Einstieg",
+            "{credits} KI-Credits für Anfragen an den Tutor",
+        ),
+        "ai-value": (
+            "Vorteil",
+            "{credits} KI-Credits für regelmäßiges Üben",
+        ),
+        "ai-monthly": ("Monatlich", "{credits} KI-Credits alle 30 Tage"),
+    },
+    "ja": {
+        "ai-mini": ("ミニ", "{credits} AIクレジットでチューターを試す"),
+        "ai-starter": (
+            "スターター",
+            "{credits} AIクレジットでチューターへの質問",
+        ),
+        "ai-value": ("お得", "{credits} AIクレジットで定期的な練習"),
+        "ai-monthly": ("月額", "{credits} AIクレジットを30日ごとに付与"),
+    },
+    "ar": {
+        "ai-mini": ("مصغّرة", "{credits} رصيد AI لتجربة المدرّس"),
+        "ai-starter": ("بداية", "{credits} رصيد AI لطلبات المدرّس"),
+        "ai-value": ("موفّرة", "{credits} رصيد AI للتدريب المنتظم"),
+        "ai-monthly": ("شهرية", "{credits} رصيد AI كل 30 يومًا"),
+    },
+    "zh": {
+        "ai-mini": ("迷你", "{credits} AI 点数，用于体验导师"),
+        "ai-starter": ("入门", "{credits} AI 点数，用于向导师提问"),
+        "ai-value": ("超值", "{credits} AI 点数，用于定期练习"),
+        "ai-monthly": ("每月", "每 30 天获得 {credits} AI 点数"),
+    },
+    "ru": {
+        "ai-mini": (
+            "Мини",
+            "{credits} AI-кредитов для знакомства с репетитором",
+        ),
+        "ai-starter": (
+            "Старт",
+            "{credits} AI-кредитов для запросов к репетитору",
+        ),
+        "ai-value": (
+            "Выгодно",
+            "{credits} AI-кредитов для регулярной практики",
+        ),
+        "ai-monthly": ("Месяц", "{credits} AI-кредитов каждые 30 дней"),
+    },
+    "es": {
+        "ai-mini": ("Mini", "{credits} créditos de IA para probar el tutor"),
+        "ai-starter": (
+            "Inicio",
+            "{credits} créditos de IA para consultas al tutor",
+        ),
+        "ai-value": (
+            "Ahorro",
+            "{credits} créditos de IA para la práctica habitual",
+        ),
+        "ai-monthly": ("Mensual", "{credits} créditos de IA cada 30 días"),
+    },
+}
+
+_BILLING_PRODUCT_IDS = frozenset(
+    {"ai-mini", "ai-starter", "ai-value", "ai-monthly"}
+)
+if set(_BILLING_PRODUCT_COPY) != set(INTERFACE_LOCALES) or any(
+    set(products) != set(_BILLING_PRODUCT_IDS)
+    for products in _BILLING_PRODUCT_COPY.values()
+):
+    raise ValueError("Billing product localization catalog is incomplete")
+
 _SERVICE_COPY = {
     "en": {
         "access_waitlist": "Your free pilot request is registered. After approval, open /start again.",
@@ -2836,6 +2929,23 @@ def translate(key: str, locale: str | None, **values: Any) -> str:
     except KeyError as exc:
         raise KeyError(f"Unknown localization key: {key}") from exc
     return template.format(**values)
+
+
+def billing_product_display_copy(
+    product_id: str,
+    locale: str | None,
+    *,
+    title: str,
+    description: str,
+    credits: int,
+) -> tuple[str, str]:
+    """Localize known billing display copy without changing canonical data."""
+    selected = normalize_locale(locale)
+    product_copy = _BILLING_PRODUCT_COPY[selected].get(str(product_id))
+    if product_copy is None or selected == "ru":
+        return str(title), str(description)
+    localized_title, localized_description = product_copy
+    return localized_title, localized_description.format(credits=int(credits))
 
 
 def language_name(language: str | None, locale: str | None) -> str:

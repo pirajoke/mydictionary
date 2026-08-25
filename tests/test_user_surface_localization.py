@@ -6,7 +6,7 @@ import re
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, call, patch
 
 
 os.environ.setdefault("BOT_TOKEN", "123456:TESTTOKEN")
@@ -1449,6 +1449,275 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
         for locale, marker in locale_markers.items():
             with self.subTest(locale=locale, expected_language_marker=marker):
                 self.assertRegex("\n".join(localized[locale].values()), marker)
+
+
+class BillingProductLocalizationContractTest(unittest.IsolatedAsyncioTestCase):
+    PRODUCTS = (
+        {
+            "product_id": "ai-mini",
+            "title": "Мини",
+            "description": "20 AI-кредитов для знакомства с репетитором",
+            "credits": 20,
+            "price_xtr": 69,
+        },
+        {
+            "product_id": "ai-starter",
+            "title": "Старт",
+            "description": "50 AI-кредитов для запросов к репетитору",
+            "credits": 50,
+            "price_xtr": 129,
+        },
+        {
+            "product_id": "ai-value",
+            "title": "Выгодно",
+            "description": "150 AI-кредитов для регулярной практики",
+            "credits": 150,
+            "price_xtr": 319,
+        },
+        {
+            "product_id": "ai-monthly",
+            "title": "Месяц",
+            "description": "100 AI-кредитов каждые 30 дней",
+            "credits": 100,
+            "price_xtr": 229,
+        },
+    )
+    COPY_MARKERS = {
+        "en": {
+            "ai-mini": ("Mini", "try the tutor", "AI credits"),
+            "ai-starter": ("Starter", "tutor requests", "AI credits"),
+            "ai-value": ("Value", "regular practice", "AI credits"),
+            "ai-monthly": ("Monthly", "every 30 days", "AI credits"),
+        },
+        "fr": {
+            "ai-mini": ("Mini", "découvrir le tuteur", "crédits IA"),
+            "ai-starter": ("Découverte", "demandes au tuteur", "crédits IA"),
+            "ai-value": ("Avantage", "pratique régulière", "crédits IA"),
+            "ai-monthly": ("Mensuel", "tous les 30 jours", "crédits IA"),
+        },
+        "de": {
+            "ai-mini": ("Mini", "Tutor kennenzulernen", "KI-Credits"),
+            "ai-starter": ("Einstieg", "Anfragen an den Tutor", "KI-Credits"),
+            "ai-value": ("Vorteil", "regelmäßiges Üben", "KI-Credits"),
+            "ai-monthly": ("Monatlich", "alle 30 Tage", "KI-Credits"),
+        },
+        "es": {
+            "ai-mini": ("Mini", "probar el tutor", "créditos de IA"),
+            "ai-starter": ("Inicio", "consultas al tutor", "créditos de IA"),
+            "ai-value": ("Ahorro", "práctica habitual", "créditos de IA"),
+            "ai-monthly": ("Mensual", "cada 30 días", "créditos de IA"),
+        },
+        "ja": {
+            "ai-mini": ("ミニ", "チューターを試す", "AIクレジット"),
+            "ai-starter": ("スターター", "チューターへの質問", "AIクレジット"),
+            "ai-value": ("お得", "定期的な練習", "AIクレジット"),
+            "ai-monthly": ("月額", "30日ごと", "AIクレジット"),
+        },
+        "zh": {
+            "ai-mini": ("迷你", "体验导师", "AI 点数"),
+            "ai-starter": ("入门", "向导师提问", "AI 点数"),
+            "ai-value": ("超值", "定期练习", "AI 点数"),
+            "ai-monthly": ("每月", "每 30 天", "AI 点数"),
+        },
+        "ar": {
+            "ai-mini": ("مصغّرة", "لتجربة المدرّس", "رصيد AI"),
+            "ai-starter": ("بداية", "لطلبات المدرّس", "رصيد AI"),
+            "ai-value": ("موفّرة", "للتدريب المنتظم", "رصيد AI"),
+            "ai-monthly": ("شهرية", "كل 30 يومًا", "رصيد AI"),
+        },
+        "ru": {
+            product["product_id"]: (
+                product["title"],
+                product["description"],
+                "AI-кредитов",
+            )
+            for product in PRODUCTS
+        },
+    }
+
+    async def _catalog_payload(self, products, *, locale):
+        service = SimpleNamespace(active_products=lambda: products)
+        message = SimpleNamespace(chat_id=7001, reply_text=AsyncMock())
+        with (
+            patch.object(bot, "get_billing_service", return_value=service),
+            patch.object(
+                bot,
+                "STARS_PRODUCTION_CANARY_SETTINGS",
+                SimpleNamespace(enabled=False),
+            ),
+            patch.object(bot, "TELEGRAM_RUNTIME", SimpleNamespace(is_test=False)),
+        ):
+            await bot.send_billing_products(message, locale=locale)
+        return message.reply_text.await_args
+
+    async def _invoice_payload(self, product, *, locale, amount_xtr=None):
+        service = Mock()
+        service.create_order.return_value = SimpleNamespace(
+            order_id="order-localized",
+            product_id=product["product_id"],
+            title=product["title"],
+            description=product["description"],
+            credits=product["credits"],
+            amount_xtr=(
+                product["price_xtr"] if amount_xtr is None else amount_xtr
+            ),
+            payload="md1.localized.payload",
+            subscription_period_seconds=None,
+        )
+        store = Mock()
+        store.has_consent.return_value = True
+        query = SimpleNamespace(
+            data=f"buy:{product['product_id']}",
+            answer=AsyncMock(),
+            message=SimpleNamespace(chat_id=7001, reply_text=AsyncMock()),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=7001, language_code=locale),
+        )
+        context = SimpleNamespace(
+            user_data={"interface_locale": locale},
+            bot=SimpleNamespace(send_invoice=AsyncMock()),
+        )
+        with (
+            patch.object(bot, "get_billing_service", return_value=service),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(
+                bot,
+                "BILLING_SETTINGS",
+                SimpleNamespace(enabled=True, terms_version="terms-v1"),
+            ),
+            patch.object(
+                bot,
+                "STARS_PRODUCTION_CANARY_SETTINGS",
+                SimpleNamespace(enabled=False),
+            ),
+            patch.object(bot, "TELEGRAM_RUNTIME", SimpleNamespace(is_test=False)),
+            patch.object(bot, "record_product_event") as event,
+        ):
+            await bot.buy_product_cb.__wrapped__(update, context)
+        return service, context.bot.send_invoice.await_args, event
+
+    async def test_french_ai_mini_catalog_and_invoice_localize_canonical_russian_copy(self):
+        product = self.PRODUCTS[0]
+
+        catalog = await self._catalog_payload([product], locale="fr")
+        button = catalog.kwargs["reply_markup"].inline_keyboard[0][0]
+        self.assertEqual(button.text, "Mini · 69 ⭐")
+        self.assertEqual(button.callback_data, "buy:ai-mini")
+
+        service, invoice_call, event = await self._invoice_payload(
+            product,
+            locale="fr",
+            amount_xtr=10,
+        )
+        invoice = invoice_call.kwargs
+        self.assertEqual(invoice["title"], "Mini")
+        self.assertIn("20 crédits IA", invoice["description"])
+        self.assertIn("découvrir le tuteur", invoice["description"])
+        self.assertNotRegex(
+            f"{button.text}\n{invoice['title']}\n{invoice['description']}",
+            r"[А-Яа-яЁё]",
+        )
+        self.assertEqual(invoice["payload"], "md1.localized.payload")
+        self.assertEqual(invoice["prices"][0].amount, 10)
+        self.assertEqual(invoice["prices"][0].label, "20 crédits IA")
+        service.create_order.assert_called_once_with(
+            user_id=7001,
+            product_id="ai-mini",
+        )
+        self.assertEqual(
+            [call.args[0] for call in event.call_args_list],
+            ["billing_package_selected", "billing_invoice_created"],
+        )
+
+    async def test_all_known_products_localize_for_all_interface_locales(self):
+        self.assertEqual(set(self.COPY_MARKERS), set(INTERFACE_LOCALES))
+        known_ids = {product["product_id"] for product in self.PRODUCTS}
+        for locale in sorted(INTERFACE_LOCALES):
+            self.assertEqual(set(self.COPY_MARKERS[locale]), known_ids)
+            catalog = await self._catalog_payload(self.PRODUCTS, locale=locale)
+            buttons = catalog.kwargs["reply_markup"].inline_keyboard
+            self.assertEqual(len(buttons), len(self.PRODUCTS))
+            for row, product in zip(buttons, self.PRODUCTS, strict=True):
+                title_marker, purpose_marker, credit_marker = self.COPY_MARKERS[
+                    locale
+                ][product["product_id"]]
+                with self.subTest(
+                    locale=locale,
+                    product_id=product["product_id"],
+                    surface="catalog",
+                ):
+                    button = row[0]
+                    self.assertIn(title_marker, button.text)
+                    self.assertIn(f"· {product['price_xtr']} ⭐", button.text)
+                    self.assertEqual(
+                        button.callback_data,
+                        f"buy:{product['product_id']}",
+                    )
+
+                service, invoice_call, _event = await self._invoice_payload(
+                    product,
+                    locale=locale,
+                )
+                invoice = invoice_call.kwargs
+                with self.subTest(
+                    locale=locale,
+                    product_id=product["product_id"],
+                    surface="invoice",
+                ):
+                    self.assertIn(title_marker, invoice["title"])
+                    self.assertIn(str(product["credits"]), invoice["description"])
+                    self.assertIn(credit_marker, invoice["description"])
+                    self.assertIn(purpose_marker, invoice["description"])
+                    self.assertLessEqual(len(invoice["title"]), 32)
+                    self.assertLessEqual(len(invoice["description"]), 255)
+                    self.assertEqual(invoice["payload"], "md1.localized.payload")
+                    self.assertEqual(
+                        invoice["prices"][0].amount,
+                        product["price_xtr"],
+                    )
+                    service.create_order.assert_called_once_with(
+                        user_id=7001,
+                        product_id=product["product_id"],
+                    )
+                    rendered = f"{invoice['title']}\n{invoice['description']}"
+                    if locale == "ru":
+                        self.assertEqual(invoice["title"], product["title"])
+                        self.assertEqual(
+                            invoice["description"],
+                            product["description"],
+                        )
+                    else:
+                        self.assertNotRegex(rendered, r"[А-Яа-яЁё]")
+
+    async def test_unknown_product_id_keeps_canonical_catalog_and_invoice_copy(self):
+        product = {
+            "product_id": "custom-research-pack",
+            "title": "Research Pack Original",
+            "description": "Custom database description — keep verbatim",
+            "credits": 77,
+            "price_xtr": 88,
+        }
+
+        catalog = await self._catalog_payload([product], locale="fr")
+        button = catalog.kwargs["reply_markup"].inline_keyboard[0][0]
+        self.assertEqual(button.text, "Research Pack Original · 88 ⭐")
+        self.assertEqual(button.callback_data, "buy:custom-research-pack")
+
+        service, invoice_call, _event = await self._invoice_payload(
+            product,
+            locale="fr",
+        )
+        invoice = invoice_call.kwargs
+        self.assertEqual(invoice["title"], product["title"])
+        self.assertEqual(invoice["description"], product["description"])
+        self.assertEqual(invoice["payload"], "md1.localized.payload")
+        self.assertEqual(invoice["prices"][0].amount, product["price_xtr"])
+        service.create_order.assert_called_once_with(
+            user_id=7001,
+            product_id=product["product_id"],
+        )
 
 
 if __name__ == "__main__":
