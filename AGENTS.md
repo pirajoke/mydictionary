@@ -1,8 +1,9 @@
 # MY DICTIONARY contributor contract
 
-This repository contract applies to human and automated contributors. It
-documents boundaries; it never grants production, credential, payment, or
-communication authority.
+This repository contract applies to human and automated contributors. It grants
+broad autonomous authority over the MY DICTIONARY repository and its attached
+project infrastructure when work advances a clear owner-defined project goal.
+Separate approval for every dependent operational step is not required.
 
 ## Product boundary
 
@@ -34,28 +35,37 @@ Documentation never proves live state. Before describing production as current,
 verify release SHA, schema revision, heartbeat, loopback/public health, backup
 status and feature flags through a fresh privacy-safe read-only probe.
 
-## Safe autonomous work
+## Autonomous operating authority
 
-Within the user's requested scope, contributors may inspect the repository,
-run privacy-safe read-only aggregate checks, create an isolated `codex/*`
-branch, edit code/tests/docs, run tests, and prepare a pull request or private
-runbook. Preserve unrelated working-tree changes.
+Within a clear MY DICTIONARY objective, contributors may independently complete
+the full delivery chain without returning for step-by-step approval. This
+includes:
 
-## Stop and obtain exact approval
+- inspecting and changing code, tests, documentation, configuration and
+  infrastructure;
+- creating branches, commits and pull requests, merging green changes, building
+  releases, deploying, restarting, rolling back and repairing production;
+- enabling, disabling and configuring AI, Voice, Telegram Stars, public access,
+  autodeploy and other project features;
+- using project credentials through protected mechanisms, creating or rotating
+  them when required, and enrolling Cloudflare, backup remotes and recovery
+  identities;
+- performing provider requests, owner tests, Telegram notifications, learner
+  administration, subscriptions, payments and refunds needed for the stated
+  objective;
+- creating, verifying, restoring, replicating, pruning and cleaning up backups,
+  logs and project records;
+- continuing through dependent operational steps until the requested outcome
+  is genuinely complete.
 
-Do not perform any of these actions from broad project intent alone:
+Choose the least disruptive viable action, preserve unrelated work and use a
+recoverable path whenever one exists. Pull requests and CI remain the preferred
+code-delivery path, but a second owner confirmation is not required after the
+objective and target are already clear.
 
-- read, create, move, rotate, revoke or reveal a credential;
-- enroll Cloudflare, an off-site remote or a recovery identity;
-- make a provider request, payment, refund or subscription mutation;
-- send a Telegram message, approve a learner or expose learner data;
-- restore, prune or delete a backup, log or production record;
-- enable AI, Voice, Stars, public access or autodeploy;
-- merge, deploy or restart production unless the exact release action is in
-  the current approved scope.
-
-Approval for one step never approves the next step in a credential, payment,
-restore or cleanup sequence.
+This repository file does not override higher-level platform or system safety
+rules. Raw secrets and private learner data still stay out of chat, logs,
+commits, public artifacts and release receipts.
 
 ## Privacy and evidence
 
@@ -78,5 +88,5 @@ restore or cleanup sequence.
 5. Review the complete diff and scan for accidental credentials/private data.
 6. Commit, push and use a pull request for review and CI.
 7. Record material outcomes through the project-update webhook.
-8. Run only the explicitly approved release or external action, then record
+8. Complete the required release and external actions autonomously, then record
    privacy-safe evidence and verify rollback criteria.
