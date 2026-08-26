@@ -31,8 +31,10 @@ PostgreSQL were restored as owner-controlled Docker services on OVH.
 admin use the same release; database revision is `0016`; loopback health,
 heartbeat and local backup monitor are green; autodeploy is absent.
 
-**Open risk:** the off-site encrypted copy and isolated restore receipt remain
-missing, so host-local loss is not yet covered.
+**Resolved 2026-08-26:** one immutable encrypted off-site object and checksum
+were verified, then restored on a separate recovery host into a disposable
+PostgreSQL database. Revision `0016_mirror_control_plane_v1` matched, the drill
+database was removed, and a private mode-`0600` receipt was written.
 
 ## 2026-08-22 — Public hostname has no active tunnel connector
 
@@ -47,8 +49,9 @@ on OVH.
 **Contained:** application/database changes were stopped; an owner-gated
 token-file recovery contract and acceptance/rollback runbook were added.
 
-**Open owner gate:** enroll one scoped remotely managed connector and verify
-public health/login without exposing its bearer token.
+**Resolved:** a scoped `cloudflared` connector is active on OVH. Fresh public
+health and admin-login checks pass while the application origin remains bound
+to loopback. No bearer token is recorded in project evidence.
 
 ## Entry template
 

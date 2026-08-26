@@ -28,13 +28,13 @@ Do not make a product decision until at least ten learners are D7-eligible. A
 **Objective (2026 Q3): prove that MY DICTIONARY creates repeat learning value
 and can be recovered safely before commercial activation.**
 
-| Key result | Evidence | Status at 2026-08-22 |
+| Key result | Evidence | Status at 2026-08-26 |
 |---|---|---|
-| KR1: release/schema/heartbeat/loopback health and backup stay green | Fresh production probe | Green on `32ede87`; public route blocked |
-| KR2: at least 10 D7-eligible public learners with retained / eligible recorded | Public product retention | 0 D7-eligible |
-| KR3: one immutable encrypted off-site backup and one isolated restore receipt | Private recovery receipts | Not complete |
-| KR4: one bounded current-runtime AI call with settled usage/cost | Private AI receipt + aggregate DB row | Not complete on current OVH DB |
-| KR5: one isolated Stars purchase/recovery/refund/cancel cycle with zero production transactions | Private test receipt | Not complete |
+| KR1: release/schema/heartbeat/public and loopback health and backup stay green | Fresh production probe | Green on OVH code release `af470389`; public route healthy |
+| KR2: at least 10 D7-eligible public learners with retained / eligible recorded | Public product retention | Cohort 1; D1 1/1; 0 D7-eligible |
+| KR3: one immutable encrypted off-site backup and one isolated restore receipt | Private recovery receipts | Complete: encrypted object/checksum verified; isolated restore at revision `0016` |
+| KR4: one bounded current-runtime AI call with settled usage/cost | Private AI receipt + aggregate DB row | Complete: aggregate settled cost 1,341 micro-USD |
+| KR5: one isolated Stars purchase/recovery/refund/cancel cycle with zero production transactions | Private `telegram_test` receipt | Not complete; the refunded 10 XTR production canary is separate operational evidence |
 
 ## Metric definitions
 
@@ -84,5 +84,6 @@ Decision: continue, change one hypothesis, or stop; remove one item from scope
 | Snapshot | Cohort | D1 | D7 | Public health |
 |---|---:|---|---|---|
 | 2026-08-22 | 1 public onboarding | 0/0 eligible | 0/0 eligible | Cloudflare 1033; loopback 200 |
+| 2026-08-26 | 1 public onboarding | 1/1 retained | 0/0 eligible | Public and loopback healthy |
 
 No learner identifiers or message content belong in this history.

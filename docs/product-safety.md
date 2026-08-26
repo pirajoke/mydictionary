@@ -113,7 +113,7 @@ or silently selects the newest remote object.
 ```text
 MYDICTIONARY_BACKUP_RCLONE_REMOTE=<same immutable remote:path prefix>
 MYDICTIONARY_BACKUP_AGE_IDENTITY=<absolute private identity path>
-MYDICTIONARY_RESTORE_EXPECTED_REVISION=0011_pilot_operations
+MYDICTIONARY_RESTORE_EXPECTED_REVISION=0016_mirror_control_plane_v1
 MYDICTIONARY_RESTORE_DRILL_RECEIPT_DIR=<absolute private receipt directory>
 PGHOST=<recovery PostgreSQL host or socket>
 PGUSER=<role allowed to create and drop a disposable database>
@@ -145,3 +145,10 @@ credentials, identity path, database connection, or restored learner data.
 
 The encrypted upload control is complete only after a scheduled upload has
 succeeded and a restore receipt from a separate recovery host has been reviewed.
+
+The control was exercised on 2026-08-26: the immutable encrypted object and
+checksum were retrieved through the protected recovery configuration, restored
+into a generated local PostgreSQL database, verified at revision
+`0016_mirror_control_plane_v1`, and dropped. The resulting aggregate receipt is
+owner-only mode `0600`; no restored learner data, credential, connection string,
+or remote identifier is recorded in project documentation.
