@@ -26,7 +26,7 @@
     ] %}
     {% set group_tabs = {
       'overview': [('dashboard', 'Сводка')],
-      'users': [('users', 'Пользователи'), ('pilot', 'Пилот')],
+      'users': [('users', 'Пользователи'), ('pilot', 'Исторический пилот')],
       'product': [('funnel', 'Воронка'), ('learning', 'Обучение'), ('content', 'Контент')],
       'ai-voice': [('ai', 'AI и кредиты'), ('voice', 'Голос')],
       'payments': [('billing', 'Stars и платежи')],
@@ -54,7 +54,7 @@
     <main class="workspace">
       <header class="topbar">
         <div><p class="eyebrow">MY DICTIONARY</p><h1>{{ {
-          'dashboard':'Обзор продукта','users':'Пользователи','pilot':'Управление пилотом','funnel':'Продуктовая воронка','learning':'Обучение',
+          'dashboard':'Обзор продукта','users':'Пользователи','pilot':'Исторический пилот','funnel':'Продуктовая воронка','learning':'Обучение',
           'ai':'AI и кредиты','billing':'Stars и платежи','voice':'Голосовая практика','safety':'Безопасность продукта','content':'Словари и темы','profile':'Профиль бота',
           'diagnostics':'Диагностика','audit':'Журнал аудита'
         }[tab] }}</h1></div>
@@ -107,6 +107,11 @@
       {% endif %}
 
       {% if tab == 'pilot' %}
+        <div class="notice info">
+          <strong>Это историческая выборка, а не список всех пользователей.</strong>
+          Только пользователи с событием pilot_waitlist_joined.
+          Все аккаунты: {{ dashboard.users|number }} · Ученики: {{ dashboard.roles.get('learner', 0)|number }} · Администраторы: {{ dashboard.roles.get('admin', 0)|number }}.
+        </div>
         <section class="metric-grid" aria-label="Показатели пилота за 30 дней">
           <article><span>Заявки</span><strong>{{ pilot.cohort|number }}</strong><small>{{ pilot.access.get('pending', 0) }} ожидают</small></article>
           <article><span>Допущены</span><strong>{{ pilot.stages[1].users|number }}</strong><small>{{ pilot.stages[1].conversion|round(1) }}% от заявок</small></article>
@@ -172,6 +177,11 @@
       {% endif %}
 
       {% if tab == 'users' %}
+        <section class="metric-grid" aria-label="Все аккаунты по ролям">
+          <article><span>Все аккаунты</span><strong>{{ dashboard.users|number }}</strong><small>без фильтра исторического пилота</small></article>
+          <article><span>Ученики</span><strong>{{ dashboard.roles.get('learner', 0)|number }}</strong><small>роль learner</small></article>
+          <article><span>Администраторы</span><strong>{{ dashboard.roles.get('admin', 0)|number }}</strong><small>роль admin</small></article>
+        </section>
         <section class="toolbar">
           <form method="get" class="search-form">
             <input type="hidden" name="tab" value="users">
@@ -182,7 +192,7 @@
           <a class="button-link" href="{{ url_for('export_csv', kind='users') }}">Экспорт CSV</a>
         </section>
         <section class="panel">
-          <div class="section-heading"><div><p class="eyebrow">{{ users|length }} записей</p><h2>Ученики</h2></div></div>
+          <div class="section-heading"><div><p class="eyebrow">Показаны {{ users|length }} из {{ dashboard.users|number }}</p><h2>Пользователи</h2></div></div>
           {% set compact = false %}{% include 'admin/users_table.html' %}
         </section>
       {% endif %}

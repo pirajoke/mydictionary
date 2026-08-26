@@ -849,6 +849,11 @@ class AdminStore:
                 select(User.access_status, func.count(User.telegram_user_id))
                 .group_by(User.access_status)
             ).all()
+            role_rows = session.execute(
+                select(User.role, func.count(User.telegram_user_id)).group_by(
+                    User.role
+                )
+            ).all()
         correct = int(learning[1] or 0)
         wrong = int(learning[2] or 0)
         attempts = correct + wrong
@@ -877,6 +882,7 @@ class AdminStore:
                 for row in language_rows
             ],
             "access": {row[0]: int(row[1]) for row in access_rows},
+            "roles": {row[0]: int(row[1]) for row in role_rows},
         }
 
     def users(self, *, search: str = "", limit: int = 100) -> list[dict[str, Any]]:

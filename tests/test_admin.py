@@ -533,6 +533,25 @@ class AdminConsoleTest(unittest.TestCase):
         self.assertIn("/admin?tab=ai", ai_page)
         self.assertIn("/admin?tab=voice", ai_page)
 
+    def test_users_and_legacy_pilot_explain_account_totals_and_scope(self):
+        self.store.ensure_user(SimpleNamespace(id=5480), role="admin")
+        self.store.ensure_user(SimpleNamespace(id=5481), role="learner")
+        self.login()
+
+        users_page = self.client.get("/admin?tab=users").get_data(as_text=True)
+        self.assertIn("<span>Все аккаунты</span><strong>2</strong>", users_page)
+        self.assertIn("<span>Ученики</span><strong>1</strong>", users_page)
+        self.assertIn("<span>Администраторы</span><strong>1</strong>", users_page)
+        self.assertIn("Показаны 2 из 2", users_page)
+
+        pilot_page = self.client.get("/admin?tab=pilot").get_data(as_text=True)
+        self.assertIn("Исторический пилот", pilot_page)
+        self.assertIn("Только пользователи с событием pilot_waitlist_joined", pilot_page)
+        self.assertIn("Все аккаунты: 2", pilot_page)
+        self.assertIn("Ученики: 1", pilot_page)
+        self.assertIn("Администраторы: 1", pilot_page)
+        self.assertNotIn("Управление пилотом", pilot_page)
+
     def test_profile_settings_are_persisted_and_audited(self):
         self.login()
         profile = AdminStore(self.store).get_settings()
