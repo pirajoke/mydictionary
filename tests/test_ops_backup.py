@@ -251,6 +251,234 @@ class BackupPolicyTest(unittest.TestCase):
         with self.assertRaisesRegex(backup.BackupError, "plain database name"):
             backup.Config.from_env(invalid)
 
+    def test_cli_derives_private_libpq_contract_from_database_url(self):
+        observed_pgpass: list[tuple[Path, int, str]] = []
+
+        def production_container_run(command, **kwargs):
+            self.commands.append((command, kwargs))
+            environment = kwargs["env"]
+            pgpass_value = environment.get("PGPASSFILE")
+            if pgpass_value:
+                pgpass_path = Path(pgpass_value)
+                observed_pgpass.append(
+                    (
+                        pgpass_path,
+                        pgpass_path.stat().st_mode & 0o777,
+                        pgpass_path.read_text(encoding="utf-8"),
+                    )
+                )
+            if command[0] == "psql":
+                return MagicMock(stdout="0017_admin_auth_recovery\n")
+            if command[0] == "pg_dump":
+                destination = Path(command[command.index("--file") + 1])
+                destination.write_bytes(b"isolated custom PostgreSQL backup")
+            return MagicMock(stdout="")
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "MYDICTIONARY_APP_ROOT": str(self.root),
+                    "MYDICTIONARY_PGDUMP_DATABASE": "mydictionary",
+                    "DATABASE_URL": (
+                        "postgresql+psycopg://backup-user:"
+                        "db%3Asecret%5Cvalue@mydictionary-db:5432/mydictionary"
+                    ),
+                    "BOT_TOKEN": "must-not-reach-libpq",
+                },
+                clear=True,
+            ),
+            patch("sys.argv", ["mydictionary_backup.py"]),
+            patch.object(backup, "run", side_effect=production_container_run),
+        ):
+            result = backup.main()
+
+        self.assertEqual(result, 0)
+        database_commands = [
+            item for item in self.commands if item[0][0] in {"psql", "pg_dump"}
+        ]
+        self.assertEqual(len(database_commands), 2)
+        for command, options in database_commands:
+            environment = options["env"]
+            self.assertEqual(environment.get("PGHOST"), "mydictionary-db")
+            self.assertEqual(environment.get("PGPORT"), "5432")
+            self.assertEqual(environment.get("PGUSER"), "backup-user")
+            self.assertEqual(environment.get("PGDATABASE"), "mydictionary")
+            self.assertNotIn("DATABASE_URL", environment)
+            self.assertNotIn("PGPASSWORD", environment)
+            self.assertNotIn("BOT_TOKEN", environment)
+            self.assertFalse(any("db:secret" in part for part in command))
+        self.assertEqual(len(observed_pgpass), 2)
+        for pgpass_path, mode, content in observed_pgpass:
+            self.assertEqual(mode, 0o600)
+            self.assertEqual(
+                content,
+                "mydictionary-db:5432:mydictionary:"
+                "backup-user:db\\:secret\\\\value\n",
+            )
+            self.assertFalse(pgpass_path.exists())
+
+    def test_cli_refuses_database_url_for_a_different_database(self):
+        runner = MagicMock(return_value=MagicMock(stdout="0017_admin_auth_recovery\n"))
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "MYDICTIONARY_APP_ROOT": str(self.root),
+                    "MYDICTIONARY_PGDUMP_DATABASE": "mydictionary",
+                    "DATABASE_URL": (
+                        "postgresql+psycopg://backup-user:secret@"
+                        "mydictionary-db:5432/unrelated"
+                    ),
+                },
+                clear=True,
+            ),
+            patch("sys.argv", ["mydictionary_backup.py"]),
+            patch.object(backup, "run", runner),
+        ):
+            result = backup.main()
+
+        self.assertEqual(result, 1)
+        runner.assert_not_called()
+        self.assertFalse((self.root / "backups").exists())
+
+    def test_cli_preserves_explicit_unix_socket_contract(self):
+        observed_environments: list[dict[str, str]] = []
+
+        def socket_run(command, **kwargs):
+            observed_environments.append(dict(kwargs["env"]))
+            if command[0] == "psql":
+                return MagicMock(stdout="0017_admin_auth_recovery\n")
+            if command[0] == "pg_dump":
+                destination = Path(command[command.index("--file") + 1])
+                destination.write_bytes(b"isolated socket backup")
+            return MagicMock(stdout="")
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "MYDICTIONARY_APP_ROOT": str(self.root),
+                    "MYDICTIONARY_PGDUMP_DATABASE": "mydictionary",
+                    "DATABASE_URL": (
+                        "postgresql+psycopg://socket-user@/"
+                        "mydictionary?host=%2Fvar%2Frun%2Fpostgresql"
+                    ),
+                    "PGHOST": "/var/run/postgresql",
+                    "PGUSER": "socket-user",
+                },
+                clear=True,
+            ),
+            patch("sys.argv", ["mydictionary_backup.py"]),
+            patch.object(backup, "run", side_effect=socket_run),
+        ):
+            result = backup.main()
+
+        self.assertEqual(result, 0)
+        self.assertGreaterEqual(len(observed_environments), 2)
+        for environment in observed_environments[:2]:
+            self.assertEqual(environment.get("PGHOST"), "/var/run/postgresql")
+            self.assertEqual(environment.get("PGUSER"), "socket-user")
+            self.assertNotIn("DATABASE_URL", environment)
+
+    def test_cli_removes_temporary_pgpass_after_database_failure(self):
+        observed_pgpass: list[Path] = []
+
+        def failing_database_run(command, **kwargs):
+            pgpass_path = Path(kwargs["env"]["PGPASSFILE"])
+            observed_pgpass.append(pgpass_path)
+            self.assertTrue(pgpass_path.is_file())
+            self.assertEqual(pgpass_path.stat().st_mode & 0o777, 0o600)
+            raise subprocess.CalledProcessError(1, command)
+
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "MYDICTIONARY_APP_ROOT": str(self.root),
+                    "MYDICTIONARY_PGDUMP_DATABASE": "mydictionary",
+                    "DATABASE_URL": (
+                        "postgresql+psycopg://backup-user:secret@"
+                        "mydictionary-db:5432/mydictionary"
+                    ),
+                },
+                clear=True,
+            ),
+            patch("sys.argv", ["mydictionary_backup.py"]),
+            patch.object(backup, "run", side_effect=failing_database_run),
+        ):
+            result = backup.main()
+
+        self.assertEqual(result, 1)
+        self.assertEqual(len(observed_pgpass), 1)
+        self.assertFalse(observed_pgpass[0].exists())
+        self.assertFalse((self.root / ".backup-state.json").exists())
+
+    def test_cli_rejects_connection_query_values_that_change_the_target(self):
+        urls = (
+            "postgresql+psycopg://backup-user:secret@db:5432/"
+            "mydictionary?port=6543",
+            "postgresql+psycopg://backup-user:secret@db:5432/"
+            "mydictionary?dbname=unrelated",
+            "postgresql+psycopg://backup-user:secret@db:5432/"
+            "mydictionary?password=other",
+            "postgresql+psycopg://backup-user:secret@db:5432/"
+            "mydictionary?host=other-db",
+        )
+        for database_url in urls:
+            with self.subTest(database_url=database_url):
+                runner = MagicMock()
+                with (
+                    patch.dict(
+                        os.environ,
+                        {
+                            "MYDICTIONARY_APP_ROOT": str(self.root),
+                            "MYDICTIONARY_PGDUMP_DATABASE": "mydictionary",
+                            "DATABASE_URL": database_url,
+                        },
+                        clear=True,
+                    ),
+                    patch("sys.argv", ["mydictionary_backup.py"]),
+                    patch.object(backup, "run", runner),
+                ):
+                    result = backup.main()
+                self.assertEqual(result, 1)
+                runner.assert_not_called()
+
+    def test_cli_rejects_password_url_mixed_with_inherited_pgpassfile(self):
+        inherited_pgpass = self.root / "inherited.pgpass"
+        inherited_pgpass.write_text(
+            "db:5432:mydictionary:backup-user:old-password\n",
+            encoding="utf-8",
+        )
+        os.chmod(inherited_pgpass, 0o600)
+        runner = MagicMock()
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "MYDICTIONARY_APP_ROOT": str(self.root),
+                    "MYDICTIONARY_PGDUMP_DATABASE": "mydictionary",
+                    "DATABASE_URL": (
+                        "postgresql+psycopg://backup-user:new-password@"
+                        "db:5432/mydictionary"
+                    ),
+                    "PGPASSFILE": str(inherited_pgpass),
+                },
+                clear=True,
+            ),
+            patch("sys.argv", ["mydictionary_backup.py"]),
+            patch.object(backup, "run", runner),
+        ):
+            result = backup.main()
+
+        self.assertEqual(result, 1)
+        runner.assert_not_called()
+        self.assertEqual(
+            inherited_pgpass.read_text(encoding="utf-8"),
+            "db:5432:mydictionary:backup-user:old-password\n",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

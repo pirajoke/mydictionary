@@ -151,7 +151,18 @@ PGUSER=<local PostgreSQL role>
 URI or libpq keyword connection string. Configure the socket or host, optional
 port, user, and authentication through `PGHOST`, `PGPORT`, `PGUSER`, and the
 other standard libpq environment variables. Both wrappers reject a combined
-connection string before stopping services or starting a backup.
+connection string in `MYDICTIONARY_PGDUMP_DATABASE` before stopping services or
+starting a backup.
+
+When the backup CLI runs in the OVH application container, it may derive the
+same libpq fields from the existing PostgreSQL `DATABASE_URL`. The database name
+must exactly match `MYDICTIONARY_PGDUMP_DATABASE`; any explicit `PGHOST`,
+`PGPORT`, `PGUSER`, or `PGSSLMODE` must agree. A URL password is written only to
+an ephemeral mode-`0600` pgpass file for `psql` and `pg_dump`, then removed on
+success or failure. The URL, password, application credentials, and unrelated
+environment variables are never forwarded to those subprocesses. Query
+parameters other than a socket-only `host` and `sslmode` fail closed, as does a
+URL password combined with an inherited `PGPASSFILE`.
 
 Telegram Stars settings are optional and default off. A reviewed billing rollout
 passes `TELEGRAM_STARS_ENABLED`, the preferred owner-only

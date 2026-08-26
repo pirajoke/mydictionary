@@ -45,6 +45,9 @@ change the application or database.
 1. Confirm the named SHA is merged and CI is green.
 2. Review source/compose diff and classify code-only, content or migration.
 3. Create and verify a uniquely named mode-`0600` PostgreSQL custom dump.
+   Inside `mydictionary-admin`, the wrapper derives its libpq connection from
+   the protected `DATABASE_URL`, requires the exact configured database name,
+   and removes its temporary mode-`0600` pgpass file after the operation.
 4. Build the candidate image from the exact SHA with locked dependencies.
 5. For migrations, stop bot/admin, apply only the candidate Alembic head and
    refuse automatic downgrade after any database change.

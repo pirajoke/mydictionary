@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import fcntl
@@ -16,7 +17,10 @@ import re
 import shutil
 import subprocess
 import tempfile
-from typing import Any, Callable
+from typing import Any, Callable, Iterator, MutableMapping
+
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
 
 
 LOGGER = logging.getLogger("mydictionary-backup")
@@ -41,6 +45,15 @@ LIBPQ_ENVIRONMENT_NAMES = (
     "PGSSLMODE",
     "PGSERVICE",
     "PGSERVICEFILE",
+)
+DATABASE_URL_DRIVERS = frozenset(
+    {"postgres", "postgresql", "postgresql+psycopg"}
+)
+DERIVED_LIBPQ_ENVIRONMENT_NAMES = (
+    "PGHOST",
+    "PGPORT",
+    "PGUSER",
+    "PGSSLMODE",
 )
 
 
@@ -199,6 +212,120 @@ def _database_environment(config: Config) -> dict[str, str]:
     )
     environment["PGDATABASE"] = config.database_target
     return environment
+
+
+def _pgpass_escape(value: str) -> str:
+    if any(character in value for character in ("\x00", "\r", "\n")):
+        raise BackupError("DATABASE_URL contains an unsafe libpq value")
+    return value.replace("\\", "\\\\").replace(":", "\\:")
+
+
+@contextmanager
+def _database_url_libpq_environment(
+    config: Config,
+    values: MutableMapping[str, str] | None = None,
+) -> Iterator[None]:
+    environment = values if values is not None else os.environ
+    raw_url = str(environment.get("DATABASE_URL") or "").strip()
+    if not raw_url:
+        yield
+        return
+    try:
+        database_url = make_url(raw_url)
+    except ArgumentError as exc:
+        raise BackupError("DATABASE_URL is not a valid PostgreSQL URL") from exc
+    if database_url.drivername not in DATABASE_URL_DRIVERS:
+        raise BackupError("DATABASE_URL must use PostgreSQL")
+    database = str(database_url.database or "")
+    unsupported_query = set(database_url.query) - {"host", "sslmode"}
+    if unsupported_query:
+        raise BackupError("DATABASE_URL contains unsupported connection parameters")
+    query_host = database_url.query.get("host")
+    if query_host is not None and not isinstance(query_host, str):
+        raise BackupError("DATABASE_URL contains an invalid PostgreSQL host")
+    if database_url.host and query_host is not None:
+        raise BackupError("DATABASE_URL contains conflicting PostgreSQL hosts")
+    host = str(
+        database_url.host
+        or query_host
+        or environment.get("PGHOST")
+        or ""
+    ).strip()
+    username = str(
+        database_url.username or environment.get("PGUSER") or ""
+    ).strip()
+    if database != config.database_target:
+        raise BackupError("DATABASE_URL database does not match backup target")
+    if not host or not username:
+        raise BackupError("DATABASE_URL must include PostgreSQL host and user")
+    try:
+        port = str(database_url.port or environment.get("PGPORT") or 5432)
+    except ValueError as exc:
+        raise BackupError("DATABASE_URL contains an invalid PostgreSQL port") from exc
+    derived = {
+        "PGHOST": host,
+        "PGPORT": port,
+        "PGUSER": username,
+    }
+    sslmode = database_url.query.get("sslmode")
+    if sslmode is not None:
+        if not isinstance(sslmode, str) or not sslmode.strip():
+            raise BackupError("DATABASE_URL contains an invalid sslmode")
+        derived["PGSSLMODE"] = sslmode.strip()
+    for name, expected in derived.items():
+        configured = str(environment.get(name) or "").strip()
+        if configured and configured != expected:
+            raise BackupError(f"{name} conflicts with DATABASE_URL")
+    configured_database = str(environment.get("PGDATABASE") or "").strip()
+    if configured_database and configured_database != config.database_target:
+        raise BackupError("PGDATABASE conflicts with backup target")
+    if environment.get("PGSERVICE") or environment.get("PGSERVICEFILE"):
+        raise BackupError("DATABASE_URL cannot be combined with a libpq service")
+    if database_url.password is not None and environment.get("PGPASSFILE"):
+        raise BackupError("DATABASE_URL password cannot be combined with PGPASSFILE")
+
+    original = {
+        name: environment.get(name)
+        for name in DERIVED_LIBPQ_ENVIRONMENT_NAMES + ("PGPASSFILE",)
+    }
+    temporary_pgpass: Path | None = None
+    try:
+        environment.update(derived)
+        password = database_url.password
+        if password is not None and not environment.get("PGPASSFILE"):
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                prefix=".mydictionary-pgpass-",
+                delete=False,
+            ) as handle:
+                temporary_pgpass = Path(handle.name)
+                os.chmod(temporary_pgpass, 0o600)
+                handle.write(
+                    ":".join(
+                        _pgpass_escape(value)
+                        for value in (
+                            host,
+                            port,
+                            config.database_target,
+                            username,
+                            str(password),
+                        )
+                    )
+                    + "\n"
+                )
+                handle.flush()
+                os.fsync(handle.fileno())
+            environment["PGPASSFILE"] = str(temporary_pgpass)
+        yield
+    finally:
+        if temporary_pgpass is not None:
+            temporary_pgpass.unlink(missing_ok=True)
+        for name, previous in original.items():
+            if previous is None:
+                environment.pop(name, None)
+            else:
+                environment[name] = previous
 
 
 def run(
@@ -544,7 +671,11 @@ def main() -> int:
         elif args.prune:
             _run_locked(config, lambda: prune_backups(config))
         else:
-            _run_locked(config, lambda: create_backup(config))
+            def create_from_runtime_connection() -> BackupRecord:
+                with _database_url_libpq_environment(config):
+                    return create_backup(config)
+
+            _run_locked(config, create_from_runtime_connection)
         return 0
     except Exception as exc:
         LOGGER.error("Backup operation failed: error_type=%s", type(exc).__name__)
