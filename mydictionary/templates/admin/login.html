@@ -21,6 +21,14 @@
           <label>Пароль<input type="password" name="password" autocomplete="current-password" required></label>
           <button type="submit" class="primary">Войти</button>
         </form>
+        <nav class="login-actions" aria-label="Другие способы входа">
+          {% if admin_reset_enabled %}
+            <a href="{{ url_for('admin_forgot_password') }}">Забыли пароль?</a>
+          {% endif %}
+          {% if admin_google_enabled %}
+            <a href="{{ url_for('admin_google_login') }}" class="google-login">Войти через Google</a>
+          {% endif %}
+        </nav>
       {% endif %}
     </main>
   </body>

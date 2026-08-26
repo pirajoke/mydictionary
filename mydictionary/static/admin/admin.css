@@ -144,6 +144,9 @@ tbody tr:hover { background: #f7faf8; }
 .login-panel { width: min(390px, 100%); padding: 30px; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: 0 14px 40px rgba(23, 32, 28, .12); }
 .login-panel > img { display: block; margin-bottom: 18px; border-radius: 6px; object-fit: cover; }
 .login-panel h1 { margin-bottom: 24px; }
+.login-actions { display: grid; gap: 10px; margin-top: 18px; text-align: center; }
+.login-actions .google-login { padding: 11px 14px; border: 1px solid var(--line); border-radius: 6px; text-decoration: none; }
+.login-back { margin: 18px 0 0; text-align: center; }
 .secret-enrollment-panel { width: min(520px, 100%); }
 .wizard-page { align-items: start; }
 .stars-launch-panel { width: min(920px, 100%); }

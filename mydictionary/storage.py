@@ -646,6 +646,30 @@ class AdminCredential(Base):
     )
 
 
+class AdminPasswordReset(Base):
+    __tablename__ = "admin_password_resets"
+
+    reset_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    token_digest: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    activated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    invalidated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 class AdminAuditLog(Base):
     __tablename__ = "admin_audit_log"
 

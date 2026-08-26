@@ -23,6 +23,8 @@ polling. The default binding is loopback-only on the Mac mini.
   OpenAI and Groq project keys
 - a reauthenticated Stars Launch Wizard for a private seller/terms profile and
   separate Telegram test-environment credentials
+- optional email password recovery for the singleton administrator
+- optional owner-only Google OpenID Connect sign-in without provider-token storage
 - append-only administration audit log
 
 The admin can request a refund hold but cannot call Telegram's refund API. Live
@@ -42,6 +44,54 @@ DATA_DIR=<shared runtime directory>
 BOT_HEARTBEAT_MAX_AGE_SECONDS=45
 TELEGRAM_STARS_ENABLED=false
 ```
+
+Password recovery and Google sign-in are optional complete feature sets. With
+no auth-provider settings they stay hidden and the corresponding routes return
+404. A partial, contradictory, non-HTTPS, or unsafe secret-file configuration
+stops admin startup instead of degrading to a weaker mode.
+
+Email password recovery requires authenticated SMTP with verified STARTTLS:
+
+```text
+ADMIN_EMAIL=<one normalized owner email>
+ADMIN_PUBLIC_URL=https://mydictionary.meshly.fr
+ADMIN_SMTP_HOST=<SMTP host>
+ADMIN_SMTP_PORT=587
+ADMIN_SMTP_USERNAME=<SMTP account>
+ADMIN_SMTP_PASSWORD_FILE=<absolute private mode-0600 file>
+ADMIN_SMTP_FROM=<sender mailbox or display name and mailbox>
+ADMIN_RESET_TOKEN_TTL_SECONDS=900
+ADMIN_RESET_RATE_LIMIT_ATTEMPTS=5
+```
+
+Only an HMAC-SHA256 digest and lifecycle metadata enter PostgreSQL. A new row
+stays inactive until SMTP returns successfully; delivery, activation, or
+revocation failure therefore cannot leave a usable reset link. The response
+never confirms whether an email matches. A new request, a normal admin
+credential change, expiry, or successful use revokes the older link, and a
+successful password reset increments the session version. Reset tokens and
+email addresses are excluded from audit details and application access-log
+targets.
+
+Google sign-in requires the same `ADMIN_EMAIL` and `ADMIN_PUBLIC_URL`, plus:
+
+```text
+ADMIN_GOOGLE_CLIENT_ID=<Google web OAuth client ID>
+ADMIN_GOOGLE_CLIENT_SECRET_FILE=<absolute private mode-0600 file>
+```
+
+Register exactly
+`https://mydictionary.meshly.fr/admin/google/callback` as the authorized
+redirect URI. The server uses Authorization Code + OpenID Connect with
+`openid email`, one-time state and nonce, and exact issuer, audience, expiry,
+verified-email, and owner-email checks. OAuth codes and provider tokens are not
+persisted; production token validation is sent to Google in a POST body, never
+in the URL. No refresh scope is requested.
+
+Both secret files must be absolute regular non-symlink files owned by the
+runtime user, no larger than 1024 bytes, and not readable by group or world.
+Do not place either secret value directly in environment variables, compose
+files, command arguments, logs, commits, or admin audit records.
 
 Remote key enrollment is disabled unless all three settings are present:
 
@@ -193,9 +243,13 @@ production rollout.
 
 - fail-closed setup when no admin credential or session secret exists
 - scrypt-backed Werkzeug password hash by default
-- signed `HttpOnly`, `SameSite=Strict` session cookie
+- signed `HttpOnly`, `SameSite=Lax` session cookie; production cookies remain `Secure`
 - CSRF token on every state-changing request
 - login attempt throttling per source address
+- reset throttling uses an opaque keyed source fingerprint and trusts
+  `CF-Connecting-IP` only from the loopback tunnel peer
+- one-time password-reset digests with transactional revocation and session invalidation
+- Google OIDC state/nonce and exact singleton-owner identity validation without token storage
 - restrictive CSP, frame denial, MIME sniffing protection, and no-store caching
 - transactional credit changes with a separate ledger and audit entry
 - transactional learner access changes with an administration audit entry

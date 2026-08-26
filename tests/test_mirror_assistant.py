@@ -1084,7 +1084,7 @@ class MirrorProgressAndPreferenceTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0016_mirror_control_plane_v1")
+        self.assertEqual(revision, "0017_admin_auth_recovery")
 
         set_mode = required_public(self, self.store, "set_mirror_response_mode")
         get_mode = required_public(self, self.store, "get_mirror_response_mode")
@@ -1165,7 +1165,7 @@ class MirrorProgressAndPreferenceTest(unittest.TestCase):
             roundtrip_revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(roundtrip_revision, "0016_mirror_control_plane_v1")
+        self.assertEqual(roundtrip_revision, "0017_admin_auth_recovery")
         self.store.ensure_user_id(614)
         self.assertEqual(self.store.get_mirror_response_mode(614), "text")
 

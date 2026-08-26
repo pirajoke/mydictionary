@@ -8,7 +8,9 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 import getpass
+import hashlib
 import hmac
+import ipaddress
 import io
 import json
 import os
@@ -18,6 +20,7 @@ import sys
 from threading import Lock
 import time
 from typing import Any, Callable
+from urllib.parse import urlencode
 
 from flask import (
     Flask,
@@ -34,6 +37,7 @@ from sqlalchemy import text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mydictionary.admin_store import AdminStore
+from mydictionary.admin_auth import AdminAuthSettings
 from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
@@ -298,6 +302,25 @@ def create_app(
         ADMIN_USERNAME=os.environ.get("ADMIN_USERNAME", "").strip(),
         ADMIN_PASSWORD=os.environ.get("ADMIN_PASSWORD", ""),
         ADMIN_PASSWORD_HASH=os.environ.get("ADMIN_PASSWORD_HASH", ""),
+        ADMIN_EMAIL=os.environ.get("ADMIN_EMAIL", ""),
+        ADMIN_PUBLIC_URL=os.environ.get("ADMIN_PUBLIC_URL", ""),
+        ADMIN_SMTP_HOST=os.environ.get("ADMIN_SMTP_HOST", ""),
+        ADMIN_SMTP_PORT=os.environ.get("ADMIN_SMTP_PORT", ""),
+        ADMIN_SMTP_USERNAME=os.environ.get("ADMIN_SMTP_USERNAME", ""),
+        ADMIN_SMTP_PASSWORD_FILE=os.environ.get(
+            "ADMIN_SMTP_PASSWORD_FILE", ""
+        ),
+        ADMIN_SMTP_FROM=os.environ.get("ADMIN_SMTP_FROM", ""),
+        ADMIN_RESET_TOKEN_TTL_SECONDS=os.environ.get(
+            "ADMIN_RESET_TOKEN_TTL_SECONDS", ""
+        ),
+        ADMIN_RESET_RATE_LIMIT_ATTEMPTS=os.environ.get(
+            "ADMIN_RESET_RATE_LIMIT_ATTEMPTS", ""
+        ),
+        ADMIN_GOOGLE_CLIENT_ID=os.environ.get("ADMIN_GOOGLE_CLIENT_ID", ""),
+        ADMIN_GOOGLE_CLIENT_SECRET_FILE=os.environ.get(
+            "ADMIN_GOOGLE_CLIENT_SECRET_FILE", ""
+        ),
         ADMIN_HOST=os.environ.get("ADMIN_HOST", "127.0.0.1").strip(),
         ADMIN_PORT=int(os.environ.get("ADMIN_PORT", "8787")),
         DATA_DIR=str(data_dir),
@@ -305,7 +328,7 @@ def create_app(
         BOT_HEARTBEAT_MAX_AGE_SECONDS=configured_max_age_seconds(),
         SESSION_COOKIE_NAME="mydictionary_admin_session",
         SESSION_COOKIE_HTTPONLY=True,
-        SESSION_COOKIE_SAMESITE="Strict",
+        SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=(
             os.environ.get("ADMIN_COOKIE_SECURE", "false").strip().lower()
             in {"1", "true", "yes", "on"}
@@ -362,6 +385,8 @@ def create_app(
             "ADMIN_SESSION_SECRET must contain at least 32 characters"
         )
 
+    auth_settings = AdminAuthSettings.from_mapping(app.config)
+
     store = database_store or DatabaseStore(database_url_from_env())
     admin_store = AdminStore(store)
     key_enrollment = SecretEnrollmentSettings.from_mapping(
@@ -382,7 +407,12 @@ def create_app(
     app.extensions["ai_key_enrollment"] = key_enrollment
     app.extensions["groq_key_enrollment"] = groq_key_enrollment
     app.extensions["stars_launch_enrollment"] = stars_launch_enrollment
+    app.extensions["admin_auth_settings"] = auth_settings
     limiter = LoginLimiter()
+    reset_limiter = LoginLimiter(
+        attempts=auth_settings.reset_rate_limit_attempts,
+        window_seconds=300,
+    )
 
     username = str(app.config.get("ADMIN_USERNAME") or "").strip()
     password = str(app.config.get("ADMIN_PASSWORD") or "")
@@ -412,6 +442,45 @@ def create_app(
             session["csrf_token"] = token
         return str(token)
 
+    def reset_digest(token: str) -> str:
+        return hmac.new(
+            str(app.config["SECRET_KEY"]).encode("utf-8"),
+            token.encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+
+    def reset_source_key() -> str:
+        peer = str(request.remote_addr or "unknown").strip()
+        source = peer
+        if peer in {"127.0.0.1", "::1"}:
+            forwarded = str(request.headers.get("CF-Connecting-IP") or "").strip()
+            try:
+                source = str(ipaddress.ip_address(forwarded))
+            except ValueError:
+                source = peer
+        try:
+            source = str(ipaddress.ip_address(source))
+        except ValueError:
+            source = "unknown"
+        digest = hmac.new(
+            str(app.config["SECRET_KEY"]).encode("utf-8"),
+            f"reset-source:{source}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        return f"source:{digest}"
+
+    def record_recovery_audit(*, action: str, source_key: str | None = None) -> None:
+        """Best-effort audit that never changes the account-discovery response."""
+        try:
+            admin_store.record_audit(
+                actor="recovery",
+                action=action,
+                target_type="request_source" if source_key else "admin",
+                target_id=source_key,
+            )
+        except Exception:
+            pass
+
     def login_required(handler: Callable):
         @wraps(handler)
         def wrapped(*args, **kwargs):
@@ -435,6 +504,8 @@ def create_app(
             "csrf_token": csrf_token,
             "current_actor": current_actor(),
             "language_labels": LANG_LABELS,
+            "admin_reset_enabled": auth_settings.reset_enabled,
+            "admin_google_enabled": auth_settings.google_enabled,
         }
 
     @app.template_filter("datetime")
@@ -455,6 +526,22 @@ def create_app(
     @app.template_filter("number")
     def format_number(value):
         return f"{int(value or 0):,}".replace(",", " ")
+
+    @app.before_request
+    def redact_auth_request_target():
+        """Keep credentials out of Gunicorn and proxy-style access logs."""
+        path = request.path
+        if path.startswith("/admin/reset-password/"):
+            request.environ["RAW_URI"] = "/admin/reset-password/[redacted]"
+            request.environ["REQUEST_URI"] = "/admin/reset-password/[redacted]"
+        elif path == "/admin/google/callback":
+            # Parse once before clearing the original query string. Flask keeps
+            # the cached immutable arguments for the route handler.
+            request.args
+            request.environ["QUERY_STRING"] = ""
+            request.environ["RAW_URI"] = "/admin/google/callback?[redacted]"
+            request.environ["REQUEST_URI"] = "/admin/google/callback?[redacted]"
+        return None
 
     @app.before_request
     def verify_csrf():
@@ -543,6 +630,228 @@ def create_app(
         admin_store.record_audit(
             actor=credential.username,
             action="admin_login_succeeded",
+            target_type="admin",
+        )
+        return redirect(url_for("admin_index"))
+
+    @app.route("/admin/forgot-password", methods=["GET", "POST"])
+    def admin_forgot_password():
+        if not auth_settings.reset_enabled:
+            abort(404)
+        if request.method == "GET":
+            return render_template("admin/forgot_password.html", submitted=False)
+        key = reset_source_key()
+        if not reset_limiter.allowed(key):
+            record_recovery_audit(
+                action="admin_password_reset_rate_limited",
+                source_key=key,
+            )
+            return render_template(
+                "admin/forgot_password.html", submitted=True
+            ), 429
+        reset_limiter.failure(key)
+        record_recovery_audit(
+            action="admin_password_reset_requested",
+            source_key=key,
+        )
+        submitted_email = str(request.form.get("email") or "").strip().casefold()
+        if hmac.compare_digest(submitted_email, auth_settings.email):
+            raw_token = secrets.token_urlsafe(32)
+            digest = reset_digest(raw_token)
+            try:
+                admin_store.issue_password_reset(
+                    token_digest=digest,
+                    ttl_seconds=auth_settings.reset_ttl_seconds,
+                )
+            except Exception:
+                record_recovery_audit(
+                    action="admin_password_reset_issue_failed"
+                )
+            else:
+                try:
+                    assert auth_settings.reset_mailer is not None
+                    auth_settings.reset_mailer.send_password_reset(
+                        recipient=auth_settings.email,
+                        reset_url=(
+                            f"{auth_settings.public_url}/admin/reset-password/"
+                            f"{raw_token}"
+                        ),
+                    )
+                except Exception:
+                    try:
+                        admin_store.invalidate_password_reset(
+                            token_digest=digest,
+                            action="admin_password_reset_delivery_failed",
+                        )
+                    except Exception:
+                        record_recovery_audit(
+                            action="admin_password_reset_delivery_failed"
+                        )
+                else:
+                    try:
+                        activated = admin_store.activate_password_reset(
+                            token_digest=digest
+                        )
+                        if not activated:
+                            raise RuntimeError("reset activation rejected")
+                    except Exception:
+                        try:
+                            admin_store.invalidate_password_reset(
+                                token_digest=digest,
+                                action="admin_password_reset_activation_failed",
+                            )
+                        except Exception:
+                            record_recovery_audit(
+                                action="admin_password_reset_activation_failed"
+                            )
+        return render_template(
+            "admin/forgot_password.html", submitted=True
+        ), 202
+
+    @app.route("/admin/reset-password/<token>", methods=["GET", "POST"])
+    def admin_reset_password(token: str):
+        if not auth_settings.reset_enabled:
+            abort(404)
+        digest = reset_digest(token)
+        if not admin_store.password_reset_valid(token_digest=digest):
+            return render_template(
+                "admin/reset_password.html", invalid=True
+            ), 400
+        if request.method == "GET":
+            return render_template("admin/reset_password.html", invalid=False)
+        password = str(request.form.get("password") or "")
+        confirmation = str(request.form.get("password_confirm") or "")
+        if len(password) < 12 or not hmac.compare_digest(password, confirmation):
+            return render_template(
+                "admin/reset_password.html",
+                invalid=False,
+                error="Пароли должны совпадать и содержать не менее 12 символов.",
+            ), 400
+        credential_identity = admin_store.consume_password_reset(
+            token_digest=digest,
+            password_hash=generate_password_hash(password),
+        )
+        if credential_identity is None:
+            return render_template(
+                "admin/reset_password.html", invalid=True
+            ), 400
+        credential_username, credential_session_version = credential_identity
+        session.clear()
+        session["admin_username"] = credential_username
+        session["session_version"] = credential_session_version
+        session["csrf_token"] = secrets.token_urlsafe(32)
+        return redirect(url_for("admin_index"), code=303)
+
+    @app.get("/admin/google/login")
+    def admin_google_login():
+        if not auth_settings.google_enabled:
+            abort(404)
+        state = secrets.token_urlsafe(32)
+        nonce = secrets.token_urlsafe(32)
+        session["google_oauth_state"] = state
+        session["google_oauth_nonce"] = nonce
+        callback = f"{auth_settings.public_url}/admin/google/callback"
+        query = urlencode(
+            {
+                "client_id": auth_settings.google_client_id,
+                "response_type": "code",
+                "scope": "openid email",
+                "redirect_uri": callback,
+                "state": state,
+                "nonce": nonce,
+            }
+        )
+        return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{query}")
+
+    @app.get("/admin/google/callback")
+    def admin_google_callback():
+        if not auth_settings.google_enabled:
+            abort(404)
+        expected_state = str(session.pop("google_oauth_state", ""))
+        expected_nonce = str(session.pop("google_oauth_nonce", ""))
+        supplied_state = str(request.args.get("state") or "")
+        code = str(request.args.get("code") or "")
+        if (
+            not expected_state
+            or not expected_nonce
+            or not supplied_state
+            or not hmac.compare_digest(supplied_state, expected_state)
+            or not code
+        ):
+            return render_template(
+                "admin/login.html",
+                unavailable=False,
+                error="Не удалось войти через Google.",
+            ), 401
+        try:
+            assert auth_settings.google_http_client is not None
+            token_response = auth_settings.google_http_client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "code": code,
+                    "client_id": auth_settings.google_client_id,
+                    "client_secret": auth_settings.google_client_secret,
+                    "redirect_uri": (
+                        f"{auth_settings.public_url}/admin/google/callback"
+                    ),
+                    "grant_type": "authorization_code",
+                },
+                timeout=8,
+            )
+            token_response.raise_for_status()
+            token_payload = token_response.json()
+            id_token = str(token_payload.get("id_token") or "")
+            if not id_token:
+                raise ValueError("missing id token")
+            if auth_settings.google_tokeninfo_post:
+                claim_response = auth_settings.google_http_client.post(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    data={"id_token": id_token},
+                    timeout=8,
+                )
+            else:
+                claim_response = auth_settings.google_http_client.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"id_token": id_token},
+                    timeout=8,
+                )
+            claim_response.raise_for_status()
+            claims = claim_response.json()
+            issuer = str(claims.get("iss") or "")
+            audience = str(claims.get("aud") or "")
+            claim_nonce = str(claims.get("nonce") or "")
+            verified = claims.get("email_verified")
+            claim_email = str(claims.get("email") or "").strip().casefold()
+            expiry = int(str(claims.get("exp") or "0"))
+            valid_claims = (
+                issuer in {"accounts.google.com", "https://accounts.google.com"}
+                and hmac.compare_digest(audience, auth_settings.google_client_id)
+                and expiry > int(datetime.now(timezone.utc).timestamp())
+                and hmac.compare_digest(claim_nonce, expected_nonce)
+                and (verified is True or str(verified).casefold() == "true")
+                and hmac.compare_digest(claim_email, auth_settings.email)
+            )
+            credential = current_credential()
+            if not valid_claims or credential is None:
+                raise ValueError("invalid identity")
+        except Exception:
+            admin_store.record_audit(
+                actor="oauth",
+                action="admin_google_login_failed",
+                target_type="admin",
+            )
+            return render_template(
+                "admin/login.html",
+                unavailable=False,
+                error="Не удалось войти через Google.",
+            ), 401
+        session.clear()
+        session["admin_username"] = credential.username
+        session["session_version"] = credential.session_version
+        session["csrf_token"] = secrets.token_urlsafe(32)
+        admin_store.record_audit(
+            actor="oauth",
+            action="admin_google_login_succeeded",
             target_type="admin",
         )
         return redirect(url_for("admin_index"))

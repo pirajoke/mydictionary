@@ -33,6 +33,7 @@ from mydictionary.storage import (
     AnalyticsEvent,
     AdminAuditLog,
     AdminCredential,
+    AdminPasswordReset,
     AppSetting,
     BillingCreditLedger,
     BillingProduct,
@@ -468,14 +469,23 @@ class AdminStore:
         self, *, username: str, password_hash: str, actor: str
     ) -> int:
         with self.store.Session.begin() as session:
-            row = session.get(AdminCredential, 1)
+            row = session.get(AdminCredential, 1, with_for_update=True)
             if row is None:
                 raise RuntimeError("Admin credential is not configured")
+            reset_result = session.execute(
+                select(AdminPasswordReset).where(
+                    AdminPasswordReset.used_at.is_(None),
+                    AdminPasswordReset.invalidated_at.is_(None),
+                ).with_for_update()
+            )
+            now = utcnow()
+            for reset in reset_result.scalars().all():
+                reset.invalidated_at = now
             previous_username = row.username
             row.username = username
             row.password_hash = password_hash
             row.session_version += 1
-            row.updated_at = utcnow()
+            row.updated_at = now
             session.add(
                 AdminAuditLog(
                     actor=actor,
@@ -508,6 +518,154 @@ class AdminStore:
                     details_json=_json(details),
                 )
             )
+
+    def issue_password_reset(self, *, token_digest: str, ttl_seconds: int) -> str:
+        """Invalidate pending records and persist one opaque reset digest."""
+        now = utcnow()
+        reset_id = str(uuid4())
+        with self.store.Session.begin() as session:
+            # The singleton credential is the serialization point for reset
+            # issuance. PostgreSQL therefore cannot leave two pending records
+            # when requests arrive concurrently.
+            credential = session.get(AdminCredential, 1, with_for_update=True)
+            if credential is None:
+                raise RuntimeError("Admin credential is not configured")
+            pending_result = session.execute(
+                select(AdminPasswordReset).where(
+                    AdminPasswordReset.used_at.is_(None),
+                    AdminPasswordReset.invalidated_at.is_(None),
+                ).with_for_update()
+            )
+            pending = pending_result.scalars().all()
+            for row in pending:
+                row.invalidated_at = now
+            session.add(
+                AdminPasswordReset(
+                    reset_id=reset_id,
+                    token_digest=token_digest,
+                    created_at=now,
+                    expires_at=now + timedelta(seconds=ttl_seconds),
+                )
+            )
+            session.add(
+                AdminAuditLog(
+                    actor="recovery",
+                    action="admin_password_reset_issued",
+                    target_type="admin",
+                    target_id=None,
+                    details_json="{}",
+                )
+            )
+        return reset_id
+
+    def invalidate_password_reset(
+        self, *, token_digest: str, action: str
+    ) -> None:
+        now = utcnow()
+        with self.store.Session.begin() as session:
+            row = session.execute(
+                select(AdminPasswordReset).where(
+                    AdminPasswordReset.token_digest == token_digest
+                )
+            ).scalar_one_or_none()
+            if row is not None and row.used_at is None and row.invalidated_at is None:
+                row.invalidated_at = now
+            session.add(
+                AdminAuditLog(
+                    actor="recovery",
+                    action=action[:64],
+                    target_type="admin",
+                    target_id=None,
+                    details_json="{}",
+                )
+            )
+
+    def activate_password_reset(self, *, token_digest: str) -> bool:
+        """Activate an issued digest only after its delivery has succeeded."""
+        now = utcnow()
+        with self.store.Session.begin() as session:
+            credential = session.get(AdminCredential, 1, with_for_update=True)
+            if credential is None:
+                return False
+            reset_result = session.execute(
+                select(AdminPasswordReset)
+                .where(AdminPasswordReset.token_digest == token_digest)
+                .with_for_update()
+            )
+            row = reset_result.scalar_one_or_none()
+            if (
+                row is None
+                or row.activated_at is not None
+                or row.used_at is not None
+                or row.invalidated_at is not None
+                or _as_utc(row.expires_at) <= now
+            ):
+                return False
+            row.activated_at = now
+            session.add(
+                AdminAuditLog(
+                    actor="recovery",
+                    action="admin_password_reset_activated",
+                    target_type="admin",
+                    target_id=None,
+                    details_json="{}",
+                )
+            )
+            return True
+
+    def password_reset_valid(self, *, token_digest: str) -> bool:
+        now = utcnow()
+        with self.store.Session() as session:
+            row = session.execute(
+                select(AdminPasswordReset).where(
+                    AdminPasswordReset.token_digest == token_digest
+                )
+            ).scalar_one_or_none()
+            return bool(
+                row
+                and row.activated_at is not None
+                and row.used_at is None
+                and row.invalidated_at is None
+                and _as_utc(row.expires_at) > now
+            )
+
+    def consume_password_reset(
+        self, *, token_digest: str, password_hash: str
+    ) -> tuple[str, int] | None:
+        """Consume a valid token and rotate the credential in one transaction."""
+        now = utcnow()
+        with self.store.Session.begin() as session:
+            credential = session.get(AdminCredential, 1, with_for_update=True)
+            reset_result = session.execute(
+                select(AdminPasswordReset)
+                .where(AdminPasswordReset.token_digest == token_digest)
+                .with_for_update()
+            )
+            row = reset_result.scalar_one_or_none()
+            if (
+                row is None
+                or credential is None
+                or row.activated_at is None
+                or row.used_at is not None
+                or row.invalidated_at is not None
+                or _as_utc(row.expires_at) <= now
+            ):
+                return None
+            row.used_at = now
+            credential.password_hash = password_hash
+            credential.session_version += 1
+            credential.updated_at = now
+            session.add(
+                AdminAuditLog(
+                    actor="recovery",
+                    action="admin_password_reset_completed",
+                    target_type="admin",
+                    target_id=None,
+                    details_json="{}",
+                )
+            )
+            session.flush()
+            return credential.username, credential.session_version
 
     def adjust_credits(
         self,
