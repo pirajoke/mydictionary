@@ -73,6 +73,42 @@
       "source": "research/product-data-audit.html",
       "repo_commit": "51e86d4ce294e482fc8e6fb71e7e785bf6aa6076",
       "repo_dirty": true
+    },
+    {
+      "id": "2026-08-26T09-32-32Z--734e614ea71c",
+      "captured_at": "2026-08-26T09:32:32Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — аудит пользователей и план безопасного восстановления",
+      "snapshot": "2026-08-26T09-32-32Z--mydictionary--734e614ea71c.html",
+      "sha256": "734e614ea71c13708939c25470acb92f2f12b48f561ef2c7711f4526e59bd0bb",
+      "bytes": 46661,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "fd9519c2cea703dad482fc4a32696dc2f59bc853",
+      "repo_dirty": true
+    },
+    {
+      "id": "2026-08-26T09-50-20Z--c0439a96d079",
+      "captured_at": "2026-08-26T09:50:20Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — аудит пользователей и план безопасного восстановления",
+      "snapshot": "2026-08-26T09-50-20Z--mydictionary--c0439a96d079.html",
+      "sha256": "c0439a96d079b879130bf97182316ef7f8daa6f8072acab3637ecb58b8821d8b",
+      "bytes": 47061,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "fd9519c2cea703dad482fc4a32696dc2f59bc853",
+      "repo_dirty": true
+    },
+    {
+      "id": "2026-08-26T12-53-56Z--d4b32d24f65f",
+      "captured_at": "2026-08-26T12:53:56Z",
+      "project": "mydictionary",
+      "title": "MY DICTIONARY — аудит пользователей и план безопасного восстановления",
+      "snapshot": "2026-08-26T12-53-56Z--mydictionary--d4b32d24f65f.html",
+      "sha256": "d4b32d24f65fec68cd4dbb4becd18e795d59bc92366830b311fdf950f0058b38",
+      "bytes": 49069,
+      "source": "research/product-data-audit.html",
+      "repo_commit": "fd9519c2cea703dad482fc4a32696dc2f59bc853",
+      "repo_dirty": true
     }
   ]
 }
