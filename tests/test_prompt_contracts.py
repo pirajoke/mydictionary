@@ -133,7 +133,7 @@ class RuntimePromptContractTest(unittest.IsolatedAsyncioTestCase):
             normalized_reviewed_prompt(ROOT / "prompts/ai-tutor-v1.txt"),
         )
 
-    async def test_ac_2_mirror_runtime_uses_exact_reviewed_v5_contract_and_token_cap(self):
+    async def test_ac_2_mirror_runtime_uses_exact_reviewed_v6_contract_and_token_cap(self):
         responses = CaptureResponses()
         payload = bot.build_mirror_provider_payload(
             question="Comment employer bonjour ?",
@@ -159,7 +159,7 @@ class RuntimePromptContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             responses.kwargs["instructions"],
-            normalized_reviewed_prompt(ROOT / "prompts/mirror-v5.txt"),
+            normalized_reviewed_prompt(ROOT / "prompts/mirror-v6.txt"),
         )
         self.assertEqual(responses.kwargs["max_output_tokens"], 480)
 
@@ -257,7 +257,7 @@ class PromptLibraryDocumentationTest(unittest.TestCase):
                 "tests/fixtures/ai_tutor_eval.json",
             ),
             (
-                "mirror-v5.txt",
+                "mirror-v6.txt",
                 "openairesponsesprovider.generate_mirror",
                 "tests/fixtures/mirror_quality_v2.json",
             ),
@@ -268,10 +268,10 @@ class PromptLibraryDocumentationTest(unittest.TestCase):
                 self.assertIn(consumer, normalized)
                 self.assertIn(evaluation, normalized)
 
-        self.assertTrue((ROOT / "prompts/mirror-v4.txt").is_file())
-        self.assertIn("mirror-v4.txt", normalized)
-        self.assertIn("historical", normalized)
+        self.assertTrue((ROOT / "prompts/mirror-v5.txt").is_file())
         self.assertIn("mirror-v5.txt", normalized)
+        self.assertIn("historical", normalized)
+        self.assertIn("mirror-v6.txt", normalized)
         self.assertIn("active", normalized)
 
         self.assertIn("change procedure", normalized)

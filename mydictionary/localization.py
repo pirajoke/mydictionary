@@ -2776,6 +2776,9 @@ _SERVICE_COPY = {
         "ai_continue_question": "Continue question",
         "ai_resume_expired": "That question has expired. Send it again.",
         "ai_unavailable_no_charge": "The AI tutor is temporarily unavailable. No AI credit was charged.",
+        "ai_thinking_fast": "⚡ Preparing a quick answer…",
+        "ai_thinking_deep": "🧠 Thinking through your learning question…",
+        "ai_thinking_continuation": "💭 Continuing from our recent conversation…",
         "ai_failure": "I could not prepare a verified answer. No learning answer was invented.",
     },
     "fr": {
@@ -2793,6 +2796,9 @@ _SERVICE_COPY = {
         "ai_continue_question": "Continuer la question",
         "ai_resume_expired": "Cette question a expiré. Envoyez-la de nouveau.",
         "ai_unavailable_no_charge": "Le tuteur IA est temporairement indisponible. Aucun crédit IA n’a été débité.",
+        "ai_thinking_fast": "⚡ Je prépare une réponse rapide…",
+        "ai_thinking_deep": "🧠 J’analyse ta question d’apprentissage…",
+        "ai_thinking_continuation": "💭 Je poursuis notre conversation récente…",
         "ai_failure": "Je n'ai pas pu préparer une réponse vérifiée. Aucune réponse n'a été inventée.",
     },
     "de": {
@@ -2810,6 +2816,9 @@ _SERVICE_COPY = {
         "ai_continue_question": "Frage fortsetzen",
         "ai_resume_expired": "Diese Frage ist abgelaufen. Sende sie erneut.",
         "ai_unavailable_no_charge": "Der AI-Tutor ist vorübergehend nicht verfügbar. Es wurde kein AI-Guthaben abgezogen.",
+        "ai_thinking_fast": "⚡ Ich bereite eine kurze Antwort vor…",
+        "ai_thinking_deep": "🧠 Ich durchdenke deine Lernfrage…",
+        "ai_thinking_continuation": "💭 Ich knüpfe an unser letztes Gespräch an…",
         "ai_failure": "Ich konnte keine verifizierte Antwort erstellen. Es wurde nichts erfunden.",
     },
     "ja": {
@@ -2827,6 +2836,9 @@ _SERVICE_COPY = {
         "ai_continue_question": "質問を続ける",
         "ai_resume_expired": "この質問は期限切れです。もう一度送信してください。",
         "ai_unavailable_no_charge": "AIチューターは一時的に利用できません。AIクレジットは消費されていません。",
+        "ai_thinking_fast": "⚡ 短い回答を準備中…",
+        "ai_thinking_deep": "🧠 学習の質問をじっくり考えています…",
+        "ai_thinking_continuation": "💭 最近の会話から続けます…",
         "ai_failure": "確認済みの回答を準備できませんでした。推測の回答は表示していません。",
     },
     "ar": {
@@ -2844,6 +2856,9 @@ _SERVICE_COPY = {
         "ai_continue_question": "متابعة السؤال",
         "ai_resume_expired": "انتهت صلاحية هذا السؤال. أرسله مرة أخرى.",
         "ai_unavailable_no_charge": "مدرّس AI غير متاح مؤقتاً. لم يُخصم أي رصيد AI.",
+        "ai_thinking_fast": "⚡ أجهّز إجابة سريعة…",
+        "ai_thinking_deep": "🧠 أحلّل سؤالك التعليمي…",
+        "ai_thinking_continuation": "💭 أكمل من حوارنا الأخير…",
         "ai_failure": "تعذر إعداد إجابة موثوقة، لذلك لم يتم اختلاق إجابة تعليمية.",
     },
     "zh": {
@@ -2861,6 +2876,9 @@ _SERVICE_COPY = {
         "ai_continue_question": "继续提问",
         "ai_resume_expired": "该问题已过期，请重新发送。",
         "ai_unavailable_no_charge": "AI 导师暂时不可用，未扣除 AI 点数。",
+        "ai_thinking_fast": "⚡ 正在准备简短回答…",
+        "ai_thinking_deep": "🧠 正在思考你的学习问题…",
+        "ai_thinking_continuation": "💭 正在继续我们最近的对话…",
         "ai_failure": "无法生成经过验证的回答，因此没有提供猜测性学习答案。",
     },
     "ru": {
@@ -2878,6 +2896,9 @@ _SERVICE_COPY = {
         "ai_continue_question": "Продолжить вопрос",
         "ai_resume_expired": "Этот вопрос устарел. Отправь его ещё раз.",
         "ai_unavailable_no_charge": "AI-репетитор временно недоступен. AI-кредит не списан.",
+        "ai_thinking_fast": "⚡ Готовлю короткий ответ…",
+        "ai_thinking_deep": "🧠 Продумываю твой учебный вопрос…",
+        "ai_thinking_continuation": "💭 Продолжаю наш недавний диалог…",
         "ai_failure": "Не удалось подготовить проверенный ответ. Учебный ответ не был придуман.",
     },
     "es": {
@@ -2895,6 +2916,9 @@ _SERVICE_COPY = {
         "ai_continue_question": "Continuar pregunta",
         "ai_resume_expired": "Esta pregunta ha caducado. Envíala de nuevo.",
         "ai_unavailable_no_charge": "El tutor de IA no está disponible temporalmente. No se cobró ningún crédito de IA.",
+        "ai_thinking_fast": "⚡ Preparo una respuesta rápida…",
+        "ai_thinking_deep": "🧠 Analizo tu pregunta de aprendizaje…",
+        "ai_thinking_continuation": "💭 Continúo nuestra conversación reciente…",
         "ai_failure": "No pude preparar una respuesta verificada. No se inventó una respuesta educativa.",
     },
 }

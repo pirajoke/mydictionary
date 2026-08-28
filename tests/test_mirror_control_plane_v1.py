@@ -20,6 +20,7 @@ import bot
 from mydictionary import ai_tutor, mirror_assistant
 from mydictionary.admin import create_app
 from mydictionary.admin_store import AdminStore
+from mydictionary.localization import translate
 from mydictionary.privacy import erase_user_learning_data
 from mydictionary.storage import (
     AIUsage,
@@ -314,7 +315,9 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["communication_mode"], "coach")
         self.assertEqual(payload["answer_depth"], "deep")
         self.assertEqual(payload["learner_level"], "b1")
-        message.reply_text.assert_awaited_once_with("🤔")
+        message.reply_text.assert_awaited_once_with(
+            translate("ai_thinking_fast", "ru")
+        )
         message.reply_text.return_value.delete.assert_awaited_once()
         sender.assert_awaited_once()
 

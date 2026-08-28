@@ -3709,6 +3709,7 @@ async def handle_mirror_question(
                 return
         thinking_message = None
         thinking_started = False
+        thinking_status_key = "ai_thinking_fast"
 
         async def start_thinking() -> None:
             nonlocal thinking_message, thinking_started
@@ -3726,7 +3727,9 @@ async def handle_mirror_question(
                 except Exception:
                     pass
             try:
-                thinking_message = await message.reply_text("🤔")
+                thinking_message = await message.reply_text(
+                    translate(thinking_status_key, reply_locale)
+                )
             except Exception:
                 thinking_message = None
 
@@ -3791,6 +3794,10 @@ async def handle_mirror_question(
                 learner_level=preferences["level"],
                 interface_locale=reply_locale,
             )
+            if payload["is_continuation"]:
+                thinking_status_key = "ai_thinking_continuation"
+            elif payload["complexity_route"] == "deep":
+                thinking_status_key = "ai_thinking_deep"
             service = get_ai_tutor_service()
             if isinstance(service, AITutorService):
                 result = await service.ask(
@@ -3820,6 +3827,15 @@ async def handle_mirror_question(
             )
             return
         except AIQuotaExceeded:
+            await message.reply_text(
+                translate("ai_unavailable_no_charge", reply_locale)
+            )
+            return
+        except (AIProviderError, ValueError) as exc:
+            logger.warning(
+                "Mirror AI response rejected: error_type=%s",
+                type(exc).__name__,
+            )
             await message.reply_text(
                 translate("ai_unavailable_no_charge", reply_locale)
             )

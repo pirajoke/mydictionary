@@ -230,7 +230,35 @@ _CONTINUATION_PATTERNS = frozenset(
         "на чем фокус",
         "на чём фокус",
         "y después",
+        "thanks now tell me about study methods",
+        "merci maintenant parle moi des méthodes d apprentissage",
+        "danke und was ist mit methoden zum sprachenlernen",
+        "ありがとう では語学学習の方法について教えて",
+        "شكرا والآن حدثني عن طرق تعلم اللغات",
+        "谢谢 现在说说语言学习的方法",
+        "спасибо теперь расскажи про методы изучения языков",
+        "gracias ahora háblame de métodos para aprender idiomas",
     }
+)
+_CONTINUATION_PREFIXES = (
+    "thanks now tell me about ",
+    "and what about ",
+    "merci maintenant parle moi de ",
+    "et qu en est il ",
+    "danke jetzt erzähl mir etwas über ",
+    "und was ist mit ",
+    "ありがとう 次は",
+    "شكرا والآن أخبرني عن ",
+    "وماذا عن ",
+    "谢谢 现在告诉我",
+    "спасибо теперь расскажи про ",
+    "а что насчёт ",
+    "gracias ahora háblame de ",
+    "y qué hay del ",
+)
+_CONTINUATION_SHAPES = (
+    r"では\s+.{1,80}はどうですか",
+    r"那.{1,80}呢",
 )
 _DIRECT_PROGRESS_LOCALES = {
     "what should i focus on": "en",
@@ -279,19 +307,25 @@ _DEEP_RESPONSE_PREFIXES = (
     "compare ",
     "correct ",
     "create a multi step",
+    "discuss ",
     "explain ",
     "comment employer",
     "corrige ",
+    "discute ",
     "explique ",
     "erkläre ",
     "korrigiere ",
+    "diskutiere ",
     "اشرح ",
     "صحح ",
+    "ناقش ",
     "改正",
     "请解释",
     "请详细解释",
+    "讨论",
     "объясни ",
     "исправь ",
+    "обсуди ",
     "explica ",
     "vergleiche ",
     "قارن ",
@@ -305,6 +339,7 @@ _DEEP_RESPONSE_ACTION_MARKERS = (
     "説明してください",
     "直して",
     "比較して",
+    "議論して",
 )
 _DEEP_RESPONSE_PHRASES = frozenset(
     {
@@ -318,6 +353,30 @@ _DEEP_RESPONSE_PHRASES = frozenset(
         "explica esta regla gramatical",
         "review and analyze my mistakes",
         "why is this sentence wrong",
+        "tell me about language learning methods",
+        "parle moi des méthodes d apprentissage des langues",
+        "erzähle mir von methoden zum sprachenlernen",
+        "語学学習の方法について教えて",
+        "حدثني عن طرق تعلم اللغات",
+        "告诉我语言学习的方法",
+        "расскажи про методы изучения языков",
+        "háblame de métodos para aprender idiomas",
+        "thanks now tell me about study methods",
+        "merci maintenant parle moi des méthodes d apprentissage",
+        "danke und was ist mit methoden zum sprachenlernen",
+        "ありがとう では語学学習の方法について教えて",
+        "شكرا والآن حدثني عن طرق تعلم اللغات",
+        "谢谢 现在说说语言学习的方法",
+        "спасибо теперь расскажи про методы изучения языков",
+        "gracias ahora háblame de métodos para aprender idiomas",
+        "can we discuss ways to learn a language",
+        "peut on discuter des façons d apprendre une langue",
+        "können wir über wege zum sprachenlernen sprechen",
+        "言語を学ぶ方法について話せますか",
+        "هل يمكننا مناقشة طرق تعلم اللغة",
+        "我们可以聊聊学习语言的方法吗",
+        "можем обсудить способы изучения языка",
+        "podemos hablar de formas de aprender un idioma",
     }
 )
 _FAST_TRANSLATION_PHRASES = frozenset(
@@ -783,7 +842,11 @@ def is_mirror_continuation(
     words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
     if words_only in _GREETING_PATTERNS:
         return False
-    return words_only in _CONTINUATION_PATTERNS
+    return (
+        words_only in _CONTINUATION_PATTERNS
+        or any(words_only.startswith(prefix) for prefix in _CONTINUATION_PREFIXES)
+        or any(re.fullmatch(shape, words_only) for shape in _CONTINUATION_SHAPES)
+    )
 
 
 def classify_mirror_task(text: str) -> str:
