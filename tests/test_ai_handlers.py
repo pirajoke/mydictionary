@@ -31,6 +31,14 @@ def enabled_settings():
 class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
     def command_update(self):
         message = SimpleNamespace(reply_text=AsyncMock())
+        user_data = {}
+        bot.reset_block_state(
+            user_data,
+            list(range(10)),
+            "ja",
+            "food",
+            pack_id="ja-basics-100",
+        )
         update = SimpleNamespace(
             effective_message=message,
             message=message,
@@ -38,7 +46,7 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
             effective_chat=SimpleNamespace(id=55),
         )
         context = SimpleNamespace(
-            user_data={"block_session": "block-1"},
+            user_data=user_data,
             args=["Объясни", "слово"],
             bot=SimpleNamespace(),
         )
@@ -65,11 +73,12 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
         service.assert_not_called()
         answer.assert_not_awaited()
         self.assertEqual(
-            context.user_data["pending_ai_consent"]["request_kind"], "command"
+            context.user_data["pending_ai_consent"]["request_kind"],
+            "learning_companion",
         )
         self.assertIn("AI", message.reply_text.await_args.args[0])
 
-    async def test_ac_03_active_block_ai_button_requires_consent_before_provider_or_credit(self):
+    async def test_active_block_ai_button_opens_free_menu_before_consent_or_credit(self):
         query = SimpleNamespace(
             data="bai:block-1",
             answer=AsyncMock(),
@@ -93,13 +102,23 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
         ):
             await bot.block_ai_cb.__wrapped__(update, context)
 
+        store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
         service.assert_not_called()
         answer.assert_not_awaited()
         query.answer.assert_awaited_once_with()
-        pending = context.user_data["pending_ai_consent"]
-        self.assertEqual(pending["request_kind"], "active_block")
-        self.assertEqual(pending["block_session"], "block-1")
+        payload = query.message.reply_text.await_args
+        self.assertEqual(
+            payload.args[0],
+            bot.translate("ai_tutor_menu_intro", "ru"),
+        )
+        buttons = [
+            button
+            for row in payload.kwargs["reply_markup"].inline_keyboard
+            for button in row
+        ]
+        self.assertEqual(len(buttons), 4)
+        self.assertNotIn("pending_ai_consent", context.user_data)
 
     async def test_ac_03_acceptance_resumes_only_still_valid_pending_request(self):
         query = SimpleNamespace(

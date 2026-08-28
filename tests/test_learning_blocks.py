@@ -974,11 +974,12 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         bot.start_block_attempt(self.user_data, "quiz")
 
     def make_update(self, data):
+        message = SimpleNamespace(chat_id=123, reply_text=AsyncMock())
         query = SimpleNamespace(
             data=data,
             answer=AsyncMock(),
             edit_message_text=AsyncMock(),
-            message=SimpleNamespace(chat_id=123),
+            message=message,
         )
         update = SimpleNamespace(
             callback_query=query,
@@ -1005,18 +1006,28 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         }
         self.assertTrue(option_texts.issubset(allowed_translations))
 
-    async def test_ai_callback_answers_once_and_uses_active_session(self):
+    async def test_ai_callback_opens_free_action_menu_once_for_active_session(self):
         session_id = self.user_data["block_session"]
         update, context, query = self.make_update(f"bai:{session_id}")
 
-        with patch.object(
-            bot, "send_ai_tutor_answer", new=AsyncMock()
-        ) as send_answer:
+        with (
+            patch.object(bot, "AI_SETTINGS", SimpleNamespace(enabled=True)),
+            patch.object(
+                bot, "send_ai_tutor_answer", new=AsyncMock()
+            ) as send_answer,
+        ):
             await bot.block_ai_cb(update, context)
 
         self.assertEqual(query.answer.await_count, 1)
-        send_answer.assert_awaited_once()
-        self.assertEqual(send_answer.await_args.kwargs["user_id"], 1)
+        send_answer.assert_not_awaited()
+        payload = query.message.reply_text.await_args
+        self.assertEqual(payload.args[0], bot.translate("ai_tutor_menu_intro", "ru"))
+        buttons = [
+            button
+            for row in payload.kwargs["reply_markup"].inline_keyboard
+            for button in row
+        ]
+        self.assertEqual(len(buttons), 4)
 
     async def test_stale_session_callback_is_rejected(self):
         idx = self.indices[0]

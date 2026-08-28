@@ -154,7 +154,13 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
             effective_user=SimpleNamespace(id=self.user.id),
         )
         context = SimpleNamespace(
-            user_data={"pending_ai_consent": {"request_kind": "command"}}
+            user_data={
+                "pending_ai_consent": {"request_kind": "command"},
+                "pending_ai_tutor": {
+                    "block_session": "private-block",
+                    "expires_at": 9_999_999_999,
+                },
+            }
         )
         with (
             patch.object(bot, "get_store", return_value=self.store),
@@ -172,6 +178,7 @@ class PrivacyHandlerTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         self.assertNotIn("pending_ai_consent", context.user_data)
+        self.assertNotIn("pending_ai_tutor", context.user_data)
         self.assertEqual(self.store.get_mirror_dialogue(self.user.id), [])
         with self.store.Session() as session:
             self.assertEqual(session.get(User, self.user.id).privacy_status, "active")
