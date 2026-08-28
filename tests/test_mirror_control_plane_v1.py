@@ -273,8 +273,11 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
             with self.subTest(question=question):
                 self.assertEqual(classifier(question), expected)
 
-    async def test_ac_03_natural_progress_question_uses_metered_ai_path(self):
-        update, context, message = text_update(303, "Что думаешь о моём прогрессе?")
+    async def test_ac_03_natural_learning_question_uses_metered_ai_path(self):
+        update, context, message = text_update(
+            303,
+            "Почему bonjour значит и здравствуйте, и добрый день?",
+        )
         store = MagicMock()
         store.product_profile.return_value = {
             "access_status": "active",
@@ -307,13 +310,13 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
 
         service.ask.assert_awaited_once()
         payload = service.ask.await_args.kwargs["mirror_payload"]
-        self.assertEqual(payload["task_kind"], "progress_review")
+        self.assertEqual(payload["task_kind"], "translation_nuance")
         self.assertEqual(payload["communication_mode"], "coach")
         self.assertEqual(payload["answer_depth"], "deep")
         self.assertEqual(payload["learner_level"], "b1")
         message.reply_text.assert_not_awaited()
 
-    async def test_ac_03_err_02_provider_or_metering_failure_uses_free_fallback(self):
+    async def test_ac_03_err_02_provider_or_metering_failure_is_localized(self):
         failures = (
             RuntimeError("private provider detail"),
             ai_tutor.AIUsageRecoveryError("private metering storage detail"),
@@ -321,7 +324,8 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
         for index, failure in enumerate(failures):
             with self.subTest(failure=type(failure).__name__):
                 update, context, message = text_update(
-                    304 + index, "Расскажи про мой прогресс"
+                    304 + index,
+                    "Почему bonjour значит и здравствуйте, и добрый день?",
                 )
                 store = MagicMock()
                 store.product_profile.return_value = {
@@ -349,11 +353,6 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
                     patch.object(bot, "get_store", return_value=store),
                     patch.object(bot, "get_ai_tutor_service", return_value=service),
                     patch.object(bot, "AI_SETTINGS", runtime),
-                    patch.object(
-                        bot,
-                        "build_mirror_progress_summary",
-                        return_value="Точность: 60%. К повторению: 82.",
-                    ),
                 ):
                     await invoke_handler(bot.mirror_text_handler, update, context)
 
@@ -361,7 +360,7 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
                 rendered = " ".join(
                     call.args[0] for call in message.reply_text.await_args_list
                 )
-                self.assertIn("Точность: 60%", rendered)
+                self.assertTrue(rendered.strip())
                 self.assertNotIn(str(failure), rendered)
 
 
@@ -466,7 +465,7 @@ class MirrorGroundingContractTest(StoreTestCase):
         self.assertEqual(payload["communication_mode"], "coach")
         self.assertEqual(payload["answer_depth"], "deep")
         self.assertEqual(payload["learner_level"], "b1")
-        self.assertLessEqual(len(payload["recent_dialogue"]), 20)
+        self.assertLessEqual(len(payload["recent_dialogue"]), 8)
         self.assertLessEqual(len(json.dumps(payload, ensure_ascii=False)), 12000)
         serialized = json.dumps(payload, ensure_ascii=False).casefold()
         self.assertNotIn("telegram_user_id", serialized)

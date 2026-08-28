@@ -28,7 +28,9 @@ from .mirror_assistant import (
     MIRROR_COMPACT_REPLY_POLICY,
     MIRROR_SAFETY_ENVELOPE,
     MIRROR_STYLE_GUIDANCE,
+    is_mirror_continuation,
     normalize_companion_learner_context,
+    normalize_mirror_dialogue,
 )
 from .prompt_contracts import load_prompt_contract
 from .storage import AIQuotaExceeded, DatabaseStore
@@ -148,7 +150,7 @@ MIRROR_RESPONSE_SCHEMA = {
 
 _PROMPT_ROOT = Path(__file__).resolve().parents[1] / "prompts"
 TUTOR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v1.txt")
-MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v3.txt")
+MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v4.txt")
 
 
 class AIConfigurationError(RuntimeError):
@@ -977,24 +979,101 @@ def render_tutor_answer(result: TutorResult) -> str:
 
 def render_mirror_answer(answer: MirrorAnswer, *, available_credits: int) -> str:
     del available_credits
-    lines = [answer.answer_ru]
-    if answer.evidence_ru:
-        lines.extend(["", *[f"• {value}" for value in answer.evidence_ru]])
-    if answer.interpretation_ru:
-        lines.extend(["", answer.interpretation_ru])
+    seen: set[str] = set()
+    protected_period = "\ue000"
+
+    def clean(value: str) -> str:
+        plain = re.sub(r"```[A-Za-z0-9_-]*", "", str(value))
+        return re.sub(r"\s+", " ", plain.strip())
+
+    def sentences(value: str) -> list[str]:
+        protected = re.sub(r"(?<=\d)\.(?=\d)", protected_period, value)
+        protected = re.sub(
+            r"\b(?:[A-Za-z]\.){2,}",
+            lambda match: match.group(0).replace(".", protected_period),
+            protected,
+        )
+        return [
+            unit.replace(protected_period, ".")
+            for unit in re.findall(r"[^.!?。！？]+(?:[.!?。！？]+|$)", protected)
+        ]
+
+    def take(value: str, *, sentence_level: bool = True) -> str:
+        normalized = clean(value)
+        if not normalized:
+            return ""
+        units = (
+            sentences(normalized)
+            if sentence_level
+            else [normalized]
+        )
+        kept: list[str] = []
+        for unit in units:
+            clean_unit = unit.strip()
+            key = clean_unit.casefold()
+            duplicate = any(
+                key == existing
+                or (
+                    min(len(key), len(existing)) >= 8
+                    and key in existing
+                )
+                for existing in seen
+            )
+            if not clean_unit or duplicate:
+                continue
+            seen.add(key)
+            kept.append(clean_unit)
+        return " ".join(kept)
+
+    answer_text = take(answer.answer_ru)
+    support: list[str] = []
+    for value in answer.evidence_ru:
+        unique = take(value)
+        if unique:
+            support.append(f"• {unique}")
+    interpretation = take(answer.interpretation_ru)
+    if interpretation:
+        support.append(interpretation)
     for item in answer.language_items:
         pronunciation = f" {item.transcription}" if item.transcription else ""
-        lines.extend(["", f"{item.target}{pronunciation} — {item.meaning_ru}"])
-        if item.note_ru:
-            lines.append(item.note_ru)
+        item_text = take(
+            f"{item.target}{pronunciation} — {item.meaning_ru}",
+            sentence_level=False,
+        )
+        if item_text:
+            support.append(item_text)
+        note = take(item.note_ru)
+        if note:
+            support.append(note)
     if answer.examples:
-        lines.append("")
-        for example in answer.examples:
-            pronunciation = f" {example.transcription}" if example.transcription else ""
-            lines.append(f"{example.target}{pronunciation} — {example.russian}")
-    if answer.next_step_ru:
-        lines.extend(["", answer.next_step_ru])
-    return "\n".join(lines)
+        example = answer.examples[0]
+        pronunciation = f" {example.transcription}" if example.transcription else ""
+        example_text = take(
+            f"{example.target}{pronunciation} — {example.russian}",
+            sentence_level=False,
+        )
+        if example_text:
+            support.append(example_text)
+    next_step = take(answer.next_step_ru)
+
+    paragraphs = [answer_text]
+    if support:
+        paragraphs.append("\n".join(support))
+    if next_step:
+        paragraphs.append(next_step)
+    rendered = "\n\n".join(value for value in paragraphs if value)
+    if len(rendered) <= 900:
+        return rendered or "."
+
+    candidate = rendered[:900].rstrip()
+    boundaries = list(re.finditer(r"[.!?。！？]", candidate))
+    if boundaries:
+        candidate = candidate[: boundaries[-1].end()].rstrip()
+    if candidate:
+        if not re.search(r"[.!?。！？]$", candidate):
+            candidate = candidate[:899].rstrip(" ,;:-") + "."
+        return candidate
+    return "."
 
 
 def _attr(value: Any, name: str, default: Any = 0) -> Any:
@@ -1128,7 +1207,7 @@ class OpenAIResponsesProvider:
             model=self.model,
             instructions=MIRROR_INSTRUCTIONS,
             input=serialized_input,
-            max_output_tokens=self.max_output_tokens,
+            max_output_tokens=min(self.max_output_tokens, 480),
             service_tier=self.service_tier,
             reasoning={"effort": "medium"},
             text={
@@ -1425,7 +1504,10 @@ class AITutorService:
             legacy_fields | locale_fields | companion_fields,
             control_fields | locale_fields | companion_fields,
         )
-        if set(payload) not in valid_field_sets:
+        supplied_fields = set(payload)
+        has_continuation_flag = "is_continuation" in supplied_fields
+        contract_fields = supplied_fields - {"is_continuation"}
+        if contract_fields not in valid_field_sets:
             raise ValueError("Mirror provider payload is invalid")
         if payload["safety_envelope"] != MIRROR_SAFETY_ENVELOPE:
             raise ValueError("Mirror safety envelope is invalid")
@@ -1465,6 +1547,18 @@ class AITutorService:
         question = str(payload["question"]).strip()
         if not 1 <= len(question) <= 500:
             raise ValueError("Mirror question must contain 1-500 characters")
+        normalized_dialogue = normalize_mirror_dialogue(payload["recent_dialogue"])[-8:]
+        computed_continuation = is_mirror_continuation(
+            question,
+            recent_dialogue=normalized_dialogue,
+        )
+        if has_continuation_flag and (
+            type(payload["is_continuation"]) is not bool
+            or payload["is_continuation"] is not computed_continuation
+        ):
+            raise ValueError("Mirror continuation flag is invalid")
+        provider_payload["recent_dialogue"] = normalized_dialogue
+        provider_payload["is_continuation"] = computed_continuation
         serialized_input = json.dumps(
             provider_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
         )
@@ -1480,7 +1574,7 @@ class AITutorService:
         budget = estimate_mirror_provider_budget(
             serialized_input=serialized_input,
             pricing=self.settings.pricing,
-            max_output_tokens=self.settings.max_output_tokens,
+            max_output_tokens=min(self.settings.max_output_tokens, 480),
         )
         if (
             budget.projected_cost_micro_usd

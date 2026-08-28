@@ -6,7 +6,7 @@ code that consumes them.
 | Contract | Version | Runtime consumer | Evaluation surface |
 |---|---|---|---|
 | `ai-tutor-v1.txt` | AI Tutor v1 | `OpenAIResponsesProvider.generate` | `tests/fixtures/ai_tutor_eval.json` |
-| `mirror-v3.txt` | Mirror v3 | `OpenAIResponsesProvider.generate_mirror` | `tests/fixtures/mirror_quality_v2.json` |
+| `mirror-v4.txt` | Mirror v4 | `OpenAIResponsesProvider.generate_mirror` | `tests/fixtures/mirror_quality_v2.json`, `tests/test_zerkalo_communication_v1.py` |
 
 ## Change procedure
 

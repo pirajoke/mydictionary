@@ -3149,6 +3149,69 @@ for _locale, _messages in _AI_TUTOR_ACTION_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 
+_ZERKALO_COMMUNICATION_COPY = {
+    "en": {
+        "mirror_progress_facts": "Accuracy {accuracy}% · {tracked} words · {due} due · {streak}-day streak.",
+        "mirror_progress_focus_weak": "Focus now: review “{term}”.",
+        "mirror_progress_focus_due": "Focus now: complete {due} due reviews.",
+        "mirror_progress_no_history": "There is not enough learning history yet.",
+        "mirror_progress_focus_starter": "Start one short five-word lesson.",
+    },
+    "fr": {
+        "mirror_progress_facts": "Précision {accuracy} % · {tracked} mots · {due} à réviser · série de {streak} jours.",
+        "mirror_progress_focus_weak": "Priorité : révisez « {term} ».",
+        "mirror_progress_focus_due": "Priorité : terminez les {due} révisions prévues.",
+        "mirror_progress_no_history": "Il n’y a pas encore assez d’historique d’apprentissage.",
+        "mirror_progress_focus_starter": "Commencez une courte leçon de cinq mots.",
+    },
+    "de": {
+        "mirror_progress_facts": "Genauigkeit {accuracy} % · {tracked} Wörter · {due} fällig · Serie: {streak} Tage.",
+        "mirror_progress_focus_weak": "Fokus jetzt: „{term}“ wiederholen.",
+        "mirror_progress_focus_due": "Fokus jetzt: {due} fällige Wiederholungen abschließen.",
+        "mirror_progress_no_history": "Es gibt noch nicht genug Lernverlauf.",
+        "mirror_progress_focus_starter": "Starte eine kurze Lektion mit fünf Wörtern.",
+    },
+    "ja": {
+        "mirror_progress_facts": "正答率 {accuracy}%・学習語 {tracked}・復習 {due}・連続 {streak}日。",
+        "mirror_progress_focus_weak": "今の重点：「{term}」を復習しましょう。",
+        "mirror_progress_focus_due": "今の重点：期限の来た復習を {due} 件終えましょう。",
+        "mirror_progress_no_history": "学習履歴はまだ十分にありません。",
+        "mirror_progress_focus_starter": "5語の短いレッスンを始めましょう。",
+    },
+    "ar": {
+        "mirror_progress_facts": "الدقة {accuracy}% · الكلمات {tracked} · للمراجعة {due} · السلسلة {streak} أيام.",
+        "mirror_progress_focus_weak": "التركيز الآن: راجع «{term}».",
+        "mirror_progress_focus_due": "التركيز الآن: أكمل {due} مراجعات مستحقة.",
+        "mirror_progress_no_history": "لا يوجد سجل تعلم كافٍ بعد.",
+        "mirror_progress_focus_starter": "ابدأ درساً قصيراً من خمس كلمات.",
+    },
+    "zh": {
+        "mirror_progress_facts": "正确率 {accuracy}% · 已学 {tracked} 词 · 待复习 {due} · 连续 {streak} 天。",
+        "mirror_progress_focus_weak": "当前重点：复习“{term}”。",
+        "mirror_progress_focus_due": "当前重点：完成 {due} 项到期复习。",
+        "mirror_progress_no_history": "目前还没有足够的学习记录。",
+        "mirror_progress_focus_starter": "先开始一节五词短课。",
+    },
+    "ru": {
+        "mirror_progress_facts": "Точность {accuracy}% · слов {tracked} · к повторению {due} · серия {streak} дн.",
+        "mirror_progress_focus_weak": "Сейчас фокус: повтори «{term}».",
+        "mirror_progress_focus_due": "Сейчас фокус: пройди {due} запланированных повторения.",
+        "mirror_progress_no_history": "Данных об обучении пока недостаточно.",
+        "mirror_progress_focus_starter": "Начни короткий урок из пяти слов.",
+    },
+    "es": {
+        "mirror_progress_facts": "Precisión {accuracy}% · {tracked} palabras · {due} pendientes · racha de {streak} días.",
+        "mirror_progress_focus_weak": "Enfócate ahora en repasar «{term}».",
+        "mirror_progress_focus_due": "Enfócate ahora en completar {due} repasos pendientes.",
+        "mirror_progress_no_history": "Todavía no hay suficiente historial de aprendizaje.",
+        "mirror_progress_focus_starter": "Empieza una lección corta de cinco palabras.",
+    },
+}
+
+for _locale, _messages in _ZERKALO_COMMUNICATION_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
+
 def normalize_locale(value: str | None, *, fallback: str = DEFAULT_INTERFACE_LOCALE) -> str:
     """Normalize Telegram language_code without guessing unsupported locales."""
     safe_fallback = fallback if fallback in INTERFACE_LOCALES else DEFAULT_INTERFACE_LOCALE

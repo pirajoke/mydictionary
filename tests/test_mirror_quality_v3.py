@@ -82,7 +82,7 @@ class MirrorNaturalReplyContractTest(unittest.TestCase):
         self.assertNotIn("Транскрипция:", rendered)
         self.assertNotIn("AI-кредиты", rendered)
 
-    def test_ac_04_payload_contains_style_and_latest_twenty_turns(self):
+    def test_ac_04_payload_contains_style_and_latest_eight_turns(self):
         turns = [
             {"role": "user" if index % 2 == 0 else "assistant", "text": f"turn {index}"}
             for index in range(24)
@@ -98,8 +98,8 @@ class MirrorNaturalReplyContractTest(unittest.TestCase):
         )
 
         self.assertEqual(payload["response_style"], "conversation")
-        self.assertEqual(len(payload["recent_dialogue"]), 20)
-        self.assertEqual(payload["recent_dialogue"][0]["text"], "turn 4")
+        self.assertEqual(len(payload["recent_dialogue"]), 8)
+        self.assertEqual(payload["recent_dialogue"][0]["text"], "turn 16")
         self.assertEqual(payload["recent_dialogue"][-1]["text"], "turn 23")
 
 
