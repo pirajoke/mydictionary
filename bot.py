@@ -275,6 +275,13 @@ _VOICE_TRANSLATION: VoiceTranslationService | None = None
 LAST_PRONUNCIATION_MESSAGES_KEY = "last_pronunciation_messages"
 PENDING_AI_QUESTION_KEY = "pending_ai_question"
 PENDING_AI_QUESTION_TTL_SECONDS = 30 * 60
+PENDING_AI_TUTOR_KEY = "pending_ai_tutor"
+PENDING_AI_TUTOR_TTL_SECONDS = 10 * 60
+AI_TUTOR_ACTION_QUESTION_KEYS = {
+    "vocabulary": "ai_tutor_question_vocabulary",
+    "mistakes": "ai_tutor_question_mistakes",
+    "progress": "ai_tutor_question_progress",
+}
 
 
 def database_url() -> str:
@@ -1771,6 +1778,7 @@ async def privacy_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             int(update.effective_user.id), consent_type="ai_processing"
         )
         context.user_data.pop("pending_ai_consent", None)
+        context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
         record_product_event(
             "ai_consent_revoked",
             properties={"consent_type": "ai_processing"},
@@ -3228,13 +3236,17 @@ async def request_ai_processing_consent(
     request_kind: str,
     question: str = "",
     locale: str = "ru",
+    task_kind: str | None = None,
 ) -> None:
-    context.user_data["pending_ai_consent"] = {
+    pending = {
         "request_kind": request_kind,
         "question": question,
         "block_session": context.user_data.get("block_session"),
         "expires_at": int(time.time()) + 600,
     }
+    if task_kind is not None:
+        pending["task_kind"] = task_kind
+    context.user_data["pending_ai_consent"] = pending
     await message.reply_text(
         translate(
             "ai_processing_consent",
@@ -3476,10 +3488,46 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         await handler(update, context)
         return
 
+    question = str(update.message.text or "").strip()
+    pending = context.user_data.get(PENDING_AI_TUTOR_KEY)
+    if isinstance(pending, Mapping) and question:
+        context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
+        try:
+            expires_at = int(pending.get("expires_at", 0))
+        except (TypeError, ValueError):
+            expires_at = 0
+        if (
+            expires_at >= int(time.time())
+            and pending.get("block_session")
+            == context.user_data.get("block_session")
+        ):
+            await handle_mirror_question(
+                update,
+                context,
+                question=question,
+                communication_mode="brief",
+                answer_depth="compact",
+            )
+            return
+        await update.message.reply_text(
+            translate(
+                "ai_tutor_pending_stale",
+                interface_locale_for_update(update),
+            )
+        )
+    elif pending is not None and question:
+        context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
+        await update.message.reply_text(
+            translate(
+                "ai_tutor_pending_stale",
+                interface_locale_for_update(update),
+            )
+        )
+
     await handle_mirror_question(
         update,
         context,
-        question=str(update.message.text or "").strip(),
+        question=question,
     )
 
 
@@ -3488,6 +3536,9 @@ async def handle_mirror_question(
     context: ContextTypes.DEFAULT_TYPE,
     *,
     question: str,
+    communication_mode: str | None = None,
+    answer_depth: str | None = None,
+    task_kind: str | None = None,
 ) -> None:
     """Answer one typed or transcribed question through the same Mirror path."""
     message = getattr(update, "effective_message", None) or update.message
@@ -3519,10 +3570,21 @@ async def handle_mirror_question(
     mirror_profile = get_bot_profile()
     preferences = _mirror_preferences(store, user_id)
     control_policy = _mirror_control_policy(store)
-    if preferences["mode"] not in control_policy["enabled_modes"]:
-        preferences["mode"] = str(control_policy["default_mode"])
+    selected_mode = (
+        normalize_mirror_style(communication_mode)
+        if communication_mode is not None
+        else preferences["mode"]
+    )
+    if (
+        communication_mode is None
+        and selected_mode not in control_policy["enabled_modes"]
+    ):
+        selected_mode = str(control_policy["default_mode"])
+    selected_depth = str(answer_depth or preferences["depth"]).strip().lower()
+    if selected_depth not in MIRROR_ANSWER_DEPTHS:
+        selected_depth = str(preferences["depth"])
     intent = classify_mirror_intent(question)
-    task_kind = classify_mirror_task(question)
+    selected_task_kind = task_kind or classify_mirror_task(question)
     request_id = None
     if intent == "greeting":
         role = str(profile.get("role") or "learner")
@@ -3565,9 +3627,27 @@ async def handle_mirror_question(
         except (TypeError, ValueError):
             consented = False
         if not consented:
-            await message.reply_text(
-                translate("ai_consent_required", reply_locale)
-            )
+            if communication_mode == "brief" and answer_depth == "compact":
+                if (
+                    not AI_SETTINGS.consent_version
+                    or not AI_SETTINGS.processing_notice
+                ):
+                    await message.reply_text(
+                        translate("ai_unavailable", reply_locale)
+                    )
+                    return
+                await request_ai_processing_consent(
+                    message,
+                    context,
+                    request_kind="learning_companion",
+                    question=question,
+                    locale=reply_locale,
+                    task_kind=task_kind,
+                )
+            else:
+                await message.reply_text(
+                    translate("ai_consent_required", reply_locale)
+                )
             return
         try:
             snapshot = (
@@ -3600,7 +3680,7 @@ async def handle_mirror_question(
             ).strip()
             mode_guidance = str(
                 control_policy["mode_guidance"].get(
-                    preferences["mode"], persona
+                    selected_mode, persona
                 )
             ).strip()
             combined_guidance = f"{persona}\n\n{mode_guidance}"[:1000]
@@ -3623,10 +3703,10 @@ async def handle_mirror_question(
                     learner_level=preferences["level"],
                 ),
                 recent_dialogue=dialogue,
-                response_style=preferences["mode"],
-                task_kind=task_kind,
-                communication_mode=preferences["mode"],
-                answer_depth=preferences["depth"],
+                response_style=selected_mode,
+                task_kind=selected_task_kind,
+                communication_mode=selected_mode,
+                answer_depth=selected_depth,
                 learner_level=preferences["level"],
                 interface_locale=reply_locale,
             )
@@ -3656,7 +3736,7 @@ async def handle_mirror_question(
             return
         except Exception as exc:
             logger.warning("Mirror AI failed: error_type=%s", type(exc).__name__)
-            if task_kind == "progress_review":
+            if selected_task_kind == "progress_review":
                 response = build_mirror_progress_summary(store, user_id)
             else:
                 await message.reply_text(
@@ -3747,7 +3827,13 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         or not isinstance(pending, dict)
         or expires_at < int(time.time())
         or pending.get("request_kind")
-        not in {"command", "active_block", "voice_assistant"}
+        not in {
+            "command",
+            "active_block",
+            "learning_companion",
+            "voice_assistant",
+        }
+        or pending.get("task_kind") not in {None, "progress_review"}
         or (
             pending.get("request_kind") != "voice_assistant"
             and pending.get("block_session")
@@ -3775,6 +3861,16 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     question = str(pending.get("question") or "").strip()
     if not question:
         question = translate("ai_default_question", locale)
+    if pending["request_kind"] == "learning_companion":
+        companion_kwargs = {
+            "question": question,
+            "communication_mode": "brief",
+            "answer_depth": "compact",
+        }
+        if pending.get("task_kind") is not None:
+            companion_kwargs["task_kind"] = pending["task_kind"]
+        await handle_mirror_question(update, context, **companion_kwargs)
+        return
     await send_ai_tutor_answer(
         query.message,
         context,
@@ -3789,13 +3885,18 @@ async def cmd_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     locale = interface_locale_for_update(update)
     question = " ".join(getattr(context, "args", [])).strip()
     if not question:
-        question = translate("ai_default_question", locale)
-    await request_ai_tutor_answer(
-        update.message,
+        if not AI_SETTINGS.enabled:
+            await update.message.reply_text(translate("ai_disabled", locale))
+            return
+        await send_ai_tutor_menu(update.message, context, locale=locale)
+        return
+    if active_tutor_context(context.user_data) is None:
+        await update.message.reply_text(translate("ai_need_block", locale))
+        return
+    await request_compact_learning_companion(
+        update,
         context,
-        question,
-        user_id=int(update.effective_user.id),
-        request_kind="command",
+        question=question,
         locale=locale,
     )
 
@@ -5575,6 +5676,86 @@ def build_study_buttons(
     return InlineKeyboardMarkup(rows)
 
 
+async def send_ai_tutor_menu(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    locale: str,
+) -> None:
+    """Show the deterministic tutor entry point without touching AI or credits."""
+    session_id = str(context.user_data.get("block_session") or "").strip()
+    if not session_id:
+        await message.reply_text(translate("ai_need_block", locale))
+        return
+    rows = [
+        [
+            InlineKeyboardButton(
+                translate("ai_tutor_action_vocabulary", locale),
+                callback_data=f"bait:{session_id}:vocabulary",
+            ),
+            InlineKeyboardButton(
+                translate("ai_tutor_action_mistakes", locale),
+                callback_data=f"bait:{session_id}:mistakes",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                translate("ai_tutor_action_progress", locale),
+                callback_data=f"bait:{session_id}:progress",
+            ),
+            InlineKeyboardButton(
+                translate("ai_tutor_action_ask", locale),
+                callback_data=f"bait:{session_id}:ask",
+            ),
+        ],
+    ]
+    await message.reply_text(
+        translate("ai_tutor_menu_intro", locale),
+        reply_markup=InlineKeyboardMarkup(rows),
+    )
+
+
+async def request_compact_learning_companion(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    question: str,
+    locale: str,
+    task_kind: str | None = None,
+) -> None:
+    """Require consent, then route one bounded request through grounded Mirror."""
+    message = getattr(update, "effective_message", None) or update.message
+    if not AI_SETTINGS.enabled:
+        await message.reply_text(translate("ai_disabled", locale))
+        return
+    if not AI_SETTINGS.consent_version or not AI_SETTINGS.processing_notice:
+        await message.reply_text(translate("ai_unavailable", locale))
+        return
+    user_id = int(update.effective_user.id)
+    if get_store().has_consent(
+        user_id,
+        consent_type="ai_processing",
+        document_version=AI_SETTINGS.consent_version,
+    ):
+        companion_kwargs = {
+            "question": question,
+            "communication_mode": "brief",
+            "answer_depth": "compact",
+        }
+        if task_kind is not None:
+            companion_kwargs["task_kind"] = task_kind
+        await handle_mirror_question(update, context, **companion_kwargs)
+        return
+    await request_ai_processing_consent(
+        message,
+        context,
+        request_kind="learning_companion",
+        question=question,
+        locale=locale,
+        task_kind=task_kind,
+    )
+
+
 @auth
 async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invalidate_block_session(context.user_data)
@@ -5697,33 +5878,17 @@ async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def block_ai_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Consent preflight that cannot call AI before normal access control."""
+    """Open the free tutor menu after normal access and session validation."""
     query = update.callback_query
     parts = query.data.split(":")
-    if (
-        len(parts) != 2
-        or parts[1] != context.user_data.get("block_session")
-    ):
+    if len(parts) != 2:
         await reject_block_callback(query)
         return
-    user_id = int(update.effective_user.id)
-    if (
-        AI_SETTINGS.enabled
-        and AI_SETTINGS.consent_version
-        and not get_store().has_consent(
-            user_id,
-            consent_type="ai_processing",
-            document_version=AI_SETTINGS.consent_version,
-        )
-    ):
-        await query.answer()
-        await request_ai_tutor_answer(
-            query.message,
-            context,
-            translate("ai_default_question", interface_locale_for_update(update)),
-            user_id=user_id,
-            request_kind="active_block",
-            locale=interface_locale_for_update(update),
+    locale = interface_locale_for_update(update)
+    if not AI_SETTINGS.enabled:
+        await query.answer(
+            translate("ai_disabled", locale),
+            show_alert=True,
         )
         return
     await _authorized_block_ai_cb.__wrapped__(update, context)
@@ -5739,24 +5904,47 @@ async def _authorized_block_ai_cb(
         return
     activate_block_language(context.user_data)
     locale = interface_locale_for_update(update)
-    question = translate("ai_default_question", locale)
-    if AI_SETTINGS.enabled:
-        await request_ai_tutor_answer(
-            query.message,
-            context,
-            question,
-            user_id=int(update.effective_user.id),
-            request_kind="active_block",
-            locale=locale,
+    await send_ai_tutor_menu(query.message, context, locale=locale)
+
+
+@auth
+async def block_ai_action_cb(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Run one explicit tutor action bound to the active learning block."""
+    query = update.callback_query
+    parts = str(query.data).split(":")
+    if len(parts) != 3 or parts[2] not in {
+        *AI_TUTOR_ACTION_QUESTION_KEYS,
+        "ask",
+    }:
+        await reject_block_callback(query)
+        return
+    locale = interface_locale_for_update(update)
+    if not AI_SETTINGS.enabled:
+        await query.answer(
+            translate("ai_disabled", locale),
+            show_alert=True,
         )
-    else:
-        await send_ai_tutor_answer(
-            query.message,
-            context,
-            question,
-            user_id=int(update.effective_user.id),
-            locale=locale,
-        )
+        return
+    if not await validate_block_callback(query, context.user_data, parts[1]):
+        return
+    activate_block_language(context.user_data)
+    action = parts[2]
+    if action == "ask":
+        context.user_data[PENDING_AI_TUTOR_KEY] = {
+            "block_session": parts[1],
+            "expires_at": int(time.time()) + PENDING_AI_TUTOR_TTL_SECONDS,
+        }
+        await query.message.reply_text(translate("ai_tutor_ask_prompt", locale))
+        return
+    await request_compact_learning_companion(
+        update,
+        context,
+        question=translate(AI_TUTOR_ACTION_QUESTION_KEYS[action], locale),
+        locale=locale,
+        task_kind="progress_review",
+    )
 
 
 @auth
@@ -6565,6 +6753,7 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(block_topics_cb, pattern=r"^btopics(?::|$)"))
     app.add_handler(CallbackQueryHandler(learn_play_cb, pattern=r"^lplay:"))
     app.add_handler(CallbackQueryHandler(block_ai_cb, pattern=r"^bai:"))
+    app.add_handler(CallbackQueryHandler(block_ai_action_cb, pattern=r"^bait:"))
     app.add_handler(CallbackQueryHandler(block_voice_cb, pattern=r"^bvoice:"))
     app.add_handler(
         CallbackQueryHandler(block_voice_cb, pattern=r"^bconversation:")

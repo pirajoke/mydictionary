@@ -2903,6 +2903,252 @@ for _locale, _messages in _SERVICE_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 
+_AI_TUTOR_ACTION_COPY = {
+    "en": {
+        "ai_tutor_menu_intro": (
+            "AI Tutor uses your current lesson and progress. Choose a short "
+            "analysis or ask one question. An AI credit is used only when an "
+            "answer is generated."
+        ),
+        "ai_tutor_action_vocabulary": "📚 Vocabulary",
+        "ai_tutor_action_mistakes": "🎯 Mistakes",
+        "ai_tutor_action_progress": "📊 Progress",
+        "ai_tutor_action_ask": "💬 Ask Tutor",
+        "ai_tutor_ask_prompt": (
+            "Send one question about this lesson or your progress. I’ll answer briefly."
+        ),
+        "ai_tutor_question_vocabulary": (
+            "Analyze my current lesson and progress. In at most two short bullets, "
+            "name the most useful pattern in my known or weak vocabulary and give "
+            "one next step. If the data is missing, say so; do not invent facts."
+        ),
+        "ai_tutor_question_mistakes": (
+            "Analyze my current lesson and recorded progress. In at most two short "
+            "bullets, name my main observed error pattern and give one next step. "
+            "If no mistakes are recorded, say so; do not invent facts."
+        ),
+        "ai_tutor_question_progress": (
+            "Analyze my learning progress. In at most two short bullets, separate "
+            "measured facts from one next step. If progress data is missing, say so; "
+            "do not invent facts."
+        ),
+        "ai_tutor_pending_stale": (
+            "That Tutor question has expired. Your message will be handled normally."
+        ),
+    },
+    "fr": {
+        "ai_tutor_menu_intro": (
+            "Le tuteur IA utilise votre leçon et vos progrès actuels. Choisissez "
+            "une analyse courte ou posez une question. Un crédit IA n’est utilisé "
+            "que lorsqu’une réponse est générée."
+        ),
+        "ai_tutor_action_vocabulary": "📚 Vocabulaire",
+        "ai_tutor_action_mistakes": "🎯 Erreurs",
+        "ai_tutor_action_progress": "📊 Progrès",
+        "ai_tutor_action_ask": "💬 Poser une question",
+        "ai_tutor_ask_prompt": (
+            "Envoyez une question sur cette leçon ou vos progrès. Je répondrai brièvement."
+        ),
+        "ai_tutor_question_vocabulary": (
+            "Analyse ma leçon et mes progrès actuels. En deux points courts maximum, "
+            "indique le schéma le plus utile dans mon vocabulaire connu ou fragile, "
+            "puis une prochaine étape. Si les données manquent, dis-le sans rien inventer."
+        ),
+        "ai_tutor_question_mistakes": (
+            "Analyse ma leçon et mes progrès enregistrés. En deux points courts maximum, "
+            "indique mon principal type d’erreur observé, puis une prochaine étape. "
+            "Si aucune erreur n’est enregistrée, dis-le sans rien inventer."
+        ),
+        "ai_tutor_question_progress": (
+            "Analyse mes progrès. En deux points courts maximum, sépare les faits "
+            "mesurés d’une prochaine étape. Si les données manquent, dis-le sans rien inventer."
+        ),
+        "ai_tutor_pending_stale": (
+            "Cette question au tuteur a expiré. Votre message sera traité normalement."
+        ),
+    },
+    "de": {
+        "ai_tutor_menu_intro": (
+            "Der KI-Tutor nutzt deine aktuelle Lektion und deinen Fortschritt. "
+            "Wähle eine kurze Analyse oder stelle eine Frage. Ein KI-Guthaben wird "
+            "nur verbraucht, wenn eine Antwort erzeugt wird."
+        ),
+        "ai_tutor_action_vocabulary": "📚 Wortschatz",
+        "ai_tutor_action_mistakes": "🎯 Fehler",
+        "ai_tutor_action_progress": "📊 Fortschritt",
+        "ai_tutor_action_ask": "💬 Tutor fragen",
+        "ai_tutor_ask_prompt": (
+            "Sende eine Frage zu dieser Lektion oder deinem Fortschritt. Ich antworte kurz."
+        ),
+        "ai_tutor_question_vocabulary": (
+            "Analysiere meine aktuelle Lektion und meinen Fortschritt. Nenne in höchstens "
+            "zwei kurzen Punkten das nützlichste Muster in meinem bekannten oder schwachen "
+            "Wortschatz und einen nächsten Schritt. Fehlende Daten nicht erfinden."
+        ),
+        "ai_tutor_question_mistakes": (
+            "Analysiere meine aktuelle Lektion und den erfassten Fortschritt. Nenne in "
+            "höchstens zwei kurzen Punkten mein wichtigstes beobachtetes Fehlermuster und "
+            "einen nächsten Schritt. Wenn keine Fehler erfasst sind, sage es."
+        ),
+        "ai_tutor_question_progress": (
+            "Analysiere meinen Lernfortschritt. Trenne in höchstens zwei kurzen Punkten "
+            "gemessene Fakten von einem nächsten Schritt. Fehlende Daten nicht erfinden."
+        ),
+        "ai_tutor_pending_stale": (
+            "Diese Tutor-Frage ist abgelaufen. Deine Nachricht wird normal verarbeitet."
+        ),
+    },
+    "ja": {
+        "ai_tutor_menu_intro": (
+            "AIチューターは現在のレッスンと進捗を使います。短い分析を選ぶか、質問を1つ送ってください。"
+            "AIクレジットは回答が生成されたときだけ使われます。"
+        ),
+        "ai_tutor_action_vocabulary": "📚 単語を分析",
+        "ai_tutor_action_mistakes": "🎯 間違いを分析",
+        "ai_tutor_action_progress": "📊 進捗を分析",
+        "ai_tutor_action_ask": "💬 質問する",
+        "ai_tutor_ask_prompt": (
+            "このレッスンや進捗について質問を1つ送ってください。短く答えます。"
+        ),
+        "ai_tutor_question_vocabulary": (
+            "現在のレッスンと進捗を分析し、覚えた単語または苦手な単語の最も役立つ傾向と次の一歩を、"
+            "短い2項目以内で示してください。データがなければそう伝え、推測しないでください。"
+        ),
+        "ai_tutor_question_mistakes": (
+            "現在のレッスンと記録済みの進捗を分析し、主な間違いの傾向と次の一歩を短い2項目以内で"
+            "示してください。間違いの記録がなければそう伝え、推測しないでください。"
+        ),
+        "ai_tutor_question_progress": (
+            "学習進捗を分析し、測定済みの事実と次の一歩を短い2項目以内で分けて示してください。"
+            "データがなければそう伝え、推測しないでください。"
+        ),
+        "ai_tutor_pending_stale": (
+            "チューターへの質問は期限切れです。このメッセージは通常どおり処理されます。"
+        ),
+    },
+    "ar": {
+        "ai_tutor_menu_intro": (
+            "يستخدم مدرس الذكاء الاصطناعي درسك الحالي وتقدمك. اختر تحليلاً قصيراً أو اطرح "
+            "سؤالاً واحداً. يُستخدم رصيد AI فقط عند إنشاء إجابة."
+        ),
+        "ai_tutor_action_vocabulary": "📚 المفردات",
+        "ai_tutor_action_mistakes": "🎯 الأخطاء",
+        "ai_tutor_action_progress": "📊 التقدم",
+        "ai_tutor_action_ask": "💬 اسأل المدرس",
+        "ai_tutor_ask_prompt": (
+            "أرسل سؤالاً واحداً عن هذا الدرس أو تقدمك. سأجيب باختصار."
+        ),
+        "ai_tutor_question_vocabulary": (
+            "حلل درسي الحالي وتقدمي. في نقطتين قصيرتين كحد أقصى، اذكر أهم نمط في "
+            "مفرداتي المعروفة أو الضعيفة وخطوة تالية واحدة. إذا غابت البيانات فاذكر ذلك ولا تخترع حقائق."
+        ),
+        "ai_tutor_question_mistakes": (
+            "حلل درسي الحالي والتقدم المسجل. في نقطتين قصيرتين كحد أقصى، اذكر نمط الخطأ "
+            "الرئيسي الملحوظ وخطوة تالية واحدة. إذا لم تُسجل أخطاء فاذكر ذلك ولا تخترع حقائق."
+        ),
+        "ai_tutor_question_progress": (
+            "حلل تقدمي في التعلم. في نقطتين قصيرتين كحد أقصى، افصل الحقائق المقاسة عن "
+            "خطوة تالية واحدة. إذا غابت البيانات فاذكر ذلك ولا تخترع حقائق."
+        ),
+        "ai_tutor_pending_stale": (
+            "انتهت مهلة سؤال المدرس. ستُعالج رسالتك بالطريقة المعتادة."
+        ),
+    },
+    "zh": {
+        "ai_tutor_menu_intro": (
+            "AI 导师会参考你当前的课程和进度。请选择一项简短分析，或发送一个问题。"
+            "只有生成 AI 回答时才会使用一个点数。"
+        ),
+        "ai_tutor_action_vocabulary": "📚 分析词汇",
+        "ai_tutor_action_mistakes": "🎯 分析错误",
+        "ai_tutor_action_progress": "📊 分析进度",
+        "ai_tutor_action_ask": "💬 提问",
+        "ai_tutor_ask_prompt": (
+            "请发送一个关于本课或学习进度的问题。我会简短回答。"
+        ),
+        "ai_tutor_question_vocabulary": (
+            "分析我当前的课程和进度。最多用两个简短要点，指出已掌握或薄弱词汇中最有用的规律，"
+            "并给出一个下一步。缺少数据时请明确说明，不要编造。"
+        ),
+        "ai_tutor_question_mistakes": (
+            "分析我当前的课程和已记录进度。最多用两个简短要点，指出主要的已观察错误规律，"
+            "并给出一个下一步。若没有错误记录，请明确说明，不要编造。"
+        ),
+        "ai_tutor_question_progress": (
+            "分析我的学习进度。最多用两个简短要点，将已测量事实与一个下一步分开。"
+            "缺少数据时请明确说明，不要编造。"
+        ),
+        "ai_tutor_pending_stale": (
+            "该导师提问已过期。你的消息将按普通消息处理。"
+        ),
+    },
+    "ru": {
+        "ai_tutor_menu_intro": (
+            "AI-тьютор учитывает текущий урок и твой прогресс. Выбери короткий "
+            "анализ или задай один вопрос. AI-кредит списывается только при создании ответа."
+        ),
+        "ai_tutor_action_vocabulary": "📚 Словарь",
+        "ai_tutor_action_mistakes": "🎯 Ошибки",
+        "ai_tutor_action_progress": "📊 Прогресс",
+        "ai_tutor_action_ask": "💬 Спросить тьютора",
+        "ai_tutor_ask_prompt": (
+            "Отправь один вопрос об этом уроке или своём прогрессе. Я отвечу кратко."
+        ),
+        "ai_tutor_question_vocabulary": (
+            "Проанализируй мой текущий урок и прогресс. Не более чем в двух коротких "
+            "пунктах назови самый полезный паттерн в знакомых или слабых словах и один "
+            "следующий шаг. Если данных нет, скажи об этом и ничего не выдумывай."
+        ),
+        "ai_tutor_question_mistakes": (
+            "Проанализируй мой текущий урок и сохранённый прогресс. Не более чем в двух "
+            "коротких пунктах назови главный замеченный тип ошибки и один следующий шаг. "
+            "Если ошибок не записано, скажи об этом и ничего не выдумывай."
+        ),
+        "ai_tutor_question_progress": (
+            "Проанализируй мой прогресс в обучении. Не более чем в двух коротких пунктах "
+            "отдели измеренные факты от одного следующего шага. Если данных нет, скажи "
+            "об этом и ничего не выдумывай."
+        ),
+        "ai_tutor_pending_stale": (
+            "Вопрос тьютору устарел. Сообщение будет обработано в обычном режиме."
+        ),
+    },
+    "es": {
+        "ai_tutor_menu_intro": (
+            "El tutor de IA usa tu lección y progreso actuales. Elige un análisis "
+            "breve o haz una pregunta. Solo se usa un crédito de IA al generar una respuesta."
+        ),
+        "ai_tutor_action_vocabulary": "📚 Vocabulario",
+        "ai_tutor_action_mistakes": "🎯 Errores",
+        "ai_tutor_action_progress": "📊 Progreso",
+        "ai_tutor_action_ask": "💬 Preguntar",
+        "ai_tutor_ask_prompt": (
+            "Envía una pregunta sobre esta lección o tu progreso. Responderé brevemente."
+        ),
+        "ai_tutor_question_vocabulary": (
+            "Analiza mi lección y progreso actuales. En dos puntos breves como máximo, "
+            "indica el patrón más útil de mi vocabulario conocido o débil y un siguiente "
+            "paso. Si faltan datos, dilo sin inventar hechos."
+        ),
+        "ai_tutor_question_mistakes": (
+            "Analiza mi lección y progreso registrados. En dos puntos breves como máximo, "
+            "indica mi principal patrón de error observado y un siguiente paso. Si no hay "
+            "errores registrados, dilo sin inventar hechos."
+        ),
+        "ai_tutor_question_progress": (
+            "Analiza mi progreso de aprendizaje. En dos puntos breves como máximo, separa "
+            "los hechos medidos de un siguiente paso. Si faltan datos, dilo sin inventar hechos."
+        ),
+        "ai_tutor_pending_stale": (
+            "Esa pregunta al tutor ha caducado. Tu mensaje se procesará con normalidad."
+        ),
+    },
+}
+
+for _locale, _messages in _AI_TUTOR_ACTION_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
+
 def normalize_locale(value: str | None, *, fallback: str = DEFAULT_INTERFACE_LOCALE) -> str:
     """Normalize Telegram language_code without guessing unsupported locales."""
     safe_fallback = fallback if fallback in INTERFACE_LOCALES else DEFAULT_INTERFACE_LOCALE

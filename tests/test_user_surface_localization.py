@@ -1130,19 +1130,37 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertEqual(service.ask.await_args.kwargs["question"], "QUESTION-CONTENT")
 
-            with self.subTest(surface="default_question"):
+            with self.subTest(surface="free_action_menu"):
                 message = SimpleNamespace(reply_text=AsyncMock())
                 update = SimpleNamespace(
                     message=message,
                     effective_user=SimpleNamespace(id=42, language_code="fr"),
                 )
+                context.user_data["block_session"] = "bloc-francais"
                 requester = AsyncMock()
                 with patch.object(bot, "request_ai_tutor_answer", new=requester):
                     await bot.cmd_ai.__wrapped__(update, context)
+                requester.assert_not_awaited()
+                payload = message.reply_text.await_args
                 self.assertEqual(
-                    requester.await_args.args[2],
-                    "Explique les liens principaux entre les mots de ce bloc.",
+                    payload.args[0],
+                    translate("ai_tutor_menu_intro", "fr"),
                 )
+                buttons = [
+                    button
+                    for row in payload.kwargs["reply_markup"].inline_keyboard
+                    for button in row
+                ]
+                self.assertEqual(
+                    [button.text for button in buttons],
+                    [
+                        "📚 Vocabulaire",
+                        "🎯 Erreurs",
+                        "📊 Progrès",
+                        "💬 Poser une question",
+                    ],
+                )
+                self.assertNotIn("Объясни", payload.args[0])
 
     async def test_ac5_french_stars_payment_and_subscription_callbacks(self):
         validation = Mock(side_effect=ValueError("invalid invoice"))
