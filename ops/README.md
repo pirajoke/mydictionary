@@ -14,6 +14,9 @@ copies or wrappers are installed only during a separately approved change.
   runtime directory and a release SHA derived from the `current` symlink.
 - `mydictionary_backup.py` creates and verifies private PostgreSQL
   custom-format backups independently of a deployment.
+- `mydictionary_scheduled_backup.py` is the OVH host entrypoint for the daily
+  systemd timer. It checks the exact admin container, runs the versioned backup
+  command there, and then runs the independent verification command.
 - `mydictionary_restore_drill.py` retrieves one exact encrypted off-site object,
   restores it into a generated disposable PostgreSQL database, verifies the
   Alembic revision, removes the database, and writes a private drill receipt.
@@ -72,7 +75,7 @@ python ops/mydictionary_autodeploy.py --clear-failed <40-character-sha>
 
 ## Database backups
 
-Run the backup wrapper daily from a dedicated launchd service. The default
+Run the backup wrapper daily from the dedicated OVH systemd timer. The default
 action creates a private custom-format dump, validates it with `pg_restore
 --list`, and atomically records its SHA-256, size, timestamp, and Alembic
 revision in owner-only local metadata.
@@ -87,6 +90,12 @@ default, a verified backup is stale after 26 hours.
 ```bash
 python ops/mydictionary_backup.py --check
 ```
+
+The host timer installs the reviewed `mydictionary_scheduled_backup.py` as its
+`ExecStart`. The entrypoint calls the copy already present in the active image;
+it does not copy a second helper into the container or construct a separate
+pgpass file. A create failure stops before the check, and a check failure makes
+the systemd unit fail.
 
 Creation and checking never delete a backup. Retention cleanup is an explicit
 operator action that first validates every deletion candidate, preserves at

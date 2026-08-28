@@ -56,6 +56,10 @@ change the application or database.
 7. Require multiple consecutive heartbeat and loopback-health probes before
    accepting the release.
 8. Record active SHA, revision, backup receipt, restart counts and flags.
+9. When a release changes backup behavior, install its reviewed
+   `ops/mydictionary_scheduled_backup.py` as the systemd timer entrypoint, run
+   the oneshot service once, and require both the service result and a fresh
+   independent backup check to pass.
 
 ## Acceptance
 
@@ -66,6 +70,8 @@ change the application or database.
 - PostgreSQL is healthy at the candidate Alembic head;
 - one bot polls; bot/admin restart counts remain zero;
 - backup verification remains green;
+- the daily backup timer uses the versioned scheduled entrypoint and its last
+  service result is successful;
 - no new traceback, polling conflict or token-pattern count appears;
 - Stars/autodeploy and every unrelated feature flag remain unchanged.
 
