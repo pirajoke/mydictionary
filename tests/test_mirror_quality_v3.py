@@ -43,7 +43,7 @@ class MirrorNaturalReplyContractTest(unittest.TestCase):
 
         rendered = ai_tutor.render_mirror_answer(answer, available_credits=39)
 
-        self.assertEqual(rendered, answer.answer_ru)
+        self.assertEqual(rendered, f"💡 {answer.answer_ru}")
         self.assertNotIn("AI-кредиты", rendered)
         self.assertNotIn("🇷🇺", rendered)
         self.assertNotIn("Следующий шаг:", rendered)
@@ -73,7 +73,9 @@ class MirrorNaturalReplyContractTest(unittest.TestCase):
 
         rendered = ai_tutor.render_mirror_answer(answer, available_credits=39)
 
-        self.assertTrue(rendered.startswith("Bonjour зависит"))
+        self.assertTrue(rendered.startswith("💡 Bonjour зависит"))
+        self.assertIn("\n\n📌 ", rendered)
+        self.assertIn("\n\n👉 ", rendered)
         self.assertIn("bonjour /bɔ̃.ʒuʁ/ — здравствуйте; добрый день", rendered)
         self.assertIn("Нейтральное дневное приветствие.", rendered)
         self.assertIn("Bonjour, Marie ! /bɔ̃.ʒuʁ ma.ʁi/ — Добрый день, Мари!", rendered)
@@ -335,7 +337,7 @@ class MirrorTelegramStyleContractTest(unittest.IsolatedAsyncioTestCase):
                 SimpleNamespace(enabled=True, consent_version=AI_CONSENT_VERSION),
             ),
             patch.object(bot, "MIRROR_MEMORY_SETTINGS", memory, create=True),
-            patch.object(bot, "send_mirror_response", new=AsyncMock()),
+            patch.object(bot, "send_mirror_response", new=AsyncMock()) as sender,
         ):
             await invoke_handler(handler, update, context)
 
@@ -348,7 +350,9 @@ class MirrorTelegramStyleContractTest(unittest.IsolatedAsyncioTestCase):
             answer="Да, это нейтральный вариант.",
             retention_days=7,
         )
-        message.reply_text.assert_not_awaited()
+        message.reply_text.assert_awaited_once_with("🤔")
+        message.reply_text.return_value.delete.assert_awaited_once()
+        sender.assert_awaited_once()
 
     async def test_err_02_memory_write_failure_does_not_hide_generated_answer(self):
         handler = bot.mirror_text_handler

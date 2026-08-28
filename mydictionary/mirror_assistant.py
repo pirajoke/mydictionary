@@ -144,6 +144,7 @@ _UNSAFE_GUIDANCE_RE = re.compile(
 )
 _CAPABILITY_PATTERNS = (
     "что ты умеешь",
+    "привет что ты умеешь",
     "как ты можешь помочь",
     "what can you do",
     "que peux-tu faire",
@@ -153,6 +154,16 @@ _CAPABILITY_PATTERNS = (
     "你能做什么",
     "ماذا يمكنك أن تفعل",
 )
+_DIRECT_CAPABILITY_GREETING_LOCALES = {
+    "hello do you know what to do": "en",
+    "bonjour tu sais quoi faire": "fr",
+    "hallo weisst du was zu tun ist": "de",
+    "こんにちは 何をすればいいかわかりますか": "ja",
+    "مرحبا هل تعرف ماذا تفعل": "ar",
+    "你好 你知道该做什么吗": "zh",
+    "привет ты знаешь что делать": "ru",
+    "hola sabes qué hacer": "es",
+}
 _GREETING_PATTERNS = frozenset(
     {
         "привет",
@@ -227,31 +238,106 @@ _DIRECT_PROGRESS_LOCALES = {
     "what is my progress": "en",
     "my progress": "en",
     "progress": "en",
+    "what have i already completed": "en",
     "sur quoi dois je me concentrer": "fr",
     "mes progrès": "fr",
     "comment sont mes progrès": "fr",
+    "qu est ce que j ai déjà terminé": "fr",
     "worauf soll ich mich konzentrieren": "de",
     "mein fortschritt": "de",
     "wie ist mein fortschritt": "de",
+    "was habe ich schon abgeschlossen": "de",
     "何に集中すればいい": "ja",
     "進捗": "ja",
     "私の進捗はどうですか": "ja",
+    "もう何を終えましたか": "ja",
     "على ماذا أركز": "ar",
     "تقدمي": "ar",
     "كيف هو تقدمي": "ar",
+    "ماذا أكملت بالفعل": "ar",
     "我应该专注什么": "zh",
     "学习进度": "zh",
     "我的学习进度怎么样": "zh",
+    "我已经完成了什么": "zh",
     "на чем фокус": "ru",
     "на чём фокус": "ru",
     "мой прогресс": "ru",
     "как мой прогресс": "ru",
     "какой у меня прогресс": "ru",
     "прогресс": "ru",
+    "что я уже прошел": "ru",
     "en qué debo enfocarme": "es",
     "mi progreso": "es",
     "cómo va mi progreso": "es",
+    "qué he completado ya": "es",
 }
+
+_DEEP_RESPONSE_PREFIXES = (
+    "analyze ",
+    "analyse ",
+    "build a multi step exercise from ",
+    "compare ",
+    "correct ",
+    "create a multi step",
+    "explain ",
+    "comment employer",
+    "corrige ",
+    "explique ",
+    "erkläre ",
+    "korrigiere ",
+    "اشرح ",
+    "صحح ",
+    "改正",
+    "请解释",
+    "请详细解释",
+    "объясни ",
+    "исправь ",
+    "explica ",
+    "vergleiche ",
+    "قارن ",
+    "比较",
+    "请改正",
+    "сравни ",
+    "compara ",
+)
+_DEEP_RESPONSE_ACTION_MARKERS = (
+    "説明して",
+    "説明してください",
+    "直して",
+    "比較して",
+)
+_DEEP_RESPONSE_PHRASES = frozenset(
+    {
+        "explain this grammar rule",
+        "explique cette règle de grammaire",
+        "erkläre diese grammatikregel",
+        "この文法規則を説明してください",
+        "اشرح هذه القاعدة النحوية",
+        "请解释这个语法规则",
+        "объясни это грамматическое правило",
+        "explica esta regla gramatical",
+        "review and analyze my mistakes",
+        "why is this sentence wrong",
+    }
+)
+_FAST_TRANSLATION_PHRASES = frozenset(
+    {
+        "translate grammar rule",
+        "traduis règle de grammaire",
+        "übersetze grammatikregel",
+        "文法規則 を翻訳して",
+        "ترجم قاعدة نحوية",
+        "翻译 语法规则",
+        "переведи грамматическое правило",
+        "traduce regla gramatical",
+    }
+)
+_FAST_CJK_CONTROL_PATTERNS = (
+    r"[「『][^」』]{1,40}[」』]を翻訳して",
+    r"[「『][^」』]{1,40}[」』]はどういう意味ですか[?？]?",
+    r"[㐀-鿿]{1,12}怎么读[?？]?",
+    r"[“「\"][^”」\"]{1,40}[”」\"]是什么意思[?？]?",
+)
 _LATIN_LOCALE_MARKERS = {
     "en": frozenset(
         {
@@ -634,14 +720,25 @@ def normalize_companion_learner_context(
 
 def classify_mirror_intent(text: str) -> str:
     normalized = " ".join(str(text).casefold().strip().split())
-    if any(pattern in normalized for pattern in _CAPABILITY_PATTERNS):
+    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
+    capability_phrases = {
+        " ".join(re.findall(r"\w+", pattern, flags=re.UNICODE))
+        for pattern in _CAPABILITY_PATTERNS
+    }
+    if words_only in capability_phrases:
         return "capabilities"
     if any(pattern in normalized for pattern in _PROGRESS_PATTERNS):
         return "progress"
-    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
     if words_only in _GREETING_PATTERNS:
         return "greeting"
     return "learning_question"
+
+
+def direct_mirror_capability_greeting_locale(text: str) -> str | None:
+    """Return the phrase locale only for the reviewed capability greeting."""
+    normalized = " ".join(str(text).casefold().strip().split())
+    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
+    return _DIRECT_CAPABILITY_GREETING_LOCALES.get(words_only)
 
 
 def direct_mirror_progress_locale(text: str) -> str | None:
@@ -649,6 +746,28 @@ def direct_mirror_progress_locale(text: str) -> str | None:
     normalized = " ".join(str(text).casefold().strip().split())
     words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
     return _DIRECT_PROGRESS_LOCALES.get(words_only)
+
+
+def classify_ai_response_route(text: str) -> str:
+    """Choose a bounded provider response tier without reading mutable state."""
+    normalized = " ".join(str(text).casefold().strip().split())
+    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
+    if words_only in _FAST_TRANSLATION_PHRASES:
+        return "fast"
+    if any(re.fullmatch(pattern, normalized) for pattern in _FAST_CJK_CONTROL_PATTERNS):
+        return "fast"
+    if words_only in _DEEP_RESPONSE_PHRASES:
+        return "deep"
+    if any(words_only.startswith(prefix) for prefix in _DEEP_RESPONSE_PREFIXES):
+        return "deep"
+    if any(marker in normalized for marker in _DEEP_RESPONSE_ACTION_MARKERS):
+        return "deep"
+    cjk_length = len(re.findall(r"[\u3040-\u30ff\u3400-\u9fff]", normalized))
+    if cjk_length >= 30:
+        return "deep"
+    if len(words_only.split()) >= 18:
+        return "deep"
+    return "fast"
 
 
 def is_mirror_continuation(
@@ -955,6 +1074,7 @@ def build_mirror_provider_payload(
             clean_question,
             recent_dialogue=normalized_dialogue,
         ),
+        "complexity_route": classify_ai_response_route(clean_question),
     }
     if normalized_learner_context is not None:
         payload.update(

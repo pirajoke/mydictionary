@@ -88,7 +88,8 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
                 rendered = ai_tutor.render_mirror_answer(
                     answer, available_credits=40
                 )
-                self.assertTrue(rendered.startswith(answer.answer_ru))
+                self.assertTrue(rendered.startswith(f"💡 {answer.answer_ru}"))
+                self.assertIn("\n\n📌 ", rendered)
                 self.assertIn(answer.language_items[0].transcription, rendered)
 
     def test_ac_01_russian_first_response_supports_translation_variants(self):
@@ -118,7 +119,9 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
             }
         )
         rendered = render(answer, available_credits=39)
-        self.assertTrue(rendered.startswith(answer.answer_ru))
+        self.assertTrue(rendered.startswith(f"💡 {answer.answer_ru}"))
+        self.assertIn("\n\n📌 ", rendered)
+        self.assertIn("\n\n👉 ", rendered)
         self.assertIn("bonjour", rendered)
         self.assertIn("bonjour /bɔ̃.ʒuʁ/ — здравствуйте; добрый день", rendered)
         self.assertNotIn("AI-кредиты", rendered)
@@ -169,8 +172,10 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
             ],
         )
         await provider.generate_mirror(request_id="mirror-v2", user_id=7, payload=payload)
-        self.assertEqual(responses.kwargs["reasoning"], {"effort": "medium"})
-        self.assertEqual(responses.kwargs["text"]["verbosity"], "medium")
+        self.assertEqual(payload["complexity_route"], "fast")
+        self.assertEqual(responses.kwargs["reasoning"], {"effort": "none"})
+        self.assertEqual(responses.kwargs["text"]["verbosity"], "low")
+        self.assertEqual(responses.kwargs["max_output_tokens"], 220)
         self.assertEqual(
             responses.kwargs["text"]["format"]["name"],
             "my_dictionary_mirror_v2_answer",

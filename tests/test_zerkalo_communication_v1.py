@@ -761,7 +761,11 @@ class ZerkaloFeedbackContractTest(unittest.IsolatedAsyncioTestCase):
         ):
             await bot.mirror_text_handler.__wrapped__(update, context)
 
-        message.reply_text.assert_awaited_once_with("Réponse courte et directe.")
+        self.assertEqual(
+            [item.args[0] for item in message.reply_text.await_args_list],
+            ["🤔", "Réponse courte et directe."],
+        )
+        message.reply_text.return_value.delete.assert_awaited_once()
         self.assertNotIn(
             translate("mirror_feedback_question", "fr"),
             " ".join(call.args[0] for call in message.reply_text.await_args_list),

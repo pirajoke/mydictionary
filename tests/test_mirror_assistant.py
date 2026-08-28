@@ -328,7 +328,11 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
             kwargs["mirror_payload"]["learning_context"]["source"],
             "active_pack",
         )
-        message.reply_text.assert_awaited_once_with(response)
+        self.assertEqual(
+            [item.args[0] for item in message.reply_text.await_args_list],
+            ["🤔", response],
+        )
+        message.reply_text.return_value.delete.assert_awaited_once()
 
     async def test_ac_04_access_onboarding_and_consent_gate_ai_before_service(self):
         handler = required_public(self, bot, "mirror_text_handler")
@@ -383,6 +387,7 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
                 "recent_dialogue",
                 "response_style",
                 "is_continuation",
+                "complexity_route",
             },
         )
         self.assertEqual(payload["grounded_snapshot"], snapshot)
@@ -390,6 +395,7 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["recent_dialogue"], [])
         self.assertIs(payload["is_continuation"], False)
         self.assertEqual(payload["response_style"], "teacher")
+        self.assertEqual(payload["complexity_route"], "fast")
         self.assertEqual(payload["learning_context"], {})
         self.assertNotIn("telegram_user_id", serialized)
         self.assertNotIn("secret", serialized.lower())
