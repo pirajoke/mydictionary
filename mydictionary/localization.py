@@ -2775,7 +2775,7 @@ _SERVICE_COPY = {
         "ai_buy_credits": "Buy credits",
         "ai_continue_question": "Continue question",
         "ai_resume_expired": "That question has expired. Send it again.",
-        "ai_limit_reached": "The AI safety limit is active. Try again later.",
+        "ai_unavailable_no_charge": "The AI tutor is temporarily unavailable. No AI credit was charged.",
         "ai_failure": "I could not prepare a verified answer. No learning answer was invented.",
     },
     "fr": {
@@ -2792,7 +2792,7 @@ _SERVICE_COPY = {
         "ai_buy_credits": "Acheter des crédits",
         "ai_continue_question": "Continuer la question",
         "ai_resume_expired": "Cette question a expiré. Envoyez-la de nouveau.",
-        "ai_limit_reached": "La limite de sécurité AI est active. Réessayez plus tard.",
+        "ai_unavailable_no_charge": "Le tuteur IA est temporairement indisponible. Aucun crédit IA n’a été débité.",
         "ai_failure": "Je n'ai pas pu préparer une réponse vérifiée. Aucune réponse n'a été inventée.",
     },
     "de": {
@@ -2809,7 +2809,7 @@ _SERVICE_COPY = {
         "ai_buy_credits": "Credits kaufen",
         "ai_continue_question": "Frage fortsetzen",
         "ai_resume_expired": "Diese Frage ist abgelaufen. Sende sie erneut.",
-        "ai_limit_reached": "Das AI-Sicherheitslimit ist aktiv. Versuche es später erneut.",
+        "ai_unavailable_no_charge": "Der AI-Tutor ist vorübergehend nicht verfügbar. Es wurde kein AI-Guthaben abgezogen.",
         "ai_failure": "Ich konnte keine verifizierte Antwort erstellen. Es wurde nichts erfunden.",
     },
     "ja": {
@@ -2826,7 +2826,7 @@ _SERVICE_COPY = {
         "ai_buy_credits": "クレジットを購入",
         "ai_continue_question": "質問を続ける",
         "ai_resume_expired": "この質問は期限切れです。もう一度送信してください。",
-        "ai_limit_reached": "AIの安全上限に達しました。後でもう一度お試しください。",
+        "ai_unavailable_no_charge": "AIチューターは一時的に利用できません。AIクレジットは消費されていません。",
         "ai_failure": "確認済みの回答を準備できませんでした。推測の回答は表示していません。",
     },
     "ar": {
@@ -2843,7 +2843,7 @@ _SERVICE_COPY = {
         "ai_buy_credits": "شراء أرصدة",
         "ai_continue_question": "متابعة السؤال",
         "ai_resume_expired": "انتهت صلاحية هذا السؤال. أرسله مرة أخرى.",
-        "ai_limit_reached": "حد أمان AI نشط. حاول لاحقاً.",
+        "ai_unavailable_no_charge": "مدرّس AI غير متاح مؤقتاً. لم يُخصم أي رصيد AI.",
         "ai_failure": "تعذر إعداد إجابة موثوقة، لذلك لم يتم اختلاق إجابة تعليمية.",
     },
     "zh": {
@@ -2860,7 +2860,7 @@ _SERVICE_COPY = {
         "ai_buy_credits": "购买点数",
         "ai_continue_question": "继续提问",
         "ai_resume_expired": "该问题已过期，请重新发送。",
-        "ai_limit_reached": "AI 安全限制已启用，请稍后再试。",
+        "ai_unavailable_no_charge": "AI 导师暂时不可用，未扣除 AI 点数。",
         "ai_failure": "无法生成经过验证的回答，因此没有提供猜测性学习答案。",
     },
     "ru": {
@@ -2877,7 +2877,7 @@ _SERVICE_COPY = {
         "ai_buy_credits": "Купить кредиты",
         "ai_continue_question": "Продолжить вопрос",
         "ai_resume_expired": "Этот вопрос устарел. Отправь его ещё раз.",
-        "ai_limit_reached": "Сработал защитный лимит AI. Попробуй позже.",
+        "ai_unavailable_no_charge": "AI-репетитор временно недоступен. AI-кредит не списан.",
         "ai_failure": "Не удалось подготовить проверенный ответ. Учебный ответ не был придуман.",
     },
     "es": {
@@ -2894,7 +2894,7 @@ _SERVICE_COPY = {
         "ai_buy_credits": "Comprar créditos",
         "ai_continue_question": "Continuar pregunta",
         "ai_resume_expired": "Esta pregunta ha caducado. Envíala de nuevo.",
-        "ai_limit_reached": "El límite de seguridad de AI está activo. Inténtalo más tarde.",
+        "ai_unavailable_no_charge": "El tutor de IA no está disponible temporalmente. No se cobró ningún crédito de IA.",
         "ai_failure": "No pude preparar una respuesta verificada. No se inventó una respuesta educativa.",
     },
 }

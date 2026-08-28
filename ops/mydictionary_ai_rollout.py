@@ -111,11 +111,11 @@ def evaluate_ai_pilot_readiness(
             require_approved=True,
         ).assert_current(today=today)
         expected_contract = {
-            "reviewed_on": "2026-08-12",
+            "reviewed_on": "2026-08-28",
             "max_age_days": 30,
             "initial_credits": 40,
             "credits_per_request": 1,
-            "max_daily_requests_per_user": 5,
+            "max_daily_requests_per_user": None,
             "max_preflight_cost_micro_usd_per_request": 5000,
             "retrospective_breaker_micro_usd_per_response": 5000,
             "max_project_cost_micro_usd_per_day": 25000,
@@ -136,9 +136,7 @@ def evaluate_ai_pilot_readiness(
             "AI_PRICING_MAX_AGE_DAYS": str(contract.max_age_days),
             "AI_INITIAL_CREDITS": str(contract.initial_credits),
             "AI_CREDITS_PER_REQUEST": str(contract.credits_per_request),
-            "AI_MAX_DAILY_REQUESTS_PER_USER": str(
-                contract.max_daily_requests_per_user
-            ),
+            "AI_MAX_DAILY_REQUESTS_PER_USER": "0",
             "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST": str(
                 contract.max_preflight_cost_micro_usd_per_request
             ),

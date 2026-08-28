@@ -94,7 +94,7 @@ def load_snapshot(path: Path = DEFAULT_SNAPSHOT) -> Mapping[str, Any]:
 
 def validate_snapshot(
     snapshot: Mapping[str, Any], *, root: Path = ROOT
-) -> dict[str, int | str]:
+) -> dict[str, int | str | None]:
     if snapshot.get("schema_version") != 3:
         raise EconomicsContractError("Unsupported economics schema_version")
     if snapshot.get("status") != "candidate":
@@ -166,12 +166,11 @@ def validate_snapshot(
         maximum=1_000_000,
     )
     limits = _object(ai.get("limits"), "AI limits")
-    daily_limit = _integer(
-        limits.get("max_daily_requests_per_user"),
-        "AI daily limit",
-        minimum=1,
-        maximum=100,
-    )
+    if "max_daily_requests_per_user" not in limits:
+        raise EconomicsContractError("AI daily limit is required")
+    daily_limit = limits.get("max_daily_requests_per_user")
+    if daily_limit is not None:
+        raise EconomicsContractError("AI daily limit must be null")
     preflight_budget = _integer(
         limits.get("max_preflight_cost_micro_usd_per_request"),
         "AI preflight request budget",
@@ -534,7 +533,7 @@ def render_environment(snapshot: Mapping[str, Any]) -> str:
         "AI_OUTPUT_USD_PER_MILLION": rates["output"],
         "AI_PRICING_REVIEWED_ON": snapshot["reviewed_on"],
         "AI_PRICING_MAX_AGE_DAYS": snapshot["max_age_days"],
-        "AI_MAX_DAILY_REQUESTS_PER_USER": limits["max_daily_requests_per_user"],
+        "AI_MAX_DAILY_REQUESTS_PER_USER": "0",
         "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST": limits[
             "max_preflight_cost_micro_usd_per_request"
         ],

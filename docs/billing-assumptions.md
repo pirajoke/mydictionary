@@ -19,10 +19,12 @@ These are implemented Stage 4 constraints, not launch prices.
   speech, infrastructure, refund, and support costs.
 - The checked-in package table is a dated draft hypothesis, validated by
   `ops/mydictionary_economics.py`; it does not create active catalog products.
-- AI requests have a rolling per-user attempt limit, conservative preflight
-  budget, project day/month budgets, serialized in-flight exposure, and a
-  retrospective response breaker. Provider failures count toward the daily
-  limit because an upstream request may still incur cost.
+- Text AI is controlled by the credit wallet and has no per-user daily request
+  cap. Conservative preflight and project day/month/in-flight budgets plus the
+  retrospective response breaker continue to bound provider exposure.
+- Voice translation keeps its independent
+  `VOICE_TRANSLATION_MAX_DAILY_REQUESTS_PER_USER=5` safety limit; it does not
+  inherit the text-AI sentinel.
 - The provider SDK uses zero automatic retries. A response is metered before
   output validation; an unknown attempted outcome fails closed and opens the
   breaker. The response threshold is not represented as a hard cost cap.

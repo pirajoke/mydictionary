@@ -77,11 +77,13 @@ Voice translation additionally requires:
 - bounded duration, byte, and preflight-cost limits.
 
 The reviewed provider, models, tier, and three rates form a hashed economics
-snapshot stored with both reservations. Voice operations share the AI project
-day/month/in-flight caps and per-user rolling limit. Every provider attempt is
-recorded before execution; every returned billable response is persisted before
-content validation. A telemetry storage failure opens the shared breaker and
-writes only provider identity, usage, cost, latency, and error code to the
+snapshot stored with both reservations. Text AI is controlled by the credit
+wallet and has no per-user daily request cap; project day/month/in-flight
+budgets still bound provider exposure. Voice translation retains the separate
+`VOICE_TRANSLATION_MAX_DAILY_REQUESTS_PER_USER=5` limit. Every provider attempt
+is recorded before execution; every returned billable response is persisted
+before content validation. A telemetry storage failure opens the shared breaker
+and writes only provider identity, usage, cost, latency, and error code to the
 existing metering journal.
 
 Do not activate any flag as part of a code deployment. Production migration,

@@ -14,13 +14,16 @@ class EconomicsContractTest(unittest.TestCase):
         result = economics.validate_snapshot(self.snapshot)
 
         self.assertEqual(result["packages"], 4)
-        self.assertEqual(result["snapshot_id"], "mydictionary-commercial-v3-2026-08-14")
+        self.assertEqual(
+            result["snapshot_id"],
+            "mydictionary-commercial-v4-2026-08-28",
+        )
         self.assertEqual(self.snapshot["ai"]["status"], "approved")
         self.assertEqual(self.snapshot["status"], "candidate")
         self.assertEqual(result["minimum_margin_bps"], 5000)
         self.assertEqual(result["stress_net_micro_usd_per_xtr"], 8500)
         self.assertTrue(result["stress_launchable"])
-        self.assertEqual(result["daily_limit"], 5)
+        self.assertIsNone(result["daily_limit"])
         self.assertEqual(result["preflight_budget"], 5000)
         self.assertEqual(result["modelled_cost_per_credit"], 6000)
         self.assertEqual(result["retrospective_breaker"], 5000)

@@ -32,7 +32,12 @@ from mydictionary.ai_tutor import (
     serialize_tutor_provider_input,
 )
 from mydictionary.economics import load_ai_economics_contract
-from mydictionary.storage import AIQuotaExceeded, AIUsage, DatabaseStore
+from mydictionary.storage import (
+    AICreditExhausted,
+    AIQuotaExceeded,
+    AIUsage,
+    DatabaseStore,
+)
 
 
 CONTEXT = TutorContext(
@@ -170,8 +175,10 @@ def environment_for(configured: AITutorSettings) -> dict[str, str]:
         ),
         "AI_PRICING_REVIEWED_ON": str(configured.pricing_reviewed_on),
         "AI_PRICING_MAX_AGE_DAYS": str(configured.pricing_max_age_days),
-        "AI_MAX_DAILY_REQUESTS_PER_USER": str(
-            configured.max_daily_requests_per_user
+        "AI_MAX_DAILY_REQUESTS_PER_USER": (
+            "0"
+            if configured.max_daily_requests_per_user is None
+            else str(configured.max_daily_requests_per_user)
         ),
         "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST": str(
             configured.max_preflight_cost_micro_usd_per_request
@@ -282,7 +289,7 @@ class AITutorSettingsTest(unittest.TestCase):
                 {**common, "AI_PRICING_REVIEWED_ON": stale}
             )
         configured = AITutorSettings.from_env(common)
-        self.assertEqual(configured.max_daily_requests_per_user, 5)
+        self.assertIsNone(configured.max_daily_requests_per_user)
         self.assertEqual(
             configured.max_preflight_cost_micro_usd_per_request, 5000
         )
@@ -388,11 +395,29 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
             settings=settings(self.temp_dir.name),
         )
 
-        result = await service.ask(
-            user_id=101,
-            question="Объясни слово 私",
-            context=CONTEXT,
-        )
+        with (
+            patch.object(
+                self.store,
+                "reserve_ai_usage",
+                wraps=self.store.reserve_ai_usage,
+            ) as reserve,
+            patch.object(
+                self.store,
+                "complete_ai_usage",
+                wraps=self.store.complete_ai_usage,
+            ) as complete,
+        ):
+            result = await service.ask(
+                user_id=101,
+                question="Объясни слово 私",
+                context=CONTEXT,
+            )
+
+        reserve.assert_called_once()
+        self.assertEqual(reserve.call_args.kwargs["credits"], 1)
+        self.assertIsNone(reserve.call_args.kwargs["max_daily_requests"])
+        complete.assert_called_once()
+        self.assertEqual(complete.call_args.kwargs["billed_credits"], 1)
 
         self.assertEqual(result.allowance["available_credits"], 1)
         summary = self.store.ai_usage_summary(101)
@@ -413,7 +438,10 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage["provider_attempts"], 1)
         self.assertEqual(usage["requested_service_tier"], "default")
         self.assertEqual(usage["returned_service_tier"], "default")
+        self.assertEqual(usage["model"], "test-model")
         self.assertEqual(usage["provider_status"], "completed")
+        self.assertIsInstance(usage["latency_ms"], int)
+        self.assertGreaterEqual(usage["latency_ms"], 0)
         self.assertFalse(usage["cost_is_estimate"])
         self.assertTrue(usage["provider_response_received"])
         self.assertTrue(usage["economics_snapshot_id"].startswith("test-ai-"))
@@ -447,7 +475,7 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage.provider_attempts, 1)
         self.assertGreater(usage.cost_micro_usd, 0)
 
-    async def test_admin_exemption_still_obeys_daily_attempt_limit(self):
+    async def test_admin_telemetry_continues_after_five_attempts_without_wallet_charge(self):
         user_id = 198
         self.store.ensure_user(SimpleNamespace(id=user_id), role="admin")
         provider = StaticProvider()
@@ -457,13 +485,7 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
             settings=settings(self.temp_dir.name),
         )
 
-        for _ in range(5):
-            await service.ask(
-                user_id=user_id,
-                question="Объясни слово 私",
-                context=CONTEXT,
-            )
-        with self.assertRaisesRegex(AIQuotaExceeded, "daily"):
+        for _ in range(6):
             await service.ask(
                 user_id=user_id,
                 question="Объясни слово 私",
@@ -471,8 +493,8 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
             )
 
         summary = self.store.ai_usage_summary(user_id, initial_credits=2)
-        self.assertEqual(provider.calls, 5)
-        self.assertEqual(summary["completed_requests"], 5)
+        self.assertEqual(provider.calls, 6)
+        self.assertEqual(summary["completed_requests"], 6)
         self.assertEqual(summary["spent_credits"], 0)
         self.assertEqual(summary["available_credits"], 2)
 
@@ -602,6 +624,12 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(row.cost_micro_usd, 53)
                     self.assertFalse(row.cost_is_estimate)
                     self.assertEqual(row.status, "failed")
+                summary = self.store.ai_usage_summary(
+                    120 + offset,
+                    initial_credits=2,
+                )
+                self.assertEqual(summary["available_credits"], 2)
+                self.assertEqual(summary["reserved_credits"], 0)
 
     async def test_returned_model_and_tier_mismatch_open_breaker(self):
         cases = (
@@ -661,7 +689,13 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
                 context=CONTEXT,
             )
         self.assertEqual(provider.calls, 0)
-        self.assertEqual(self.store.ai_usage_summary(140)["requests"], 0)
+        summary = self.store.ai_usage_summary(
+            140,
+            initial_credits=configured.initial_credits,
+        )
+        self.assertEqual(summary["requests"], 0)
+        self.assertEqual(summary["available_credits"], configured.initial_credits)
+        self.assertEqual(summary["reserved_credits"], 0)
 
     async def test_storage_failure_journals_telemetry_and_blocks_next_call(self):
         provider = StaticProvider()
@@ -736,7 +770,7 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(usage.cost_is_estimate)
         self.assertEqual(usage.cost_micro_usd, 53)
 
-    async def test_exhausted_allowance_blocks_provider_call(self):
+    async def test_exactly_one_credit_answers_once_then_zero_blocks_pre_provider(self):
         provider = StaticProvider()
         service = AITutorService(
             store=self.store,
@@ -745,30 +779,53 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
         )
         await service.ask(user_id=104, question="Первый запрос", context=CONTEXT)
 
-        with self.assertRaises(AIQuotaExceeded):
+        with self.assertRaises(AICreditExhausted):
             await service.ask(user_id=104, question="Второй запрос", context=CONTEXT)
+        summary = self.store.ai_usage_summary(104, initial_credits=1)
+        self.assertEqual(provider.calls, 1)
+        self.assertEqual(summary["requests"], 1)
+        self.assertEqual(summary["available_credits"], 0)
+        self.assertEqual(summary["reserved_credits"], 0)
 
-    async def test_daily_limit_counts_failed_provider_attempts(self):
+    async def test_one_hundred_historical_attempts_do_not_block_available_credit(self):
+        user_id = 108
+        for index in range(100):
+            request_id = self.store.reserve_ai_usage(
+                user_id,
+                action="block_tutor",
+                provider="historical",
+                model="historical-model",
+                credits=1,
+                initial_credits=101,
+                context_fingerprint=f"{index:064x}",
+                max_daily_requests=None,
+            )
+            self.assertTrue(
+                self.store.fail_ai_usage(
+                    request_id,
+                    error_code="historical_attempt",
+                )
+            )
+        provider = StaticProvider()
         service = AITutorService(
             store=self.store,
-            provider=StaticProvider(answer_for("猫")),
-            settings=settings(
-                self.temp_dir.name,
-                initial_credits=10,
-                max_daily_requests_per_user=2,
-            ),
+            provider=provider,
+            settings=settings(self.temp_dir.name, initial_credits=101),
         )
-        for _ in range(2):
-            with self.assertRaises(RuntimeError):
-                await service.ask(
-                    user_id=108, question="Объясни блок", context=CONTEXT
-                )
 
-        with self.assertRaisesRegex(AIQuotaExceeded, "daily"):
-            await service.ask(
-                user_id=108, question="Ещё один запрос", context=CONTEXT
-            )
-        self.assertEqual(self.store.ai_usage_summary(108)["failed_requests"], 2)
+        await service.ask(
+            user_id=user_id,
+            question="Ещё один запрос",
+            context=CONTEXT,
+        )
+
+        summary = self.store.ai_usage_summary(user_id, initial_credits=101)
+        self.assertEqual(provider.calls, 1)
+        self.assertEqual(summary["requests"], 101)
+        self.assertEqual(summary["failed_requests"], 100)
+        self.assertEqual(summary["completed_requests"], 1)
+        self.assertEqual(summary["spent_credits"], 1)
+        self.assertEqual(summary["available_credits"], 100)
 
     async def test_cost_outlier_opens_circuit_breaker_for_later_requests(self):
         service = AITutorService(
@@ -781,12 +838,20 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
             ),
         )
         await service.ask(user_id=109, question="Первый запрос", context=CONTEXT)
+        before_rejection = self.store.ai_usage_summary(109, initial_credits=3)
 
         with self.assertRaisesRegex(AIQuotaExceeded, "circuit breaker"):
             await service.ask(
                 user_id=109, question="Второй запрос", context=CONTEXT
             )
-        self.assertEqual(self.store.ai_usage_summary(109)["completed_requests"], 1)
+        after_rejection = self.store.ai_usage_summary(109, initial_credits=3)
+        self.assertEqual(after_rejection["completed_requests"], 1)
+        self.assertEqual(after_rejection["requests"], 1)
+        self.assertEqual(
+            after_rejection["available_credits"],
+            before_rejection["available_credits"],
+        )
+        self.assertEqual(after_rejection["reserved_credits"], 0)
 
     def test_render_is_russian_first_and_uses_canonical_reading(self):
         result = SimpleNamespace(

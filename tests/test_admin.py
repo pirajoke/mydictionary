@@ -652,7 +652,7 @@ class AdminConsoleTest(unittest.TestCase):
         page = self.client.get("/admin?tab=billing").get_data(as_text=True)
 
         self.assertIn("Commercial Launch v3", page)
-        self.assertIn("mydictionary-commercial-v3-2026-08-14", page)
+        self.assertIn("mydictionary-commercial-v4-2026-08-28", page)
         self.assertIn("Измеренный AI-вызов", page)
         self.assertIn("2 353 microUSD", page)
         self.assertIn("Реквизиты продавца", page)
@@ -1219,6 +1219,27 @@ class AdminConsoleTest(unittest.TestCase):
         unavailable = self.client.get("/health")
         self.assertEqual(unavailable.status_code, 503)
         self.assertEqual(unavailable.json, {"status": "unavailable"})
+
+    def test_text_ai_no_daily_cap_is_healthy_and_credit_controlled(self):
+        self.login()
+        with patch.dict(
+            os.environ,
+            {"AI_MAX_DAILY_REQUESTS_PER_USER": "0"},
+        ):
+            response = self.client.get("/admin?tab=diagnostics")
+
+        self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        expected = (
+            "<dt>Text AI request policy</dt><dd>credit-controlled · "
+            "no per-user daily cap</dd><span class=\"readiness ok\">ready</span>"
+        )
+        self.assertTrue(
+            expected in body,
+            "text AI policy must render as a healthy credit-controlled policy",
+        )
+        self.assertNotIn("unlimited requests", body)
+        self.assertNotIn("0 requests", body)
 
     def test_ai_breaker_diagnostics_reset_and_journal_guard(self):
         journal_path = Path(self.temp_dir.name) / "ai-metering.jsonl"

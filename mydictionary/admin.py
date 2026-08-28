@@ -983,8 +983,13 @@ def create_app(
                 "ai_pricing_review_current": _review_setting_current(
                     "AI_PRICING_REVIEWED_ON", "AI_PRICING_MAX_AGE_DAYS"
                 ),
-                "ai_daily_request_limit": os.environ.get(
-                    "AI_MAX_DAILY_REQUESTS_PER_USER", "5"
+                "text_ai_request_policy": (
+                    "credit-controlled · no per-user daily cap"
+                    if os.environ.get("AI_MAX_DAILY_REQUESTS_PER_USER") == "0"
+                    else "misconfigured"
+                ),
+                "text_ai_request_policy_ready": (
+                    os.environ.get("AI_MAX_DAILY_REQUESTS_PER_USER") == "0"
                 ),
                 "ai_service_tier": os.environ.get("AI_SERVICE_TIER", "default"),
                 "ai_snapshot_id": os.environ.get(

@@ -44,7 +44,7 @@ AI_PROCESSING_NOTICE=<reviewed learner disclosure>
 AI_ECONOMICS_SNAPSHOT_PATH=<approved immutable snapshot copy>
 AI_ECONOMICS_SNAPSHOT_ID=<exact snapshot identifier>
 AI_ECONOMICS_SNAPSHOT_SHA256=<canonical lowercase SHA-256>
-AI_MAX_DAILY_REQUESTS_PER_USER=<1-100; draft 5>
+AI_MAX_DAILY_REQUESTS_PER_USER=0
 AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST=<draft 5000>
 AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE=<draft 5000; not a hard cap>
 AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY=<draft 25000>
@@ -57,6 +57,7 @@ AI_METERING_JOURNAL_PATH=<private mode-0600 fallback path>
 VOICE_COST_MICRO_USD_PER_MINUTE=<positive conservative estimate>
 VOICE_CONSENT_VERSION=<immutable version identifier>
 VOICE_PROCESSING_NOTICE=<reviewed learner disclosure>
+VOICE_TRANSLATION_MAX_DAILY_REQUESTS_PER_USER=5
 
 BILLING_TERMS_VERSION=<immutable version identifier>
 BILLING_TERMS_TEXT=<reviewed learner terms>
@@ -67,6 +68,14 @@ BILLING_ECONOMICS_REVIEWED_ON=<YYYY-MM-DD>
 BILLING_ECONOMICS_MAX_AGE_DAYS=<1-90; default 30>
 BILLING_PRIVATE_CHAT_TOPICS_ENABLED=<reviewed boolean>
 ```
+
+Text AI is controlled by the credit wallet and has no per-user daily request
+cap. The `AI_MAX_DAILY_REQUESTS_PER_USER=0` sentinel is mandatory when text AI
+is enabled; it does not grant free usage. Provider exposure is still bounded by
+`AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY`,
+`AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH`, and
+`AI_MAX_IN_FLIGHT_COST_MICRO_USD`. Voice translation retains the independent
+`VOICE_TRANSLATION_MAX_DAILY_REQUESTS_PER_USER=5` limit.
 
 Use a conservative positive cache-write rate even when the selected provider
 does not currently report that token category. This prevents a future provider

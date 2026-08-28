@@ -490,7 +490,7 @@
               ('AI service tier', diagnostics.ai_service_tier, diagnostics.ai_service_tier == 'default'),
               ('AI economics snapshot', diagnostics.ai_snapshot_id ~ ' · ' ~ diagnostics.ai_snapshot.status, diagnostics.ai_snapshot.valid and diagnostics.ai_snapshot.approved and diagnostics.ai_snapshot.current),
               ('AI snapshot SHA-256', diagnostics.ai_snapshot_sha256, diagnostics.ai_snapshot.valid),
-              ('AI daily limit', diagnostics.ai_daily_request_limit ~ ' requests', diagnostics.ai_daily_request_limit|int > 0),
+              ('Text AI request policy', diagnostics.text_ai_request_policy, diagnostics.text_ai_request_policy_ready),
               ('AI preflight budget', diagnostics.ai_preflight_budget_micro_usd ~ ' microUSD', diagnostics.ai_preflight_budget_micro_usd|int > 0),
               ('AI retrospective breaker threshold', diagnostics.ai_retrospective_breaker_micro_usd ~ ' microUSD', diagnostics.ai_retrospective_breaker_micro_usd|int > 0),
               ('AI project daily budget', diagnostics.ai_project_daily_budget_micro_usd ~ ' microUSD', diagnostics.ai_project_daily_budget_micro_usd|int > 0),
