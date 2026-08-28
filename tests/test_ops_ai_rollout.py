@@ -30,7 +30,11 @@ class AIPilotEconomicsContractTest(unittest.TestCase):
         snapshot = economics.load_snapshot()
         result = economics.validate_snapshot(snapshot)
 
-        self.assertEqual(snapshot["reviewed_on"], "2026-08-12")
+        self.assertEqual(
+            snapshot["snapshot_id"],
+            "mydictionary-commercial-v4-2026-08-28",
+        )
+        self.assertEqual(snapshot["reviewed_on"], "2026-08-28")
         self.assertEqual(snapshot["ai"]["status"], "approved")
         self.assertNotEqual(snapshot.get("status"), "approved")
         self.assertEqual(result["pricing_max_age_days"], 30)
@@ -63,11 +67,11 @@ class AIPilotEconomicsContractTest(unittest.TestCase):
             "AI_CACHED_INPUT_USD_PER_MILLION": "0.02",
             "AI_CACHE_WRITE_USD_PER_MILLION": "0.25",
             "AI_OUTPUT_USD_PER_MILLION": "1.20",
-            "AI_PRICING_REVIEWED_ON": "2026-08-12",
+            "AI_PRICING_REVIEWED_ON": "2026-08-28",
             "AI_PRICING_MAX_AGE_DAYS": "30",
             "AI_INITIAL_CREDITS": "40",
             "AI_CREDITS_PER_REQUEST": "1",
-            "AI_MAX_DAILY_REQUESTS_PER_USER": "5",
+            "AI_MAX_DAILY_REQUESTS_PER_USER": "0",
             "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST": "5000",
             "AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE": "5000",
             "AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY": "25000",
@@ -125,7 +129,7 @@ class AIPilotReadinessTest(unittest.TestCase):
             runtime_state=self.runtime_state(),
             database_revision=EXPECTED_MIGRATION,
             fixture_path=FIXTURE,
-            today=date(2026, 8, 12),
+            today=date(2026, 8, 28),
         )
 
         self.assertTrue(result["ready"])
@@ -170,7 +174,7 @@ class AIPilotReadinessTest(unittest.TestCase):
                         runtime_state=state,
                         database_revision=migration,
                         fixture_path=FIXTURE,
-                        today=date(2026, 8, 12),
+                        today=date(2026, 8, 28),
                     )
                 self.assertEqual(environment, original)
                 self.assertEqual(environment["AI_TUTOR_ENABLED"], "true")
@@ -200,7 +204,7 @@ class AIPilotReadinessTest(unittest.TestCase):
                     runtime_state=self.runtime_state(),
                     database_revision=EXPECTED_MIGRATION,
                     fixture_path=FIXTURE,
-                    today=date(2026, 8, 12),
+                    today=date(2026, 8, 28),
                 )
 
         self.assertEqual(environment, original)

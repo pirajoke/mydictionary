@@ -17,7 +17,7 @@ renders API keys, payload secrets, safety salts, support contacts, or terms text
 
 ## Reviewed external assumptions
 
-Snapshot date: 2026-08-12. Maximum runtime age: 30 days.
+Snapshot date: 2026-08-28. Maximum runtime age: 30 days.
 
 - OpenAI Standard short-context pricing for `gpt-5.6-luna` is $0.20 input,
   $0.02 cached input, $0.25 cache writes, and $1.20 output per one million
@@ -49,7 +49,7 @@ changes either rule.
 | --- | ---: | --- |
 | Initial free allowance | 40 credits once | Bounded pilot access without enabling Stars |
 | Credit cost | 1 credit/request | Stable learner-facing unit |
-| Daily limit | 5 attempts/user/rolling 24h | Bounded pilot exposure, including failed attempts |
+| Text AI request policy | credit wallet; no per-user daily request cap | `AI_MAX_DAILY_REQUESTS_PER_USER=0` is the required wire sentinel |
 | Preflight request budget | 5,000 microUSD | Rejects a request before reservation from a conservative token upper bound |
 | Retrospective response breaker | 5,000 microUSD | Opens the breaker after a billable response exceeds the threshold |
 | Project daily budget | 25,000 microUSD | Bounds actual plus currently reserved exposure |
@@ -57,6 +57,13 @@ changes either rule.
 | Concurrent in-flight budget | 5,000 microUSD | Serializes cross-user provider exposure in PostgreSQL |
 | Provider input | 12,000 characters | Prevents unexpected context expansion before API call |
 | Provider output | 1,000 tokens | Bounds response cost and latency |
+
+Text AI is controlled by the credit wallet, not by a rolling attempt counter.
+There is no per-user daily request cap: every successful non-empty answer costs
+exactly one available credit. Provider spend remains bounded independently by
+`AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY`,
+`AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH`, and
+`AI_MAX_IN_FLIGHT_COST_MICRO_USD`. This does not mean free or unmetered usage.
 
 The preflight estimate includes system instructions, serialized learner input,
 the strict JSON schema, protocol overhead, and the full configured output
@@ -130,7 +137,8 @@ approval.
    `BILLING_TERMS_APPROVED=true` only with its exact version and SHA-256.
 2. Under explicit approval, grant one test learner a bounded credit balance and
    perform exactly one real AI call from a separate API project with one worker,
-   one credit, daily limit one, `max_retries=0`, and `service_tier="default"`.
+   one credit, `AI_MAX_DAILY_REQUESTS_PER_USER=0`, `max_retries=0`, and
+   `service_tier="default"`.
    Record returned model/tier, every token category, local cost, dashboard
    charge, latency, validation, and wallet settlement; turn AI off immediately.
 3. Validate and seed the exact candidate catalog with

@@ -358,7 +358,7 @@ class AITutorSettings:
     reservation_timeout_seconds: int = 300
     pricing_reviewed_on: str | None = None
     pricing_max_age_days: int = 30
-    max_daily_requests_per_user: int = 5
+    max_daily_requests_per_user: int | None = None
     max_preflight_cost_micro_usd_per_request: int = 5000
     retrospective_breaker_micro_usd_per_response: int = 5000
     max_project_cost_micro_usd_per_day: int = 25000
@@ -481,9 +481,6 @@ class AITutorSettings:
             pricing_max_age_days = int(
                 env.get("AI_PRICING_MAX_AGE_DAYS", "30")
             )
-            max_daily_requests_per_user = int(
-                env.get("AI_MAX_DAILY_REQUESTS_PER_USER", "5")
-            )
             max_preflight_cost_micro_usd_per_request = int(
                 env.get("AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST", "5000")
             )
@@ -516,10 +513,15 @@ class AITutorSettings:
             raise AIConfigurationError(
                 "AI_PRICING_MAX_AGE_DAYS must be between 1 and 90"
             )
-        if not 1 <= max_daily_requests_per_user <= 100:
+        daily_request_wire = env.get("AI_MAX_DAILY_REQUESTS_PER_USER")
+        if enabled and (
+            daily_request_wire is None
+            or str(daily_request_wire).strip() != "0"
+        ):
             raise AIConfigurationError(
-                "AI_MAX_DAILY_REQUESTS_PER_USER must be between 1 and 100"
+                "Enabled AI requires AI_MAX_DAILY_REQUESTS_PER_USER=0"
             )
+        max_daily_requests_per_user = None
         if not 1 <= max_preflight_cost_micro_usd_per_request <= 1_000_000:
             raise AIConfigurationError(
                 "AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST must be between 1 and 1000000"
@@ -1324,7 +1326,7 @@ class AITutorService:
             credits=charge_credits,
             initial_credits=self.settings.initial_credits,
             context_fingerprint=context_fingerprint(context),
-            max_daily_requests=self.settings.max_daily_requests_per_user,
+            max_daily_requests=None,
             requested_service_tier=self.settings.service_tier,
             economics_snapshot_id=contract.snapshot_id,
             economics_snapshot_sha256=contract.snapshot_sha256,
@@ -1603,7 +1605,7 @@ class AITutorService:
             context_fingerprint=hashlib.sha256(
                 serialized_input.encode("utf-8")
             ).hexdigest(),
-            max_daily_requests=self.settings.max_daily_requests_per_user,
+            max_daily_requests=None,
             requested_service_tier=self.settings.service_tier,
             economics_snapshot_id=contract.snapshot_id,
             economics_snapshot_sha256=contract.snapshot_sha256,

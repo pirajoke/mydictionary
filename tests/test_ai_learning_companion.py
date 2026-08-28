@@ -807,7 +807,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             )
             service.ask.assert_awaited_once()
             message.reply_text.assert_awaited_once_with(
-                translate("ai_limit_reached", "fr")
+                translate("ai_unavailable_no_charge", "fr")
             )
 
         with self.subTest(gate="provider_readiness"):
@@ -930,6 +930,19 @@ class LearningCompanionServiceHardeningTest(unittest.IsolatedAsyncioTestCase):
             await service.ask_mirror(user_id=607, payload=payload)
         except ValueError as exc:
             self.fail(f"service rejected the normal bounded builder payload: {exc}")
+
+        _store.reserve_ai_usage.assert_called_once()
+        self.assertEqual(
+            _store.reserve_ai_usage.call_args.kwargs["credits"],
+            1,
+        )
+        self.assertIsNone(
+            _store.reserve_ai_usage.call_args.kwargs["max_daily_requests"]
+        )
+        self.assertEqual(
+            _store.complete_ai_usage.call_args.kwargs["billed_credits"],
+            1,
+        )
 
         sent = provider.generate_mirror.await_args.kwargs["payload"]
         self.assertEqual(sent, payload)

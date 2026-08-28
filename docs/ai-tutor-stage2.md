@@ -47,14 +47,22 @@ AI_OUTPUT_USD_PER_MILLION=<positive reviewed rate>
 AI_ECONOMICS_SNAPSHOT_PATH=<approved snapshot>
 AI_ECONOMICS_SNAPSHOT_ID=<exact ID>
 AI_ECONOMICS_SNAPSHOT_SHA256=<canonical SHA-256>
+AI_MAX_DAILY_REQUESTS_PER_USER=0
 AI_MAX_PREFLIGHT_COST_MICRO_USD_PER_REQUEST=5000
 AI_RETROSPECTIVE_BREAKER_MICRO_USD_PER_RESPONSE=5000
 AI_MAX_PROJECT_COST_MICRO_USD_PER_DAY=25000
 AI_MAX_PROJECT_COST_MICRO_USD_PER_MONTH=100000
 AI_MAX_IN_FLIGHT_COST_MICRO_USD=5000
+VOICE_TRANSLATION_MAX_DAILY_REQUESTS_PER_USER=5
 MIRROR_MEMORY_ENABLED=false
 MIRROR_DIALOGUE_RETENTION_DAYS=7
 ```
+
+Text AI is controlled by the credit wallet and has no per-user daily request
+cap. This is not free or unmetered usage: each successful answer settles one
+credit, while project day/month/in-flight budgets and the breaker bound provider
+exposure. Voice translation retains the independent
+`VOICE_TRANSLATION_MAX_DAILY_REQUESTS_PER_USER=5` limit.
 
 `AI_SAFETY_SALT` is a secret random value of at least 16 characters and must
 not be committed. When the feature is enabled, the application fails fast if

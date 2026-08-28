@@ -2980,7 +2980,10 @@ async def voice_message_handler(
             )
         except AIQuotaExceeded:
             await update.message.reply_text(
-                translate("ai_limit_reached", interface_locale_for_update(update))
+                translate(
+                    "ai_unavailable_no_charge",
+                    interface_locale_for_update(update),
+                )
             )
         except VoiceUsageRecoveryError:
             logger.exception("Voice credit reservation recovery failed")
@@ -3044,7 +3047,10 @@ async def voice_message_handler(
             )
         except AIQuotaExceeded:
             await update.message.reply_text(
-                translate("ai_limit_reached", interface_locale_for_update(update))
+                translate(
+                    "ai_unavailable_no_charge",
+                    interface_locale_for_update(update),
+                )
             )
         except VoiceUsageRecoveryError:
             await update.message.reply_text(
@@ -3130,7 +3136,10 @@ async def voice_message_handler(
         return
     except AIQuotaExceeded:
         await update.message.reply_text(
-            translate("ai_limit_reached", interface_locale_for_update(update))
+            translate(
+                "ai_unavailable_no_charge",
+                interface_locale_for_update(update),
+            )
         )
         return
     except VoiceUsageRecoveryError:
@@ -3194,7 +3203,7 @@ async def send_ai_tutor_answer(
         return
     except AIQuotaExceeded:
         await message.reply_text(
-            translate("ai_limit_reached", locale)
+            translate("ai_unavailable_no_charge", locale)
         )
         return
     except AIConfigurationError:
@@ -3750,7 +3759,7 @@ async def handle_mirror_question(
             return
         except AIQuotaExceeded:
             await message.reply_text(
-                translate("ai_limit_reached", reply_locale)
+                translate("ai_unavailable_no_charge", reply_locale)
             )
             return
         except Exception as exc:

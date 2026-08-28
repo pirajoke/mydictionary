@@ -119,6 +119,12 @@ def _snapshot_decimal(value: Any, name: str) -> Decimal:
     return parsed
 
 
+def _snapshot_unlimited_request_cap(value: Any) -> None:
+    if value is not None:
+        raise EconomicsSnapshotError("AI daily request limit must be null")
+    return None
+
+
 @dataclass(frozen=True)
 class AIEconomicsContract:
     path: Path
@@ -136,7 +142,7 @@ class AIEconomicsContract:
     output_usd_per_million: Decimal
     credits_per_request: int
     initial_credits: int
-    max_daily_requests_per_user: int
+    max_daily_requests_per_user: int | None
     max_preflight_cost_micro_usd_per_request: int
     retrospective_breaker_micro_usd_per_response: int
     max_project_cost_micro_usd_per_day: int
@@ -222,6 +228,8 @@ def load_ai_economics_contract(
     )
     credit_policy = _snapshot_object(ai.get("credit_policy"), "AI credit policy")
     limits = _snapshot_object(ai.get("limits"), "AI limits")
+    if "max_daily_requests_per_user" not in limits:
+        raise EconomicsSnapshotError("AI daily request limit is required")
     contract = AIEconomicsContract(
         path=path,
         snapshot_id=snapshot_id,
@@ -254,11 +262,8 @@ def load_ai_economics_contract(
             minimum=0,
             maximum=1_000_000,
         ),
-        max_daily_requests_per_user=_snapshot_int(
-            limits.get("max_daily_requests_per_user"),
-            "AI daily request limit",
-            minimum=1,
-            maximum=100,
+        max_daily_requests_per_user=_snapshot_unlimited_request_cap(
+            limits.get("max_daily_requests_per_user")
         ),
         max_preflight_cost_micro_usd_per_request=_snapshot_int(
             limits.get("max_preflight_cost_micro_usd_per_request"),

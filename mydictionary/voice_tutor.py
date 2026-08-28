@@ -403,7 +403,7 @@ class VoiceTranslationSettings:
         )
         max_daily_requests = _bounded_int(
             env,
-            "AI_MAX_DAILY_REQUESTS_PER_USER",
+            "VOICE_TRANSLATION_MAX_DAILY_REQUESTS_PER_USER",
             default=5,
             minimum=1,
             maximum=100,

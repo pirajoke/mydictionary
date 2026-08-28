@@ -1,8 +1,8 @@
 {
   "schema_version": 3,
-  "snapshot_id": "mydictionary-commercial-v3-2026-08-14",
+  "snapshot_id": "mydictionary-commercial-v4-2026-08-28",
   "status": "candidate",
-  "reviewed_on": "2026-08-12",
+  "reviewed_on": "2026-08-28",
   "max_age_days": 30,
   "sources": [
     "https://developers.openai.com/api/docs/pricing",
@@ -36,7 +36,7 @@
       "modelled_cost_micro_usd_per_credit": 6000
     },
     "limits": {
-      "max_daily_requests_per_user": 5,
+      "max_daily_requests_per_user": null,
       "max_preflight_cost_micro_usd_per_request": 5000,
       "retrospective_breaker_micro_usd_per_response": 5000,
       "max_project_cost_micro_usd_per_day": 25000,
