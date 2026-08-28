@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, ROUND_CEILING
@@ -28,6 +29,7 @@ from .mirror_assistant import (
     MIRROR_COMPACT_REPLY_POLICY,
     MIRROR_SAFETY_ENVELOPE,
     MIRROR_STYLE_GUIDANCE,
+    classify_ai_response_route,
     is_mirror_continuation,
     normalize_companion_learner_context,
     normalize_mirror_dialogue,
@@ -150,7 +152,7 @@ MIRROR_RESPONSE_SCHEMA = {
 
 _PROMPT_ROOT = Path(__file__).resolve().parents[1] / "prompts"
 TUTOR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v1.txt")
-MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v4.txt")
+MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v5.txt")
 
 
 class AIConfigurationError(RuntimeError):
@@ -986,7 +988,47 @@ def render_mirror_answer(answer: MirrorAnswer, *, available_credits: int) -> str
 
     def clean(value: str) -> str:
         plain = re.sub(r"```[A-Za-z0-9_-]*", "", str(value))
-        return re.sub(r"\s+", " ", plain.strip())
+        plain = re.sub(r"[💡📌👉]", "", plain)
+        field_names = tuple(MIRROR_RESPONSE_SCHEMA["required"])
+        for field_name in field_names:
+            plain = re.sub(
+                rf"`\s*{re.escape(field_name)}\s*`",
+                "",
+                plain,
+                flags=re.IGNORECASE,
+            )
+        internal_field_phrase = re.compile(
+            r"(?:internal\s+(?:schema\s+)?(?:label|field|key)|"
+            r"schema\s+(?:label|field|key)|"
+            r"внутрен\w*\s+(?:метк\w*|пол\w*|ключ\w*))",
+            re.IGNORECASE,
+        )
+        segments = re.findall(
+            r"[^.!?。！？]+(?:[.!?。！？]+|$)",
+            plain,
+        ) or [plain]
+        sanitized_segments: list[str] = []
+        for segment in segments:
+            has_internal_field_phrase = bool(internal_field_phrase.search(segment))
+            for field_name in field_names:
+                token = rf"(?<!\w){re.escape(field_name)}(?!\w)"
+                segment = re.sub(
+                    rf"{token}(?=\s*[:\-—–])",
+                    "",
+                    segment,
+                    flags=re.IGNORECASE,
+                )
+                if has_internal_field_phrase:
+                    segment = re.sub(
+                        token,
+                        "",
+                        segment,
+                        flags=re.IGNORECASE,
+                    )
+            sanitized_segments.append(segment)
+        plain = "".join(sanitized_segments)
+        normalized = re.sub(r"\s+", " ", plain.strip())
+        return normalized
 
     def sentences(value: str) -> list[str]:
         protected = re.sub(r"(?<=\d)\.(?=\d)", protected_period, value)
@@ -1032,7 +1074,7 @@ def render_mirror_answer(answer: MirrorAnswer, *, available_credits: int) -> str
     for value in answer.evidence_ru:
         unique = take(value)
         if unique:
-            support.append(f"• {unique}")
+            support.append(unique)
     interpretation = take(answer.interpretation_ru)
     if interpretation:
         support.append(interpretation)
@@ -1058,11 +1100,12 @@ def render_mirror_answer(answer: MirrorAnswer, *, available_credits: int) -> str
             support.append(example_text)
     next_step = take(answer.next_step_ru)
 
-    paragraphs = [answer_text]
+    lead = f"💡 {answer_text or '.'}"
+    paragraphs = [lead]
     if support:
-        paragraphs.append("\n".join(support))
+        paragraphs.append(f"📌 {' '.join(support)}")
     if next_step:
-        paragraphs.append(next_step)
+        paragraphs.append(f"👉 {next_step}")
     rendered = "\n\n".join(value for value in paragraphs if value)
     if len(rendered) <= 900:
         return rendered or "."
@@ -1198,6 +1241,17 @@ class OpenAIResponsesProvider:
         user_id: int,
         payload: Mapping[str, Any],
     ) -> ProviderResult:
+        complexity_route = str(payload.get("complexity_route") or "").strip()
+        if complexity_route not in {"fast", "deep"}:
+            raise AIProviderError("Mirror response route is invalid")
+        if complexity_route == "fast":
+            reasoning_effort = "none"
+            verbosity = "low"
+            output_ceiling = 220
+        else:
+            reasoning_effort = "medium"
+            verbosity = "medium"
+            output_ceiling = 480
         serialized_input = json.dumps(
             dict(payload), ensure_ascii=False, separators=(",", ":")
         )
@@ -1209,9 +1263,9 @@ class OpenAIResponsesProvider:
             model=self.model,
             instructions=MIRROR_INSTRUCTIONS,
             input=serialized_input,
-            max_output_tokens=min(self.max_output_tokens, 480),
+            max_output_tokens=min(self.max_output_tokens, output_ceiling),
             service_tier=self.service_tier,
-            reasoning={"effort": "medium"},
+            reasoning={"effort": reasoning_effort},
             text={
                 "format": {
                     "type": "json_schema",
@@ -1219,7 +1273,7 @@ class OpenAIResponsesProvider:
                     "strict": True,
                     "schema": MIRROR_RESPONSE_SCHEMA,
                 },
-                "verbosity": "medium",
+                "verbosity": verbosity,
             },
             metadata={"request_id": request_id},
             safety_identifier=self._safety_identifier(user_id),
@@ -1275,9 +1329,14 @@ class AITutorService:
         question: str,
         context: TutorContext | None = None,
         mirror_payload: Mapping[str, Any] | None = None,
+        on_provider_start: Callable[[], Awaitable[None]] | None = None,
     ) -> TutorResult | str:
         if mirror_payload is not None:
-            return await self.ask_mirror(user_id=user_id, payload=mirror_payload)
+            return await self.ask_mirror(
+                user_id=user_id,
+                payload=mirror_payload,
+                on_provider_start=on_provider_start,
+            )
         if context is None:
             raise ValueError("AI tutor context is required")
         question = question.strip()
@@ -1470,6 +1529,7 @@ class AITutorService:
         *,
         user_id: int,
         payload: Mapping[str, Any],
+        on_provider_start: Callable[[], Awaitable[None]] | None = None,
     ) -> str:
         """Run one block-independent Mirror request through existing AI gates."""
         legacy_fields = {
@@ -1508,7 +1568,11 @@ class AITutorService:
         )
         supplied_fields = set(payload)
         has_continuation_flag = "is_continuation" in supplied_fields
-        contract_fields = supplied_fields - {"is_continuation"}
+        has_complexity_route = "complexity_route" in supplied_fields
+        contract_fields = supplied_fields - {
+            "is_continuation",
+            "complexity_route",
+        }
         if contract_fields not in valid_field_sets:
             raise ValueError("Mirror provider payload is invalid")
         if payload["safety_envelope"] != MIRROR_SAFETY_ENVELOPE:
@@ -1549,6 +1613,13 @@ class AITutorService:
         question = str(payload["question"]).strip()
         if not 1 <= len(question) <= 500:
             raise ValueError("Mirror question must contain 1-500 characters")
+        computed_route = classify_ai_response_route(question)
+        if (
+            not has_complexity_route
+            or str(payload["complexity_route"]) != computed_route
+        ):
+            raise ValueError("Mirror response route is invalid")
+        provider_payload["complexity_route"] = computed_route
         normalized_dialogue = normalize_mirror_dialogue(payload["recent_dialogue"])[-8:]
         computed_continuation = is_mirror_continuation(
             question,
@@ -1576,7 +1647,10 @@ class AITutorService:
         budget = estimate_mirror_provider_budget(
             serialized_input=serialized_input,
             pricing=self.settings.pricing,
-            max_output_tokens=min(self.settings.max_output_tokens, 480),
+            max_output_tokens=min(
+                self.settings.max_output_tokens,
+                220 if computed_route == "fast" else 480,
+            ),
         )
         if (
             budget.projected_cost_micro_usd
@@ -1624,13 +1698,18 @@ class AITutorService:
         provider_result: ProviderResult | None = None
         settlement_started = False
         try:
-            self.store.mark_ai_provider_attempt_started(request_id)
-            provider_attempt_started = True
             generator = getattr(self.provider, "generate_mirror", None)
             if not callable(generator):
                 raise AIConfigurationError(
                     "Configured AI provider does not support Mirror requests"
                 )
+            if on_provider_start is not None:
+                try:
+                    await on_provider_start()
+                except Exception:
+                    pass
+            self.store.mark_ai_provider_attempt_started(request_id)
+            provider_attempt_started = True
             provider_result = await generator(
                 request_id=request_id,
                 user_id=int(user_id),

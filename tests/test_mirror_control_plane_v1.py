@@ -304,7 +304,7 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "get_store", return_value=store),
             patch.object(bot, "get_ai_tutor_service", return_value=service),
             patch.object(bot, "AI_SETTINGS", runtime),
-            patch.object(bot, "send_mirror_response", new=AsyncMock()),
+            patch.object(bot, "send_mirror_response", new=AsyncMock()) as sender,
         ):
             await invoke_handler(bot.mirror_text_handler, update, context)
 
@@ -314,7 +314,9 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["communication_mode"], "coach")
         self.assertEqual(payload["answer_depth"], "deep")
         self.assertEqual(payload["learner_level"], "b1")
-        message.reply_text.assert_not_awaited()
+        message.reply_text.assert_awaited_once_with("🤔")
+        message.reply_text.return_value.delete.assert_awaited_once()
+        sender.assert_awaited_once()
 
     async def test_ac_03_err_02_provider_or_metering_failure_is_localized(self):
         failures = (
@@ -492,7 +494,9 @@ class MirrorGroundingContractTest(StoreTestCase):
         self.assertEqual(len(answer.evidence_ru), 2)
         self.assertTrue(answer.interpretation_ru)
         rendered = ai_tutor.render_mirror_answer(answer, available_credits=39)
-        self.assertTrue(rendered.startswith("Точность сейчас"))
+        self.assertTrue(rendered.startswith("💡 Точность сейчас"))
+        self.assertIn("\n\n📌 ", rendered)
+        self.assertIn("\n\n👉 ", rendered)
         self.assertNotRegex(rendered.casefold(), r"^(привет|молодец|отличн)")
         self.assertIn("Повтори пять", rendered)
 

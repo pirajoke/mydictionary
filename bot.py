@@ -101,6 +101,7 @@ from mydictionary.mirror_assistant import (
     build_mirror_provider_payload,
     classify_mirror_intent,
     classify_mirror_task,
+    direct_mirror_capability_greeting_locale,
     direct_mirror_progress_locale,
     grounded_progress_snapshot,
     normalize_mirror_style,
@@ -3596,9 +3597,16 @@ async def handle_mirror_question(
         selected_depth = str(preferences["depth"])
     intent = classify_mirror_intent(question)
     selected_task_kind = task_kind or classify_mirror_task(question)
+    capability_greeting_locale = direct_mirror_capability_greeting_locale(question)
+    deterministic_capability_greeting = capability_greeting_locale is not None
     progress_locale = direct_mirror_progress_locale(question)
     deterministic_progress = progress_locale is not None and task_kind is None
-    if intent == "greeting":
+    if deterministic_capability_greeting:
+        response = translate(
+            "mirror_capability_greeting",
+            capability_greeting_locale,
+        )
+    elif intent == "greeting":
         role = str(profile.get("role") or "learner")
         active_pack = CATALOG.get(str(profile.get("active_pack_id") or ""))
         if active_pack is None:
@@ -3679,6 +3687,50 @@ async def handle_mirror_question(
                 )
             return
         try:
+            allowance = store.ai_usage_summary(
+                user_id,
+                initial_credits=AI_SETTINGS.initial_credits,
+            )
+        except Exception:
+            allowance = None
+        if isinstance(allowance, Mapping) and str(profile.get("role")) != "admin":
+            try:
+                available_credits = int(allowance.get("available_credits", 0))
+            except (TypeError, ValueError):
+                available_credits = 0
+            if available_credits <= 0:
+                await send_ai_credit_paywall(
+                    message,
+                    context,
+                    user_id=user_id,
+                    locale=reply_locale,
+                    question=question,
+                )
+                return
+        thinking_message = None
+        thinking_started = False
+
+        async def start_thinking() -> None:
+            nonlocal thinking_message, thinking_started
+            if thinking_started:
+                return
+            thinking_started = True
+            runtime_bot = getattr(context, "bot", None)
+            send_chat_action = getattr(runtime_bot, "send_chat_action", None)
+            if callable(send_chat_action):
+                try:
+                    await send_chat_action(
+                        chat_id=int(update.effective_chat.id),
+                        action="typing",
+                    )
+                except Exception:
+                    pass
+            try:
+                thinking_message = await message.reply_text("🤔")
+            except Exception:
+                thinking_message = None
+
+        try:
             snapshot = (
                 grounded_progress_snapshot(store, user_id)
                 if isinstance(store, DatabaseStore)
@@ -3740,11 +3792,21 @@ async def handle_mirror_question(
                 interface_locale=reply_locale,
             )
             service = get_ai_tutor_service()
-            result = await service.ask(
-                user_id=user_id,
-                question=question,
-                mirror_payload=payload,
-            )
+            if isinstance(service, AITutorService):
+                result = await service.ask(
+                    user_id=user_id,
+                    question=question,
+                    mirror_payload=payload,
+                    on_provider_start=start_thinking,
+                )
+            else:
+                # Compatible service adapters may not own the metering hook.
+                await start_thinking()
+                result = await service.ask(
+                    user_id=user_id,
+                    question=question,
+                    mirror_payload=payload,
+                )
             response = str(result).strip()
             if not response:
                 raise ValueError("Empty Mirror response")
@@ -3768,6 +3830,13 @@ async def handle_mirror_question(
                 translate("ai_failure", reply_locale)
             )
             return
+        finally:
+            delete_thinking = getattr(thinking_message, "delete", None)
+            if callable(delete_thinking):
+                try:
+                    await delete_thinking()
+                except Exception:
+                    pass
 
     mode = _mirror_mode(store, user_id)
     try:
@@ -3802,7 +3871,11 @@ async def handle_mirror_question(
         voice_renderer=voice_renderer,
         locale=reply_locale,
     )
-    if intent not in {"greeting", "capabilities"} and MIRROR_MEMORY_SETTINGS.enabled:
+    if (
+        intent not in {"greeting", "capabilities"}
+        and not deterministic_capability_greeting
+        and MIRROR_MEMORY_SETTINGS.enabled
+    ):
         try:
             store.append_mirror_exchange(
                 user_id,
@@ -3814,7 +3887,10 @@ async def handle_mirror_question(
             logger.warning(
                 "Mirror memory write failed: error_type=%s", type(exc).__name__
             )
-    if intent not in {"greeting", "capabilities"}:
+    if (
+        intent not in {"greeting", "capabilities"}
+        and not deterministic_capability_greeting
+    ):
         append_mirror_turn(context.user_data, role="user", text=question)
         append_mirror_turn(context.user_data, role="assistant", text=response)
 

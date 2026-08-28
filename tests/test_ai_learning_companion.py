@@ -545,7 +545,11 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
                 retention_days=7,
             )
         self.assertNotIn("602", json.dumps(payload, ensure_ascii=False))
-        message.reply_text.assert_awaited_once_with("Réponse courte.")
+        self.assertEqual(
+            [item.args[0] for item in message.reply_text.await_args_list],
+            ["🤔", "Réponse courte."],
+        )
+        message.reply_text.return_value.delete.assert_awaited_once()
 
     async def test_ac_2_handler_rejects_stale_block_session_as_active_context(self):
         update, context, _message = text_update(
@@ -806,9 +810,11 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
                 service_error=bot.AIQuotaExceeded("quota")
             )
             service.ask.assert_awaited_once()
-            message.reply_text.assert_awaited_once_with(
-                translate("ai_unavailable_no_charge", "fr")
+            self.assertEqual(
+                [item.args[0] for item in message.reply_text.await_args_list],
+                ["🤔", translate("ai_unavailable_no_charge", "fr")],
             )
+            message.reply_text.return_value.delete.assert_awaited_once()
 
         with self.subTest(gate="provider_readiness"):
             diagnostic = "PRIVATE-PROVIDER-READINESS-DIAGNOSTIC"
@@ -825,7 +831,11 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
         with self.subTest(gate="provider_success"):
             message, _store, service, _factory, _paywall = await invoke()
             service.ask.assert_awaited_once()
-            message.reply_text.assert_awaited_once_with("Réponse sûre.")
+            self.assertEqual(
+                [item.args[0] for item in message.reply_text.await_args_list],
+                ["🤔", "Réponse sûre."],
+            )
+            message.reply_text.return_value.delete.assert_awaited_once()
 
 
 class LearningCompanionServiceHardeningTest(unittest.IsolatedAsyncioTestCase):
@@ -1005,9 +1015,9 @@ class LearningCompanionServiceHardeningTest(unittest.IsolatedAsyncioTestCase):
 
 
 class LearningCompanionPromptContractTest(unittest.TestCase):
-    def test_ac_7_runtime_uses_exact_mirror_v4_contract_and_preserves_schema(self):
-        path = ROOT / "prompts/mirror-v4.txt"
-        self.assertTrue(path.is_file(), "missing reviewed Mirror V4 prompt contract")
+    def test_ac_7_runtime_uses_exact_mirror_v5_contract_and_preserves_schema(self):
+        path = ROOT / "prompts/mirror-v5.txt"
+        self.assertTrue(path.is_file(), "missing reviewed Mirror V5 prompt contract")
         reviewed = path.read_text(encoding="utf-8")
         if reviewed.endswith("\n"):
             reviewed = reviewed[:-1]
@@ -1026,6 +1036,12 @@ class LearningCompanionPromptContractTest(unittest.TestCase):
             "avoid report-style restatement",
             "at most one concrete follow-up question",
             "at most one next step",
+            "direct",
+            "friendly",
+            "💡",
+            "📌",
+            "👉",
+            "internal analysis",
         ):
             with self.subTest(prompt_marker=required):
                 self.assertIn(required, normalized)

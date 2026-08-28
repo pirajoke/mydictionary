@@ -3212,6 +3212,61 @@ for _locale, _messages in _ZERKALO_COMMUNICATION_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 
+_AI_RESPONSE_EXPERIENCE_COPY = {
+    "en": {
+        "mirror_capability_greeting": (
+            "👋 Hi! I’m ready to help with your language learning.\n\n"
+            "💡 Ask about a word, lesson, mistakes, or your progress."
+        ),
+    },
+    "fr": {
+        "mirror_capability_greeting": (
+            "👋 Bonjour ! Je suis prêt à vous aider dans votre apprentissage.\n\n"
+            "💡 Posez une question sur un mot, une leçon, vos erreurs ou vos progrès."
+        ),
+    },
+    "de": {
+        "mirror_capability_greeting": (
+            "👋 Hallo! Ich helfe dir gern beim Sprachenlernen.\n\n"
+            "💡 Frag nach einem Wort, einer Lektion, deinen Fehlern oder deinem Fortschritt."
+        ),
+    },
+    "ja": {
+        "mirror_capability_greeting": (
+            "👋 こんにちは！語学学習をお手伝いします。\n\n"
+            "💡 単語、レッスン、間違い、進捗について質問してください。"
+        ),
+    },
+    "ar": {
+        "mirror_capability_greeting": (
+            "👋 مرحباً! أنا مستعد لمساعدتك في تعلم اللغة.\n\n"
+            "💡 اسأل عن كلمة أو درس أو أخطائك أو تقدمك."
+        ),
+    },
+    "zh": {
+        "mirror_capability_greeting": (
+            "👋 你好！我可以帮助你学习语言。\n\n"
+            "💡 可以问我单词、课程、错误或学习进度。"
+        ),
+    },
+    "ru": {
+        "mirror_capability_greeting": (
+            "👋 Привет! Я готов помочь тебе с изучением языка.\n\n"
+            "💡 Спроси о слове, уроке, ошибках или своём прогрессе."
+        ),
+    },
+    "es": {
+        "mirror_capability_greeting": (
+            "👋 ¡Hola! Estoy listo para ayudarte a aprender idiomas.\n\n"
+            "💡 Pregunta por una palabra, una lección, tus errores o tu progreso."
+        ),
+    },
+}
+
+for _locale, _messages in _AI_RESPONSE_EXPERIENCE_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
+
 def normalize_locale(value: str | None, *, fallback: str = DEFAULT_INTERFACE_LOCALE) -> str:
     """Normalize Telegram language_code without guessing unsupported locales."""
     safe_fallback = fallback if fallback in INTERFACE_LOCALES else DEFAULT_INTERFACE_LOCALE
