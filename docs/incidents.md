@@ -5,7 +5,7 @@ identifiers, messages, prompts, payment IDs, database URLs or raw logs here.
 
 ## 2026-08-03 to 2026-08-04 — Telegram token patterns in private HTTP logs
 
-**Severity:** high until token rotation is complete.
+**Severity:** high during exposure window; resolved.
 
 **Observed:** 6,380 historical Telegram API token-pattern occurrences in the
 private source log. The newest 64 KiB and current OVH container logs contain
@@ -17,8 +17,16 @@ zero occurrences.
 copy was verified with zero matches; token-file loading now rejects unsafe mode,
 symlink, malformed and conflicting sources. The source log remains unchanged.
 
-**Open owner gates:** rotate/revoke through BotFather, prove the replacement
-heartbeat, then separately approve archival or deletion of the original log.
+**Resolved 2026-08-28:** the production token was revoked and replaced through
+BotFather. The replacement was validated against the production Telegram API,
+written atomically to the protected mode-`0600` file, and loaded by a newly
+created bot container. The heartbeat is `ready` in public mode; loopback,
+public and admin-login checks return 200; one polling process is active; and
+the replacement container logs contain zero traceback, polling-conflict,
+invalid-token and token-pattern matches.
+
+**Open owner gate:** separately approve archival or deletion of the original
+historical source log when that source becomes available.
 
 ## 2026-08 — Mac mini outage and OVH migration
 
