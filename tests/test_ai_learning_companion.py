@@ -992,9 +992,9 @@ class LearningCompanionServiceHardeningTest(unittest.IsolatedAsyncioTestCase):
 
 
 class LearningCompanionPromptContractTest(unittest.TestCase):
-    def test_ac_7_runtime_uses_exact_mirror_v3_contract_and_preserves_schema(self):
-        path = ROOT / "prompts/mirror-v3.txt"
-        self.assertTrue(path.is_file(), "missing reviewed Mirror V3 prompt contract")
+    def test_ac_7_runtime_uses_exact_mirror_v4_contract_and_preserves_schema(self):
+        path = ROOT / "prompts/mirror-v4.txt"
+        self.assertTrue(path.is_file(), "missing reviewed Mirror V4 prompt contract")
         reviewed = path.read_text(encoding="utf-8")
         if reviewed.endswith("\n"):
             reviewed = reviewed[:-1]
@@ -1006,6 +1006,12 @@ class LearningCompanionPromptContractTest(unittest.TestCase):
             "compact_reply_policy",
             "learning_stage",
             "safety_envelope",
+            "is_continuation",
+            "answer the question directly",
+            "one thought per sentence",
+            "avoid generic praise",
+            "avoid report-style restatement",
+            "at most one concrete follow-up question",
             "at most one next step",
         ):
             with self.subTest(prompt_marker=required):

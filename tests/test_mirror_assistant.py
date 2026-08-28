@@ -382,11 +382,13 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
                 "learning_context",
                 "recent_dialogue",
                 "response_style",
+                "is_continuation",
             },
         )
         self.assertEqual(payload["grounded_snapshot"], snapshot)
         self.assertIn("immutable", payload["safety_envelope"].lower())
         self.assertEqual(payload["recent_dialogue"], [])
+        self.assertIs(payload["is_continuation"], False)
         self.assertEqual(payload["response_style"], "teacher")
         self.assertEqual(payload["learning_context"], {})
         self.assertNotIn("telegram_user_id", serialized)

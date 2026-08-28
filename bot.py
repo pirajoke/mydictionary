@@ -101,12 +101,14 @@ from mydictionary.mirror_assistant import (
     build_mirror_provider_payload,
     classify_mirror_intent,
     classify_mirror_task,
+    direct_mirror_progress_locale,
     grounded_progress_snapshot,
     normalize_mirror_style,
     recent_mirror_dialogue,
     resolve_companion_locale,
     render_mirror_capabilities,
     render_mirror_greeting,
+    render_mirror_progress_focus,
 )
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.runtime_secrets import load_runtime_secret_files
@@ -3585,7 +3587,8 @@ async def handle_mirror_question(
         selected_depth = str(preferences["depth"])
     intent = classify_mirror_intent(question)
     selected_task_kind = task_kind or classify_mirror_task(question)
-    request_id = None
+    progress_locale = direct_mirror_progress_locale(question)
+    deterministic_progress = progress_locale is not None and task_kind is None
     if intent == "greeting":
         role = str(profile.get("role") or "learner")
         active_pack = CATALOG.get(str(profile.get("active_pack_id") or ""))
@@ -3612,6 +3615,23 @@ async def handle_mirror_question(
             ),
             locale=reply_locale,
         )
+    elif deterministic_progress:
+        try:
+            snapshot = (
+                grounded_progress_snapshot(store, user_id)
+                if isinstance(store, DatabaseStore)
+                else {"has_progress": False}
+            )
+        except Exception as exc:
+            logger.warning(
+                "Mirror progress read failed: error_type=%s",
+                type(exc).__name__,
+            )
+            snapshot = {"has_progress": False}
+        await message.reply_text(
+            render_mirror_progress_focus(snapshot, locale=progress_locale)
+        )
+        return
     else:
         response = ""
         if not AI_SETTINGS.enabled:
@@ -3716,7 +3736,6 @@ async def handle_mirror_question(
                 question=question,
                 mirror_payload=payload,
             )
-            request_id = getattr(result, "request_id", None)
             response = str(result).strip()
             if not response:
                 raise ValueError("Empty Mirror response")
@@ -3736,13 +3755,10 @@ async def handle_mirror_question(
             return
         except Exception as exc:
             logger.warning("Mirror AI failed: error_type=%s", type(exc).__name__)
-            if selected_task_kind == "progress_review":
-                response = build_mirror_progress_summary(store, user_id)
-            else:
-                await message.reply_text(
-                    translate("ai_failure", reply_locale)
-                )
-                return
+            await message.reply_text(
+                translate("ai_failure", reply_locale)
+            )
+            return
 
     mode = _mirror_mode(store, user_id)
     try:
@@ -3792,14 +3808,6 @@ async def handle_mirror_question(
     if intent not in {"greeting", "capabilities"}:
         append_mirror_turn(context.user_data, role="user", text=question)
         append_mirror_turn(context.user_data, role="assistant", text=response)
-    if request_id:
-        await message.reply_text(
-            translate("mirror_feedback_question", reply_locale),
-            reply_markup=mirror_feedback_keyboard(
-                str(request_id),
-                locale=reply_locale,
-            ),
-        )
 
 
 @auth

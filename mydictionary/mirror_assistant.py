@@ -188,12 +188,70 @@ _PROGRESS_PATTERNS = (
     "прогресс",
     "продолж",
     "где останов",
+    "на чем фокус",
+    "на чём фокус",
     "слаб",
     "ошиб",
     "progress",
+    "what should i focus on",
     "resume",
     "weak",
+    "sur quoi dois-je me concentrer",
+    "worauf soll ich mich konzentrieren",
+    "何に集中すればいい",
+    "على ماذا أركز",
+    "我应该专注什么",
+    "en qué debo enfocarme",
 )
+_CONTINUATION_PATTERNS = frozenset(
+    {
+        "what next",
+        "and what next",
+        "et ensuite",
+        "und weiter",
+        "続きを",
+        "وماذا بعد",
+        "然后呢",
+        "давай",
+        "дальше",
+        "что там",
+        "и что дальше",
+        "на чем фокус",
+        "на чём фокус",
+        "y después",
+    }
+)
+_DIRECT_PROGRESS_LOCALES = {
+    "what should i focus on": "en",
+    "how is my progress": "en",
+    "what is my progress": "en",
+    "my progress": "en",
+    "progress": "en",
+    "sur quoi dois je me concentrer": "fr",
+    "mes progrès": "fr",
+    "comment sont mes progrès": "fr",
+    "worauf soll ich mich konzentrieren": "de",
+    "mein fortschritt": "de",
+    "wie ist mein fortschritt": "de",
+    "何に集中すればいい": "ja",
+    "進捗": "ja",
+    "私の進捗はどうですか": "ja",
+    "على ماذا أركز": "ar",
+    "تقدمي": "ar",
+    "كيف هو تقدمي": "ar",
+    "我应该专注什么": "zh",
+    "学习进度": "zh",
+    "我的学习进度怎么样": "zh",
+    "на чем фокус": "ru",
+    "на чём фокус": "ru",
+    "мой прогресс": "ru",
+    "как мой прогресс": "ru",
+    "какой у меня прогресс": "ru",
+    "прогресс": "ru",
+    "en qué debo enfocarme": "es",
+    "mi progreso": "es",
+    "cómo va mi progreso": "es",
+}
 _LATIN_LOCALE_MARKERS = {
     "en": frozenset(
         {
@@ -586,6 +644,29 @@ def classify_mirror_intent(text: str) -> str:
     return "learning_question"
 
 
+def direct_mirror_progress_locale(text: str) -> str | None:
+    """Return the phrase locale only for an explicit progress/focus request."""
+    normalized = " ".join(str(text).casefold().strip().split())
+    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
+    return _DIRECT_PROGRESS_LOCALES.get(words_only)
+
+
+def is_mirror_continuation(
+    text: str,
+    *,
+    recent_dialogue: Sequence[Mapping[str, Any]] | None,
+) -> bool:
+    """Recognize a short follow-up only when bounded dialogue exists."""
+    dialogue = normalize_mirror_dialogue(recent_dialogue)
+    if not dialogue:
+        return False
+    normalized = " ".join(str(text).casefold().strip().split())
+    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
+    if words_only in _GREETING_PATTERNS:
+        return False
+    return words_only in _CONTINUATION_PATTERNS
+
+
 def classify_mirror_task(text: str) -> str:
     """Classify a learning request without sending learner text anywhere."""
     normalized = " ".join(str(text).casefold().strip().split())
@@ -672,6 +753,62 @@ def render_mirror_greeting(
             "Продолжим обучение или разберём слово или фразу?"
         )
     return "Привет! Продолжим обучение или разберём слово или фразу?"
+
+
+def render_mirror_progress_focus(
+    snapshot: Mapping[str, Any],
+    *,
+    locale: str,
+) -> str:
+    """Render a free two-line progress answer without internal identifiers."""
+    selected = normalize_locale(locale)
+    if not bool(snapshot.get("has_progress")):
+        return "\n".join(
+            (
+                translate("mirror_progress_no_history", selected),
+                translate("mirror_progress_focus_starter", selected),
+            )
+        )
+
+    def display_number(*keys: str) -> int | str:
+        for key in keys:
+            value = snapshot.get(key)
+            if value is None or isinstance(value, bool):
+                continue
+            try:
+                return max(0, int(value))
+            except (TypeError, ValueError):
+                continue
+        return "—"
+
+    accuracy = display_number("accuracy_percent", "lifetime_accuracy_percent")
+    tracked = display_number("tracked_words")
+    due = display_number("due_count", "due_reviews")
+    streak = display_number("streak", "streak_days")
+    facts = translate(
+        "mirror_progress_facts",
+        selected,
+        accuracy=accuracy,
+        tracked=tracked,
+        due=due,
+        streak=streak,
+    )
+
+    weak_terms = snapshot.get("weak_terms")
+    weak_term = ""
+    if isinstance(weak_terms, Sequence) and not isinstance(weak_terms, (str, bytes)):
+        for value in weak_terms:
+            candidate = value.get("term") if isinstance(value, Mapping) else value
+            weak_term = " ".join(str(candidate or "").strip().split())[:80]
+            if weak_term:
+                break
+    if weak_term:
+        focus = translate("mirror_progress_focus_weak", selected, term=weak_term)
+    elif isinstance(due, int) and due > 0:
+        focus = translate("mirror_progress_focus_due", selected, due=due)
+    else:
+        focus = translate("mirror_progress_focus_starter", selected)
+    return f"{facts}\n{focus}"
 
 
 def _normalize_mirror_turn(value: Mapping[str, Any]) -> dict[str, str]:
@@ -798,13 +935,14 @@ def build_mirror_provider_payload(
         "general_conversation",
     }:
         raise ValueError("Mirror task kind is invalid")
-    normalized_dialogue = normalize_mirror_dialogue(recent_dialogue)
+    normalized_dialogue = normalize_mirror_dialogue(recent_dialogue)[
+        -MIRROR_PROVIDER_DIALOGUE_LIMIT:
+    ]
     normalized_learner_context = None
     if learner_context is not None:
         normalized_learner_context = normalize_companion_learner_context(
             learner_context
         )
-        normalized_dialogue = normalized_dialogue[-MIRROR_PROVIDER_DIALOGUE_LIMIT:]
     payload = {
         "safety_envelope": MIRROR_SAFETY_ENVELOPE,
         "admin_guidance": clean_guidance,
@@ -813,6 +951,10 @@ def build_mirror_provider_payload(
         "learning_context": _normalize_learning_context(learning_context),
         "recent_dialogue": normalized_dialogue,
         "response_style": selected_mode,
+        "is_continuation": is_mirror_continuation(
+            clean_question,
+            recent_dialogue=normalized_dialogue,
+        ),
     }
     if normalized_learner_context is not None:
         payload.update(
@@ -841,16 +983,19 @@ def build_mirror_provider_payload(
                 "learner_level": selected_level,
             }
         )
-    serialized_payload = json.dumps(
-        payload, ensure_ascii=False, separators=(",", ":")
-    )
-    while len(serialized_payload) > 12000 and payload["recent_dialogue"]:
-        payload["recent_dialogue"].pop(0)
+    while True:
+        payload["is_continuation"] = is_mirror_continuation(
+            clean_question,
+            recent_dialogue=payload["recent_dialogue"],
+        )
         serialized_payload = json.dumps(
             payload, ensure_ascii=False, separators=(",", ":")
         )
-    if len(serialized_payload) > 12000:
-        raise ValueError("Mirror provider payload exceeds the safe bound")
+        if len(serialized_payload) <= 12000:
+            break
+        if not payload["recent_dialogue"]:
+            raise ValueError("Mirror provider payload exceeds the safe bound")
+        payload["recent_dialogue"].pop(0)
     return payload
 
 
