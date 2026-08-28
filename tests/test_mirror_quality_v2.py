@@ -175,7 +175,7 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["complexity_route"], "fast")
         self.assertEqual(responses.kwargs["reasoning"], {"effort": "none"})
         self.assertEqual(responses.kwargs["text"]["verbosity"], "low")
-        self.assertEqual(responses.kwargs["max_output_tokens"], 220)
+        self.assertEqual(responses.kwargs["max_output_tokens"], 320)
         self.assertEqual(
             responses.kwargs["text"]["format"]["name"],
             "my_dictionary_mirror_v2_answer",

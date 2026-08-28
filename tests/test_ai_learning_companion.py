@@ -547,7 +547,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("602", json.dumps(payload, ensure_ascii=False))
         self.assertEqual(
             [item.args[0] for item in message.reply_text.await_args_list],
-            ["🤔", "Réponse courte."],
+            [translate("ai_thinking_fast", "fr"), "Réponse courte."],
         )
         message.reply_text.return_value.delete.assert_awaited_once()
 
@@ -812,7 +812,10 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             service.ask.assert_awaited_once()
             self.assertEqual(
                 [item.args[0] for item in message.reply_text.await_args_list],
-                ["🤔", translate("ai_unavailable_no_charge", "fr")],
+                [
+                    translate("ai_thinking_fast", "fr"),
+                    translate("ai_unavailable_no_charge", "fr"),
+                ],
             )
             message.reply_text.return_value.delete.assert_awaited_once()
 
@@ -833,7 +836,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             service.ask.assert_awaited_once()
             self.assertEqual(
                 [item.args[0] for item in message.reply_text.await_args_list],
-                ["🤔", "Réponse sûre."],
+                [translate("ai_thinking_fast", "fr"), "Réponse sûre."],
             )
             message.reply_text.return_value.delete.assert_awaited_once()
 
@@ -1015,9 +1018,9 @@ class LearningCompanionServiceHardeningTest(unittest.IsolatedAsyncioTestCase):
 
 
 class LearningCompanionPromptContractTest(unittest.TestCase):
-    def test_ac_7_runtime_uses_exact_mirror_v5_contract_and_preserves_schema(self):
-        path = ROOT / "prompts/mirror-v5.txt"
-        self.assertTrue(path.is_file(), "missing reviewed Mirror V5 prompt contract")
+    def test_ac_7_runtime_uses_exact_mirror_v6_contract_and_preserves_schema(self):
+        path = ROOT / "prompts/mirror-v6.txt"
+        self.assertTrue(path.is_file(), "missing reviewed Mirror V6 prompt contract")
         reviewed = path.read_text(encoding="utf-8")
         if reviewed.endswith("\n"):
             reviewed = reviewed[:-1]
@@ -1042,6 +1045,9 @@ class LearningCompanionPromptContractTest(unittest.TestCase):
             "📌",
             "👉",
             "internal analysis",
+            "use relevant recent dialogue naturally",
+            "answer the current question directly",
+            "do not claim context is missing when it is present",
         ):
             with self.subTest(prompt_marker=required):
                 self.assertIn(required, normalized)

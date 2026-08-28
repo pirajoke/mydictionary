@@ -763,7 +763,10 @@ class ZerkaloFeedbackContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             [item.args[0] for item in message.reply_text.await_args_list],
-            ["🤔", "Réponse courte et directe."],
+            [
+                translate("ai_thinking_fast", "fr"),
+                "Réponse courte et directe.",
+            ],
         )
         message.reply_text.return_value.delete.assert_awaited_once()
         self.assertNotIn(

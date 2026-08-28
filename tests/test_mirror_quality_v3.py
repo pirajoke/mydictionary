@@ -11,6 +11,7 @@ from sqlalchemy import func, inspect, select, text
 
 import bot
 from mydictionary import ai_tutor, mirror_assistant, privacy, storage
+from mydictionary.localization import translate
 from mydictionary.privacy import erase_user_learning_data
 from mydictionary.storage import DatabaseStore
 from tests.test_mirror_assistant import (
@@ -350,7 +351,9 @@ class MirrorTelegramStyleContractTest(unittest.IsolatedAsyncioTestCase):
             answer="Да, это нейтральный вариант.",
             retention_days=7,
         )
-        message.reply_text.assert_awaited_once_with("🤔")
+        message.reply_text.assert_awaited_once_with(
+            translate("ai_thinking_fast", "ru")
+        )
         message.reply_text.return_value.delete.assert_awaited_once()
         sender.assert_awaited_once()
 

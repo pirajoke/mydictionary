@@ -312,7 +312,12 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
                 store.reserve_ai_usage.assert_not_called()
                 store.append_mirror_exchange.assert_not_called()
                 context.bot.send_chat_action.assert_not_awaited()
-                self.assertNotIn("🤔", [c.args[0] for c in message.reply_text.await_args_list])
+                self.assertFalse(
+                    any(
+                        c.args[0][:1] in {"⚡", "🧠", "💭"}
+                        for c in message.reply_text.await_args_list
+                    )
+                )
 
     async def test_ac2_eight_locale_completed_progress_is_free_and_grounded(self):
         self.assertEqual(set(self.PROGRESS_CASES), set(bot.INTERFACE_LOCALES))
@@ -365,6 +370,7 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
         context.bot.send_chat_action.assert_not_awaited()
 
     async def test_ac4_thinking_lifecycle_cleans_up_success_errors_quota_and_cancel(self):
+        deep_status = translate("ai_thinking_deep", "en")
         cases = (
             ("success", None, None),
             ("provider", RuntimeError("provider failed"), None),
@@ -380,7 +386,7 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
 
                 async def reply(text, *args, **kwargs):
                     del args, kwargs
-                    return temporary if text == "🤔" else SimpleNamespace()
+                    return temporary if text == deep_status else SimpleNamespace()
 
                 message.reply_text = AsyncMock(side_effect=reply)
                 if failure is not None:
@@ -404,7 +410,9 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
                     chat_id=901, action="typing"
                 )
                 self.assertEqual(
-                    [c.args[0] for c in message.reply_text.await_args_list].count("🤔"),
+                    [c.args[0] for c in message.reply_text.await_args_list].count(
+                        deep_status
+                    ),
                     1,
                 )
                 temporary.delete.assert_awaited_once()
@@ -426,9 +434,15 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
         paywall_mock.assert_awaited_once()
         service.ask.assert_not_awaited()
         context.bot.send_chat_action.assert_not_awaited()
-        self.assertNotIn("🤔", [c.args[0] for c in message.reply_text.await_args_list])
+        self.assertFalse(
+            any(
+                c.args[0][:1] in {"⚡", "🧠", "💭"}
+                for c in message.reply_text.await_args_list
+            )
+        )
 
     async def test_ac4_indicator_send_and_delete_failures_are_non_blocking(self):
+        deep_status = translate("ai_thinking_deep", "en")
         for failure_point in ("action", "emoji", "delete", "missing_methods"):
             with self.subTest(failure=failure_point):
                 update, context, message, _store, service, patches = self.handler_fixture(
@@ -445,9 +459,9 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
 
                 async def reply(text, *args, **kwargs):
                     del args, kwargs
-                    if text == "🤔" and failure_point == "emoji":
+                    if text == deep_status and failure_point == "emoji":
                         raise RuntimeError("emoji failed")
-                    return temporary if text == "🤔" else SimpleNamespace()
+                    return temporary if text == deep_status else SimpleNamespace()
 
                 message.reply_text = AsyncMock(side_effect=reply)
                 for active_patch in patches:
@@ -465,13 +479,16 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
                     context.bot.send_chat_action.assert_awaited_once()
                 elif failure_point == "emoji":
                     self.assertEqual(
-                        [c.args[0] for c in message.reply_text.await_args_list].count("🤔"),
+                        [c.args[0] for c in message.reply_text.await_args_list].count(
+                            deep_status
+                        ),
                         1,
                     )
                 elif failure_point == "delete":
                     temporary.delete.assert_awaited_once()
 
     async def test_edge_concurrent_requests_delete_only_their_own_thinking_message(self):
+        deep_status = translate("ai_thinking_deep", "en")
         update1, context1, message1, _store, service, patches = self.handler_fixture(
             locale="en", question="explain this grammar", enabled=True, credits=3
         )
@@ -488,11 +505,11 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
 
         async def reply1(text, *args, **kwargs):
             del args, kwargs
-            return first if text == "🤔" else SimpleNamespace()
+            return first if text == deep_status else SimpleNamespace()
 
         async def reply2(text, *args, **kwargs):
             del args, kwargs
-            return second if text == "🤔" else SimpleNamespace()
+            return second if text == deep_status else SimpleNamespace()
 
         async def answer(**kwargs):
             del kwargs
@@ -692,6 +709,7 @@ class AIResponseRoutingContractTest(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(classify(phrase), "fast")
 
     async def test_ac4_legacy_service_adapter_keeps_thinking_and_final_answer(self):
+        deep_status = translate("ai_thinking_deep", "en")
         update, context, message, _store, service, patches = (
             AIResponseHandlerContractTest().handler_fixture(
                 locale="en",
@@ -712,7 +730,7 @@ class AIResponseRoutingContractTest(unittest.IsolatedAsyncioTestCase):
 
         async def reply(text, *args, **kwargs):
             del args, kwargs
-            return temporary if text == "🤔" else SimpleNamespace()
+            return temporary if text == deep_status else SimpleNamespace()
 
         message.reply_text = AsyncMock(side_effect=reply)
         for active_patch in patches:
@@ -729,7 +747,7 @@ class AIResponseRoutingContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls[0][0:2], (901, "explain this grammar"))
         self.assertEqual(calls[0][2]["complexity_route"], "deep")
         rendered = [item.args[0] for item in message.reply_text.await_args_list]
-        self.assertEqual(rendered, ["🤔", "💡 Legacy-safe answer."])
+        self.assertEqual(rendered, [deep_status, "💡 Legacy-safe answer."])
         self.assertNotIn(translate("ai_failure", "en"), rendered)
         temporary.delete.assert_awaited_once()
 
@@ -811,7 +829,7 @@ class AIResponseRoutingContractTest(unittest.IsolatedAsyncioTestCase):
             client=SimpleNamespace(responses=capture),
         )
         for route, effort, verbosity, max_tokens in (
-            ("fast", "none", "low", 220),
+            ("fast", "none", "low", 320),
             ("deep", "medium", "medium", 480),
         ):
             payload = companion.build_mirror_provider_payload(

@@ -6,10 +6,11 @@ code that consumes them.
 | Contract | Version | Runtime consumer | Evaluation surface |
 |---|---|---|---|
 | `ai-tutor-v1.txt` | AI Tutor v1 | `OpenAIResponsesProvider.generate` | `tests/fixtures/ai_tutor_eval.json` |
-| `mirror-v5.txt` | Mirror v5 (active) | `OpenAIResponsesProvider.generate_mirror` | `tests/fixtures/mirror_quality_v2.json`, `tests/test_zerkalo_communication_v1.py` |
+| `mirror-v6.txt` | Mirror v6 (active) | `OpenAIResponsesProvider.generate_mirror` | `tests/fixtures/mirror_quality_v2.json`, `tests/test_zerkalo_communication_v1.py` |
 
-`mirror-v4.txt` is retained as the historical predecessor to the active
-`mirror-v5.txt` contract.
+`mirror-v5.txt` is retained as the historical predecessor to the active
+`mirror-v6.txt` contract. `mirror-v4.txt` remains historical evidence of the
+earlier reviewed behavior.
 
 ## Change procedure
 

@@ -152,7 +152,7 @@ MIRROR_RESPONSE_SCHEMA = {
 
 _PROMPT_ROOT = Path(__file__).resolve().parents[1] / "prompts"
 TUTOR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v1.txt")
-MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v5.txt")
+MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v6.txt")
 
 
 class AIConfigurationError(RuntimeError):
@@ -1247,7 +1247,7 @@ class OpenAIResponsesProvider:
         if complexity_route == "fast":
             reasoning_effort = "none"
             verbosity = "low"
-            output_ceiling = 220
+            output_ceiling = 320
         else:
             reasoning_effort = "medium"
             verbosity = "medium"
@@ -1649,7 +1649,7 @@ class AITutorService:
             pricing=self.settings.pricing,
             max_output_tokens=min(
                 self.settings.max_output_tokens,
-                220 if computed_route == "fast" else 480,
+                320 if computed_route == "fast" else 480,
             ),
         )
         if (
