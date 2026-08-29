@@ -34,7 +34,7 @@ from flask import (
     session,
     url_for,
 )
-from sqlalchemy import text
+from sqlalchemy import select, text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from mydictionary.admin_store import AdminStore
@@ -70,17 +70,24 @@ from mydictionary.secret_enrollment import (
     SecretEnrollmentError,
     SecretEnrollmentSettings,
 )
+from mydictionary.safety import PersistentRateLimiter, RateLimitPolicy
 from mydictionary.stars_launch import (
     StarsLaunchEnrollmentSettings,
     StarsLaunchError,
     stars_launch_enrollment_overview,
 )
-from mydictionary.storage import DatabaseStore
+from mydictionary.storage import DatabaseStore, User, UserProgress
 from vocabulary_topics import topic_counts, transcription_for
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CATALOG = load_catalog(BASE_DIR)
+_MINIAPP_SWITCH_LOCKS = tuple(Lock() for _ in range(64))
+_MINIAPP_SWITCH_RATE_POLICY = RateLimitPolicy(
+    limit=8,
+    window_seconds=60,
+    block_seconds=120,
+)
 LANG_LABELS = {
     pack.target_language: pack.label for pack in CATALOG.packs
 }
@@ -575,6 +582,8 @@ def create_app(
     def verify_csrf():
         if request.method != "POST":
             return None
+        if request.path == "/miniapp/api/active-pack":
+            return None
         supplied = str(request.form.get("csrf_token") or "")
         expected = str(session.get("csrf_token") or "")
         if not supplied or not expected or not hmac.compare_digest(supplied, expected):
@@ -665,6 +674,112 @@ def create_app(
         except Exception:
             return jsonify(error="temporarily_unavailable"), 503
         return jsonify(payload)
+
+    @app.post("/miniapp/api/active-pack")
+    def miniapp_active_pack():
+        if not miniapp_settings.enabled:
+            abort(404)
+        init_data = str(request.headers.get("X-Telegram-Init-Data") or "")
+        if not init_data or len(init_data.encode("utf-8")) > 8192:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            identity = miniapp_runtime.verify_init_data(
+                init_data,
+                bot_token=miniapp_settings.bot_token,
+                max_age_seconds=miniapp_settings.auth_max_age_seconds,
+            )
+        except MiniAppAuthenticationError:
+            return jsonify(error="authentication_failed"), 401
+
+        body = request.get_json(silent=True)
+        pack_id = body.get("pack_id") if isinstance(body, dict) else None
+        if (
+            not isinstance(body, dict)
+            or set(body) != {"pack_id"}
+            or not isinstance(pack_id, str)
+            or not miniapp_runtime._MINIAPP_PUBLIC_ID_RE.fullmatch(pack_id)
+        ):
+            return jsonify(error="invalid_request"), 400
+
+        user_id = int(identity["user_id"])
+        try:
+            access = miniapp_runtime.require_active_learner(store, user_id)
+        except MiniAppAccessDenied:
+            return jsonify(error="access_denied"), 403
+        with store.Session() as database_session:
+            learner = database_session.get(User, user_id)
+            progress = database_session.get(UserProgress, user_id)
+            if learner is None or progress is None:
+                return jsonify(error="access_denied"), 403
+            compatible = {
+                candidate.pack_id: candidate
+                for candidate in CATALOG.compatible_packs(
+                    str(learner.native_language or "ru"),
+                    str(access.get("role") or "learner"),
+                )
+            }
+        pack = compatible.get(pack_id)
+        if pack is None:
+            return jsonify(error="invalid_request"), 400
+
+        try:
+            rate_decision = PersistentRateLimiter(store).consume(
+                user_id=user_id,
+                scope="miniapp_pack_switch",
+                policy=_MINIAPP_SWITCH_RATE_POLICY,
+            )
+        except Exception:
+            return jsonify(error="temporarily_unavailable"), 503
+        if not rate_decision.allowed:
+            response = jsonify(error="rate_limited")
+            response.status_code = 429
+            response.headers["Retry-After"] = str(
+                max(1, int(rate_decision.retry_after_seconds))
+            )
+            return response
+
+        switch_lock = _MINIAPP_SWITCH_LOCKS[user_id % len(_MINIAPP_SWITCH_LOCKS)]
+        with switch_lock:
+            with store.Session() as database_session:
+                progress = database_session.get(UserProgress, user_id)
+                if progress is None:
+                    return jsonify(error="access_denied"), 403
+                current_pack_id = progress.active_pack_id
+            try:
+                payload = miniapp_runtime.build_bootstrap(
+                    store,
+                    user_id=user_id,
+                    display_name=identity["display_name"],
+                    avatar_url=str(identity.get("photo_url") or ""),
+                    locale=identity["language_code"],
+                    catalog=CATALOG,
+                    products=admin_store.billing_products(),
+                    checkout_enabled=admin_store.billing_settings.enabled,
+                    ai_enabled=str(app.config.get("AI_TUTOR_ENABLED") or "")
+                    .strip()
+                    .lower()
+                    in {"1", "true", "yes", "on"},
+                    voice_enabled=str(app.config.get("VOICE_TUTOR_ENABLED") or "")
+                    .strip()
+                    .lower()
+                    in {"1", "true", "yes", "on"},
+                    initial_credits=miniapp_initial_credits,
+                    active_pack_id_override=pack.pack_id,
+                    active_language_override=pack.target_language,
+                )
+            except Exception:
+                return jsonify(error="temporarily_unavailable"), 503
+            if current_pack_id != pack.pack_id:
+                try:
+                    store.activate_pack(
+                        user_id,
+                        pack_id=pack.pack_id,
+                        language=pack.target_language,
+                        source="miniapp",
+                    )
+                except Exception:
+                    return jsonify(error="temporarily_unavailable"), 503
+            return jsonify(payload)
 
     @app.get("/health")
     def health():
