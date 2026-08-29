@@ -23,6 +23,7 @@ AI_PROCESSING_NOTICE = (
 def enabled_settings():
     return SimpleNamespace(
         enabled=True,
+        initial_credits=40,
         consent_version=AI_CONSENT_VERSION,
         processing_notice=AI_PROCESSING_NOTICE,
     )
@@ -79,8 +80,17 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("AI", message.reply_text.await_args.args[0])
 
     async def test_active_block_ai_button_opens_free_menu_before_consent_or_credit(self):
+        user_data = {}
+        bot.reset_block_state(
+            user_data,
+            list(range(10)),
+            "ja",
+            "food",
+            pack_id="ja-basics-100",
+        )
+        session_id = user_data["block_session"]
         query = SimpleNamespace(
-            data="bai:block-1",
+            data=f"bai:{session_id}",
             answer=AsyncMock(),
             edit_message_text=AsyncMock(),
             message=SimpleNamespace(chat_id=55, reply_text=AsyncMock()),
@@ -89,14 +99,18 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
             callback_query=query,
             effective_user=SimpleNamespace(id=55),
         )
-        context = SimpleNamespace(
-            user_data={"block_session": "block-1"}, bot=SimpleNamespace()
-        )
+        context = SimpleNamespace(user_data=user_data, bot=SimpleNamespace())
         store = MagicMock()
         store.has_consent.return_value = False
+        store.ai_usage_summary.side_effect = RuntimeError("balance unavailable")
+        billing_service = MagicMock()
+        billing_service.active_products.return_value = []
         with (
             patch.object(bot, "AI_SETTINGS", enabled_settings()),
             patch.object(bot, "get_store", return_value=store),
+            patch.object(
+                bot, "get_billing_service", return_value=billing_service
+            ),
             patch.object(bot, "get_ai_tutor_service") as service,
             patch.object(bot, "send_ai_tutor_answer", new=AsyncMock()) as answer,
         ):
@@ -104,20 +118,37 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
 
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
+        store.ai_usage_summary.assert_called_once_with(
+            55,
+            initial_credits=40,
+        )
+        billing_service.active_products.assert_called_once_with()
         service.assert_not_called()
         answer.assert_not_awaited()
         query.answer.assert_awaited_once_with()
         payload = query.message.reply_text.await_args
-        self.assertEqual(
-            payload.args[0],
-            bot.translate("ai_tutor_menu_intro", "ru"),
+        rendered = payload.args[0]
+        self.assertIn(bot.translate("ai_tutor_economics_intro", "ru"), rendered)
+        self.assertIn(
+            bot.translate("ai_tutor_economics_balance_unavailable", "ru"),
+            rendered,
         )
+        self.assertIn(bot.translate("ai_tutor_economics_policy", "ru"), rendered)
         buttons = [
             button
             for row in payload.kwargs["reply_markup"].inline_keyboard
             for button in row
         ]
         self.assertEqual(len(buttons), 4)
+        self.assertEqual(
+            [button.callback_data for button in buttons],
+            [
+                f"bait:{session_id}:vocabulary",
+                f"bait:{session_id}:mistakes",
+                f"bait:{session_id}:progress",
+                f"bait:{session_id}:ask",
+            ],
+        )
         self.assertNotIn("pending_ai_consent", context.user_data)
 
     async def test_ac_03_acceptance_resumes_only_still_valid_pending_request(self):
