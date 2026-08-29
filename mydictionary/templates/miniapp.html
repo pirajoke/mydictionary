@@ -16,32 +16,36 @@
       <div><strong>MY DICTIONARY</strong><small id="current-language"></small></div>
     </header>
 
-    <section id="loading-state" class="state-card loading" role="status">
+    <section id="loading-state" class="state-card dashboard-state loading" data-ui-state="loading" role="status">
       <span class="spinner" aria-hidden="true"></span><span data-i18n="loading"></span>
     </section>
-    <section id="error-state" class="state-card error" hidden>
+    <section id="error-state" class="state-card dashboard-state error" data-ui-state="error" role="alert" hidden>
       <p data-i18n="error"></p><button id="retry-button" type="button" data-i18n="retry"></button>
     </section>
 
-    <div id="app-content" hidden>
-      <section id="panel-profile" class="panel active" role="tabpanel" data-panel="profile" aria-labelledby="tab-profile">
-        <h1 class="visually-hidden" id="profile-label" data-i18n="profile"></h1>
-        <div class="profile-identity">
+    <div id="app-content" class="dashboard" hidden>
+      <section id="panel-profile" class="panel dashboard-panel active" role="tabpanel" data-panel="profile" aria-labelledby="tab-profile">
+        <header class="dashboard-header profile-header">
+          <h1 id="profile-label" data-i18n="profile"></h1>
+        </header>
+        <div class="profile-identity dashboard-section">
           <div class="avatar-shell">
             <img id="profile-photo" alt="" hidden>
             <span id="profile-avatar-fallback" aria-hidden="true"></span>
           </div>
-          <h2 id="display-name"></h2>
-          <p id="profile-language"></p>
-          <div class="credit-chip"><span aria-hidden="true">✦</span><strong id="profile-credit-balance"></strong><span data-i18n="credits"></span></div>
+          <div class="profile-copy">
+            <h2 id="display-name"></h2>
+            <p id="profile-language"></p>
+            <div class="credit-chip"><span aria-hidden="true">✦</span><strong id="profile-credit-balance"></strong><span data-i18n="credits"></span></div>
+          </div>
         </div>
 
         <div class="profile-actions">
-          <button class="primary-action" type="button" data-action="learn"><span aria-hidden="true">▶</span><span data-i18n="continue_lesson"></span></button>
-          <button class="secondary-action" type="button" data-action="share" data-i18n-aria-label="share"><span aria-hidden="true">↗</span><span data-i18n="share_profile"></span></button>
+          <button class="primary-action dashboard-action" type="button" data-action="learn"><span aria-hidden="true">▶</span><span data-i18n="continue_lesson"></span></button>
+          <button class="secondary-action dashboard-action" type="button" data-action="share" data-i18n-aria-label="share"><span aria-hidden="true">↗</span><span data-i18n="share_profile"></span></button>
         </div>
 
-        <section class="streak-card" aria-labelledby="calendar-title">
+        <section class="streak-card dashboard-section" aria-labelledby="calendar-title">
           <div class="streak-summary">
             <span class="flame" aria-hidden="true">🔥</span>
             <div><strong id="streak-count">0</strong><span data-i18n="streak_days"></span></div>
@@ -56,24 +60,24 @@
           <div id="calendar-grid" class="calendar-grid" role="grid" aria-labelledby="calendar-title"></div>
         </section>
 
-        <details class="progress-details">
+        <details class="progress-details dashboard-section" open>
           <summary data-i18n="profile"></summary>
           <div class="metric-grid" id="profile-metrics"></div>
         </details>
       </section>
 
-      <section id="panel-words" class="panel" role="tabpanel" data-panel="words" aria-labelledby="tab-words" hidden>
-        <header class="section-heading">
+      <section id="panel-words" class="panel dashboard-panel" role="tabpanel" data-panel="words" aria-labelledby="tab-words" hidden>
+        <header class="section-heading dashboard-header">
           <h1 id="words-heading" data-i18n="words"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-words.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
         </header>
         <div id="word-summary" class="word-overview" role="list"></div>
-        <div id="word-list" class="word-list"></div>
-        <div id="empty-words" class="state-card empty" hidden><p data-i18n="empty_words"></p><button type="button" data-action="learn" data-i18n="start_lesson"></button></div>
+        <div id="word-list" class="word-list dashboard-list"></div>
+        <div id="empty-words" class="state-card dashboard-state empty" data-ui-state="empty" role="status" hidden><p data-i18n="empty_words"></p><button class="dashboard-action" type="button" data-action="learn" data-i18n="start_lesson"></button></div>
       </section>
 
-      <section id="panel-credits" class="panel" role="tabpanel" data-panel="credits" aria-labelledby="tab-credits" hidden>
-        <header class="section-heading">
+      <section id="panel-credits" class="panel dashboard-panel" role="tabpanel" data-panel="credits" aria-labelledby="tab-credits" hidden>
+        <header class="section-heading dashboard-header">
           <h1 id="credits-heading" data-i18n="credits"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-credits.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
         </header>
@@ -84,38 +88,38 @@
           </div>
           <div id="credit-summary" class="wallet-secondary"></div>
         </section>
-        <button class="ai-entry" type="button" data-action="ai"><span aria-hidden="true">✦</span><span data-i18n="ai_tutor"></span></button>
+        <button class="ai-entry dashboard-action" type="button" data-action="ai"><span aria-hidden="true">✦</span><span data-i18n="ai_tutor"></span></button>
         <p id="credit-contract" class="credit-contract" data-i18n="credit_contract"></p>
-        <div id="product-list"></div>
-        <p id="checkout-disabled" class="checkout-state" data-i18n="checkout_disabled" role="status" hidden></p>
+        <div id="product-list" class="dashboard-list"></div>
+        <p id="checkout-disabled" class="checkout-state dashboard-state disabled" data-ui-state="disabled" data-i18n="checkout_disabled" role="status" hidden></p>
       </section>
 
-      <section id="panel-languages" class="panel" role="tabpanel" data-panel="languages" aria-labelledby="tab-languages" hidden>
-        <header class="section-heading">
+      <section id="panel-languages" class="panel dashboard-panel" role="tabpanel" data-panel="languages" aria-labelledby="tab-languages" hidden>
+        <header class="section-heading dashboard-header">
           <h1 id="languages-heading" data-i18n="languages"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-languages.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="400">
         </header>
         <div id="language-current" class="language-spotlight"></div>
-        <div id="language-list" class="choice-list"></div>
-        <button class="language-action" type="button" data-action="lang" data-i18n="change_language"></button>
+        <div id="language-list" class="choice-list dashboard-list"></div>
+        <button class="language-action dashboard-action" type="button" data-action="lang" data-i18n="change_language"></button>
       </section>
 
-      <section id="panel-settings" class="panel" role="tabpanel" data-panel="settings" aria-labelledby="tab-settings" hidden>
-        <header class="settings-hero">
+      <section id="panel-settings" class="panel dashboard-panel" role="tabpanel" data-panel="settings" aria-labelledby="tab-settings" hidden>
+        <header class="settings-hero dashboard-header">
           <h1 id="settings-heading" data-i18n="settings"></h1>
           <div class="settings-visual" aria-hidden="true">
             <span><i></i></span><span><i></i></span><span><i></i></span>
           </div>
         </header>
-        <section class="settings-group">
+        <section class="settings-group dashboard-section">
           <h2 data-i18n="settings_group_learning"></h2>
           <dl id="settings-learning"></dl>
         </section>
-        <section class="settings-group">
+        <section class="settings-group dashboard-section">
           <h2 data-i18n="settings_group_tutor"></h2>
           <dl id="settings-tutor"></dl>
         </section>
-        <section class="settings-group">
+        <section class="settings-group dashboard-section">
           <h2 data-i18n="settings_group_features"></h2>
           <dl id="settings-features"></dl>
         </section>
