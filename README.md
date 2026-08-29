@@ -19,6 +19,10 @@ console.
   privacy-safe product analytics, credit operations, and audit history.
 - Optional metered AI tutor, voice practice, and Telegram Stars billing. Each
   has an independent fail-closed rollout gate.
+- Optional Telegram Mini App with five read-only learner views: profile,
+  tracked words, AI credits, languages, and settings. It uses signed Telegram
+  `initData`, never creates learning or billing records on open, and delegates
+  every action back to the existing bot flows.
 - Verified local PostgreSQL backups, encrypted off-site replication tooling,
   retention controls, health monitoring, and a migration-aware OVH release
   contract.
@@ -81,6 +85,7 @@ migrations, isolated persistence, and concurrent credit reservations.
 | `docs/pilot-operations.md` | Controlled cohort and D1/D7 measurement |
 | `docs/launch-readiness.md` | Paid and voice release gates |
 | `docs/mirror-control-plane-v1.md` | Mirror modes, quality analytics, and voice translation gates |
+| `docs/telegram-miniapp.md` | Mini App security, product surface, configuration, and rollback contract |
 | `docs/runbooks/ovh-deployment.md` | Canonical production deployment and rollback runbook |
 | `docs/runbooks/mac-mini-deployment.md` | Historical Mac mini release contract |
 | `docs/runbooks/ovh-cloudflare-tunnel.md` | Owner-gated OVH public-route recovery with token-file handling |

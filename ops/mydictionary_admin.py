@@ -10,6 +10,8 @@ from pathlib import Path
 import re
 import stat
 
+from mydictionary.miniapp import MiniAppConfigurationError, MiniAppSettings
+
 
 SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -248,6 +250,15 @@ def build_process(
             "ADMIN_COOKIE_SECURE": source.get(
                 "ADMIN_COOKIE_SECURE", "true"
             ).strip(),
+            "MINIAPP_ENABLED": source.get("MINIAPP_ENABLED", "false").strip(),
+            "MINIAPP_PUBLIC_URL": source.get("MINIAPP_PUBLIC_URL", "").strip(),
+            "MINIAPP_BOT_USERNAME": source.get(
+                "MINIAPP_BOT_USERNAME", ""
+            ).strip(),
+            "MINIAPP_AUTH_MAX_AGE_SECONDS": source.get(
+                "MINIAPP_AUTH_MAX_AGE_SECONDS", "300"
+            ).strip(),
+            "BOT_TOKEN_FILE": source.get("BOT_TOKEN_FILE", "").strip(),
             "AI_TUTOR_ENABLED": source.get("AI_TUTOR_ENABLED", "false").strip(),
             "AI_INITIAL_CREDITS": source.get("AI_INITIAL_CREDITS", "0").strip(),
             "AI_KEY_ENROLLMENT_ENABLED": source.get(
@@ -378,6 +389,21 @@ def build_process(
             environment[name] = str(source[name]).strip()
     if len(environment["ADMIN_SESSION_SECRET"]) < 32:
         raise RuntimeError("Admin session secret must contain at least 32 characters")
+    try:
+        MiniAppSettings.from_env(
+            {
+                name: environment[name]
+                for name in (
+                    "MINIAPP_ENABLED",
+                    "MINIAPP_PUBLIC_URL",
+                    "MINIAPP_BOT_USERNAME",
+                    "MINIAPP_AUTH_MAX_AGE_SECONDS",
+                    "BOT_TOKEN_FILE",
+                )
+            }
+        )
+    except MiniAppConfigurationError as exc:
+        raise RuntimeError(str(exc)) from exc
     if environment["ADMIN_HOST"] not in {"127.0.0.1", "localhost", "::1"}:
         raise RuntimeError("Admin host must remain loopback")
     if environment["AI_TUTOR_ENABLED"].lower() not in {

@@ -27,6 +27,7 @@ from flask import (
     Response,
     abort,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -43,6 +44,12 @@ from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
 from mydictionary.content import example_target_text
 from mydictionary.mirror_assistant import MIRROR_COMMUNICATION_MODES
+from mydictionary.miniapp import (
+    MiniAppAccessDenied,
+    MiniAppAuthenticationError,
+    MiniAppSettings,
+)
+from mydictionary import miniapp as miniapp_runtime
 from mydictionary.commercial_launch import (
     CommercialLaunchError,
     commercial_launch_overview,
@@ -321,6 +328,16 @@ def create_app(
         ADMIN_GOOGLE_CLIENT_SECRET_FILE=os.environ.get(
             "ADMIN_GOOGLE_CLIENT_SECRET_FILE", ""
         ),
+        MINIAPP_ENABLED=os.environ.get("MINIAPP_ENABLED", "false"),
+        MINIAPP_PUBLIC_URL=os.environ.get("MINIAPP_PUBLIC_URL", ""),
+        MINIAPP_BOT_USERNAME=os.environ.get("MINIAPP_BOT_USERNAME", ""),
+        MINIAPP_AUTH_MAX_AGE_SECONDS=os.environ.get(
+            "MINIAPP_AUTH_MAX_AGE_SECONDS", "300"
+        ),
+        BOT_TOKEN_FILE=os.environ.get("BOT_TOKEN_FILE", ""),
+        AI_TUTOR_ENABLED=os.environ.get("AI_TUTOR_ENABLED", "false"),
+        AI_INITIAL_CREDITS=os.environ.get("AI_INITIAL_CREDITS", "0"),
+        VOICE_TUTOR_ENABLED=os.environ.get("VOICE_TUTOR_ENABLED", "false"),
         ADMIN_HOST=os.environ.get("ADMIN_HOST", "127.0.0.1").strip(),
         ADMIN_PORT=int(os.environ.get("ADMIN_PORT", "8787")),
         DATA_DIR=str(data_dir),
@@ -386,6 +403,16 @@ def create_app(
         )
 
     auth_settings = AdminAuthSettings.from_mapping(app.config)
+    try:
+        miniapp_initial_credits = int(app.config.get("AI_INITIAL_CREDITS") or 0)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("AI_INITIAL_CREDITS must be a non-negative integer") from exc
+    if miniapp_initial_credits < 0:
+        raise RuntimeError("AI_INITIAL_CREDITS must be a non-negative integer")
+    miniapp_settings = MiniAppSettings.from_env(
+        app.config,
+        validate_token_file=not bool(app.testing),
+    )
 
     store = database_store or DatabaseStore(database_url_from_env())
     admin_store = AdminStore(store)
@@ -408,6 +435,7 @@ def create_app(
     app.extensions["groq_key_enrollment"] = groq_key_enrollment
     app.extensions["stars_launch_enrollment"] = stars_launch_enrollment
     app.extensions["admin_auth_settings"] = auth_settings
+    app.extensions["miniapp_settings"] = miniapp_settings
     limiter = LoginLimiter()
     reset_limiter = LoginLimiter(
         attempts=auth_settings.reset_rate_limit_attempts,
@@ -557,16 +585,81 @@ def create_app(
 
     @app.after_request
     def security_headers(response):
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; img-src 'self' data:; style-src 'self'; "
-            "script-src 'self'; form-action 'self'; frame-ancestors 'none'; "
-            "base-uri 'none'"
-        )
+        if request.path == "/miniapp" or request.path.startswith(
+            "/miniapp/static/"
+        ):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; img-src 'self' data:; style-src 'self'; "
+                "script-src 'self' https://telegram.org; connect-src 'self'; "
+                "form-action 'none'; frame-ancestors https://web.telegram.org "
+                "https://*.telegram.org; base-uri 'none'"
+            )
+            response.headers.pop("X-Frame-Options", None)
+        else:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; img-src 'self' data:; style-src 'self'; "
+                "script-src 'self'; form-action 'self'; frame-ancestors 'none'; "
+                "base-uri 'none'"
+            )
+            response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.get("/miniapp")
+    def miniapp_shell():
+        if not miniapp_settings.enabled:
+            abort(404)
+        return render_template(
+            "miniapp.html",
+            bot_username=miniapp_settings.bot_username,
+        )
+
+    @app.get("/miniapp/static/<path:filename>")
+    def miniapp_static(filename: str):
+        if not miniapp_settings.enabled or filename not in {
+            "miniapp.css",
+            "miniapp.js",
+        }:
+            abort(404)
+        return app.send_static_file(filename)
+
+    @app.get("/miniapp/api/bootstrap")
+    def miniapp_bootstrap():
+        if not miniapp_settings.enabled:
+            abort(404)
+        init_data = str(request.headers.get("X-Telegram-Init-Data") or "")
+        if not init_data or len(init_data.encode("utf-8")) > 8192:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            identity = miniapp_runtime.verify_init_data(
+                init_data,
+                bot_token=miniapp_settings.bot_token,
+                max_age_seconds=miniapp_settings.auth_max_age_seconds,
+            )
+        except MiniAppAuthenticationError:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            payload = miniapp_runtime.build_bootstrap(
+                store,
+                user_id=identity["user_id"],
+                display_name=identity["display_name"],
+                locale=identity["language_code"],
+                catalog=CATALOG,
+                products=admin_store.billing_products(),
+                checkout_enabled=admin_store.billing_settings.enabled,
+                ai_enabled=str(app.config.get("AI_TUTOR_ENABLED") or "").strip().lower()
+                in {"1", "true", "yes", "on"},
+                voice_enabled=str(app.config.get("VOICE_TUTOR_ENABLED") or "").strip().lower()
+                in {"1", "true", "yes", "on"},
+                initial_credits=miniapp_initial_credits,
+            )
+        except MiniAppAccessDenied:
+            return jsonify(error="access_denied"), 403
+        except Exception:
+            return jsonify(error="temporarily_unavailable"), 503
+        return jsonify(payload)
 
     @app.get("/health")
     def health():
