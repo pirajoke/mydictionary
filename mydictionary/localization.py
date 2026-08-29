@@ -3199,7 +3199,24 @@ _AI_TUTOR_ECONOMICS_COPY = {
         "ai_tutor_economics_purchase_unavailable": "Credit purchases are currently unavailable.",
         "ai_tutor_action_start_lesson": "📚 Start a lesson",
         "ai_tutor_general_ask_prompt": (
-            "Send one question about language learning or your progress."
+            "You can chat freely with Tutor about language learning or your progress. "
+            "Write any question, or choose an example below."
+        ),
+        "ai_tutor_starter_today": "🗓️ Today's summary",
+        "ai_tutor_starter_today_question": (
+            "Give me a brief summary of my learning today. Mention what I practiced, "
+            "what improved, and one next step. If today's data is missing, say so and "
+            "do not invent facts."
+        ),
+        "ai_tutor_starter_review": "🎯 What to review",
+        "ai_tutor_starter_review_question": (
+            "Based only on my saved progress, what should I review next? Give me up to "
+            "three short priorities. If data is missing, say so and do not invent facts."
+        ),
+        "ai_tutor_starter_quiz": "🧠 Quick quiz",
+        "ai_tutor_starter_quiz_question": (
+            "Give me one short quiz question based on my current learning context, then "
+            "wait for my answer. If context is missing, say so and do not invent facts."
         ),
     },
     "fr": {
@@ -3213,7 +3230,25 @@ _AI_TUTOR_ECONOMICS_COPY = {
         "ai_tutor_economics_purchase_unavailable": "L’achat de crédits est actuellement indisponible.",
         "ai_tutor_action_start_lesson": "📚 Commencer une leçon",
         "ai_tutor_general_ask_prompt": (
-            "Envoyez une question sur l’apprentissage des langues ou vos progrès."
+            "Vous pouvez discuter librement avec le tuteur de votre apprentissage ou de "
+            "vos progrès. Écrivez votre question ou choisissez un exemple ci-dessous."
+        ),
+        "ai_tutor_starter_today": "🗓️ Résumé du jour",
+        "ai_tutor_starter_today_question": (
+            "Donne-moi un bref résumé de mon apprentissage aujourd’hui. Indique ce que "
+            "j’ai travaillé, ce qui s’est amélioré et une prochaine étape. Si les données "
+            "du jour manquent, dis-le sans rien inventer."
+        ),
+        "ai_tutor_starter_review": "🎯 À réviser",
+        "ai_tutor_starter_review_question": (
+            "D’après mes progrès enregistrés uniquement, que dois-je réviser ensuite ? "
+            "Donne au maximum trois priorités courtes. Si les données manquent, dis-le "
+            "sans rien inventer."
+        ),
+        "ai_tutor_starter_quiz": "🧠 Quiz rapide",
+        "ai_tutor_starter_quiz_question": (
+            "Pose-moi une courte question de quiz à partir de mon apprentissage actuel, "
+            "puis attends ma réponse. Si le contexte manque, dis-le sans rien inventer."
         ),
     },
     "de": {
@@ -3227,7 +3262,24 @@ _AI_TUTOR_ECONOMICS_COPY = {
         "ai_tutor_economics_purchase_unavailable": "Der Kauf von Credits ist derzeit nicht verfügbar.",
         "ai_tutor_action_start_lesson": "📚 Lektion starten",
         "ai_tutor_general_ask_prompt": (
-            "Sende eine Frage zum Sprachenlernen oder zu deinem Fortschritt."
+            "Du kannst frei mit dem Tutor über dein Sprachenlernen oder deinen Fortschritt "
+            "sprechen. Schreibe eine Frage oder wähle unten ein Beispiel."
+        ),
+        "ai_tutor_starter_today": "🗓️ Tagesrückblick",
+        "ai_tutor_starter_today_question": (
+            "Gib mir eine kurze Zusammenfassung meines heutigen Lernens. Nenne, was ich "
+            "geübt habe, was sich verbessert hat und einen nächsten Schritt. Wenn heutige "
+            "Daten fehlen, sage es und erfinde nichts."
+        ),
+        "ai_tutor_starter_review": "🎯 Was wiederholen?",
+        "ai_tutor_starter_review_question": (
+            "Was sollte ich anhand meines gespeicherten Fortschritts als Nächstes "
+            "wiederholen? Nenne höchstens drei kurze Prioritäten. Fehlende Daten nicht erfinden."
+        ),
+        "ai_tutor_starter_quiz": "🧠 Kurzes Quiz",
+        "ai_tutor_starter_quiz_question": (
+            "Stelle mir eine kurze Quizfrage aus meinem aktuellen Lernkontext und warte "
+            "dann auf meine Antwort. Wenn Kontext fehlt, sage es und erfinde nichts."
         ),
     },
     "ja": {
@@ -3240,7 +3292,24 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
         "ai_tutor_economics_purchase_unavailable": "現在、クレジットは購入できません。",
         "ai_tutor_action_start_lesson": "📚 レッスンを始める",
-        "ai_tutor_general_ask_prompt": "語学学習や進捗について質問を1つ送ってください。",
+        "ai_tutor_general_ask_prompt": (
+            "語学学習や進捗について、チューターと自由に話せます。質問を書くか、下の例を選んでください。"
+        ),
+        "ai_tutor_starter_today": "🗓️ 今日のまとめ",
+        "ai_tutor_starter_today_question": (
+            "今日の学習を短くまとめてください。練習したこと、上達したこと、次の一歩を示してください。"
+            "今日のデータがなければそう伝え、推測しないでください。"
+        ),
+        "ai_tutor_starter_review": "🎯 次に復習すること",
+        "ai_tutor_starter_review_question": (
+            "保存された進捗だけを使い、次に何を復習すべきか短い3項目以内で教えてください。"
+            "データがなければそう伝え、推測しないでください。"
+        ),
+        "ai_tutor_starter_quiz": "🧠 ミニクイズ",
+        "ai_tutor_starter_quiz_question": (
+            "現在の学習内容から短いクイズを1問出し、私の答えを待ってください。"
+            "内容がなければそう伝え、推測しないでください。"
+        ),
     },
     "ar": {
         "ai_tutor_economics_intro": "✨ مدرس AI — المحادثة وباقات الرصيد",
@@ -3252,7 +3321,24 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
         "ai_tutor_economics_purchase_unavailable": "شراء الرصيد غير متاح حالياً.",
         "ai_tutor_action_start_lesson": "📚 ابدأ درساً",
-        "ai_tutor_general_ask_prompt": "أرسل سؤالاً واحداً عن تعلم اللغة أو تقدمك.",
+        "ai_tutor_general_ask_prompt": (
+            "يمكنك التحدث بحرية مع المدرس عن تعلم اللغة أو تقدمك. اكتب أي سؤال أو اختر مثالاً أدناه."
+        ),
+        "ai_tutor_starter_today": "🗓️ ملخص اليوم",
+        "ai_tutor_starter_today_question": (
+            "أعطني ملخصاً قصيراً لتعلمي اليوم: ما الذي تدربت عليه، وما الذي تحسن، وخطوة تالية واحدة. "
+            "إذا لم تتوفر بيانات اليوم فاذكر ذلك ولا تخترع حقائق."
+        ),
+        "ai_tutor_starter_review": "🎯 ماذا أراجع؟",
+        "ai_tutor_starter_review_question": (
+            "استناداً فقط إلى تقدمي المحفوظ، ماذا أراجع بعد ذلك؟ أعطني ثلاث أولويات قصيرة كحد أقصى. "
+            "إذا غابت البيانات فاذكر ذلك ولا تخترع حقائق."
+        ),
+        "ai_tutor_starter_quiz": "🧠 اختبار سريع",
+        "ai_tutor_starter_quiz_question": (
+            "اطرح علي سؤال اختبار قصيراً من سياق تعلمي الحالي ثم انتظر إجابتي. "
+            "إذا غاب السياق فاذكر ذلك ولا تخترع حقائق."
+        ),
     },
     "zh": {
         "ai_tutor_economics_intro": "✨ AI 导师 — 对话与点数包",
@@ -3264,7 +3350,24 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
         "ai_tutor_economics_purchase_unavailable": "目前无法购买点数。",
         "ai_tutor_action_start_lesson": "📚 开始课程",
-        "ai_tutor_general_ask_prompt": "请发送一个关于语言学习或学习进度的问题。",
+        "ai_tutor_general_ask_prompt": (
+            "你可以自由地与导师聊语言学习或学习进度。输入任何问题，或选择下面的示例。"
+        ),
+        "ai_tutor_starter_today": "🗓️ 今日总结",
+        "ai_tutor_starter_today_question": (
+            "请简短总结我今天的学习：练习了什么、哪些方面有进步，以及下一步。"
+            "如果没有今天的数据，请明确说明，不要编造。"
+        ),
+        "ai_tutor_starter_review": "🎯 接下来复习什么",
+        "ai_tutor_starter_review_question": (
+            "只根据已保存的进度，我接下来应该复习什么？最多给出三个简短重点。"
+            "如果缺少数据，请明确说明，不要编造。"
+        ),
+        "ai_tutor_starter_quiz": "🧠 快速测验",
+        "ai_tutor_starter_quiz_question": (
+            "根据我当前的学习内容出一道简短测验题，然后等待我的回答。"
+            "如果缺少上下文，请明确说明，不要编造。"
+        ),
     },
     "ru": {
         "ai_tutor_economics_intro": "✨ AI-тьютор — чат и пакеты кредитов",
@@ -3277,7 +3380,24 @@ _AI_TUTOR_ECONOMICS_COPY = {
         "ai_tutor_economics_purchase_unavailable": "Покупка кредитов сейчас недоступна.",
         "ai_tutor_action_start_lesson": "📚 Начать урок",
         "ai_tutor_general_ask_prompt": (
-            "Отправь один вопрос об изучении языка или своём прогрессе."
+            "С тьютором можно свободно общаться об изучении языка и своём прогрессе. "
+            "Напиши любой вопрос или выбери готовый пример ниже."
+        ),
+        "ai_tutor_starter_today": "🗓️ Итог за сегодня",
+        "ai_tutor_starter_today_question": (
+            "Дай краткое резюме моего обучения за сегодня: что я практиковал, что "
+            "улучшилось и какой следующий шаг. Если данных за сегодня нет, скажи об "
+            "этом и ничего не выдумывай."
+        ),
+        "ai_tutor_starter_review": "🎯 Что повторить",
+        "ai_tutor_starter_review_question": (
+            "Только по моему сохранённому прогрессу скажи, что повторить дальше. Дай до "
+            "трёх коротких приоритетов. Если данных нет, скажи об этом и ничего не выдумывай."
+        ),
+        "ai_tutor_starter_quiz": "🧠 Короткий квиз",
+        "ai_tutor_starter_quiz_question": (
+            "Задай мне один короткий вопрос по текущему учебному контексту и дождись "
+            "моего ответа. Если контекста нет, скажи об этом и ничего не выдумывай."
         ),
     },
     "es": {
@@ -3291,7 +3411,23 @@ _AI_TUTOR_ECONOMICS_COPY = {
         "ai_tutor_economics_purchase_unavailable": "La compra de créditos no está disponible ahora.",
         "ai_tutor_action_start_lesson": "📚 Empezar una lección",
         "ai_tutor_general_ask_prompt": (
-            "Envía una pregunta sobre el aprendizaje de idiomas o tu progreso."
+            "Puedes hablar libremente con el tutor sobre idiomas o tu progreso. "
+            "Escribe cualquier pregunta o elige un ejemplo de abajo."
+        ),
+        "ai_tutor_starter_today": "🗓️ Resumen de hoy",
+        "ai_tutor_starter_today_question": (
+            "Dame un resumen breve de mi aprendizaje de hoy: qué practiqué, qué mejoró "
+            "y un siguiente paso. Si faltan datos de hoy, dilo sin inventar hechos."
+        ),
+        "ai_tutor_starter_review": "🎯 Qué repasar",
+        "ai_tutor_starter_review_question": (
+            "Basándote solo en mi progreso guardado, ¿qué debo repasar ahora? Dame hasta "
+            "tres prioridades breves. Si faltan datos, dilo sin inventar hechos."
+        ),
+        "ai_tutor_starter_quiz": "🧠 Quiz rápido",
+        "ai_tutor_starter_quiz_question": (
+            "Hazme una pregunta corta de quiz basada en mi aprendizaje actual y espera "
+            "mi respuesta. Si falta contexto, dilo sin inventar hechos."
         ),
     },
 }

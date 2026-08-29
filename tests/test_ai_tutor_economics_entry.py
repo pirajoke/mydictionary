@@ -31,6 +31,12 @@ ECONOMICS_COPY_KEYS = (
     "ai_tutor_economics_purchase_unavailable",
     "ai_tutor_action_start_lesson",
     "ai_tutor_general_ask_prompt",
+    "ai_tutor_starter_today",
+    "ai_tutor_starter_today_question",
+    "ai_tutor_starter_review",
+    "ai_tutor_starter_review_question",
+    "ai_tutor_starter_quiz",
+    "ai_tutor_starter_quiz_question",
 )
 
 
@@ -482,6 +488,98 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
 
 
 class AITutorGeneralChatTest(unittest.IsolatedAsyncioTestCase):
+    async def test_ac1_ac2_ask_invites_free_chat_and_offers_three_question_starters(self):
+        surface = TutorEconomicsSurface(locale="fr")
+        surface.use_callback("aitutor:ask")
+        mirror = AsyncMock()
+        with (
+            patch.object(bot, "AI_SETTINGS", ai_settings()),
+            patch.object(bot.time, "time", return_value=1_000),
+            patch.object(bot, "handle_mirror_question", new=mirror),
+        ):
+            await bot.ai_tutor_entry_cb.__wrapped__(surface.update, surface.context)
+
+        text, markup = reply_payload(surface)
+        self.assertEqual(text, translate("ai_tutor_general_ask_prompt", "fr"))
+        self.assertIn("librement", text.lower())
+        rendered = buttons(markup)
+        self.assertEqual(
+            [button.text for button in rendered],
+            [
+                translate("ai_tutor_starter_today", "fr"),
+                translate("ai_tutor_starter_review", "fr"),
+                translate("ai_tutor_starter_quiz", "fr"),
+            ],
+        )
+        self.assertEqual(
+            [button.callback_data for button in rendered],
+            ["aitutor:today", "aitutor:review", "aitutor:quiz"],
+        )
+        self.assertTrue(
+            all(len(button.callback_data.encode("utf-8")) <= 64 for button in rendered)
+        )
+        self.assertEqual(
+            surface.user_data[bot.PENDING_AI_TUTOR_KEY],
+            {"request_kind": "mirror_chat", "expires_at": 1_600},
+        )
+        mirror.assert_not_awaited()
+
+    async def test_ac3_ac4_each_starter_uses_the_grounded_tutor_once(self):
+        expected = {
+            "today": "ai_tutor_starter_today_question",
+            "review": "ai_tutor_starter_review_question",
+            "quiz": "ai_tutor_starter_quiz_question",
+        }
+        for action, question_key in expected.items():
+            with self.subTest(action=action):
+                surface = TutorEconomicsSurface(locale="ru")
+                surface.use_callback(f"aitutor:{action}")
+                surface.user_data[bot.PENDING_AI_TUTOR_KEY] = {
+                    "request_kind": "mirror_chat",
+                    "expires_at": 1_600,
+                }
+                mirror = AsyncMock()
+                provider = MagicMock()
+                with (
+                    patch.object(bot, "AI_SETTINGS", ai_settings()),
+                    patch.object(bot, "handle_mirror_question", new=mirror),
+                    patch.object(bot, "get_ai_tutor_service", return_value=provider),
+                ):
+                    await bot.ai_tutor_entry_cb.__wrapped__(
+                        surface.update, surface.context
+                    )
+
+                surface.query.answer.assert_awaited_once_with()
+                mirror.assert_awaited_once_with(
+                    surface.update,
+                    surface.context,
+                    question=translate(question_key, "ru"),
+                    communication_mode="brief",
+                    answer_depth="compact",
+                    task_kind="progress_review",
+                )
+                provider.assert_not_called()
+                self.assertNotIn(bot.PENDING_AI_TUTOR_KEY, surface.user_data)
+
+        today = translate("ai_tutor_starter_today_question", "ru").lower()
+        self.assertIn("сегодня", today)
+        self.assertIn("крат", today)
+        self.assertIn("не выдум", today)
+
+    async def test_ac5_unknown_starter_fails_closed(self):
+        surface = TutorEconomicsSurface(locale="en")
+        surface.use_callback("aitutor:unknown-starter")
+        mirror = AsyncMock()
+        with patch.object(bot, "handle_mirror_question", new=mirror):
+            await bot.ai_tutor_entry_cb.__wrapped__(surface.update, surface.context)
+
+        surface.query.answer.assert_awaited_once_with(
+            translate("privacy_unknown_action", "en"),
+            show_alert=True,
+        )
+        surface.message.reply_text.assert_not_awaited()
+        mirror.assert_not_awaited()
+
     async def test_ac3_general_ask_replaces_one_ten_minute_pending_state_without_ai(self):
         surface = TutorEconomicsSurface(locale="ru")
         surface.use_callback("aitutor:ask")
@@ -506,9 +604,12 @@ class AITutorGeneralChatTest(unittest.IsolatedAsyncioTestCase):
             {"request_kind": "mirror_chat", "expires_at": 1_601},
         )
         surface.query.answer.assert_awaited_once_with()
-        surface.message.reply_text.assert_awaited_once_with(
-            translate("ai_tutor_general_ask_prompt", "ru")
+        prompt_call = surface.message.reply_text.await_args
+        self.assertEqual(
+            prompt_call.args[0],
+            translate("ai_tutor_general_ask_prompt", "ru"),
         )
+        self.assertIsNotNone(prompt_call.kwargs.get("reply_markup"))
         mirror.assert_not_awaited()
         provider.assert_not_called()
 

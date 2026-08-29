@@ -297,6 +297,11 @@ AI_TUTOR_ACTION_QUESTION_KEYS = {
     "mistakes": "ai_tutor_question_mistakes",
     "progress": "ai_tutor_question_progress",
 }
+AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS = {
+    "today": "ai_tutor_starter_today_question",
+    "review": "ai_tutor_starter_review_question",
+    "quiz": "ai_tutor_starter_quiz_question",
+}
 
 
 def database_url() -> str:
@@ -6437,13 +6442,17 @@ async def ai_tutor_entry_cb(
     locale = interface_locale_for_update(update)
     parts = str(query.data or "").split(":", 1)
     action = parts[1] if len(parts) == 2 else ""
-    if action not in {"ask", "start"}:
+    if action not in {
+        "ask",
+        "start",
+        *AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS,
+    }:
         await query.answer(
             translate("privacy_unknown_action", locale),
             show_alert=True,
         )
         return
-    if action == "ask" and not AI_SETTINGS.enabled:
+    if action != "start" and not AI_SETTINGS.enabled:
         await query.answer(
             translate("ai_disabled", locale),
             show_alert=True,
@@ -6456,7 +6465,42 @@ async def ai_tutor_entry_cb(
             "expires_at": int(time.time()) + PENDING_AI_TUTOR_TTL_SECONDS,
         }
         await query.message.reply_text(
-            translate("ai_tutor_general_ask_prompt", locale)
+            translate("ai_tutor_general_ask_prompt", locale),
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            translate("ai_tutor_starter_today", locale),
+                            callback_data="aitutor:today",
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            translate("ai_tutor_starter_review", locale),
+                            callback_data="aitutor:review",
+                        ),
+                        InlineKeyboardButton(
+                            translate("ai_tutor_starter_quiz", locale),
+                            callback_data="aitutor:quiz",
+                        ),
+                    ],
+                ]
+            ),
+        )
+        return
+
+    if action in AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS:
+        context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
+        await handle_mirror_question(
+            update,
+            context,
+            question=translate(
+                AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS[action],
+                locale,
+            ),
+            communication_mode="brief",
+            answer_depth="compact",
+            task_kind="progress_review",
         )
         return
 
