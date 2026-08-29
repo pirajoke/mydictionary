@@ -67,6 +67,7 @@
           <h1 id="words-heading" data-i18n="words"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-words.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
         </header>
+        <div id="word-summary" class="word-overview" role="list"></div>
         <div id="word-list" class="word-list"></div>
         <div id="empty-words" class="state-card empty" hidden><p data-i18n="empty_words"></p><button type="button" data-action="learn" data-i18n="start_lesson"></button></div>
       </section>
@@ -76,8 +77,17 @@
           <h1 id="credits-heading" data-i18n="credits"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-credits.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
         </header>
+        <section class="wallet-card" aria-labelledby="wallet-available-label">
+          <div class="wallet-primary">
+            <span id="wallet-available-label" data-i18n="credit_available"></span>
+            <strong><span aria-hidden="true">✦</span><span id="wallet-available">0</span></strong>
+          </div>
+          <div id="credit-summary" class="wallet-secondary"></div>
+        </section>
         <button class="ai-entry" type="button" data-action="ai"><span aria-hidden="true">✦</span><span data-i18n="ai_tutor"></span></button>
-        <div id="credit-summary" class="metric-grid"></div><p id="credit-contract" class="paper-card" data-i18n="credit_contract"></p><div id="product-list"></div><p id="checkout-disabled" class="state-card disabled" data-i18n="checkout_disabled" hidden></p>
+        <p id="credit-contract" class="credit-contract" data-i18n="credit_contract"></p>
+        <div id="product-list"></div>
+        <p id="checkout-disabled" class="checkout-state" data-i18n="checkout_disabled" role="status" hidden></p>
       </section>
 
       <section id="panel-languages" class="panel" role="tabpanel" data-panel="languages" aria-labelledby="tab-languages" hidden>
@@ -85,11 +95,31 @@
           <h1 id="languages-heading" data-i18n="languages"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-languages.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="400">
         </header>
-        <div id="language-list" class="choice-list"></div><button type="button" data-action="lang" data-i18n="change_language"></button>
+        <div id="language-current" class="language-spotlight"></div>
+        <div id="language-list" class="choice-list"></div>
+        <button class="language-action" type="button" data-action="lang" data-i18n="change_language"></button>
       </section>
 
       <section id="panel-settings" class="panel" role="tabpanel" data-panel="settings" aria-labelledby="tab-settings" hidden>
-        <h1 id="settings-heading" data-i18n="settings"></h1><dl id="settings-list" class="paper-card"></dl><div class="action-grid"><button type="button" data-action="settings" data-i18n="open_settings"></button><button type="button" data-action="privacy" data-i18n="privacy"></button></div>
+        <header class="settings-hero">
+          <h1 id="settings-heading" data-i18n="settings"></h1>
+          <div class="settings-visual" aria-hidden="true">
+            <span><i></i></span><span><i></i></span><span><i></i></span>
+          </div>
+        </header>
+        <section class="settings-group">
+          <h2 data-i18n="settings_group_learning"></h2>
+          <dl id="settings-learning"></dl>
+        </section>
+        <section class="settings-group">
+          <h2 data-i18n="settings_group_tutor"></h2>
+          <dl id="settings-tutor"></dl>
+        </section>
+        <section class="settings-group">
+          <h2 data-i18n="settings_group_features"></h2>
+          <dl id="settings-features"></dl>
+        </section>
+        <div class="action-grid"><button type="button" data-action="settings" data-i18n="open_settings"></button><button type="button" data-action="privacy" data-i18n="privacy"></button></div>
       </section>
     </div>
   </main>
