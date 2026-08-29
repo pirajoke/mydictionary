@@ -1233,6 +1233,20 @@ _USER_SURFACE_COPY = {
 for _locale, _messages in _USER_SURFACE_COPY.items():
     _CATALOG[_locale].update(_messages)
 
+_MINIAPP_TELEGRAM_COPY = {
+    "en": {"command_app": "Open app", "miniapp_open": "Open MY DICTIONARY", "miniapp_private_only": "Open /app in a private chat with the bot.", "miniapp_disabled": "The app menu is not available right now."},
+    "fr": {"command_app": "Ouvrir l’app", "miniapp_open": "Ouvrir MY DICTIONARY", "miniapp_private_only": "Ouvrez /app dans une conversation privée avec le bot.", "miniapp_disabled": "Le menu de l’application n’est pas disponible pour le moment."},
+    "de": {"command_app": "App öffnen", "miniapp_open": "MY DICTIONARY öffnen", "miniapp_private_only": "Öffne /app in einem privaten Chat mit dem Bot.", "miniapp_disabled": "Das App-Menü ist derzeit nicht verfügbar."},
+    "ja": {"command_app": "アプリを開く", "miniapp_open": "MY DICTIONARYを開く", "miniapp_private_only": "ボットとのプライベートチャットで /app を開いてください。", "miniapp_disabled": "アプリメニューは現在利用できません。"},
+    "ar": {"command_app": "فتح التطبيق", "miniapp_open": "فتح MY DICTIONARY", "miniapp_private_only": "افتح /app في محادثة خاصة مع البوت.", "miniapp_disabled": "قائمة التطبيق غير متاحة حالياً."},
+    "zh": {"command_app": "打开应用", "miniapp_open": "打开 MY DICTIONARY", "miniapp_private_only": "请在与机器人的私聊中打开 /app。", "miniapp_disabled": "应用菜单暂时不可用。"},
+    "ru": {"command_app": "Открыть приложение", "miniapp_open": "Открыть MY DICTIONARY", "miniapp_private_only": "Откройте /app в личном чате с ботом.", "miniapp_disabled": "Меню приложения сейчас недоступно."},
+    "es": {"command_app": "Abrir la app", "miniapp_open": "Abrir MY DICTIONARY", "miniapp_private_only": "Abre /app en un chat privado con el bot.", "miniapp_disabled": "El menú de la aplicación no está disponible ahora."},
+}
+
+for _locale, _messages in _MINIAPP_TELEGRAM_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
 _USER_SURFACE_CYCLE2_COPY = {
     "en": {
         "privacy_voice_status": "Consent can be granted when you start /voice.",

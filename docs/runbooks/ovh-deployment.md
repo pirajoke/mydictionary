@@ -11,8 +11,8 @@ payment or external-message authority.
 - The application origin binds to loopback; Cloudflare is a separate connector.
 - A pre-deploy custom-format PostgreSQL dump is checksummed and verified with
   `pg_restore --list` before activation.
-- AI, Voice, Stars and autodeploy flags are never changed implicitly by a code
-  release.
+- AI, Voice, Stars, Mini App and autodeploy flags are never changed implicitly
+  by a code release.
 - No secret value, environment dump, database URL, raw log or learner data is
   printed into a release receipt.
 
@@ -32,7 +32,8 @@ Record privacy-safe evidence only:
 5. loopback `/health` and public `/health` independently;
 6. bot/admin restart counts and exactly one bot polling process;
 7. backup timer state, latest verified dump age/checksum status;
-8. AI, Voice, Stars, Mirror voice and autodeploy flags by boolean only;
+8. AI, Voice, Stars, Mini App, Mirror voice and autodeploy flags by boolean
+   only;
 9. recent traceback, polling-conflict and token-pattern counts without log text.
 
 Stop before mutation on any release/schema mismatch, stale backup, unhealthy
@@ -74,6 +75,11 @@ change the application or database.
   service result is successful;
 - no new traceback, polling conflict or token-pattern count appears;
 - Stars/autodeploy and every unrelated feature flag remain unchanged.
+- When Mini App is enabled, `/miniapp` loads through the public tunnel, its
+  unauthenticated bootstrap returns the fixed authentication failure, `/app`
+  is present in the private command menu, and bot/admin use the same protected
+  token file. When disabled, `/miniapp` is 404 and Telegram's menu button is
+  reset to the default.
 
 ## Rollback boundary
 
@@ -86,3 +92,5 @@ an explicitly approved restore with an exact data-loss window.
 Cloudflare connector recovery follows
 [`ovh-cloudflare-tunnel.md`](ovh-cloudflare-tunnel.md). Off-site upload and
 isolated restore follow [`../product-safety.md`](../product-safety.md).
+Mini App activation and rollback follow
+[`../telegram-miniapp.md`](../telegram-miniapp.md).

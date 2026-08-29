@@ -27,8 +27,11 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     LabeledPrice,
+    MenuButtonDefault,
+    MenuButtonWebApp,
     ReplyKeyboardMarkup,
     Update,
+    WebAppInfo,
 )
 from telegram.error import Conflict, TelegramError
 from telegram.helpers import escape_markdown
@@ -111,6 +114,7 @@ from mydictionary.mirror_assistant import (
     render_mirror_greeting,
     render_mirror_progress_focus,
 )
+from mydictionary.miniapp import MiniAppSettings
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.runtime_secrets import load_runtime_secret_files
 from mydictionary.privacy import erase_user_learning_data
@@ -217,6 +221,12 @@ VOICE_TRANSLATION_SETTINGS = VoiceTranslationSettings.from_env(
     existing_voice_consent_version=VOICE_SETTINGS.consent_version
 )
 TELEGRAM_RUNTIME = TelegramRuntimeSettings.from_env()
+_miniapp_environment = dict(os.environ)
+if _miniapp_environment.get("BOT_TOKEN_FILE"):
+    # BOT_TOKEN was loaded from that protected file above; validate/read the
+    # file again without treating the derived in-memory value as direct config.
+    _miniapp_environment.pop("BOT_TOKEN", None)
+MINIAPP_SETTINGS = MiniAppSettings.from_env(_miniapp_environment)
 TELEGRAM_RUNTIME.validate_billing_process(
     billing_enabled=BILLING_SETTINGS.enabled,
     terms_version=BILLING_SETTINGS.terms_version,
@@ -1266,6 +1276,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.message, locale=interface_locale_for_update(update)
         )
         return
+    action = miniapp_start_action(
+        context.args[0] if getattr(context, "args", None) else ""
+    )
+    if action:
+        await route_miniapp_start_action(action, update, context)
+        return
     await send_start_message(
         update.message,
         context,
@@ -1285,6 +1301,73 @@ def start_source(args) -> str:
     ):
         return "direct"
     return candidate
+
+
+def miniapp_start_action(payload: str | None) -> str | None:
+    candidate = str(payload or "").strip().lower()
+    if not candidate.startswith("miniapp_"):
+        return None
+    action = candidate.removeprefix("miniapp_")
+    return action if action in {"learn", "ai", "buy", "lang", "settings", "privacy"} else None
+
+
+async def route_miniapp_start_action(
+    action: str,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    handlers = {
+        "learn": cmd_learn,
+        "ai": cmd_ai,
+        "buy": cmd_buy,
+        "lang": cmd_lang,
+        "privacy": cmd_privacy,
+    }
+    if action in handlers:
+        runtime = _ACTIVE_RUNTIME.get()
+        if SAFETY_SETTINGS.enabled and runtime.role != "admin":
+            scope, policy = SAFETY_SETTINGS.for_handler(f"cmd_{action}")
+            rate_decision = PersistentRateLimiter(runtime.store).consume(
+                user_id=runtime.user_id,
+                scope=scope,
+                policy=policy,
+            )
+            if not rate_decision.allowed:
+                await update.effective_message.reply_text(
+                    translate(
+                        "rate_limited",
+                        interface_locale_for_update(update),
+                        seconds=rate_decision.retry_after_seconds,
+                    )
+                )
+                return
+        original_args = getattr(context, "args", None)
+        context.args = []
+        try:
+            await handlers[action].__wrapped__(update, context)
+        finally:
+            context.args = original_args
+        return
+    runtime = _ACTIVE_RUNTIME.get()
+    product = runtime.store.product_profile(runtime.user_id)
+    try:
+        product.update(runtime.store.get_mirror_preferences(runtime.user_id))
+        product["mirror_mode"] = product.pop("mode")
+    except (AttributeError, TypeError, ValueError):
+        pass
+    await update.effective_message.reply_text(
+        settings_text(
+            active_content_pack(),
+            product,
+            locale=interface_locale_for_update(update),
+        ),
+        reply_markup=settings_keyboard(
+            product,
+            mirror_policy=AdminStore(runtime.store).get_mirror_control_plane(),
+            locale=interface_locale_for_update(update),
+        ),
+        parse_mode="Markdown",
+    )
 
 
 def interface_locale_for_update(update: Update) -> str:
@@ -1660,6 +1743,34 @@ async def send_start_message(
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         translate("bot_help", interface_locale_for_update(update))
+    )
+
+
+@auth
+async def cmd_app(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data = getattr(context, "user_data", None)
+    locale = normalize_locale(
+        (
+            user_data.get("interface_locale")
+            if isinstance(user_data, Mapping)
+            else None
+        )
+        or interface_locale_for_update(update)
+    )
+    if not MINIAPP_SETTINGS.enabled:
+        await update.message.reply_text(translate("miniapp_disabled", locale))
+        return
+    if getattr(update.effective_chat, "type", "") != "private":
+        await update.message.reply_text(translate("miniapp_private_only", locale))
+        return
+    await update.message.reply_text(
+        translate("miniapp_open", locale),
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton(
+                translate("miniapp_open", locale),
+                web_app=WebAppInfo(url=MINIAPP_SETTINGS.public_url),
+            )]]
+        ),
     )
 
 
@@ -6835,6 +6946,7 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def build_bot_commands(
     *,
     ai_enabled: bool,
+    miniapp_enabled: bool = False,
     locale: str | None = None,
 ) -> list[BotCommand]:
     """Return a stable, compact command menu; legacy handlers stay callable."""
@@ -6846,6 +6958,8 @@ def build_bot_commands(
     ]
     if ai_enabled:
         commands.append(BotCommand("ai", translate("command_ai", locale)))
+    if miniapp_enabled:
+        commands.append(BotCommand("app", translate("command_app", locale)))
     commands.extend(
         [
             BotCommand("privacy", translate("command_privacy", locale)),
@@ -6855,20 +6969,23 @@ def build_bot_commands(
     return commands
 
 
-BOT_COMMANDS = build_bot_commands(ai_enabled=AI_SETTINGS.enabled)
+BOT_COMMANDS = build_bot_commands(
+    ai_enabled=AI_SETTINGS.enabled,
+    miniapp_enabled=MINIAPP_SETTINGS.enabled,
+)
 
 
 async def sync_telegram_profile(telegram_bot) -> None:
     """Update optional Bot API metadata without blocking polling startup."""
     logger.disabled = False
     profile = get_bot_profile()
-    operations = (
+    operations = [
         ("commands", telegram_bot.set_my_commands, (BOT_COMMANDS,), {}),
         *(
             (
                 f"commands:{locale}",
                 telegram_bot.set_my_commands,
-                (build_bot_commands(ai_enabled=AI_SETTINGS.enabled, locale=locale),),
+                (build_bot_commands(ai_enabled=AI_SETTINGS.enabled, miniapp_enabled=MINIAPP_SETTINGS.enabled, locale=locale),),
                 {"language_code": locale},
             )
             for locale in sorted(INTERFACE_LOCALES)
@@ -6886,7 +7003,31 @@ async def sync_telegram_profile(telegram_bot) -> None:
             (profile["bot_description"],),
             {},
         ),
-    )
+    ]
+    menu_setter = getattr(telegram_bot, "set_chat_menu_button", None)
+    if MINIAPP_SETTINGS.enabled and callable(menu_setter):
+        operations.append(
+            (
+                "menu_button",
+                menu_setter,
+                (),
+                {
+                    "menu_button": MenuButtonWebApp(
+                        text=translate("miniapp_open", "en"),
+                        web_app=WebAppInfo(url=MINIAPP_SETTINGS.public_url),
+                    )
+                },
+            )
+        )
+    elif callable(menu_setter):
+        operations.append(
+            (
+                "menu_button",
+                menu_setter,
+                (),
+                {"menu_button": MenuButtonDefault()},
+            )
+        )
     for operation, method, args, kwargs in operations:
         try:
             await method(*args, **kwargs)
@@ -6984,6 +7125,7 @@ async def manual_polling():
 
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("app", cmd_app))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("quiz", cmd_quiz))
     app.add_handler(CommandHandler("type", cmd_type))
