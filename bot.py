@@ -3772,9 +3772,37 @@ async def handle_mirror_question(
                 type(exc).__name__,
             )
             snapshot = {"has_progress": False}
-        await message.reply_text(
-            render_mirror_progress_focus(snapshot, locale=progress_locale)
+        progress_response = render_mirror_progress_focus(
+            snapshot,
+            locale=progress_locale,
         )
+        await message.reply_text(progress_response)
+        if MIRROR_MEMORY_SETTINGS.enabled and AI_SETTINGS.consent_version:
+            try:
+                remembers_dialogue = store.has_consent(
+                    user_id,
+                    consent_type="ai_processing",
+                    document_version=AI_SETTINGS.consent_version,
+                )
+            except Exception as exc:
+                remembers_dialogue = False
+                logger.warning(
+                    "Mirror progress consent read failed: error_type=%s",
+                    type(exc).__name__,
+                )
+            if remembers_dialogue:
+                try:
+                    store.append_mirror_exchange(
+                        user_id,
+                        question=question,
+                        answer=progress_response,
+                        retention_days=MIRROR_MEMORY_SETTINGS.retention_days,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Mirror progress memory write failed: error_type=%s",
+                        type(exc).__name__,
+                    )
         return
     else:
         response = ""
@@ -3836,7 +3864,6 @@ async def handle_mirror_question(
                 return
         thinking_message = None
         thinking_started = False
-        thinking_status_key = "ai_thinking_fast"
 
         async def start_thinking() -> None:
             nonlocal thinking_message, thinking_started
@@ -3854,9 +3881,7 @@ async def handle_mirror_question(
                 except Exception:
                     pass
             try:
-                thinking_message = await message.reply_text(
-                    translate(thinking_status_key, reply_locale)
-                )
+                thinking_message = await message.reply_text("⚡")
             except Exception:
                 thinking_message = None
 
@@ -3921,10 +3946,6 @@ async def handle_mirror_question(
                 learner_level=preferences["level"],
                 interface_locale=reply_locale,
             )
-            if payload["is_continuation"]:
-                thinking_status_key = "ai_thinking_continuation"
-            elif payload["complexity_route"] == "deep":
-                thinking_status_key = "ai_thinking_deep"
             service = get_ai_tutor_service()
             if isinstance(service, AITutorService):
                 result = await service.ask(

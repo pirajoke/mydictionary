@@ -462,7 +462,7 @@ class ZerkaloProgressFocusContractTest(unittest.IsolatedAsyncioTestCase):
                     rendered,
                     "\n".join(
                         (
-                            translate(
+                            "📊 " + translate(
                                 "mirror_progress_facts",
                                 locale,
                                 accuracy=74,
@@ -470,7 +470,7 @@ class ZerkaloProgressFocusContractTest(unittest.IsolatedAsyncioTestCase):
                                 due=3,
                                 streak=4,
                             ),
-                            translate(
+                            "👉 " + translate(
                                 "mirror_progress_focus_weak",
                                 locale,
                                 term="猫",
@@ -496,8 +496,8 @@ class ZerkaloProgressFocusContractTest(unittest.IsolatedAsyncioTestCase):
                     rendered,
                     "\n".join(
                         (
-                            translate("mirror_progress_no_history", locale),
-                            translate("mirror_progress_focus_starter", locale),
+                            "📊 " + translate("mirror_progress_no_history", locale),
+                            "👉 " + translate("mirror_progress_focus_starter", locale),
                         )
                     ),
                 )
@@ -520,7 +520,7 @@ class ZerkaloProgressFocusContractTest(unittest.IsolatedAsyncioTestCase):
                 rendered = render(snapshot, locale=locale)
                 self.assertEqual(
                     rendered.splitlines()[1],
-                    translate("mirror_progress_focus_due", locale, due=3),
+                    "👉 " + translate("mirror_progress_focus_due", locale, due=3),
                 )
                 self.assertNotIn("PRIVATE-pack", rendered)
 
@@ -764,7 +764,7 @@ class ZerkaloFeedbackContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             [item.args[0] for item in message.reply_text.await_args_list],
             [
-                translate("ai_thinking_fast", "fr"),
+                "⚡",
                 "Réponse courte et directe.",
             ],
         )

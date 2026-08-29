@@ -547,7 +547,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("602", json.dumps(payload, ensure_ascii=False))
         self.assertEqual(
             [item.args[0] for item in message.reply_text.await_args_list],
-            [translate("ai_thinking_fast", "fr"), "Réponse courte."],
+            ["⚡", "Réponse courte."],
         )
         message.reply_text.return_value.delete.assert_awaited_once()
 
@@ -866,7 +866,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 [item.args[0] for item in message.reply_text.await_args_list],
                 [
-                    translate("ai_thinking_fast", "fr"),
+                    "⚡",
                     translate("ai_unavailable_no_charge", "fr"),
                 ],
             )
@@ -901,7 +901,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             service.ask.assert_awaited_once()
             self.assertEqual(
                 [item.args[0] for item in message.reply_text.await_args_list],
-                [translate("ai_thinking_fast", "fr"), "Réponse sûre."],
+                ["⚡", "Réponse sûre."],
             )
             message.reply_text.return_value.delete.assert_awaited_once()
 
