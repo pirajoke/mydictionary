@@ -1360,14 +1360,11 @@ async def route_miniapp_start_action(
             active_content_pack(),
             product,
             locale=interface_locale_for_update(update),
-            section="home",
         ),
         reply_markup=settings_keyboard(
             product,
             mirror_policy=AdminStore(runtime.store).get_mirror_control_plane(),
             locale=interface_locale_for_update(update),
-            section="home",
-            miniapp_url=settings_miniapp_url(update),
         ),
         parse_mode="Markdown",
     )
@@ -1622,61 +1619,25 @@ def settings_keyboard(
     *,
     mirror_policy: Mapping[str, Any] | None = None,
     locale: str = "ru",
-    section: str = "home",
-    miniapp_url: str | None = None,
 ) -> InlineKeyboardMarkup:
     locale = normalize_locale(locale, fallback="ru")
-    if section not in {"home", "study", "ai"}:
-        raise ValueError("Unknown settings section")
-    if section == "home":
-        rows = []
-        if miniapp_url:
-            rows.append([
-                InlineKeyboardButton(
-                    translate("miniapp_open", locale),
-                    web_app=WebAppInfo(url=miniapp_url),
-                )
-            ])
-        rows.append([
+    current_pack_id = PROGRESS.get("active_pack_id")
+    language_rows = []
+    for pack in switchable_packs():
+        marker = " ✓" if pack.pack_id == current_pack_id else ""
+        language_rows.append([
             InlineKeyboardButton(
-                translate("settings_hub_study_button", locale),
-                callback_data="settings:section:study",
-            ),
-            InlineKeyboardButton(
-                translate("settings_hub_ai_button", locale),
-                callback_data="settings:section:ai",
-            ),
+                f"{pack.label}{marker}", callback_data=f"lang:{pack.pack_id}"
+            )
         ])
-        return InlineKeyboardMarkup(rows)
-
-    back_row = [InlineKeyboardButton(
-        translate("settings_hub_back", locale),
-        callback_data="settings:section:home",
-    )]
-    if section == "study":
-        current_pack_id = PROGRESS.get("active_pack_id")
-        language_buttons = []
-        for pack in switchable_packs():
-            marker = " ✓" if pack.pack_id == current_pack_id else ""
-            language_buttons.append(
-                InlineKeyboardButton(
-                    f"{pack.label}{marker}", callback_data=f"lang:{pack.pack_id}"
-                )
-            )
-        language_rows = [
-            language_buttons[index:index + 2]
-            for index in range(0, len(language_buttons), 2)
-        ]
-        pace = int(product.get("daily_word_goal") or 10)
-        pace_row = [
-            InlineKeyboardButton(
-                f"{count}{' ✓' if count == pace else ''}",
-                callback_data=f"settings:pace:{count}",
-            )
-            for count in (5, 10, 20)
-        ]
-        return InlineKeyboardMarkup(language_rows + [pace_row, back_row])
-
+    pace = int(product.get("daily_word_goal") or 10)
+    pace_row = [
+        InlineKeyboardButton(
+            f"{count}{' ✓' if count == pace else ''}",
+            callback_data=f"settings:pace:{count}",
+        )
+        for count in (5, 10, 20)
+    ]
     selected_style = str(
         product.get("mirror_mode") or product.get("mirror_style") or "teacher"
     )
@@ -1685,18 +1646,16 @@ def settings_keyboard(
         if mirror_policy is not None
         else ["teacher", "conversation", "brief", "practice"]
     )
-    style_buttons = [
-        InlineKeyboardButton(
-            f"{translate(f'mirror_style_{style}', locale)}"
-            f"{' ✓' if style == selected_style else ''}",
-            callback_data=f"settings:mirror:{style}",
-        )
+    style_rows = [
+        [
+            InlineKeyboardButton(
+                f"{translate(f'mirror_style_{style}', locale)}"
+                f"{' ✓' if style == selected_style else ''}",
+                callback_data=f"settings:mirror:{style}",
+            )
+        ]
         for style in MIRROR_STYLE_LABELS
         if style in enabled_modes
-    ]
-    style_rows = [
-        style_buttons[index:index + 2]
-        for index in range(0, len(style_buttons), 2)
     ]
     selected_depth = str(product.get("mirror_depth") or "balanced")
     depth_row = [
@@ -1711,20 +1670,16 @@ def settings_keyboard(
         )
     ]
     selected_level = str(product.get("mirror_level") or "adaptive")
-    level_buttons = [
-        InlineKeyboardButton(
+    level_rows = [
+        [InlineKeyboardButton(
             f"{value.upper() if value != 'adaptive' else translate('mirror_level_adaptive', locale)}"
             f"{' ✓' if value == selected_level else ''}",
             callback_data=f"settings:mirror-level:{value}",
-        )
+        )]
         for value in MIRROR_LEARNER_LEVELS
     ]
-    level_rows = [
-        level_buttons[index:index + 3]
-        for index in range(0, len(level_buttons), 3)
-    ]
     return InlineKeyboardMarkup(
-        style_rows + [depth_row] + level_rows + [back_row]
+        language_rows + [pace_row] + style_rows + [depth_row] + level_rows
     )
 
 
@@ -1733,20 +1688,8 @@ def settings_text(
     product: Mapping[str, Any],
     *,
     locale: str = "ru",
-    section: str = "home",
 ) -> str:
     locale = normalize_locale(locale, fallback="ru")
-    if section not in {"home", "study", "ai"}:
-        raise ValueError("Unknown settings section")
-    if section == "home":
-        return translate("settings_hub_home", locale)
-    if section == "study":
-        return translate(
-            "settings_hub_study",
-            locale,
-            pack=current.label,
-            pace=int(product.get("daily_word_goal") or 10),
-        )
     style = str(product.get("mirror_mode") or product.get("mirror_style") or "teacher")
     if style not in MIRROR_STYLE_LABELS:
         style = "teacher"
@@ -1763,20 +1706,14 @@ def settings_text(
         else level.upper()
     )
     return translate(
-        "settings_hub_ai",
+        "settings_text",
         locale,
+        pack=current.label,
+        pace=product["daily_word_goal"],
         style=style_label,
         depth=depth_label,
         level=level_label,
     )
-
-
-def settings_miniapp_url(update: Update) -> str | None:
-    if not MINIAPP_SETTINGS.enabled:
-        return None
-    if getattr(getattr(update, "effective_chat", None), "type", "") != "private":
-        return None
-    return MINIAPP_SETTINGS.public_url
 
 
 async def send_start_message(
@@ -2052,8 +1989,6 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 product,
                 mirror_policy=mirror_policy,
                 locale=locale,
-                section="home",
-                miniapp_url=settings_miniapp_url(update),
             ),
             parse_mode="Markdown",
         )
@@ -2098,17 +2033,11 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "level": "adaptive",
         }
     mirror_policy = AdminStore(runtime.store).get_mirror_control_plane()
-    section = "home"
-    if setting == "section" and value in {"home", "study", "ai"}:
-        await query.answer()
-        product = runtime.store.product_profile(runtime.user_id)
-        section = value
-    elif setting == "pace" and value in {"5", "10", "20"}:
+    if setting == "pace" and value in {"5", "10", "20"}:
         await query.answer(translate("settings_pace_saved", locale))
         product = runtime.store.update_product_profile(
             runtime.user_id, daily_word_goal=int(value)
         )
-        section = "study"
         record_product_event(
             "daily_goal_updated", properties={"daily_word_goal": int(value)}
         )
@@ -2130,7 +2059,6 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
         product = runtime.store.product_profile(runtime.user_id)
-        section = "ai"
     elif setting == "mirror-depth" and value in MIRROR_ANSWER_DEPTHS:
         preferences["depth"] = value
         runtime.store.set_mirror_preferences(runtime.user_id, **preferences)
@@ -2142,7 +2070,6 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         )
         product = runtime.store.product_profile(runtime.user_id)
-        section = "ai"
     elif setting == "mirror-level" and value in MIRROR_LEARNER_LEVELS:
         preferences["level"] = value
         runtime.store.set_mirror_preferences(runtime.user_id, **preferences)
@@ -2155,7 +2082,6 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             translate("settings_level_saved", locale, level=level)
         )
         product = runtime.store.product_profile(runtime.user_id)
-        section = "ai"
     else:
         await query.answer(
             translate("settings_unavailable", locale), show_alert=True
@@ -2165,15 +2091,11 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     product.update(runtime.store.get_mirror_preferences(runtime.user_id))
     product["mirror_mode"] = product.pop("mode")
     await query.edit_message_text(
-        settings_text(current, product, locale=locale, section=section),
+        settings_text(current, product, locale=locale),
         reply_markup=settings_keyboard(
             product,
             mirror_policy=mirror_policy,
             locale=locale,
-            section=section,
-            miniapp_url=(
-                settings_miniapp_url(update) if section == "home" else None
-            ),
         ),
         parse_mode="Markdown",
     )
