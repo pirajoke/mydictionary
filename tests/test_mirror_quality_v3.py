@@ -295,7 +295,7 @@ class MirrorTelegramStyleContractTest(unittest.IsolatedAsyncioTestCase):
     async def test_ac_08_settings_exposes_four_styles_without_new_command(self):
         product = {"daily_word_goal": 10, "mirror_style": "conversation"}
 
-        keyboard = bot.settings_keyboard(product)
+        keyboard = bot.settings_keyboard(product, section="ai")
         callbacks = [
             button.callback_data
             for row in keyboard.inline_keyboard

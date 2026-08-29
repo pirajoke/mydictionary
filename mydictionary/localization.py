@@ -3418,6 +3418,165 @@ for _locale, _messages in _AI_RESPONSE_EXPERIENCE_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 
+_TELEGRAM_SETTINGS_HUB_COPY = {
+    "en": {
+        "settings_hub_home": (
+            "⚙️ *Settings*\n\n*Quick commands*\n"
+            "/learn — lesson · /ai — AI Tutor · /stats — progress\n"
+            "/lang — language · /app — app · /privacy — data\n\n"
+            "Choose a section for detailed settings:"
+        ),
+        "settings_hub_study": (
+            "📚 *Study*\n\nLanguage: *{pack}*\nWords per lesson: *{pace}*\n\n"
+            "Choose what to change:"
+        ),
+        "settings_hub_ai": (
+            "✨ *AI Tutor*\n\nStyle: *{style}*\nAnswer: *{depth}*\n"
+            "Level: *{level}*\n\nChoose what to change:"
+        ),
+        "settings_hub_study_button": "📚 Study",
+        "settings_hub_ai_button": "✨ AI Tutor",
+        "settings_hub_back": "← Back",
+    },
+    "fr": {
+        "settings_hub_home": (
+            "⚙️ *Réglages*\n\n*Commandes rapides*\n"
+            "/learn — leçon · /ai — tuteur IA · /stats — progrès\n"
+            "/lang — langue · /app — application · /privacy — données\n\n"
+            "Choisissez une rubrique pour les réglages détaillés :"
+        ),
+        "settings_hub_study": (
+            "📚 *Apprentissage*\n\nLangue : *{pack}*\nMots par leçon : *{pace}*\n\n"
+            "Choisissez ce que vous voulez modifier :"
+        ),
+        "settings_hub_ai": (
+            "✨ *Tuteur IA*\n\nStyle : *{style}*\nRéponse : *{depth}*\n"
+            "Niveau : *{level}*\n\nChoisissez ce que vous voulez modifier :"
+        ),
+        "settings_hub_study_button": "📚 Apprentissage",
+        "settings_hub_ai_button": "✨ Tuteur IA",
+        "settings_hub_back": "← Retour",
+    },
+    "de": {
+        "settings_hub_home": (
+            "⚙️ *Einstellungen*\n\n*Schnellbefehle*\n"
+            "/learn — Lektion · /ai — KI-Tutor · /stats — Fortschritt\n"
+            "/lang — Sprache · /app — App · /privacy — Daten\n\n"
+            "Wähle einen Bereich für weitere Einstellungen:"
+        ),
+        "settings_hub_study": (
+            "📚 *Lernen*\n\nSprache: *{pack}*\nWörter pro Lektion: *{pace}*\n\n"
+            "Wähle, was du ändern möchtest:"
+        ),
+        "settings_hub_ai": (
+            "✨ *KI-Tutor*\n\nStil: *{style}*\nAntwort: *{depth}*\n"
+            "Niveau: *{level}*\n\nWähle, was du ändern möchtest:"
+        ),
+        "settings_hub_study_button": "📚 Lernen",
+        "settings_hub_ai_button": "✨ KI-Tutor",
+        "settings_hub_back": "← Zurück",
+    },
+    "ja": {
+        "settings_hub_home": (
+            "⚙️ *設定*\n\n*クイックコマンド*\n"
+            "/learn — レッスン · /ai — AIチューター · /stats — 進捗\n"
+            "/lang — 言語 · /app — アプリ · /privacy — データ\n\n"
+            "詳しい設定を選んでください："
+        ),
+        "settings_hub_study": (
+            "📚 *学習*\n\n言語：*{pack}*\n1レッスンの単語数：*{pace}*\n\n"
+            "変更する項目を選んでください："
+        ),
+        "settings_hub_ai": (
+            "✨ *AIチューター*\n\nスタイル：*{style}*\n回答：*{depth}*\n"
+            "レベル：*{level}*\n\n変更する項目を選んでください："
+        ),
+        "settings_hub_study_button": "📚 学習",
+        "settings_hub_ai_button": "✨ AIチューター",
+        "settings_hub_back": "← 戻る",
+    },
+    "ar": {
+        "settings_hub_home": (
+            "⚙️ *الإعدادات*\n\n*أوامر سريعة*\n"
+            "/learn — درس · /ai — المدرّس الذكي · /stats — التقدم\n"
+            "/lang — اللغة · /app — التطبيق · /privacy — البيانات\n\n"
+            "اختر قسماً للإعدادات التفصيلية:"
+        ),
+        "settings_hub_study": (
+            "📚 *التعلّم*\n\nاللغة: *{pack}*\nالكلمات في الدرس: *{pace}*\n\n"
+            "اختر ما تريد تغييره:"
+        ),
+        "settings_hub_ai": (
+            "✨ *المدرّس الذكي*\n\nالأسلوب: *{style}*\nالإجابة: *{depth}*\n"
+            "المستوى: *{level}*\n\nاختر ما تريد تغييره:"
+        ),
+        "settings_hub_study_button": "📚 التعلّم",
+        "settings_hub_ai_button": "✨ المدرّس الذكي",
+        "settings_hub_back": "رجوع →",
+    },
+    "zh": {
+        "settings_hub_home": (
+            "⚙️ *设置*\n\n*快捷命令*\n"
+            "/learn — 课程 · /ai — AI导师 · /stats — 进度\n"
+            "/lang — 语言 · /app — 应用 · /privacy — 数据\n\n"
+            "请选择要详细设置的部分："
+        ),
+        "settings_hub_study": (
+            "📚 *学习*\n\n语言：*{pack}*\n每课单词数：*{pace}*\n\n"
+            "请选择要修改的项目："
+        ),
+        "settings_hub_ai": (
+            "✨ *AI导师*\n\n风格：*{style}*\n回答：*{depth}*\n"
+            "等级：*{level}*\n\n请选择要修改的项目："
+        ),
+        "settings_hub_study_button": "📚 学习",
+        "settings_hub_ai_button": "✨ AI导师",
+        "settings_hub_back": "← 返回",
+    },
+    "ru": {
+        "settings_hub_home": (
+            "⚙️ *Настройки*\n\n*Быстрые команды*\n"
+            "/learn — урок · /ai — AI-тьютор · /stats — прогресс\n"
+            "/lang — язык · /app — приложение · /privacy — данные\n\n"
+            "Подробные настройки разделены по темам:"
+        ),
+        "settings_hub_study": (
+            "📚 *Учёба*\n\nЯзык: *{pack}*\nСлов в уроке: *{pace}*\n\n"
+            "Выбери, что изменить:"
+        ),
+        "settings_hub_ai": (
+            "✨ *AI-тьютор*\n\nСтиль: *{style}*\nОтвет: *{depth}*\n"
+            "Уровень: *{level}*\n\nВыбери, что изменить:"
+        ),
+        "settings_hub_study_button": "📚 Учёба",
+        "settings_hub_ai_button": "✨ AI-тьютор",
+        "settings_hub_back": "← Назад",
+    },
+    "es": {
+        "settings_hub_home": (
+            "⚙️ *Ajustes*\n\n*Comandos rápidos*\n"
+            "/learn — lección · /ai — tutor IA · /stats — progreso\n"
+            "/lang — idioma · /app — aplicación · /privacy — datos\n\n"
+            "Elige una sección para los ajustes detallados:"
+        ),
+        "settings_hub_study": (
+            "📚 *Aprendizaje*\n\nIdioma: *{pack}*\nPalabras por lección: *{pace}*\n\n"
+            "Elige qué quieres cambiar:"
+        ),
+        "settings_hub_ai": (
+            "✨ *Tutor IA*\n\nEstilo: *{style}*\nRespuesta: *{depth}*\n"
+            "Nivel: *{level}*\n\nElige qué quieres cambiar:"
+        ),
+        "settings_hub_study_button": "📚 Aprendizaje",
+        "settings_hub_ai_button": "✨ Tutor IA",
+        "settings_hub_back": "← Atrás",
+    },
+}
+
+for _locale, _messages in _TELEGRAM_SETTINGS_HUB_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
+
 def normalize_locale(value: str | None, *, fallback: str = DEFAULT_INTERFACE_LOCALE) -> str:
     """Normalize Telegram language_code without guessing unsupported locales."""
     safe_fallback = fallback if fallback in INTERFACE_LOCALES else DEFAULT_INTERFACE_LOCALE
