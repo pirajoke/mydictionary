@@ -130,20 +130,24 @@ class HomeSurfaceLocaleTest(unittest.IsolatedAsyncioTestCase):
             "enabled_modes": ["teacher", "conversation", "brief", "practice"]
         }
 
-        text = bot.settings_text(pack, product, locale="fr")
+        home_text = bot.settings_text(pack, product, locale="fr", section="home")
+        study_text = bot.settings_text(pack, product, locale="fr", section="study")
+        ai_text = bot.settings_text(pack, product, locale="fr", section="ai")
         keyboard = bot.settings_keyboard(
             product,
             mirror_policy=mirror_policy,
             locale="fr",
+            section="ai",
         )
 
-        self.assertIn("⚙️ *Réglages*", text)
-        self.assertIn(f"Langue : *{pack.label}*", text)
-        self.assertNotIn(pack.title, text)
-        self.assertIn("Cartes par leçon", text)
-        self.assertIn("Style IA : *Professeur*", text)
-        self.assertIn("Profondeur", text)
-        self.assertIn("niveau : *Auto*", text)
+        self.assertIn("⚙️", home_text)
+        self.assertIn("/learn", home_text)
+        self.assertIn(f"*{pack.label}*", study_text)
+        self.assertNotIn(pack.title, study_text)
+        self.assertIn("10", study_text)
+        self.assertIn("*Professeur*", ai_text)
+        self.assertIn("*Équilibré*", ai_text)
+        self.assertIn("*Auto*", ai_text)
         button_texts = [
             button.text
             for row in keyboard.inline_keyboard
@@ -160,7 +164,7 @@ class HomeSurfaceLocaleTest(unittest.IsolatedAsyncioTestCase):
             "Auto ✓",
         ):
             self.assertIn(expected, button_texts)
-        combined = f"{text} {' '.join(button_texts)}"
+        combined = f"{home_text} {study_text} {ai_text} {' '.join(button_texts)}"
         for russian_ui in (
             "Настройки",
             "Карточек в уроке",

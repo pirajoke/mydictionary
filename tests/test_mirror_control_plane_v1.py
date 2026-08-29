@@ -233,6 +233,7 @@ class MirrorPreferenceContractTest(StoreTestCase):
                 enabled_modes=["teacher", "coach", "brief"],
                 default_mode="coach",
             ),
+            section="ai",
         )
         callbacks = {
             button.callback_data
