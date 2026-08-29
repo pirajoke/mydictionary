@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import hmac
 import json
@@ -12,7 +12,7 @@ import time
 from typing import Any, Mapping
 from urllib.parse import parse_qsl, urlsplit
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from mydictionary.localization import (
     billing_product_display_copy,
@@ -20,12 +20,26 @@ from mydictionary.localization import (
     normalize_locale,
 )
 from mydictionary.runtime_secrets import RuntimeSecretError, load_bot_token_file
-from mydictionary.storage import User, UserProgress, vocabulary_id_for
+from mydictionary.storage import AnalyticsEvent, User, UserProgress, vocabulary_id_for
 
 
 INTERFACE_LOCALES = frozenset({"en", "fr", "de", "ja", "ar", "zh", "ru", "es"})
 _BOT_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 _MAX_INIT_DATA_BYTES = 8192
+_MAX_AVATAR_URL_BYTES = 512
+_ACTIVITY_WINDOW_DAYS = 370
+_ACTIVITY_EVENT_NAMES = frozenset(
+    {
+        "start_received",
+        "onboarding_started",
+        "onboarding_completed",
+        "language_switched",
+        "block_started",
+        "block_mode_started",
+        "word_audio_played",
+        "block_completed",
+    }
+)
 
 
 class MiniAppAuthenticationError(ValueError):
@@ -38,6 +52,32 @@ class MiniAppConfigurationError(RuntimeError):
 
 class MiniAppAccessDenied(PermissionError):
     """Raised when the signed Telegram account is not an active learner."""
+
+
+def _safe_telegram_photo_url(value: object) -> str:
+    candidate = str(value or "").strip()
+    if not candidate or len(candidate.encode("utf-8")) > _MAX_AVATAR_URL_BYTES:
+        return ""
+    parsed = urlsplit(candidate)
+    hostname = str(parsed.hostname or "").lower()
+    trusted_host = (
+        hostname == "t.me"
+        or hostname == "telegram.org"
+        or hostname.endswith(".telegram.org")
+        or hostname == "telegram-cdn.org"
+        or hostname.endswith(".telegram-cdn.org")
+    )
+    if (
+        parsed.scheme != "https"
+        or not trusted_host
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.port is not None
+        or not parsed.path.startswith("/")
+        or parsed.fragment
+    ):
+        return ""
+    return candidate
 
 
 def _enabled(value: object) -> bool:
@@ -190,11 +230,15 @@ def verify_init_data(
     if not display_name:
         display_name = "Learner"
     language_code = str(signed_user.get("language_code") or "").strip()[:16]
-    return {
+    identity = {
         "user_id": user_id,
         "display_name": display_name,
         "language_code": language_code,
     }
+    photo_url = _safe_telegram_photo_url(signed_user.get("photo_url"))
+    if photo_url:
+        identity["photo_url"] = photo_url
+    return identity
 
 
 def require_active_learner(store: Any, user_id: int) -> Mapping[str, Any]:
@@ -243,6 +287,8 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
         "setting_mirror_mode": "Mirror mode", "setting_mirror_style": "Mirror style", "setting_mirror_depth": "Response depth",
         "setting_mirror_level": "Learner level", "setting_ai": "AI Tutor", "setting_voice": "Voice practice", "setting_unknown": "Not set",
         "feature_enabled": "Available", "feature_disabled": "Unavailable", "language_current": "Current", "navigation_label": "Main navigation",
+        "streak_days": "days streak", "best_streak_short": "Best", "calendar_activity": "Learning activity", "calendar_today": "Today",
+        "calendar_active_day": "Learning day", "previous_month": "Previous month", "next_month": "Next month", "share_profile": "Share profile",
     },
     "fr": {
         "loading": "Chargement…", "error": "Un problème est survenu.", "retry": "Réessayer",
@@ -261,6 +307,8 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
         "setting_mirror_mode": "Mode Mirror", "setting_mirror_style": "Style Mirror", "setting_mirror_depth": "Profondeur de réponse",
         "setting_mirror_level": "Niveau d’apprentissage", "setting_ai": "Tuteur IA", "setting_voice": "Pratique vocale", "setting_unknown": "Non défini",
         "feature_enabled": "Disponible", "feature_disabled": "Indisponible", "language_current": "Actuelle", "navigation_label": "Navigation principale",
+        "streak_days": "jours de série", "best_streak_short": "Record", "calendar_activity": "Activité d’apprentissage", "calendar_today": "Aujourd’hui",
+        "calendar_active_day": "Jour d’apprentissage", "previous_month": "Mois précédent", "next_month": "Mois suivant", "share_profile": "Partager le profil",
     },
     "de": {
         "loading": "Wird geladen…", "error": "Ein Fehler ist aufgetreten.", "retry": "Erneut versuchen",
@@ -279,6 +327,8 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
         "setting_mirror_mode": "Mirror-Modus", "setting_mirror_style": "Mirror-Stil", "setting_mirror_depth": "Antworttiefe",
         "setting_mirror_level": "Lernniveau", "setting_ai": "KI-Tutor", "setting_voice": "Sprechübung", "setting_unknown": "Nicht festgelegt",
         "feature_enabled": "Verfügbar", "feature_disabled": "Nicht verfügbar", "language_current": "Aktuell", "navigation_label": "Hauptnavigation",
+        "streak_days": "Tage in Folge", "best_streak_short": "Bestwert", "calendar_activity": "Lernaktivität", "calendar_today": "Heute",
+        "calendar_active_day": "Lerntag", "previous_month": "Vorheriger Monat", "next_month": "Nächster Monat", "share_profile": "Profil teilen",
     },
     "ja": {
         "loading": "読み込み中…", "error": "問題が発生しました。", "retry": "再試行",
@@ -297,6 +347,8 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
         "setting_mirror_mode": "Mirrorモード", "setting_mirror_style": "Mirrorスタイル", "setting_mirror_depth": "回答の詳しさ",
         "setting_mirror_level": "学習レベル", "setting_ai": "AIチューター", "setting_voice": "音声練習", "setting_unknown": "未設定",
         "feature_enabled": "利用可能", "feature_disabled": "利用不可", "language_current": "現在", "navigation_label": "メインナビゲーション",
+        "streak_days": "日連続", "best_streak_short": "最高", "calendar_activity": "学習アクティビティ", "calendar_today": "今日",
+        "calendar_active_day": "学習日", "previous_month": "前の月", "next_month": "次の月", "share_profile": "プロフィールを共有",
     },
     "ar": {
         "loading": "جارٍ التحميل…", "error": "حدث خطأ.", "retry": "إعادة المحاولة",
@@ -315,6 +367,8 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
         "setting_mirror_mode": "وضع Mirror", "setting_mirror_style": "أسلوب Mirror", "setting_mirror_depth": "تفصيل الإجابة",
         "setting_mirror_level": "مستوى المتعلم", "setting_ai": "مدرّس AI", "setting_voice": "تدريب صوتي", "setting_unknown": "غير محدد",
         "feature_enabled": "متاح", "feature_disabled": "غير متاح", "language_current": "الحالية", "navigation_label": "التنقل الرئيسي",
+        "streak_days": "أيام متتالية", "best_streak_short": "الأفضل", "calendar_activity": "نشاط التعلّم", "calendar_today": "اليوم",
+        "calendar_active_day": "يوم تعلّم", "previous_month": "الشهر السابق", "next_month": "الشهر التالي", "share_profile": "مشاركة الملف",
     },
     "zh": {
         "loading": "加载中…", "error": "出现问题。", "retry": "重试",
@@ -333,6 +387,8 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
         "setting_mirror_mode": "Mirror 模式", "setting_mirror_style": "Mirror 风格", "setting_mirror_depth": "回答深度",
         "setting_mirror_level": "学习等级", "setting_ai": "AI 导师", "setting_voice": "语音练习", "setting_unknown": "未设置",
         "feature_enabled": "可用", "feature_disabled": "不可用", "language_current": "当前", "navigation_label": "主导航",
+        "streak_days": "天连续学习", "best_streak_short": "最佳", "calendar_activity": "学习记录", "calendar_today": "今天",
+        "calendar_active_day": "学习日", "previous_month": "上个月", "next_month": "下个月", "share_profile": "分享个人资料",
     },
     "ru": {
         "loading": "Загрузка…", "error": "Что-то пошло не так.", "retry": "Повторить",
@@ -351,6 +407,8 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
         "setting_mirror_mode": "Режим Mirror", "setting_mirror_style": "Стиль Mirror", "setting_mirror_depth": "Глубина ответа",
         "setting_mirror_level": "Уровень ученика", "setting_ai": "AI-репетитор", "setting_voice": "Голосовая практика", "setting_unknown": "Не задано",
         "feature_enabled": "Доступно", "feature_disabled": "Недоступно", "language_current": "Текущий", "navigation_label": "Основная навигация",
+        "streak_days": "дней подряд", "best_streak_short": "Рекорд", "calendar_activity": "Календарь занятий", "calendar_today": "Сегодня",
+        "calendar_active_day": "Учебный день", "previous_month": "Предыдущий месяц", "next_month": "Следующий месяц", "share_profile": "Поделиться профилем",
     },
     "es": {
         "loading": "Cargando…", "error": "Ha ocurrido un problema.", "retry": "Reintentar",
@@ -369,6 +427,8 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
         "setting_mirror_mode": "Modo Mirror", "setting_mirror_style": "Estilo Mirror", "setting_mirror_depth": "Profundidad de respuesta",
         "setting_mirror_level": "Nivel del estudiante", "setting_ai": "Tutor de IA", "setting_voice": "Práctica de voz", "setting_unknown": "Sin definir",
         "feature_enabled": "Disponible", "feature_disabled": "No disponible", "language_current": "Actual", "navigation_label": "Navegación principal",
+        "streak_days": "días de racha", "best_streak_short": "Récord", "calendar_activity": "Actividad de aprendizaje", "calendar_today": "Hoy",
+        "calendar_active_day": "Día de estudio", "previous_month": "Mes anterior", "next_month": "Mes siguiente", "share_profile": "Compartir perfil",
     },
 }
 
@@ -501,6 +561,51 @@ def _read_only_database_snapshot(
     return product, progress, preferences
 
 
+def _read_only_activity_days(
+    store: Any,
+    *,
+    user_id: int,
+    observed_date: date,
+    last_activity_date: object,
+) -> list[str]:
+    """Return a bounded, identity-free set of real learning days."""
+
+    first_date = observed_date - timedelta(days=_ACTIVITY_WINDOW_DAYS - 1)
+    activity_days: set[date] = set()
+    try:
+        canonical_day = date.fromisoformat(str(last_activity_date or "")[:10])
+    except ValueError:
+        canonical_day = None
+    if canonical_day is not None and first_date <= canonical_day <= observed_date:
+        activity_days.add(canonical_day)
+
+    session_factory = vars(store).get("Session")
+    if callable(session_factory):
+        first_instant = datetime.combine(first_date, datetime.min.time(), timezone.utc)
+        final_instant = datetime.combine(
+            observed_date + timedelta(days=1), datetime.min.time(), timezone.utc
+        )
+        with session_factory() as session:
+            rows = session.scalars(
+                select(AnalyticsEvent.occurred_at).where(
+                    AnalyticsEvent.telegram_user_id == int(user_id),
+                    AnalyticsEvent.event_name.in_(_ACTIVITY_EVENT_NAMES),
+                    AnalyticsEvent.occurred_at >= first_instant,
+                    AnalyticsEvent.occurred_at < final_instant,
+                )
+            ).all()
+        for occurred_at in rows:
+            if isinstance(occurred_at, datetime):
+                activity_day = occurred_at.date()
+                if first_date <= activity_day <= observed_date:
+                    activity_days.add(activity_day)
+    return [activity_day.isoformat() for activity_day in sorted(activity_days)]
+
+
+def _month_key(value: date) -> str:
+    return f"{value.year:04d}-{value.month:02d}"
+
+
 def build_bootstrap(
     store: Any,
     *,
@@ -512,7 +617,9 @@ def build_bootstrap(
     checkout_enabled: bool,
     ai_enabled: bool,
     voice_enabled: bool,
+    avatar_url: str = "",
     initial_credits: int = 0,
+    observed_date: date | None = None,
 ) -> dict[str, Any]:
     access = require_active_learner(store, user_id)
     database_snapshot = _read_only_database_snapshot(
@@ -616,6 +723,7 @@ def build_bootstrap(
         if isinstance(state, Mapping)
         and int(state.get("correct_count") or 0) >= 3
     )
+    today = observed_date or datetime.now(timezone.utc).date()
     raw_today_date = progress.get("today_date")
     try:
         progress_today = date.fromisoformat(str(raw_today_date)[:10])
@@ -623,9 +731,22 @@ def build_bootstrap(
         progress_today = None
     today_xp = (
         max(0, int(progress.get("today_xp") or 0))
-        if progress_today == datetime.now(timezone.utc).date()
+        if progress_today == today
         else 0
     )
+    activity_days = _read_only_activity_days(
+        store,
+        user_id=int(user_id),
+        observed_date=today,
+        last_activity_date=progress.get("last_activity_date"),
+    )
+    first_activity = date.fromisoformat(activity_days[0]) if activity_days else today
+    calendar = {
+        "today": today.isoformat(),
+        "min_month": _month_key(first_activity),
+        "max_month": _month_key(today),
+        "activity_days": activity_days,
+    }
     settings_values = {
         "learning_goal": _localized_setting_value(
             selected_locale, product.get("learning_goal")
@@ -643,17 +764,23 @@ def build_bootstrap(
             selected_locale, preferences.get("level")
         ),
     }
+    profile_payload = {
+        "display_name": _bounded_text(display_name, 80),
+        "current_language": active_language,
+        "meaning_language": _bounded_text(product.get("native_language"), 16),
+        "learning_goal": _bounded_text(product.get("learning_goal"), 32),
+        "daily_word_goal": max(0, int(product.get("daily_word_goal") or 0)),
+        "credits": max(0, int(usage.get("available_credits") or 0)),
+    }
+    safe_avatar_url = _safe_telegram_photo_url(avatar_url)
+    if safe_avatar_url:
+        profile_payload["avatar_url"] = safe_avatar_url
+
     return {
         "locale": selected_locale,
         "direction": miniapp_text_direction(selected_locale),
         "copy": dict(copy),
-        "profile": {
-            "display_name": _bounded_text(display_name, 80),
-            "current_language": active_language,
-            "meaning_language": _bounded_text(product.get("native_language"), 16),
-            "learning_goal": _bounded_text(product.get("learning_goal"), 32),
-            "daily_word_goal": max(0, int(product.get("daily_word_goal") or 0)),
-        },
+        "profile": profile_payload,
         "progress": {
             "level": max(0, int(progress.get("level") or 0)),
             "xp": max(0, int(progress.get("xp") or 0)),
@@ -664,6 +791,7 @@ def build_bootstrap(
             "accuracy": {"correct": total_correct, "total": total_correct + total_wrong},
             "tracked_words": tracked_count,
             "learned_words": learned_count,
+            "calendar": calendar,
         },
         "words": words,
         "credits": {
