@@ -17,6 +17,7 @@ import time
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Mapping
 from urllib.parse import quote
 
@@ -1313,6 +1314,15 @@ def auth(func):
             if runtime.access_status != "active":
                 runtime.store.activate_user_access(runtime.user_id)
                 runtime.access_status = "active"
+            if (
+                isinstance(user_data, MutableMapping)
+                and user_data.get("block_pack_id")
+                and user_data.get("block_pack_id")
+                != runtime.progress.get("active_pack_id")
+            ):
+                for key in tuple(user_data):
+                    if str(key).startswith("block_") or key == "lesson_kind":
+                        user_data.pop(key, None)
             if SAFETY_SETTINGS.enabled and runtime.role != "admin":
                 scope, policy = SAFETY_SETTINGS.for_handler(func.__name__)
                 rate_decision = PersistentRateLimiter(runtime.store).consume(
@@ -1396,7 +1406,41 @@ def miniapp_start_action(payload: str | None) -> str | None:
     if not candidate.startswith("miniapp_"):
         return None
     action = candidate.removeprefix("miniapp_")
-    return action if action in {"learn", "ai", "buy", "lang", "settings", "privacy"} else None
+    if action in {"learn", "ai", "buy", "lang", "settings", "privacy"}:
+        return action
+    if action.startswith("buy_"):
+        product_id = action.removeprefix("buy_")
+        if re.fullmatch(r"[a-z][a-z0-9-]{2,51}", product_id):
+            return f"buy:{product_id}"
+    return None
+
+
+async def _miniapp_one_time_product_available(
+    *, user_id: int, product_id: str
+) -> bool:
+    try:
+        service = get_billing_service()
+        if STARS_PRODUCTION_CANARY_SETTINGS.enabled:
+            products = await asyncio.to_thread(
+                service.active_products,
+                user_id=int(user_id),
+            )
+        else:
+            products = await asyncio.to_thread(service.active_products)
+    except Exception as exc:
+        logger.warning(
+            "Mini App product validation unavailable: error_type=%s",
+            type(exc).__name__,
+        )
+        return False
+    return any(
+        str(product.get("product_id") or "") == product_id
+        and str(product.get("status") or "") == "active"
+        and str(product.get("billing_mode") or "") == "one_time"
+        and product.get("subscription_period_seconds") is None
+        for product in products
+        if isinstance(product, Mapping)
+    )
 
 
 async def route_miniapp_start_action(
@@ -1411,10 +1455,12 @@ async def route_miniapp_start_action(
         "lang": cmd_lang,
         "privacy": cmd_privacy,
     }
-    if action in handlers:
+    selected_product = action.split(":", 1)[1] if action.startswith("buy:") else None
+    handler_action = "buy" if selected_product is not None else action
+    if handler_action in handlers:
         runtime = _ACTIVE_RUNTIME.get()
         if SAFETY_SETTINGS.enabled and runtime.role != "admin":
-            scope, policy = SAFETY_SETTINGS.for_handler(f"cmd_{action}")
+            scope, policy = SAFETY_SETTINGS.for_handler(f"cmd_{handler_action}")
             rate_decision = PersistentRateLimiter(runtime.store).consume(
                 user_id=runtime.user_id,
                 scope=scope,
@@ -1432,7 +1478,36 @@ async def route_miniapp_start_action(
         original_args = getattr(context, "args", None)
         context.args = []
         try:
-            await handlers[action].__wrapped__(update, context)
+            if selected_product is None:
+                await handlers[handler_action].__wrapped__(update, context)
+            elif not _billing_entry_enabled_for(
+                runtime.user_id
+            ) or not await _miniapp_one_time_product_available(
+                user_id=runtime.user_id,
+                product_id=selected_product,
+            ):
+                await update.effective_message.reply_text(
+                    translate(
+                        "billing_disabled",
+                        interface_locale_for_update(update),
+                    )
+                )
+            else:
+                async def acknowledge(*_args, **_kwargs):
+                    return None
+
+                query = SimpleNamespace(
+                    data=f"buy:{selected_product}",
+                    answer=acknowledge,
+                    message=update.effective_message,
+                )
+                callback_update = SimpleNamespace(
+                    callback_query=query,
+                    effective_user=update.effective_user,
+                    effective_message=update.effective_message,
+                    effective_chat=getattr(update, "effective_chat", None),
+                )
+                await buy_product_cb.__wrapped__(callback_update, context)
         finally:
             context.args = original_args
         return
@@ -4590,6 +4665,26 @@ async def billing_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
         )
     await query.answer(translate("billing_terms_accepted", locale))
     await query.edit_message_reply_markup(reply_markup=None)
+    user_data = getattr(context, "user_data", None)
+    pending_product_id = (
+        user_data.pop("pending_billing_product_id", None)
+        if isinstance(user_data, dict)
+        else None
+    )
+    if isinstance(pending_product_id, str):
+        pending_query = SimpleNamespace(
+            data=f"buy:{pending_product_id}",
+            answer=query.answer,
+            message=query.message,
+        )
+        pending_update = SimpleNamespace(
+            callback_query=pending_query,
+            effective_user=update.effective_user,
+            effective_message=query.message,
+            effective_chat=getattr(update, "effective_chat", None),
+        )
+        await buy_product_cb.__wrapped__(pending_update, context)
+        return
     if locale == "ru":
         await send_billing_products(query.message)
     else:
@@ -4607,17 +4702,22 @@ async def buy_product_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     await query.answer()
+    product_id = query.data.split(":", 1)[1]
     if not get_store().has_consent(
         user_id,
         consent_type="billing_terms",
         document_version=BILLING_SETTINGS.terms_version,
     ):
+        user_data = getattr(context, "user_data", None)
+        if isinstance(user_data, dict) and re.fullmatch(
+            r"[a-z][a-z0-9-]{2,59}", product_id
+        ):
+            user_data["pending_billing_product_id"] = product_id
         await send_billing_terms(
             query.message,
             locale=interface_locale_for_update(update),
         )
         return
-    product_id = query.data.split(":", 1)[1]
     if (
         STARS_PRODUCTION_CANARY_SETTINGS.enabled
         and product_id != STARS_PRODUCTION_CANARY_SETTINGS.product_id

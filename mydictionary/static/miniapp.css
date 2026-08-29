@@ -152,6 +152,14 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .language-spotlight .language-count { color: rgba(255, 255, 255, .78); }
 .choice-list { overflow: hidden; border-radius: 16px; background: var(--app-surface); }
 .language-card { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; min-height: 58px; padding: 11px 14px; }
+.language-switch { width: 100%; border: 0; border-radius: 0; text-align: start; transition: background-color .18s ease, opacity .18s ease, transform .18s ease; }
+.language-switch:focus-visible { position: relative; z-index: 1; outline: 3px solid var(--amber); outline-offset: -3px; }
+.language-switch[aria-checked="true"] { opacity: 1; color: white; background: linear-gradient(135deg, #7233cc, #3d86ed); cursor: default; }
+.language-switch[aria-busy="true"] { opacity: .66; cursor: progress; }
+.language-switch[dir="rtl"] { text-align: start; }
+.language-switch-error { display: flex; gap: 8px; align-items: center; justify-content: space-between; min-height: 44px; padding: 8px 12px; color: var(--muted); background: color-mix(in srgb, var(--app-state) 88%, transparent); font-size: .75rem; }
+.language-switch-error button { flex: 0 0 auto; min-height: 44px; padding: 7px 10px; color: var(--app-button-text); background: var(--app-button); }
+[dir="rtl"] .language-switch-error { text-align: start; }
 .choice-list .language-card + .language-card { border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .language-card strong { min-width: 0; overflow-wrap: anywhere; }
 .language-count { color: var(--muted); font-size: .76rem; font-variant-numeric: tabular-nums; }
@@ -234,6 +242,9 @@ button:disabled { opacity: .38; cursor: not-allowed; }
   .settings-hero { min-height: 96px; padding: 14px; }
   .word-card { grid-template-columns: 1fr; gap: 5px; }
   .word-attempts { max-width: none; text-align: start; }
+  .language-card { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding-inline: 10px; }
+  .language-card .badge { grid-column: 1 / -1; justify-self: start; }
+  .language-switch-error { align-items: stretch; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }

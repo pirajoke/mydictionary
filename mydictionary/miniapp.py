@@ -25,6 +25,7 @@ from mydictionary.storage import AnalyticsEvent, User, UserProgress, vocabulary_
 
 INTERFACE_LOCALES = frozenset({"en", "fr", "de", "ja", "ar", "zh", "ru", "es"})
 _BOT_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
+_MINIAPP_PUBLIC_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,51}$")
 _MAX_INIT_DATA_BYTES = 8192
 _MAX_AVATAR_URL_BYTES = 512
 _ACTIVITY_WINDOW_DAYS = 370
@@ -444,6 +445,23 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     },
 }
 
+_LANGUAGE_SWITCH_COPY = {
+    "en": ("Switching dictionary…", "Could not switch dictionary.", "Try again"),
+    "fr": ("Changement de dictionnaire…", "Impossible de changer de dictionnaire.", "Réessayer"),
+    "de": ("Wörterbuch wird gewechselt…", "Wörterbuch konnte nicht gewechselt werden.", "Erneut versuchen"),
+    "ja": ("辞書を切り替えています…", "辞書を切り替えられませんでした。", "再試行"),
+    "ar": ("جارٍ تبديل القاموس…", "تعذر تبديل القاموس.", "إعادة المحاولة"),
+    "zh": ("正在切换词典…", "无法切换词典。", "重试"),
+    "ru": ("Переключаю словарь…", "Не удалось переключить словарь.", "Повторить"),
+    "es": ("Cambiando diccionario…", "No se pudo cambiar el diccionario.", "Reintentar"),
+}
+for _locale, (_pending, _error, _retry) in _LANGUAGE_SWITCH_COPY.items():
+    MINIAPP_COPY[_locale].update(
+        language_switch_pending=_pending,
+        language_switch_error=_error,
+        language_switch_retry=_retry,
+    )
+
 _SETTING_VALUE_COPY = {
     "en": {"basics": "Everyday basics", "travel": "Travel focus", "conversation": "Conversation practice", "work": "Work and study", "personal": "Personal growth", "text": "Text replies", "voice": "Voice replies", "both": "Text and voice", "teacher": "Teacher guidance", "coach": "Learning coach", "practice": "Practice partner", "brief": "Brief guidance", "exam": "Exam practice", "compact": "Compact detail", "balanced": "Balanced detail", "deep": "Detailed response", "adaptive": "Adaptive level"},
     "fr": {"basics": "Bases du quotidien", "travel": "Voyage", "conversation": "Conversation guidée", "work": "Travail et études", "personal": "Développement personnel", "text": "Texte", "voice": "Voix", "both": "Texte et voix", "teacher": "Professeur", "coach": "Coach pédagogique", "practice": "Entraînement", "brief": "Concis", "exam": "Examen", "compact": "Courte", "balanced": "Équilibrée", "deep": "Détaillée", "adaptive": "Adaptatif"},
@@ -477,11 +495,14 @@ def visible_credit_products(
     visible = [
         row
         for row in products
-        if row.get("status") == "active" and row.get("billing_mode") == "one_time"
+        if row.get("status") == "active"
+        and row.get("billing_mode") == "one_time"
+        and _MINIAPP_PUBLIC_ID_RE.fullmatch(str(row.get("product_id") or ""))
     ]
     visible.sort(key=lambda row: (int(row.get("display_order") or 0), int(row.get("price_xtr") or 0)))
     result = []
     for row in visible[:12]:
+        product_id = str(row.get("product_id") or "")
         title, description = billing_product_display_copy(
             str(row.get("product_id") or ""),
             locale,
@@ -491,12 +512,13 @@ def visible_credit_products(
         )
         result.append(
             {
+                "product_id": product_id,
                 "title": _bounded_text(title, 80),
                 "description": _bounded_text(description, 160),
                 "credits": max(0, int(row.get("credits") or 0)),
                 "price_xtr": max(0, int(row.get("price_xtr") or 0)),
                 "billing_mode": "one_time",
-                "deep_link_action": "buy",
+                "deep_link_action": f"buy_{product_id}",
             }
         )
     return result
@@ -632,6 +654,8 @@ def build_bootstrap(
     avatar_url: str = "",
     initial_credits: int = 0,
     observed_date: date | None = None,
+    active_pack_id_override: str | None = None,
+    active_language_override: str | None = None,
 ) -> dict[str, Any]:
     access = require_active_learner(store, user_id)
     database_snapshot = _read_only_database_snapshot(
@@ -648,6 +672,14 @@ def build_bootstrap(
         progress = store.load_profile(int(user_id), {})
         if not isinstance(progress, Mapping):
             progress = {}
+    if active_pack_id_override is not None:
+        product = dict(product)
+        progress = dict(progress)
+        product["active_pack_id"] = str(active_pack_id_override)
+        progress["active_pack_id"] = str(active_pack_id_override)
+        if active_language_override is not None:
+            product["active_lang"] = str(active_language_override)
+            progress["active_lang"] = str(active_language_override)
     active_language = _bounded_text(product.get("active_lang") or "en", 16)
     active_pack = catalog.get(str(product.get("active_pack_id") or ""))
     progress_namespace = (
@@ -711,7 +743,8 @@ def build_bootstrap(
     languages = []
     seen_languages: set[str] = set()
     role = str(access.get("role") or product.get("role") or "learner")
-    for pack in catalog.visible_packs(role):
+    meaning_language = str(product.get("native_language") or "ru")
+    for pack in catalog.compatible_packs(meaning_language, role):
         if pack.target_language in seen_languages:
             continue
         seen_languages.add(pack.target_language)
@@ -722,7 +755,8 @@ def build_bootstrap(
                 "label": _bounded_text(pack.label, 80),
                 "direction": "rtl" if pack.direction == "rtl" else "ltr",
                 "word_count": max(0, int(pack.entry_count)),
-                "current": pack.target_language == active_language,
+                "current": pack.pack_id == str(product.get("active_pack_id") or ""),
+                "switch_value": pack.pack_id,
             }
         )
 

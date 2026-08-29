@@ -769,7 +769,10 @@ class MiniAppBootstrapContractTest(unittest.TestCase):
             [(row["title"], row["credits"], row["price_xtr"]) for row in visible],
             [("A", 20, 69), ("B", 50, 129)],
         )
-        self.assertTrue(all(row["deep_link_action"] == "buy" for row in visible))
+        self.assertEqual(
+            [row["deep_link_action"] for row in visible],
+            ["buy_a", "buy_b"],
+        )
         self.assertFalse(any("invoice" in row for row in visible))
         service.create_order.assert_not_called()
 

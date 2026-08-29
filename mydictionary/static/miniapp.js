@@ -27,6 +27,8 @@
   if (hintedLocale === "ar") document.documentElement.dir = "rtl";
   let payload = null;
   let calendarCursor = null;
+  let languageSwitchSequence = 0;
+  let languageSwitchPending = false;
 
   const node = (id) => document.getElementById(id);
   const text = (element, value) => { element.textContent = String(value ?? ""); };
@@ -82,8 +84,13 @@
   applyCopy(prebootstrapCopy[hintedLocale]);
 
   function actionLink(action) {
-    if (!payload || !payload.actions[action] || !botUsername) return "";
-    return `https://t.me/${botUsername}?start=${encodeURIComponent(payload.actions[action])}`;
+    if (!payload || !botUsername) return "";
+    const productAction = /^buy_[A-Za-z0-9][A-Za-z0-9_-]{0,51}$/.test(action)
+      ? `miniapp_${action}`
+      : "";
+    const target = payload.actions[action] || productAction;
+    if (!target) return "";
+    return `https://t.me/${botUsername}?start=${encodeURIComponent(target)}`;
   }
 
   function openAction(action) {
@@ -137,9 +144,15 @@
   }
 
   function languageCard(language, copy) {
-    const card = document.createElement("div");
-    card.className = "language-card";
+    const template = document.createElement("template");
+    template.innerHTML = '<button type="button" role="switch"></button>';
+    const control = {switch: template.content.firstElementChild};
+    const card = control.switch;
+    card.className = "language-card language-switch";
     card.dir = language.direction;
+    card.setAttribute("aria-checked", String(language.current));
+    card.dataset.packId = language.switch_value;
+    control.switch.disabled = language.current;
     const label = document.createElement("strong");
     label.dir = language.direction;
     text(label, languageDisplayLabel(language));
@@ -153,7 +166,86 @@
       text(current, copy.language_current);
       card.append(current);
     }
+    card.addEventListener("click", () => switchLanguage(language, control, copy));
     return card;
+  }
+
+  function languageSwitchStatus(control, message, retryLabel, retry) {
+    const existing = control.switch.parentElement
+      ? control.switch.parentElement.querySelector(".language-switch-error")
+      : null;
+    const status = existing || document.createElement("div");
+    status.className = "language-switch-error";
+    status.setAttribute("role", "status");
+    status.replaceChildren();
+    const detail = document.createElement("span");
+    text(detail, message);
+    status.append(detail);
+    if (retry) {
+      const button = document.createElement("button");
+      button.type = "button";
+      text(button, retryLabel);
+      button.addEventListener("click", retry);
+      status.append(button);
+    }
+    if (!existing && control.switch.parentElement) {
+      control.switch.insertAdjacentElement("afterend", status);
+    }
+    return status;
+  }
+
+  function setLanguageSwitchesDisabled(disabled) {
+    document.querySelectorAll(".language-switch").forEach((switchControl) => {
+      switchControl.disabled = disabled || switchControl.getAttribute("aria-checked") === "true";
+    });
+  }
+
+  async function switchLanguage(language, control, copy) {
+    if (language.current || !webApp || !webApp.initData) return;
+    if (languageSwitchPending) return;
+    languageSwitchPending = true;
+    const sequence = ++languageSwitchSequence;
+    setLanguageSwitchesDisabled(true);
+    control.switch.setAttribute("aria-busy", "true");
+    languageSwitchStatus(control, copy.language_switch_pending, "", null);
+    try {
+      const response = await fetch("/miniapp/api/active-pack", {
+        method: "POST",
+        headers: {
+          "X-Telegram-Init-Data": webApp.initData,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({pack_id: language.switch_value}),
+        cache: "no-store",
+        credentials: "omit"
+      });
+      if (!response.ok) throw new Error("switch_failed");
+      const fresh = await response.json();
+      if (sequence !== languageSwitchSequence) return;
+      render(fresh);
+    } catch (_) {
+      if (sequence !== languageSwitchSequence) return;
+      await load();
+      const refreshedLanguage = payload && Array.isArray(payload.languages)
+        ? payload.languages.find((item) => item.switch_value === language.switch_value)
+        : null;
+      const refreshedSwitch = Array.from(document.querySelectorAll(".language-switch"))
+        .find((item) => item.dataset.packId === language.switch_value);
+      if (refreshedLanguage && refreshedSwitch && payload && payload.copy) {
+        const refreshedControl = {switch: refreshedSwitch};
+        languageSwitchStatus(
+          refreshedControl,
+          payload.copy.language_switch_error,
+          payload.copy.language_switch_retry,
+          () => switchLanguage(refreshedLanguage, refreshedControl, payload.copy)
+        );
+      }
+    } finally {
+      if (sequence === languageSwitchSequence) {
+        languageSwitchPending = false;
+        setLanguageSwitchesDisabled(false);
+      }
+    }
   }
 
   function isoMonth(value) {
@@ -312,7 +404,7 @@
       price.className = "product-card-price";
       text(price, `${product.price_xtr} XTR`);
       button.append(productCopy, price);
-      button.addEventListener("click", () => openAction("buy"));
+      button.addEventListener("click", () => openAction(product.deep_link_action));
       products.append(button);
     });
     node("checkout-disabled").hidden = data.features.stars_checkout;
