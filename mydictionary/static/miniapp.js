@@ -40,6 +40,17 @@
     item.append(number, caption);
     return item;
   };
+  const summaryStat = (label, value, tone) => {
+    const item = document.createElement("div");
+    item.className = `summary-stat ${tone}`;
+    item.setAttribute("role", "listitem");
+    const number = document.createElement("b");
+    const caption = document.createElement("span");
+    text(number, value);
+    text(caption, label);
+    item.append(number, caption);
+    return item;
+  };
 
   function safeTelegramPhotoUrl(value) {
     try {
@@ -88,6 +99,8 @@
   function addWord(word, copy) {
     const card = document.createElement("article");
     card.className = "word-card";
+    const main = document.createElement("div");
+    main.className = "word-card-main";
     const header = document.createElement("header");
     const title = document.createElement("h2");
     text(title, word.target);
@@ -101,17 +114,46 @@
     const meaning = document.createElement("p");
     text(meaning, word.meaning);
     const attempts = document.createElement("small");
+    attempts.className = "word-attempts";
     text(attempts, `${copy.attempts_correct}: ${word.correct} · ${copy.attempts_wrong}: ${word.wrong}`);
-    card.append(header, meaning, attempts);
+    main.append(header, meaning);
+    card.append(main, attempts);
     node("word-list").append(card);
   }
 
-  function addSetting(list, label, value) {
+  function addSetting(list, label, value, state = "") {
+    const row = document.createElement("div");
+    row.className = `setting-row${state ? ` ${state}` : ""}`;
     const term = document.createElement("dt");
     const detail = document.createElement("dd");
     text(term, label);
     text(detail, value);
-    list.append(term, detail);
+    row.append(term, detail);
+    list.append(row);
+  }
+
+  function languageDisplayLabel(language) {
+    return String(language.label || "").trim().replace(/\s*·\s*\d+\s*$/u, "");
+  }
+
+  function languageCard(language, copy) {
+    const card = document.createElement("div");
+    card.className = "language-card";
+    card.dir = language.direction;
+    const label = document.createElement("strong");
+    label.dir = language.direction;
+    text(label, languageDisplayLabel(language));
+    const count = document.createElement("span");
+    count.className = "language-count";
+    text(count, language.word_count);
+    card.append(label, count);
+    if (language.current) {
+      const current = document.createElement("span");
+      current.className = "badge";
+      text(current, copy.language_current);
+      card.append(current);
+    }
+    return card;
   }
 
   function isoMonth(value) {
@@ -238,13 +280,18 @@
     );
 
     node("word-list").replaceChildren();
+    node("word-summary").replaceChildren(
+      summaryStat(copy.metric_tracked_words, progress.tracked_words, "tracked"),
+      summaryStat(copy.metric_learned_words, data.words.filter((word) => word.learned).length, "learned"),
+      summaryStat(copy.word_review, data.words.filter((word) => word.due).length, "due")
+    );
     data.words.forEach((word) => addWord(word, copy));
     node("empty-words").hidden = data.words.length !== 0;
 
+    text(node("wallet-available"), data.credits.available);
     node("credit-summary").replaceChildren(
-      metric(copy.credit_available, data.credits.available),
-      metric(copy.credit_reserved, data.credits.reserved),
-      metric(copy.credit_spent, data.credits.spent)
+      summaryStat(copy.credit_reserved, data.credits.reserved, "reserved"),
+      summaryStat(copy.credit_spent, data.credits.spent, "spent")
     );
     text(node("credit-contract"), data.credits.contract);
     const products = node("product-list");
@@ -252,45 +299,49 @@
     data.products.forEach((product) => {
       const button = document.createElement("button");
       button.type = "button";
+      button.className = "product-card";
       button.disabled = !data.features.stars_checkout;
-      text(button, `${product.title} · ${product.credits} ✦ · ${product.price_xtr} XTR`);
+      const productCopy = document.createElement("span");
+      productCopy.className = "product-card-copy";
+      const title = document.createElement("strong");
+      const credits = document.createElement("small");
+      text(title, product.title);
+      text(credits, `${product.credits} ✦`);
+      productCopy.append(title, credits);
+      const price = document.createElement("span");
+      price.className = "product-card-price";
+      text(price, `${product.price_xtr} XTR`);
+      button.append(productCopy, price);
       button.addEventListener("click", () => openAction("buy"));
       products.append(button);
     });
     node("checkout-disabled").hidden = data.features.stars_checkout;
 
+    const currentLanguageCard = node("language-current");
     const languages = node("language-list");
+    currentLanguageCard.replaceChildren();
     languages.replaceChildren();
-    data.languages.forEach((language) => {
-      const card = document.createElement("div");
-      card.className = "language-card";
-      card.dir = language.direction;
-      const label = document.createElement("strong");
-      label.dir = language.direction;
-      text(label, language.label);
-      const count = document.createElement("span");
-      text(count, language.word_count);
-      card.append(label, count);
-      if (language.current) {
-        const current = document.createElement("span");
-        current.className = "badge";
-        text(current, copy.language_current);
-        card.append(current);
-      }
-      languages.append(card);
+    const selectedLanguage = data.languages.find((language) => language.current);
+    if (selectedLanguage) currentLanguageCard.append(languageCard(selectedLanguage, copy));
+    data.languages.filter((language) => !language.current).forEach((language) => {
+      languages.append(languageCard(language, copy));
     });
 
-    const settings = node("settings-list");
-    settings.replaceChildren();
-    addSetting(settings, copy.setting_daily_goal, data.settings.daily_goal);
-    addSetting(settings, copy.setting_meaning_language, data.settings.meaning_language);
-    addSetting(settings, copy.setting_learning_goal, data.settings.learning_goal);
-    addSetting(settings, copy.setting_mirror_mode, data.settings.mirror_mode);
-    addSetting(settings, copy.setting_mirror_style, data.settings.mirror_style);
-    addSetting(settings, copy.setting_mirror_depth, data.settings.mirror_depth);
-    addSetting(settings, copy.setting_mirror_level, data.settings.mirror_level);
-    addSetting(settings, copy.setting_ai, data.features.ai ? copy.feature_enabled : copy.feature_disabled);
-    addSetting(settings, copy.setting_voice, data.features.voice ? copy.feature_enabled : copy.feature_disabled);
+    const learningSettings = node("settings-learning");
+    const tutorSettings = node("settings-tutor");
+    const featureSettings = node("settings-features");
+    learningSettings.replaceChildren();
+    tutorSettings.replaceChildren();
+    featureSettings.replaceChildren();
+    addSetting(learningSettings, copy.setting_daily_goal, data.settings.daily_goal);
+    addSetting(learningSettings, copy.setting_meaning_language, data.settings.meaning_language);
+    addSetting(learningSettings, copy.setting_learning_goal, data.settings.learning_goal);
+    addSetting(tutorSettings, copy.setting_mirror_mode, data.settings.mirror_mode);
+    addSetting(tutorSettings, copy.setting_mirror_style, data.settings.mirror_style);
+    addSetting(tutorSettings, copy.setting_mirror_depth, data.settings.mirror_depth);
+    addSetting(tutorSettings, copy.setting_mirror_level, data.settings.mirror_level);
+    addSetting(featureSettings, copy.setting_ai, data.features.ai ? copy.feature_enabled : copy.feature_disabled, data.features.ai ? "enabled" : "disabled");
+    addSetting(featureSettings, copy.setting_voice, data.features.voice ? copy.feature_enabled : copy.feature_disabled, data.features.voice ? "enabled" : "disabled");
 
     node("loading-state").hidden = true;
     node("error-state").hidden = true;

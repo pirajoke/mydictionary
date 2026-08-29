@@ -45,7 +45,7 @@ class MiniAppNavigationIllustrationsV2ContractTest(unittest.TestCase):
     def test_ac3_vectors_are_decorative_and_existing_tab_contract_survives(self):
         self.assertEqual(self.html.count('aria-hidden="true" focusable="false"'), 5)
         self.assertEqual(self.html.count('role="tab"'), 5)
-        self.assertEqual(self.html.count('data-i18n="'), 28)
+        self.assertEqual(self.html.count('data-i18n="'), 32)
         self.assertIn("min-height: 58px", self.css)
         self.assertIn("@media (prefers-reduced-motion: reduce)", self.css)
 

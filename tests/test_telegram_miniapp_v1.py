@@ -1458,7 +1458,13 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
         ]
         if "`${language.flag} ${language.label}`" in js:
             violations.append("double-flag-render")
-        if re.search(r"text\(label,\s*language\.label\)", js) is None:
+        if (
+            re.search(
+                r"text\(label,\s*(?:language\.label|languageDisplayLabel\(language\))\)",
+                js,
+            )
+            is None
+        ):
             violations.append("catalog-label-not-rendered")
         if "copy.language_current" not in js:
             violations.append("current-label-not-bound")
