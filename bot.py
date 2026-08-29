@@ -3508,10 +3508,24 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             expires_at = int(pending.get("expires_at", 0))
         except (TypeError, ValueError):
             expires_at = 0
+        request_kind = pending.get("request_kind")
         if (
-            expires_at >= int(time.time())
+            request_kind == "mirror_chat"
+            and expires_at >= int(time.time())
+        ):
+            await handle_mirror_question(
+                update,
+                context,
+                question=question,
+            )
+            return
+        if (
+            request_kind is None
+            and expires_at >= int(time.time())
+            and bool(pending.get("block_session"))
             and pending.get("block_session")
             == context.user_data.get("block_session")
+            and active_tutor_context(context.user_data) is not None
         ):
             await handle_mirror_question(
                 update,
@@ -3527,6 +3541,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 interface_locale_for_update(update),
             )
         )
+        return
     elif pending is not None and question:
         context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
         await update.message.reply_text(
@@ -3535,6 +3550,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
                 interface_locale_for_update(update),
             )
         )
+        return
 
     await handle_mirror_question(
         update,
@@ -3664,27 +3680,27 @@ async def handle_mirror_question(
         except (TypeError, ValueError):
             consented = False
         if not consented:
-            if communication_mode == "brief" and answer_depth == "compact":
-                if (
-                    not AI_SETTINGS.consent_version
-                    or not AI_SETTINGS.processing_notice
-                ):
-                    await message.reply_text(
-                        translate("ai_unavailable", reply_locale)
-                    )
-                    return
-                await request_ai_processing_consent(
-                    message,
-                    context,
-                    request_kind="learning_companion",
-                    question=question,
-                    locale=reply_locale,
-                    task_kind=task_kind,
-                )
-            else:
+            if (
+                not AI_SETTINGS.consent_version
+                or not AI_SETTINGS.processing_notice
+            ):
                 await message.reply_text(
-                    translate("ai_consent_required", reply_locale)
+                    translate("ai_unavailable", reply_locale)
                 )
+                return
+            compact_request = (
+                communication_mode == "brief" and answer_depth == "compact"
+            )
+            await request_ai_processing_consent(
+                message,
+                context,
+                request_kind=(
+                    "learning_companion" if compact_request else "mirror_chat"
+                ),
+                question=question,
+                locale=reply_locale,
+                task_kind=task_kind,
+            )
             return
         try:
             allowance = store.ai_usage_summary(
@@ -3940,11 +3956,13 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "command",
             "active_block",
             "learning_companion",
+            "mirror_chat",
             "voice_assistant",
         }
         or pending.get("task_kind") not in {None, "progress_review"}
         or (
-            pending.get("request_kind") != "voice_assistant"
+            pending.get("request_kind")
+            in {"command", "active_block", "learning_companion"}
             and pending.get("block_session")
             != context.user_data.get("block_session")
         )
@@ -3980,6 +3998,13 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             companion_kwargs["task_kind"] = pending["task_kind"]
         await handle_mirror_question(update, context, **companion_kwargs)
         return
+    if pending["request_kind"] == "mirror_chat":
+        await handle_mirror_question(
+            update,
+            context,
+            question=question,
+        )
+        return
     await send_ai_tutor_answer(
         query.message,
         context,
@@ -3997,10 +4022,19 @@ async def cmd_ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not AI_SETTINGS.enabled:
             await update.message.reply_text(translate("ai_disabled", locale))
             return
-        await send_ai_tutor_menu(update.message, context, locale=locale)
+        await send_ai_tutor_menu(
+            update.message,
+            context,
+            user_id=int(update.effective_user.id),
+            locale=locale,
+        )
         return
     if active_tutor_context(context.user_data) is None:
-        await update.message.reply_text(translate("ai_need_block", locale))
+        await handle_mirror_question(
+            update,
+            context,
+            question=question,
+        )
         return
     await request_compact_learning_companion(
         update,
@@ -5789,37 +5823,154 @@ async def send_ai_tutor_menu(
     message,
     context: ContextTypes.DEFAULT_TYPE,
     *,
+    user_id: int,
     locale: str,
 ) -> None:
-    """Show the deterministic tutor entry point without touching AI or credits."""
-    session_id = str(context.user_data.get("block_session") or "").strip()
-    if not session_id:
-        await message.reply_text(translate("ai_need_block", locale))
-        return
-    rows = [
-        [
-            InlineKeyboardButton(
-                translate("ai_tutor_action_vocabulary", locale),
-                callback_data=f"bait:{session_id}:vocabulary",
-            ),
-            InlineKeyboardButton(
-                translate("ai_tutor_action_mistakes", locale),
-                callback_data=f"bait:{session_id}:mistakes",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                translate("ai_tutor_action_progress", locale),
-                callback_data=f"bait:{session_id}:progress",
-            ),
+    """Show the read-only Tutor economy and contextual entry actions."""
+    session_id = (
+        str(context.user_data.get("block_session") or "").strip()
+        if active_tutor_context(context.user_data) is not None
+        else ""
+    )
+    user_id = int(user_id)
+    try:
+        summary = get_store().ai_usage_summary(
+            user_id,
+            initial_credits=AI_SETTINGS.initial_credits,
+        )
+        available_credits = summary["available_credits"]
+        if type(available_credits) is not int or available_credits < 0:
+            raise ValueError("AI credit balance cannot be negative")
+        balance_text = translate(
+            "ai_tutor_economics_balance",
+            locale,
+            balance=available_credits,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        logger.warning(
+            "AI Tutor balance unavailable: error_type=%s",
+            type(exc).__name__,
+        )
+        balance_text = translate(
+            "ai_tutor_economics_balance_unavailable",
+            locale,
+        )
+    except Exception as exc:
+        logger.warning(
+            "AI Tutor balance read failed: error_type=%s",
+            type(exc).__name__,
+        )
+        balance_text = translate(
+            "ai_tutor_economics_balance_unavailable",
+            locale,
+        )
+
+    products: list[dict[str, Any]] = []
+    try:
+        service = get_billing_service()
+        if STARS_PRODUCTION_CANARY_SETTINGS.enabled:
+            catalog = await asyncio.to_thread(
+                service.active_products,
+                user_id=user_id,
+            )
+        else:
+            catalog = await asyncio.to_thread(service.active_products)
+        products = [
+            product
+            for product in catalog
+            if isinstance(product, Mapping)
+            and str(product.get("status") or "") == "active"
+            and str(product.get("billing_mode") or "") == "one_time"
+        ]
+    except Exception as exc:
+        logger.warning(
+            "AI Tutor catalog unavailable: error_type=%s",
+            type(exc).__name__,
+        )
+
+    product_lines: list[str] = []
+    localized_products: list[tuple[dict[str, Any], str]] = []
+    for product in products:
+        try:
+            credits = int(product["credits"])
+            price_xtr = int(product["price_xtr"])
+            if credits <= 0 or price_xtr <= 0:
+                raise ValueError("AI Tutor catalog values must be positive")
+            product_id = str(product["product_id"])
+            if (
+                not re.fullmatch(r"[a-z][a-z0-9-]{2,59}", product_id)
+                or len(f"buy:{product_id}".encode("utf-8")) > 64
+            ):
+                raise ValueError("AI Tutor product id is invalid")
+            title, _description = billing_product_display_copy(
+                product_id,
+                locale,
+                title=str(product["title"]),
+                description=str(product.get("description") or ""),
+                credits=credits,
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+        credit_label = translate("billing_credit_label", locale, credits=credits)
+        product_lines.append(f"• {title} — {credit_label} — {price_xtr} ⭐")
+        localized_products.append((product, f"{title} · {credit_label} · {price_xtr} ⭐"))
+
+    checkout_available = bool(
+        _billing_entry_enabled_for(user_id) and localized_products
+    )
+    text_parts = [
+        translate("ai_tutor_economics_intro", locale),
+        balance_text,
+        translate("ai_tutor_economics_policy", locale),
+    ]
+    if product_lines:
+        text_parts.append("\n".join(product_lines))
+    if not checkout_available:
+        text_parts.append(
+            translate("ai_tutor_economics_purchase_unavailable", locale)
+        )
+
+    if session_id:
+        rows = [
+            [
+                InlineKeyboardButton(
+                    translate("ai_tutor_action_vocabulary", locale),
+                    callback_data=f"bait:{session_id}:vocabulary",
+                ),
+                InlineKeyboardButton(
+                    translate("ai_tutor_action_mistakes", locale),
+                    callback_data=f"bait:{session_id}:mistakes",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    translate("ai_tutor_action_progress", locale),
+                    callback_data=f"bait:{session_id}:progress",
+                ),
+                InlineKeyboardButton(
+                    translate("ai_tutor_action_ask", locale),
+                    callback_data=f"bait:{session_id}:ask",
+                ),
+            ],
+        ]
+    else:
+        rows = [[
             InlineKeyboardButton(
                 translate("ai_tutor_action_ask", locale),
-                callback_data=f"bait:{session_id}:ask",
+                callback_data="aitutor:ask",
             ),
-        ],
-    ]
+            InlineKeyboardButton(
+                translate("ai_tutor_action_start_lesson", locale),
+                callback_data="aitutor:start",
+            ),
+        ]]
+    if checkout_available:
+        rows.extend(
+            [[InlineKeyboardButton(label, callback_data=f"buy:{product['product_id']}")]
+             for product, label in localized_products]
+        )
     await message.reply_text(
-        translate("ai_tutor_menu_intro", locale),
+        "\n\n".join(text_parts),
         reply_markup=InlineKeyboardMarkup(rows),
     )
 
@@ -6013,7 +6164,12 @@ async def _authorized_block_ai_cb(
         return
     activate_block_language(context.user_data)
     locale = interface_locale_for_update(update)
-    await send_ai_tutor_menu(query.message, context, locale=locale)
+    await send_ai_tutor_menu(
+        query.message,
+        context,
+        user_id=int(update.effective_user.id),
+        locale=locale,
+    )
 
 
 @auth
@@ -6053,6 +6209,48 @@ async def block_ai_action_cb(
         question=translate(AI_TUTOR_ACTION_QUESTION_KEYS[action], locale),
         locale=locale,
         task_kind="progress_review",
+    )
+
+
+@auth
+async def ai_tutor_entry_cb(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    """Handle no-block Tutor chat and lesson entry without paid work."""
+    query = update.callback_query
+    locale = interface_locale_for_update(update)
+    parts = str(query.data or "").split(":", 1)
+    action = parts[1] if len(parts) == 2 else ""
+    if action not in {"ask", "start"}:
+        await query.answer(
+            translate("privacy_unknown_action", locale),
+            show_alert=True,
+        )
+        return
+    if action == "ask" and not AI_SETTINGS.enabled:
+        await query.answer(
+            translate("ai_disabled", locale),
+            show_alert=True,
+        )
+        return
+    await query.answer()
+    if action == "ask":
+        context.user_data[PENDING_AI_TUTOR_KEY] = {
+            "request_kind": "mirror_chat",
+            "expires_at": int(time.time()) + PENDING_AI_TUTOR_TTL_SECONDS,
+        }
+        await query.message.reply_text(
+            translate("ai_tutor_general_ask_prompt", locale)
+        )
+        return
+
+    invalidate_block_session(context.user_data)
+    pack = active_content_pack()
+    context.user_data["block_pack_id"] = pack.pack_id
+    await query.message.reply_text(
+        f"📚 *{pack.label}*\n\n{translate('topic_prompt', locale)}",
+        reply_markup=build_topic_keyboard(pack, locale=locale),
+        parse_mode="Markdown",
     )
 
 
@@ -6841,6 +7039,7 @@ async def manual_polling():
     app.add_handler(
         CallbackQueryHandler(ai_consent_cb, pattern=r"^aiconsent:")
     )
+    app.add_handler(CallbackQueryHandler(ai_tutor_entry_cb, pattern=r"^aitutor:"))
     app.add_handler(CallbackQueryHandler(buy_product_cb, pattern=r"^buy:"))
     app.add_handler(CallbackQueryHandler(subscription_cb, pattern=r"^sub:"))
     app.add_handler(CallbackQueryHandler(privacy_cb, pattern=r"^privacy:"))

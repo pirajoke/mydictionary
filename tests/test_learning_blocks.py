@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import tempfile
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 
 TEST_DATA_DIR = tempfile.mkdtemp(prefix="mydictionary-tests-")
@@ -1009,25 +1009,60 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
     async def test_ai_callback_opens_free_action_menu_once_for_active_session(self):
         session_id = self.user_data["block_session"]
         update, context, query = self.make_update(f"bai:{session_id}")
+        store = Mock()
+        store.ai_usage_summary.return_value = {"available_credits": 8}
+        billing_service = Mock()
+        billing_service.active_products.return_value = []
+        provider = Mock()
 
         with (
-            patch.object(bot, "AI_SETTINGS", SimpleNamespace(enabled=True)),
+            patch.object(
+                bot,
+                "AI_SETTINGS",
+                SimpleNamespace(enabled=True, initial_credits=40),
+            ),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(
+                bot, "get_billing_service", return_value=billing_service
+            ),
+            patch.object(bot, "get_ai_tutor_service", return_value=provider),
             patch.object(
                 bot, "send_ai_tutor_answer", new=AsyncMock()
             ) as send_answer,
         ):
-            await bot.block_ai_cb(update, context)
+            await bot.block_ai_cb.__wrapped__(update, context)
 
         self.assertEqual(query.answer.await_count, 1)
         send_answer.assert_not_awaited()
         payload = query.message.reply_text.await_args
-        self.assertEqual(payload.args[0], bot.translate("ai_tutor_menu_intro", "ru"))
+        rendered = payload.args[0]
+        self.assertIn(bot.translate("ai_tutor_economics_intro", "ru"), rendered)
+        self.assertIn(
+            bot.translate("ai_tutor_economics_balance", "ru", balance=8),
+            rendered,
+        )
+        self.assertIn(bot.translate("ai_tutor_economics_policy", "ru"), rendered)
         buttons = [
             button
             for row in payload.kwargs["reply_markup"].inline_keyboard
             for button in row
         ]
         self.assertEqual(len(buttons), 4)
+        self.assertEqual(
+            [button.callback_data for button in buttons],
+            [
+                f"bait:{session_id}:vocabulary",
+                f"bait:{session_id}:mistakes",
+                f"bait:{session_id}:progress",
+                f"bait:{session_id}:ask",
+            ],
+        )
+        store.ai_usage_summary.assert_called_once_with(1, initial_credits=40)
+        store.has_consent.assert_not_called()
+        store.reserve_ai_usage.assert_not_called()
+        billing_service.active_products.assert_called_once_with()
+        billing_service.create_order.assert_not_called()
+        provider.assert_not_called()
 
     async def test_stale_session_callback_is_rejected(self):
         idx = self.indices[0]

@@ -707,6 +707,8 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-8:])
 
     async def test_err_1_existing_access_onboarding_ai_and_metering_gates_remain_authoritative(self):
+        processing_notice = "NOTICE-COMPAGNON-CONFIGURÉE"
+
         async def invoke(
             *,
             profile=None,
@@ -751,6 +753,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
                     SimpleNamespace(
                         enabled=ai_enabled,
                         consent_version="ai-v1",
+                        processing_notice=processing_notice,
                     ),
                 ),
                 patch.object(
@@ -760,55 +763,105 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
                 ),
             ):
                 await bot.mirror_text_handler.__wrapped__(update, context)
-            return message, store, service, service_factory, paywall
+            return message, context, store, service, service_factory, paywall
 
         with self.subTest(gate="access"):
-            message, _store, service, _factory, _paywall = await invoke(
-                profile=admitted_profile(access_status="blocked")
-            )
+            (
+                message,
+                _context,
+                _store,
+                service,
+                _factory,
+                _paywall,
+            ) = await invoke(profile=admitted_profile(access_status="blocked"))
             service.ask.assert_not_awaited()
             message.reply_text.assert_awaited_once_with(
                 translate("mirror_unavailable", "fr")
             )
 
         with self.subTest(gate="onboarding"):
-            message, _store, service, _factory, _paywall = await invoke(
-                profile=admitted_profile(onboarding_completed_at=None)
-            )
+            (
+                message,
+                _context,
+                _store,
+                service,
+                _factory,
+                _paywall,
+            ) = await invoke(profile=admitted_profile(onboarding_completed_at=None))
             service.ask.assert_not_awaited()
             message.reply_text.assert_awaited_once_with(
                 translate("onboarding_required", "fr")
             )
 
         with self.subTest(gate="ai_disabled"):
-            message, _store, service, _factory, _paywall = await invoke(
-                ai_enabled=False
-            )
+            (
+                message,
+                _context,
+                _store,
+                service,
+                _factory,
+                _paywall,
+            ) = await invoke(ai_enabled=False)
             service.ask.assert_not_awaited()
             message.reply_text.assert_awaited_once_with(
                 translate("ai_disabled", "fr")
             )
 
         with self.subTest(gate="consent"):
-            message, _store, service, _factory, _paywall = await invoke(
+            message, context, store, service, factory, _paywall = await invoke(
                 consent=False
             )
             service.ask.assert_not_awaited()
-            message.reply_text.assert_awaited_once_with(
-                translate("ai_consent_required", "fr")
+            factory.assert_not_called()
+            store.ai_usage_summary.assert_not_called()
+            store.reserve_ai_usage.assert_not_called()
+            pending = context.user_data["pending_ai_consent"]
+            self.assertEqual(pending["request_kind"], "mirror_chat")
+            self.assertEqual(
+                pending["question"], "Pourquoi ce mot est-il utilisé ?"
+            )
+            self.assertIsNone(pending["block_session"])
+            consent_payload = message.reply_text.await_args
+            self.assertEqual(
+                consent_payload.args[0],
+                translate(
+                    "ai_processing_consent",
+                    "fr",
+                    notice=processing_notice,
+                    version="ai-v1",
+                ),
+            )
+            consent_buttons = [
+                button.callback_data
+                for row in consent_payload.kwargs["reply_markup"].inline_keyboard
+                for button in row
+            ]
+            self.assertEqual(
+                consent_buttons,
+                ["aiconsent:accept", "aiconsent:cancel"],
             )
 
         with self.subTest(gate="credits"):
-            _message, _store, service, _factory, paywall = await invoke(
-                service_error=bot.AICreditExhausted("no credits")
-            )
+            (
+                _message,
+                _context,
+                _store,
+                service,
+                _factory,
+                paywall,
+            ) = await invoke(service_error=bot.AICreditExhausted("no credits"))
             service.ask.assert_awaited_once()
             paywall.assert_awaited_once()
 
         with self.subTest(gate="quota"):
-            message, _store, service, _factory, _paywall = await invoke(
-                service_error=bot.AIQuotaExceeded("quota")
-            )
+            (
+                message,
+                _context,
+                _store,
+                service,
+                _factory,
+                _paywall,
+            ) = await invoke(service_error=bot.AIQuotaExceeded("quota"))
             service.ask.assert_awaited_once()
             self.assertEqual(
                 [item.args[0] for item in message.reply_text.await_args_list],
@@ -821,9 +874,14 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
 
         with self.subTest(gate="provider_readiness"):
             diagnostic = "PRIVATE-PROVIDER-READINESS-DIAGNOSTIC"
-            message, _store, _service, factory, _paywall = await invoke(
-                service_factory_error=RuntimeError(diagnostic)
-            )
+            (
+                message,
+                _context,
+                _store,
+                _service,
+                factory,
+                _paywall,
+            ) = await invoke(service_factory_error=RuntimeError(diagnostic))
             factory.assert_called_once()
             rendered = " ".join(
                 call.args[0] for call in message.reply_text.await_args_list
@@ -832,7 +890,14 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(diagnostic, rendered)
 
         with self.subTest(gate="provider_success"):
-            message, _store, service, _factory, _paywall = await invoke()
+            (
+                message,
+                _context,
+                _store,
+                service,
+                _factory,
+                _paywall,
+            ) = await invoke()
             service.ask.assert_awaited_once()
             self.assertEqual(
                 [item.args[0] for item in message.reply_text.await_args_list],

@@ -1087,6 +1087,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
 
         enabled_settings = SimpleNamespace(
             enabled=True,
+            initial_credits=40,
             consent_version="ai-v1",
             processing_notice="NOTICE-CONFIGURÉE-INCHANGÉE",
         )
@@ -1131,20 +1132,50 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(service.ask.await_args.kwargs["question"], "QUESTION-CONTENT")
 
             with self.subTest(surface="free_action_menu"):
-                message = SimpleNamespace(reply_text=AsyncMock())
+                message = SimpleNamespace(chat_id=42, reply_text=AsyncMock())
                 update = SimpleNamespace(
                     message=message,
                     effective_user=SimpleNamespace(id=42, language_code="fr"),
                 )
-                context.user_data["block_session"] = "bloc-francais"
+                bot.reset_block_state(
+                    context.user_data,
+                    list(range(10)),
+                    "ja",
+                    "food",
+                    pack_id="ja-basics-100",
+                )
                 requester = AsyncMock()
-                with patch.object(bot, "request_ai_tutor_answer", new=requester):
+                store = Mock()
+                store.ai_usage_summary.return_value = {"available_credits": 9}
+                billing_service = Mock()
+                billing_service.active_products.return_value = []
+                with (
+                    patch.object(bot, "request_ai_tutor_answer", new=requester),
+                    patch.object(bot, "get_store", return_value=store),
+                    patch.object(
+                        bot,
+                        "get_billing_service",
+                        return_value=billing_service,
+                    ),
+                ):
                     await bot.cmd_ai.__wrapped__(update, context)
                 requester.assert_not_awaited()
+                store.ai_usage_summary.assert_called_once_with(
+                    42,
+                    initial_credits=40,
+                )
+                billing_service.active_products.assert_called_once_with()
                 payload = message.reply_text.await_args
-                self.assertEqual(
-                    payload.args[0],
-                    translate("ai_tutor_menu_intro", "fr"),
+                rendered = payload.args[0]
+                self.assertIn(
+                    translate("ai_tutor_economics_intro", "fr"), rendered
+                )
+                self.assertIn(
+                    translate("ai_tutor_economics_balance", "fr", balance=9),
+                    rendered,
+                )
+                self.assertIn(
+                    translate("ai_tutor_economics_policy", "fr"), rendered
                 )
                 buttons = [
                     button
@@ -1160,7 +1191,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                         "💬 Poser une question",
                     ],
                 )
-                self.assertNotIn("Объясни", payload.args[0])
+                self.assertNotRegex(rendered, r"[А-Яа-яЁё]")
 
     async def test_ac5_french_stars_payment_and_subscription_callbacks(self):
         validation = Mock(side_effect=ValueError("invalid invoice"))

@@ -40,6 +40,7 @@ TUTOR_COPY_KEYS = (
 def enabled_settings():
     return SimpleNamespace(
         enabled=True,
+        initial_credits=40,
         consent_version=AI_CONSENT_VERSION,
         processing_notice=AI_PROCESSING_NOTICE,
     )
@@ -48,6 +49,7 @@ def enabled_settings():
 def disabled_settings():
     return SimpleNamespace(
         enabled=False,
+        initial_credits=40,
         consent_version=AI_CONSENT_VERSION,
         processing_notice=AI_PROCESSING_NOTICE,
     )
@@ -156,10 +158,16 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
     async def test_ac1_block_button_opens_short_four_action_menu_for_free(self):
         surface = TutorSurface(locale="fr")
         store = MagicMock()
+        store.ai_usage_summary.side_effect = RuntimeError("balance unavailable")
         service = MagicMock()
+        billing_service = MagicMock()
+        billing_service.active_products.return_value = []
         with (
             patch.object(bot, "AI_SETTINGS", enabled_settings()),
             patch.object(bot, "get_store", return_value=store),
+            patch.object(
+                bot, "get_billing_service", return_value=billing_service
+            ),
             patch.object(bot, "get_ai_tutor_service", return_value=service),
             patch.object(bot, "request_ai_tutor_answer", new=AsyncMock()) as legacy,
             patch.object(bot, "handle_mirror_question", new=AsyncMock()) as companion,
@@ -168,8 +176,12 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
 
         surface.query.answer.assert_awaited_once_with()
         text, markup = menu_payload(surface)
-        self.assertEqual(text, translate("ai_tutor_menu_intro", "fr"))
-        self.assertLessEqual(len(text), 420)
+        self.assertIn(translate("ai_tutor_economics_intro", "fr"), text)
+        self.assertIn(
+            translate("ai_tutor_economics_balance_unavailable", "fr"),
+            text,
+        )
+        self.assertIn(translate("ai_tutor_economics_policy", "fr"), text)
         buttons = flattened_buttons(markup)
         self.assertEqual(
             [button.text for button in buttons],
@@ -181,10 +193,24 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
             ],
         )
         self.assertEqual(len(buttons), 4)
+        self.assertEqual(
+            [button.callback_data for button in buttons],
+            [
+                f"bait:{surface.session}:vocabulary",
+                f"bait:{surface.session}:mistakes",
+                f"bait:{surface.session}:progress",
+                f"bait:{surface.session}:ask",
+            ],
+        )
         self.assertTrue(all(len(button.callback_data.encode("utf-8")) <= 64 for button in buttons))
         self.assertTrue(all(str(surface.update.effective_user.id) not in button.callback_data for button in buttons))
+        store.ai_usage_summary.assert_called_once_with(
+            surface.update.effective_user.id,
+            initial_credits=40,
+        )
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
+        billing_service.active_products.assert_called_once_with()
         service.assert_not_called()
         legacy.assert_not_awaited()
         companion.assert_not_awaited()
@@ -194,9 +220,15 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
         surface.update.callback_query = None
         service = MagicMock()
         store = MagicMock()
+        store.ai_usage_summary.return_value = {"available_credits": 12}
+        billing_service = MagicMock()
+        billing_service.active_products.return_value = []
         with (
             patch.object(bot, "AI_SETTINGS", enabled_settings()),
             patch.object(bot, "get_store", return_value=store),
+            patch.object(
+                bot, "get_billing_service", return_value=billing_service
+            ),
             patch.object(bot, "get_ai_tutor_service", return_value=service),
             patch.object(bot, "request_ai_tutor_answer", new=AsyncMock()) as legacy,
             patch.object(bot, "handle_mirror_question", new=AsyncMock()) as companion,
@@ -204,10 +236,29 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
             await bot.cmd_ai.__wrapped__(surface.update, surface.context)
 
         text, markup = menu_payload(surface)
-        self.assertEqual(text, translate("ai_tutor_menu_intro", "ru"))
-        self.assertEqual(len(flattened_buttons(markup)), 4)
+        self.assertIn(translate("ai_tutor_economics_intro", "ru"), text)
+        self.assertIn(
+            translate("ai_tutor_economics_balance", "ru", balance=12), text
+        )
+        self.assertIn(translate("ai_tutor_economics_policy", "ru"), text)
+        menu_buttons = flattened_buttons(markup)
+        self.assertEqual(len(menu_buttons), 4)
+        self.assertEqual(
+            [button.callback_data for button in menu_buttons],
+            [
+                f"bait:{surface.session}:vocabulary",
+                f"bait:{surface.session}:mistakes",
+                f"bait:{surface.session}:progress",
+                f"bait:{surface.session}:ask",
+            ],
+        )
+        store.ai_usage_summary.assert_called_once_with(
+            surface.update.effective_user.id,
+            initial_credits=40,
+        )
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
+        billing_service.active_products.assert_called_once_with()
         service.assert_not_called()
         legacy.assert_not_awaited()
         companion.assert_not_awaited()
@@ -571,7 +622,7 @@ class AITutorPendingQuestionTest(unittest.IsolatedAsyncioTestCase):
         companion.assert_not_awaited()
         self.assertIn("pending_ai_tutor", surface.user_data)
 
-    async def test_ac3_expired_or_stale_pending_is_discarded_free_then_mirror_continues(self):
+    async def test_ac3_expired_or_stale_pending_is_discarded_without_paid_path(self):
         cases = (
             ({"block_session": "stale", "expires_at": 1_600}, 1_001),
             ({"block_session": "unused", "expires_at": 999}, 1_001),
@@ -598,11 +649,7 @@ class AITutorPendingQuestionTest(unittest.IsolatedAsyncioTestCase):
                 surface.message.reply_text.assert_awaited_once_with(
                     translate("ai_tutor_pending_stale", "de")
                 )
-                companion.assert_awaited_once_with(
-                    surface.update,
-                    surface.context,
-                    question="Normale Frage",
-                )
+                companion.assert_not_awaited()
                 service.assert_not_called()
 
     async def test_ac3_ai_command_with_question_uses_compact_companion_path(self):
@@ -629,7 +676,7 @@ class AITutorPendingQuestionTest(unittest.IsolatedAsyncioTestCase):
         )
         legacy.assert_not_awaited()
 
-    async def test_ac4_ai_command_question_requires_active_block_before_paid_path(self):
+    async def test_ac4_ai_command_question_without_block_uses_ordinary_mirror_path(self):
         surface = TutorSurface(locale="fr")
         surface.update.callback_query = None
         surface.context.args = ["Que", "dois-je", "réviser", "?"]
@@ -646,10 +693,12 @@ class AITutorPendingQuestionTest(unittest.IsolatedAsyncioTestCase):
         ):
             await bot.cmd_ai.__wrapped__(surface.update, surface.context)
 
-        surface.message.reply_text.assert_awaited_once_with(
-            translate("ai_need_block", "fr")
+        surface.message.reply_text.assert_not_awaited()
+        companion.assert_awaited_once_with(
+            surface.update,
+            surface.context,
+            question="Que dois-je réviser ?",
         )
-        companion.assert_not_awaited()
         provider.assert_not_called()
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()

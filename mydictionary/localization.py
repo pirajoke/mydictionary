@@ -3173,6 +3173,119 @@ for _locale, _messages in _AI_TUTOR_ACTION_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 
+_AI_TUTOR_ECONOMICS_COPY = {
+    "en": {
+        "ai_tutor_economics_intro": "✨ AI Tutor — chat and credit packs",
+        "ai_tutor_economics_balance": "Balance: {balance} AI credits.",
+        "ai_tutor_economics_balance_unavailable": "Balance is temporarily unavailable.",
+        "ai_tutor_economics_policy": (
+            "One successfully generated AI answer costs 1 AI credit. "
+            "A failed or rejected answer costs 0."
+        ),
+        "ai_tutor_economics_purchase_unavailable": "Credit purchases are currently unavailable.",
+        "ai_tutor_action_start_lesson": "📚 Start a lesson",
+        "ai_tutor_general_ask_prompt": (
+            "Send one question about language learning or your progress."
+        ),
+    },
+    "fr": {
+        "ai_tutor_economics_intro": "✨ Tuteur IA — discussion et packs de crédits",
+        "ai_tutor_economics_balance": "Solde : {balance} crédits IA.",
+        "ai_tutor_economics_balance_unavailable": "Le solde est temporairement indisponible.",
+        "ai_tutor_economics_policy": (
+            "Une réponse IA générée avec succès coûte 1 crédit IA. "
+            "Une réponse échouée ou rejetée coûte 0."
+        ),
+        "ai_tutor_economics_purchase_unavailable": "L’achat de crédits est actuellement indisponible.",
+        "ai_tutor_action_start_lesson": "📚 Commencer une leçon",
+        "ai_tutor_general_ask_prompt": (
+            "Envoyez une question sur l’apprentissage des langues ou vos progrès."
+        ),
+    },
+    "de": {
+        "ai_tutor_economics_intro": "✨ KI-Tutor — Chat und Guthabenpakete",
+        "ai_tutor_economics_balance": "Guthaben: {balance} KI-Credits.",
+        "ai_tutor_economics_balance_unavailable": "Das Guthaben ist vorübergehend nicht verfügbar.",
+        "ai_tutor_economics_policy": (
+            "Eine erfolgreich erzeugte KI-Antwort kostet 1 KI-Credit. "
+            "Eine fehlgeschlagene oder abgelehnte Antwort kostet 0."
+        ),
+        "ai_tutor_economics_purchase_unavailable": "Der Kauf von Credits ist derzeit nicht verfügbar.",
+        "ai_tutor_action_start_lesson": "📚 Lektion starten",
+        "ai_tutor_general_ask_prompt": (
+            "Sende eine Frage zum Sprachenlernen oder zu deinem Fortschritt."
+        ),
+    },
+    "ja": {
+        "ai_tutor_economics_intro": "✨ AIチューター — チャットとクレジットパック",
+        "ai_tutor_economics_balance": "残高：AIクレジット {balance}。",
+        "ai_tutor_economics_balance_unavailable": "残高は一時的に確認できません。",
+        "ai_tutor_economics_policy": (
+            "正常に生成されたAI回答1件につきAIクレジットを1使用します。"
+            "失敗または拒否された回答は0です。"
+        ),
+        "ai_tutor_economics_purchase_unavailable": "現在、クレジットは購入できません。",
+        "ai_tutor_action_start_lesson": "📚 レッスンを始める",
+        "ai_tutor_general_ask_prompt": "語学学習や進捗について質問を1つ送ってください。",
+    },
+    "ar": {
+        "ai_tutor_economics_intro": "✨ مدرس AI — المحادثة وباقات الرصيد",
+        "ai_tutor_economics_balance": "الرصيد: {balance} من أرصدة AI.",
+        "ai_tutor_economics_balance_unavailable": "الرصيد غير متاح مؤقتاً.",
+        "ai_tutor_economics_policy": (
+            "تكلّف كل إجابة AI تُنشأ بنجاح رصيد AI واحداً. "
+            "الإجابة الفاشلة أو المرفوضة تكلّف صفراً."
+        ),
+        "ai_tutor_economics_purchase_unavailable": "شراء الرصيد غير متاح حالياً.",
+        "ai_tutor_action_start_lesson": "📚 ابدأ درساً",
+        "ai_tutor_general_ask_prompt": "أرسل سؤالاً واحداً عن تعلم اللغة أو تقدمك.",
+    },
+    "zh": {
+        "ai_tutor_economics_intro": "✨ AI 导师 — 对话与点数包",
+        "ai_tutor_economics_balance": "余额：{balance} 个 AI 点数。",
+        "ai_tutor_economics_balance_unavailable": "暂时无法查看余额。",
+        "ai_tutor_economics_policy": (
+            "每个成功生成的 AI 回答消耗 1 个 AI 点数。"
+            "生成失败或被拒绝的回答消耗 0 个。"
+        ),
+        "ai_tutor_economics_purchase_unavailable": "目前无法购买点数。",
+        "ai_tutor_action_start_lesson": "📚 开始课程",
+        "ai_tutor_general_ask_prompt": "请发送一个关于语言学习或学习进度的问题。",
+    },
+    "ru": {
+        "ai_tutor_economics_intro": "✨ AI-тьютор — чат и пакеты кредитов",
+        "ai_tutor_economics_balance": "Баланс: {balance} AI-кредитов.",
+        "ai_tutor_economics_balance_unavailable": "Баланс временно недоступен.",
+        "ai_tutor_economics_policy": (
+            "Один успешно созданный AI-ответ стоит 1 AI-кредит. "
+            "Неудачный или отклонённый ответ стоит 0."
+        ),
+        "ai_tutor_economics_purchase_unavailable": "Покупка кредитов сейчас недоступна.",
+        "ai_tutor_action_start_lesson": "📚 Начать урок",
+        "ai_tutor_general_ask_prompt": (
+            "Отправь один вопрос об изучении языка или своём прогрессе."
+        ),
+    },
+    "es": {
+        "ai_tutor_economics_intro": "✨ Tutor de IA — chat y paquetes de créditos",
+        "ai_tutor_economics_balance": "Saldo: {balance} créditos de IA.",
+        "ai_tutor_economics_balance_unavailable": "El saldo no está disponible temporalmente.",
+        "ai_tutor_economics_policy": (
+            "Una respuesta de IA generada correctamente cuesta 1 crédito de IA. "
+            "Una respuesta fallida o rechazada cuesta 0."
+        ),
+        "ai_tutor_economics_purchase_unavailable": "La compra de créditos no está disponible ahora.",
+        "ai_tutor_action_start_lesson": "📚 Empezar una lección",
+        "ai_tutor_general_ask_prompt": (
+            "Envía una pregunta sobre el aprendizaje de idiomas o tu progreso."
+        ),
+    },
+}
+
+for _locale, _messages in _AI_TUTOR_ECONOMICS_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
+
 _ZERKALO_COMMUNICATION_COPY = {
     "en": {
         "mirror_progress_facts": "Accuracy {accuracy}% · {tracked} words · {due} due · {streak}-day streak.",
