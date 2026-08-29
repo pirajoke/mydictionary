@@ -71,6 +71,7 @@ METERED_PROVIDER_ACTIONS = (
     "voice_transcription",
     "voice_translation",
 )
+INTERFACE_LOCALES = frozenset({"en", "fr", "de", "ja", "ar", "zh", "ru", "es"})
 
 
 def utcnow() -> datetime:
@@ -1150,6 +1151,39 @@ class DatabaseStore:
         mode = str(row["mirror_response_mode"] or "text")
         return mode if mode in {"text", "voice", "both"} else "text"
 
+    def set_interface_locale(self, user_id: int, locale: str) -> str:
+        """Persist a bot-interface locale without changing Telegram metadata."""
+        normalized = str(locale).strip()
+        if normalized not in INTERFACE_LOCALES:
+            raise ValueError("Unsupported interface locale")
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                text(
+                    "SELECT privacy_status, access_status, interface_locale "
+                    "FROM users WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).mappings().one_or_none()
+            if (
+                row is None
+                or row["privacy_status"] != "active"
+                or row["access_status"] != "active"
+            ):
+                raise PermissionError("Learner cannot change interface locale")
+            if row["interface_locale"] != normalized:
+                connection.execute(
+                    text(
+                        "UPDATE users SET interface_locale = :locale, "
+                        "updated_at = :updated_at WHERE telegram_user_id = :user_id"
+                    ),
+                    {
+                        "locale": normalized,
+                        "updated_at": utcnow(),
+                        "user_id": int(user_id),
+                    },
+                )
+        return normalized
+
     def set_mirror_response_mode(self, user_id: int, mode: str) -> str:
         normalized = str(mode).strip().lower()
         if normalized not in {"text", "voice", "both"}:
@@ -1528,6 +1562,13 @@ class DatabaseStore:
         with self.Session() as session:
             user = session.get(User, int(user_id))
             progress = session.get(UserProgress, int(user_id))
+            interface_locale = session.execute(
+                text(
+                    "SELECT interface_locale FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).scalar_one()
             return {
                 "role": user.role,
                 "native_language": user.native_language,
@@ -1540,6 +1581,7 @@ class DatabaseStore:
                 "active_pack_id": progress.active_pack_id if progress else None,
                 "active_lang": progress.active_lang if progress else "en",
                 "mirror_style": self.get_mirror_style(user_id),
+                "interface_locale": interface_locale,
             }
 
     def access_profile(self, user_id: int) -> dict[str, Any] | None:
@@ -1548,11 +1590,19 @@ class DatabaseStore:
             user = session.get(User, int(user_id))
             if user is None:
                 return None
+            interface_locale = session.execute(
+                text(
+                    "SELECT interface_locale FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).scalar_one()
             return {
                 "role": user.role,
                 "access_status": user.access_status,
                 "access_status_updated_at": user.access_status_updated_at,
                 "language_code": user.language_code,
+                "interface_locale": interface_locale,
             }
 
     def activate_user_access(self, user_id: int) -> None:

@@ -181,6 +181,14 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .setting-row dd { margin: 0; font-size: .8rem; font-weight: 800; text-align: end; }
 .setting-row.enabled dd { color: var(--green); }
 .setting-row.disabled dd { color: var(--muted); }
+.setting-row-control dd { display: grid; justify-items: end; gap: 3px; min-width: min(58%, 190px); }
+.interface-locale-select { width: 100%; min-height: 44px; padding: 8px 30px 8px 10px; border: 1px solid color-mix(in srgb, var(--line) 82%, transparent); border-radius: 10px; color: var(--app-text); background: var(--app-bg); font: inherit; font-weight: 800; text-align: end; }
+.interface-locale-select:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.interface-locale-select[aria-busy="true"] { opacity: .66; cursor: progress; }
+.interface-locale-status { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-height: 16px; color: var(--muted); font-size: .68rem; font-weight: 600; }
+.interface-locale-status:empty { min-height: 0; }
+.interface-locale-status button { min-height: 32px; padding: 4px 8px; color: var(--app-button-text); background: var(--app-button); }
+[dir="rtl"] .interface-locale-select { padding-right: 10px; padding-left: 30px; text-align: start; }
 .action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
 .action-grid button:first-child { grid-column: 1 / -1; background: var(--app-button); color: var(--app-button-text); }
 

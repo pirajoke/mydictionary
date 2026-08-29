@@ -380,6 +380,7 @@ class LearnerRuntime:
     store: DatabaseStore
     progress: dict
     meaning_language: str = "ru"
+    interface_locale: str | None = None
     role: str = "learner"
     access_status: str = "pending"
     onboarding_completed: bool = False
@@ -644,6 +645,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
         store=store,
         progress=progress,
         meaning_language=resolve_runtime_meaning_language(product, progress),
+        interface_locale=product.get("interface_locale"),
         role=product["role"],
         access_status=product["access_status"],
         onboarding_completed=product["onboarding_completed_at"] is not None,
@@ -1261,14 +1263,19 @@ def auth(func):
             telegram_user = update.poll_answer.user
         if telegram_user is None:
             return
-        interface_locale = interface_locale_for_update(update)
-        user_data = getattr(context, "user_data", None)
-        if isinstance(user_data, MutableMapping):
-            user_data["interface_locale"] = interface_locale
         user_id = int(telegram_user.id)
         configured = user_id in ALLOWED_USER_IDS or user_id in ADMIN_USER_IDS
         store = get_store()
         stored = store.access_profile(user_id)
+        telegram_locale = interface_locale_for_update(update)
+        interface_locale = (
+            str(stored["interface_locale"])
+            if stored and stored.get("interface_locale") in INTERFACE_LOCALES
+            else telegram_locale
+        )
+        user_data = getattr(context, "user_data", None)
+        if isinstance(user_data, MutableMapping):
+            user_data["interface_locale"] = interface_locale
         decision = access_decision(
             mode=BOT_ACCESS_MODE,
             configured=configured,
@@ -1541,6 +1548,10 @@ def interface_locale_for_update(update: Update) -> str:
     if telegram_user is None:
         poll_answer = getattr(update, "poll_answer", None)
         telegram_user = getattr(poll_answer, "user", None)
+    runtime = _ACTIVE_RUNTIME.get()
+    runtime_locale = getattr(runtime, "interface_locale", None)
+    if runtime_locale in INTERFACE_LOCALES:
+        return str(runtime_locale)
     # Legacy unit/direct calls may provide a minimal user object without the
     # Telegram language_code field. Real Telegram users always expose it; an
     # explicit missing/empty value follows the English EC-1 fallback.

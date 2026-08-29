@@ -29,6 +29,8 @@
   let calendarCursor = null;
   let languageSwitchSequence = 0;
   let languageSwitchPending = false;
+  let interfaceLocaleSequence = 0;
+  let interfaceLocalePending = false;
 
   const node = (id) => document.getElementById(id);
   const text = (element, value) => { element.textContent = String(value ?? ""); };
@@ -137,6 +139,100 @@
     text(detail, value);
     row.append(term, detail);
     list.append(row);
+  }
+
+  function addInterfaceLocaleSetting(list, data, copy) {
+    const row = document.createElement("div");
+    row.className = "setting-row setting-row-control";
+    const term = document.createElement("dt");
+    const detail = document.createElement("dd");
+    const select = document.createElement("select");
+    const status = document.createElement("span");
+    text(term, copy.setting_interface_language);
+    select.id = "interface-locale-select";
+    select.className = "interface-locale-select";
+    select.setAttribute("aria-label", copy.setting_interface_language);
+    status.className = "interface-locale-status";
+    status.id = "interface-locale-status";
+    status.setAttribute("role", "status");
+    select.setAttribute("aria-describedby", status.id);
+    data.interface_locales.forEach((locale) => {
+      const option = document.createElement("option");
+      option.value = locale.value;
+      option.dir = locale.direction;
+      option.selected = locale.value === data.settings.interface_locale;
+      text(option, locale.label);
+      select.append(option);
+    });
+    select.addEventListener("change", () => {
+      switchInterfaceLocale(select.value, select, status, copy);
+    });
+    detail.append(select, status);
+    row.append(term, detail);
+    list.append(row);
+  }
+
+  function localeRetryStatus(status, message, label, retry) {
+    status.replaceChildren();
+    const detail = document.createElement("span");
+    text(detail, message);
+    status.append(detail);
+    if (retry) {
+      const button = document.createElement("button");
+      button.type = "button";
+      text(button, label);
+      button.addEventListener("click", retry);
+      status.append(button);
+    }
+  }
+
+  async function switchInterfaceLocale(locale, select, status, copy) {
+    if (interfaceLocalePending || !webApp || !webApp.initData) return;
+    interfaceLocalePending = true;
+    const sequence = ++interfaceLocaleSequence;
+    select.disabled = true;
+    select.setAttribute("aria-busy", "true");
+    localeRetryStatus(status, copy.interface_language_pending, "", null);
+    try {
+      const response = await fetch("/miniapp/api/interface-locale", {
+        method: "POST",
+        headers: {
+          "X-Telegram-Init-Data": webApp.initData,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({locale: locale}),
+        cache: "no-store",
+        credentials: "omit"
+      });
+      if (!response.ok) throw new Error("interface_locale_failed");
+      const fresh = await response.json();
+      if (sequence !== interfaceLocaleSequence) return;
+      render(fresh);
+    } catch (_) {
+      if (sequence !== interfaceLocaleSequence) return;
+      const reloaded = await load();
+      if (reloaded && payload) {
+        const refreshedSelect = node("interface-locale-select");
+        const refreshedStatus = node("interface-locale-status");
+        if (refreshedSelect && refreshedStatus) {
+          localeRetryStatus(
+            refreshedStatus,
+            payload.copy.interface_language_error,
+            payload.copy.interface_language_retry,
+            () => switchInterfaceLocale(locale, refreshedSelect, refreshedStatus, payload.copy)
+          );
+        }
+      }
+    } finally {
+      if (sequence === interfaceLocaleSequence) {
+        interfaceLocalePending = false;
+        const currentSelect = node("interface-locale-select");
+        if (currentSelect) {
+          currentSelect.disabled = false;
+          currentSelect.removeAttribute("aria-busy");
+        }
+      }
+    }
   }
 
   function languageDisplayLabel(language) {
@@ -425,6 +521,7 @@
     learningSettings.replaceChildren();
     tutorSettings.replaceChildren();
     featureSettings.replaceChildren();
+    addInterfaceLocaleSetting(learningSettings, data, copy);
     addSetting(learningSettings, copy.setting_daily_goal, data.settings.daily_goal);
     addSetting(learningSettings, copy.setting_meaning_language, data.settings.meaning_language);
     addSetting(learningSettings, copy.setting_learning_goal, data.settings.learning_goal);
@@ -460,8 +557,10 @@
       });
       if (!response.ok) throw new Error("error");
       render(await response.json());
+      return true;
     } catch (_) {
       showError();
+      return false;
     }
   }
 

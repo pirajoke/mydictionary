@@ -462,6 +462,24 @@ for _locale, (_pending, _error, _retry) in _LANGUAGE_SWITCH_COPY.items():
         language_switch_retry=_retry,
     )
 
+_INTERFACE_LANGUAGE_COPY = {
+    "en": ("Bot language", "Changing bot language…", "Could not change bot language.", "Try again"),
+    "fr": ("Langue du bot", "Changement de la langue du bot…", "Impossible de changer la langue du bot.", "Réessayer"),
+    "de": ("Bot-Sprache", "Bot-Sprache wird geändert…", "Bot-Sprache konnte nicht geändert werden.", "Erneut versuchen"),
+    "ja": ("ボットの言語", "ボットの言語を変更しています…", "ボットの言語を変更できませんでした。", "再試行"),
+    "ar": ("لغة البوت", "جارٍ تغيير لغة البوت…", "تعذر تغيير لغة البوت.", "إعادة المحاولة"),
+    "zh": ("机器人语言", "正在更改机器人语言…", "无法更改机器人语言。", "重试"),
+    "ru": ("Язык бота", "Меняю язык бота…", "Не удалось изменить язык бота.", "Повторить"),
+    "es": ("Idioma del bot", "Cambiando el idioma del bot…", "No se pudo cambiar el idioma del bot.", "Reintentar"),
+}
+for _locale, (_label, _pending, _error, _retry) in _INTERFACE_LANGUAGE_COPY.items():
+    MINIAPP_COPY[_locale].update(
+        setting_interface_language=_label,
+        interface_language_pending=_pending,
+        interface_language_error=_error,
+        interface_language_retry=_retry,
+    )
+
 _SETTING_VALUE_COPY = {
     "en": {"basics": "Everyday basics", "travel": "Travel focus", "conversation": "Conversation practice", "work": "Work and study", "personal": "Personal growth", "text": "Text replies", "voice": "Voice replies", "both": "Text and voice", "teacher": "Teacher guidance", "coach": "Learning coach", "practice": "Practice partner", "brief": "Brief guidance", "exam": "Exam practice", "compact": "Compact detail", "balanced": "Balanced detail", "deep": "Detailed response", "adaptive": "Adaptive level"},
     "fr": {"basics": "Bases du quotidien", "travel": "Voyage", "conversation": "Conversation guidée", "work": "Travail et études", "personal": "Développement personnel", "text": "Texte", "voice": "Voix", "both": "Texte et voix", "teacher": "Professeur", "coach": "Coach pédagogique", "practice": "Entraînement", "brief": "Concis", "exam": "Examen", "compact": "Courte", "balanced": "Équilibrée", "deep": "Détaillée", "adaptive": "Adaptatif"},
@@ -556,7 +574,7 @@ def _read_only_database_snapshot(
         progress_row = session.get(UserProgress, int(user_id))
         mirror_row = session.execute(
             text(
-                "SELECT mirror_response_mode, mirror_style, mirror_depth, mirror_level FROM users "
+                "SELECT interface_locale, mirror_response_mode, mirror_style, mirror_depth, mirror_level FROM users "
                 "WHERE telegram_user_id = :user_id"
             ),
             {"user_id": int(user_id)},
@@ -569,6 +587,7 @@ def _read_only_database_snapshot(
             "active_pack_id": progress_row.active_pack_id if progress_row else None,
             "active_lang": progress_row.active_lang if progress_row else "en",
             "mirror_style": str(mirror_row["mirror_style"] or "teacher"),
+            "interface_locale": mirror_row["interface_locale"],
         }
         progress = {}
         if progress_row is not None:
@@ -656,6 +675,7 @@ def build_bootstrap(
     observed_date: date | None = None,
     active_pack_id_override: str | None = None,
     active_language_override: str | None = None,
+    interface_locale_override: str | None = None,
 ) -> dict[str, Any]:
     access = require_active_learner(store, user_id)
     database_snapshot = _read_only_database_snapshot(
@@ -760,7 +780,9 @@ def build_bootstrap(
             }
         )
 
-    selected_locale = miniapp_locale(locale)
+    selected_locale = miniapp_locale(
+        interface_locale_override or product.get("interface_locale") or locale
+    )
     copy = MINIAPP_COPY[selected_locale]
     tracked_count = len(word_progress)
     learned_count = sum(
@@ -854,8 +876,18 @@ def build_bootstrap(
                 _bounded_text(product.get("native_language"), 16),
                 selected_locale,
             ),
+            "interface_locale": selected_locale,
             **settings_values,
         },
+        "interface_locales": [
+            {
+                "value": candidate,
+                "label": language_name(candidate, selected_locale),
+                "direction": "rtl" if candidate == "ar" else "ltr",
+                "current": candidate == selected_locale,
+            }
+            for candidate in ("en", "fr", "de", "ja", "ar", "zh", "ru", "es")
+        ],
         "features": {
             "ai": bool(ai_enabled),
             "voice": bool(voice_enabled),

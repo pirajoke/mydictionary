@@ -542,7 +542,7 @@ class AdminAuthRecoveryTest(AdminAuthFixture):
         self.assertIn(("token_digest",), unique_sets)
         with self.store.engine.connect() as connection:
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        self.assertEqual(revision, "0017_admin_auth_recovery")
+        self.assertEqual(revision, "0018_interface_locale")
 
     def test_migration_0017_downgrade_removes_reset_table_and_upgrade_restores_it(self):
         self.store.close()
@@ -580,7 +580,7 @@ class AdminAuthRecoveryTest(AdminAuthFixture):
             revision = connection.execute(
                 text("SELECT version_num FROM alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0017_admin_auth_recovery")
+        self.assertEqual(revision, "0018_interface_locale")
 
     def test_reset_store_requires_explicit_activation_before_validity_or_consume(self):
         app = self.make_app(reset=True)
