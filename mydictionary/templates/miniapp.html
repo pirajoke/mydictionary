@@ -63,18 +63,29 @@
       </section>
 
       <section id="panel-words" class="panel" role="tabpanel" data-panel="words" aria-labelledby="tab-words" hidden>
-        <h1 id="words-heading" data-i18n="words"></h1><div id="word-list" class="word-list"></div>
+        <header class="section-heading">
+          <h1 id="words-heading" data-i18n="words"></h1>
+          <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-words.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
+        </header>
+        <div id="word-list" class="word-list"></div>
         <div id="empty-words" class="state-card empty" hidden><p data-i18n="empty_words"></p><button type="button" data-action="learn" data-i18n="start_lesson"></button></div>
       </section>
 
       <section id="panel-credits" class="panel" role="tabpanel" data-panel="credits" aria-labelledby="tab-credits" hidden>
-        <h1 id="credits-heading" data-i18n="credits"></h1>
+        <header class="section-heading">
+          <h1 id="credits-heading" data-i18n="credits"></h1>
+          <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-credits.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
+        </header>
         <button class="ai-entry" type="button" data-action="ai"><span aria-hidden="true">✦</span><span data-i18n="ai_tutor"></span></button>
         <div id="credit-summary" class="metric-grid"></div><p id="credit-contract" class="paper-card" data-i18n="credit_contract"></p><div id="product-list"></div><p id="checkout-disabled" class="state-card disabled" data-i18n="checkout_disabled" hidden></p>
       </section>
 
       <section id="panel-languages" class="panel" role="tabpanel" data-panel="languages" aria-labelledby="tab-languages" hidden>
-        <h1 id="languages-heading" data-i18n="languages"></h1><div id="language-list" class="choice-list"></div><button type="button" data-action="lang" data-i18n="change_language"></button>
+        <header class="section-heading">
+          <h1 id="languages-heading" data-i18n="languages"></h1>
+          <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-languages.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="400">
+        </header>
+        <div id="language-list" class="choice-list"></div><button type="button" data-action="lang" data-i18n="change_language"></button>
       </section>
 
       <section id="panel-settings" class="panel" role="tabpanel" data-panel="settings" aria-labelledby="tab-settings" hidden>

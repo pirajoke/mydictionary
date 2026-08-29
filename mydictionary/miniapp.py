@@ -66,6 +66,10 @@ def _safe_telegram_photo_url(value: object) -> str:
         or hostname.endswith(".telegram.org")
         or hostname == "telegram-cdn.org"
         or hostname.endswith(".telegram-cdn.org")
+        or hostname == "cdn-telegram.org"
+        or hostname.endswith(".cdn-telegram.org")
+        or hostname == "telesco.pe"
+        or hostname.endswith(".telesco.pe")
     )
     if (
         parsed.scheme != "https"

@@ -591,7 +591,9 @@ def create_app(
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; img-src 'self' data: https://t.me "
                 "https://telegram.org https://*.telegram.org https://telegram-cdn.org "
-                "https://*.telegram-cdn.org; style-src 'self'; "
+                "https://*.telegram-cdn.org https://cdn-telegram.org "
+                "https://*.cdn-telegram.org https://telesco.pe https://*.telesco.pe; "
+                "style-src 'self'; "
                 "script-src 'self' https://telegram.org; connect-src 'self'; "
                 "form-action 'none'; frame-ancestors https://web.telegram.org "
                 "https://*.telegram.org; base-uri 'none'"

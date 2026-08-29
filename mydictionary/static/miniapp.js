@@ -12,9 +12,15 @@
     "ru": {"loading": "Загрузка…", "error": "Что-то пошло не так.", "retry": "Повторить"},
     "es": {"loading": "Cargando…", "error": "Ha ocurrido un problema.", "retry": "Reintentar"}
   };
-  const hintedLanguage = webApp && webApp.initDataUnsafe && webApp.initDataUnsafe.user
-    ? webApp.initDataUnsafe.user.language_code
+  const hintedUser = webApp && webApp.initDataUnsafe && webApp.initDataUnsafe.user
+    ? webApp.initDataUnsafe.user
+    : null;
+  const hintedLanguage = hintedUser
+    ? hintedUser.language_code
     : "en";
+  const hintedPhotoUrl = webApp && webApp.initDataUnsafe && webApp.initDataUnsafe.user
+    ? webApp.initDataUnsafe.user.photo_url
+    : "";
   const hintedBase = String(hintedLanguage || "en").toLowerCase().replace("_", "-").split("-", 1)[0];
   const hintedLocale = hintedBase.startsWith("zh") ? "zh" : (prebootstrapCopy[hintedBase] ? hintedBase : "en");
   document.documentElement.lang = hintedLocale;
@@ -34,6 +40,22 @@
     item.append(number, caption);
     return item;
   };
+
+  function safeTelegramPhotoUrl(value) {
+    try {
+      const candidate = new URL(String(value || ""));
+      const hostname = candidate.hostname.toLowerCase();
+      const trustedRoots = ["t.me", "telegram.org", "telegram-cdn.org", "cdn-telegram.org", "telesco.pe"];
+      const trusted = trustedRoots.some((root) => hostname === root || hostname.endsWith(`.${root}`));
+      if (
+        candidate.protocol !== "https:" || !trusted || candidate.username ||
+        candidate.password || candidate.port || candidate.hash
+      ) return "";
+      return candidate.href;
+    } catch (_) {
+      return "";
+    }
+  }
 
   function applyCopy(copy) {
     document.querySelectorAll("[data-i18n]").forEach((element) => {
@@ -180,8 +202,9 @@
     const avatarFallback = node("profile-avatar-fallback");
     const initials = String(profile.display_name || "?").trim().split(/\s+/).slice(0, 2).map((part) => part.slice(0, 1).toUpperCase()).join("") || "?";
     text(avatarFallback, initials);
-    if (profile.avatar_url) {
-      avatar.src = profile.avatar_url;
+    const avatarUrl = safeTelegramPhotoUrl(profile.avatar_url) || safeTelegramPhotoUrl(hintedPhotoUrl);
+    if (avatarUrl) {
+      avatar.src = avatarUrl;
       avatar.hidden = false;
       avatarFallback.hidden = true;
       avatar.addEventListener("error", () => {

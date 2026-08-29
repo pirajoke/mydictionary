@@ -286,6 +286,8 @@ _BILLING: BillingService | ProductionStarsCanaryService | None = None
 _VOICE_TUTOR: VoiceTutorService | None = None
 _VOICE_TRANSLATION: VoiceTranslationService | None = None
 LAST_PRONUNCIATION_MESSAGES_KEY = "last_pronunciation_messages"
+BLOCK_REVIEW_MESSAGES_KEY = "block_review_messages"
+MAX_TRACKED_BLOCK_REVIEW_MESSAGES = 20
 PENDING_AI_QUESTION_KEY = "pending_ai_question"
 PENDING_AI_QUESTION_TTL_SECONDS = 30 * 60
 PENDING_AI_TUTOR_KEY = "pending_ai_tutor"
@@ -996,6 +998,87 @@ async def replace_previous_pronunciation(
             "Previous pronunciation could not be deleted: error_type=%s",
             type(exc).__name__,
         )
+
+
+def track_block_review_message(
+    chat_id: int,
+    sent_message,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Remember bounded bot-owned review cards for the next mode change."""
+    message_id = getattr(sent_message, "message_id", None)
+    if (
+        not isinstance(message_id, int)
+        or isinstance(message_id, bool)
+        or message_id <= 0
+    ):
+        return
+    user_data = getattr(context, "user_data", None)
+    if not isinstance(user_data, MutableMapping):
+        return
+    messages = user_data.get(BLOCK_REVIEW_MESSAGES_KEY)
+    if not isinstance(messages, MutableMapping):
+        messages = {}
+        user_data[BLOCK_REVIEW_MESSAGES_KEY] = messages
+    chat_key = str(chat_id)
+    tracked = messages.get(chat_key)
+    if not isinstance(tracked, list):
+        tracked = []
+    tracked = [
+        value
+        for value in tracked
+        if isinstance(value, int)
+        and not isinstance(value, bool)
+        and value > 0
+        and value != message_id
+    ]
+    tracked.append(message_id)
+    messages[chat_key] = tracked[-MAX_TRACKED_BLOCK_REVIEW_MESSAGES:]
+
+
+async def clear_block_review_messages(
+    chat_id: int,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Best-effort cleanup of bot review cards before quiz or written mode."""
+    user_data = getattr(context, "user_data", None)
+    if not isinstance(user_data, MutableMapping):
+        return
+    chat_key = str(chat_id)
+    review_messages = user_data.get(BLOCK_REVIEW_MESSAGES_KEY)
+    if not isinstance(review_messages, MutableMapping):
+        review_messages = {}
+        user_data[BLOCK_REVIEW_MESSAGES_KEY] = review_messages
+    candidates = review_messages.pop(chat_key, [])
+    if not isinstance(candidates, list):
+        candidates = []
+
+    pronunciation_messages = user_data.get(LAST_PRONUNCIATION_MESSAGES_KEY)
+    if not isinstance(pronunciation_messages, MutableMapping):
+        pronunciation_messages = {}
+        user_data[LAST_PRONUNCIATION_MESSAGES_KEY] = pronunciation_messages
+    candidates.append(pronunciation_messages.pop(chat_key, None))
+
+    message_ids: list[int] = []
+    for value in candidates:
+        if (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and value > 0
+            and value not in message_ids
+        ):
+            message_ids.append(value)
+    delete_message = getattr(context.bot, "delete_message", None)
+    if not callable(delete_message):
+        return
+    for message_id in message_ids:
+        try:
+            await delete_message(chat_id=chat_id, message_id=message_id)
+        except Exception as exc:
+            logger.info(
+                "Block review message could not be deleted: error_type=%s",
+                type(exc).__name__,
+            )
 
 
 async def send_pronunciation_audio(
@@ -6251,11 +6334,12 @@ async def learn_play_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ):
         return
     activate_block_language(context.user_data)
-    await context.bot.send_message(
+    sent_message = await context.bot.send_message(
         chat_id=query.message.chat_id,
         text=format_word_details(idx),
         parse_mode="Markdown",
     )
+    track_block_review_message(query.message.chat_id, sent_message, context)
     record_product_event(
         "word_audio_played",
         properties={
@@ -6421,6 +6505,8 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await validate_block_callback(query, ud, session_id):
         return
     ud["interface_locale"] = interface_locale_for_update(update)
+    if mode in {"quiz", "type"}:
+        await clear_block_review_messages(query.message.chat_id, context)
     activate_block_language(ud)
     start_block_attempt(ud, mode)
     record_product_event(
@@ -7034,7 +7120,7 @@ async def sync_telegram_profile(telegram_bot) -> None:
                 (),
                 {
                     "menu_button": MenuButtonWebApp(
-                        text=translate("miniapp_open", "en"),
+                        text="Menu",
                         web_app=WebAppInfo(url=MINIAPP_SETTINGS.public_url),
                     )
                 },
