@@ -357,7 +357,7 @@ def erase_user_learning_data(
         user.daily_word_goal = 10
         session.execute(
             text(
-                "UPDATE users SET mirror_response_mode = NULL, "
+                "UPDATE users SET interface_locale = NULL, mirror_response_mode = NULL, "
                 "mirror_style = 'teacher', mirror_depth = 'balanced', "
                 "mirror_level = 'adaptive' "
                 "WHERE telegram_user_id = :user_id"

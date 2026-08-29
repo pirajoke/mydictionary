@@ -88,6 +88,31 @@ _MINIAPP_SWITCH_RATE_POLICY = RateLimitPolicy(
     window_seconds=60,
     block_seconds=120,
 )
+
+
+def _strict_miniapp_string_body(field_name: str) -> str | None:
+    """Parse one small JSON string field while rejecting duplicate keys."""
+    if request.mimetype != "application/json":
+        return None
+    raw = request.get_data(cache=False)
+    if not raw or len(raw) > 128:
+        return None
+    try:
+        pairs = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=lambda values: values,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if (
+        not isinstance(pairs, list)
+        or len(pairs) != 1
+        or not isinstance(pairs[0], tuple)
+        or pairs[0][0] != field_name
+        or not isinstance(pairs[0][1], str)
+    ):
+        return None
+    return pairs[0][1]
 LANG_LABELS = {
     pack.target_language: pack.label for pack in CATALOG.packs
 }
@@ -582,7 +607,10 @@ def create_app(
     def verify_csrf():
         if request.method != "POST":
             return None
-        if request.path == "/miniapp/api/active-pack":
+        if request.path in {
+            "/miniapp/api/active-pack",
+            "/miniapp/api/interface-locale",
+        }:
             return None
         supplied = str(request.form.get("csrf_token") or "")
         expected = str(session.get("csrf_token") or "")
@@ -780,6 +808,81 @@ def create_app(
                 except Exception:
                     return jsonify(error="temporarily_unavailable"), 503
             return jsonify(payload)
+
+    @app.post("/miniapp/api/interface-locale")
+    def miniapp_interface_locale():
+        if not miniapp_settings.enabled:
+            abort(404)
+        init_data = str(request.headers.get("X-Telegram-Init-Data") or "")
+        if not init_data or len(init_data.encode("utf-8")) > 8192:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            identity = miniapp_runtime.verify_init_data(
+                init_data,
+                bot_token=miniapp_settings.bot_token,
+                max_age_seconds=miniapp_settings.auth_max_age_seconds,
+            )
+        except MiniAppAuthenticationError:
+            return jsonify(error="authentication_failed"), 401
+
+        locale = _strict_miniapp_string_body("locale")
+        if locale not in miniapp_runtime.INTERFACE_LOCALES:
+            return jsonify(error="invalid_request"), 400
+        user_id = int(identity["user_id"])
+        try:
+            miniapp_runtime.require_active_learner(store, user_id)
+        except MiniAppAccessDenied:
+            return jsonify(error="access_denied"), 403
+        try:
+            rate_decision = PersistentRateLimiter(store).consume(
+                user_id=user_id,
+                scope="miniapp_interface_locale",
+                policy=_MINIAPP_SWITCH_RATE_POLICY,
+            )
+        except Exception:
+            return jsonify(error="temporarily_unavailable"), 503
+        if not rate_decision.allowed:
+            response = jsonify(error="rate_limited")
+            response.status_code = 429
+            response.headers["Retry-After"] = str(
+                max(1, int(rate_decision.retry_after_seconds))
+            )
+            return response
+
+        switch_lock = _MINIAPP_SWITCH_LOCKS[user_id % len(_MINIAPP_SWITCH_LOCKS)]
+        with switch_lock:
+            try:
+                payload = miniapp_runtime.build_bootstrap(
+                    store,
+                    user_id=user_id,
+                    display_name=identity["display_name"],
+                    avatar_url=str(identity.get("photo_url") or ""),
+                    locale=identity["language_code"],
+                    catalog=CATALOG,
+                    products=admin_store.billing_products(),
+                    checkout_enabled=admin_store.billing_settings.enabled,
+                    ai_enabled=str(app.config.get("AI_TUTOR_ENABLED") or "")
+                    .strip()
+                    .lower()
+                    in {"1", "true", "yes", "on"},
+                    voice_enabled=str(app.config.get("VOICE_TUTOR_ENABLED") or "")
+                    .strip()
+                    .lower()
+                    in {"1", "true", "yes", "on"},
+                    initial_credits=miniapp_initial_credits,
+                    interface_locale_override=locale,
+                )
+                serialized_payload = app.json.dumps(payload)
+                store.set_interface_locale(user_id, locale)
+            except PermissionError:
+                return jsonify(error="access_denied"), 403
+            except Exception:
+                return jsonify(error="temporarily_unavailable"), 503
+        return app.response_class(
+            response=serialized_payload,
+            status=200,
+            mimetype="application/json",
+        )
 
     @app.get("/health")
     def health():

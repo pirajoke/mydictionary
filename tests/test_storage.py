@@ -112,7 +112,7 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0017_admin_auth_recovery")
+        self.assertEqual(revision, "0018_interface_locale")
 
         ai_usage_columns = {
             column["name"] for column in inspector.get_columns("ai_usage")
