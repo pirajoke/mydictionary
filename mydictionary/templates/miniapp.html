@@ -25,19 +25,58 @@
 
     <div id="app-content" hidden>
       <section id="panel-profile" class="panel active" role="tabpanel" data-panel="profile" aria-labelledby="tab-profile">
-        <div class="hero-card"><p class="eyebrow" id="profile-label" data-i18n="profile"></p><h1 id="display-name"></h1><div class="metric-grid" id="profile-metrics"></div></div>
-        <div class="action-grid"><button type="button" data-action="learn"><span aria-hidden="true">▶</span> <span data-i18n="continue_lesson"></span></button><button type="button" data-action="ai"><span aria-hidden="true">✦</span> <span data-i18n="ai_tutor"></span></button><button type="button" data-action="share"><span aria-hidden="true">↗</span> <span data-i18n="share"></span></button></div>
+        <h1 class="visually-hidden" id="profile-label" data-i18n="profile"></h1>
+        <div class="profile-identity">
+          <div class="avatar-shell">
+            <img id="profile-photo" alt="" hidden>
+            <span id="profile-avatar-fallback" aria-hidden="true"></span>
+          </div>
+          <h2 id="display-name"></h2>
+          <p id="profile-language"></p>
+          <div class="credit-chip"><span aria-hidden="true">✦</span><strong id="profile-credit-balance"></strong><span data-i18n="credits"></span></div>
+        </div>
+
+        <div class="profile-actions">
+          <button class="primary-action" type="button" data-action="learn"><span aria-hidden="true">▶</span><span data-i18n="continue_lesson"></span></button>
+          <button class="secondary-action" type="button" data-action="share" data-i18n-aria-label="share"><span aria-hidden="true">↗</span><span data-i18n="share_profile"></span></button>
+        </div>
+
+        <section class="streak-card" aria-labelledby="calendar-title">
+          <div class="streak-summary">
+            <span class="flame" aria-hidden="true">🔥</span>
+            <div><strong id="streak-count">0</strong><span data-i18n="streak_days"></span></div>
+            <p><span data-i18n="best_streak_short"></span> <b id="best-streak">0</b></p>
+          </div>
+          <div class="calendar-header">
+            <button id="calendar-previous" type="button" data-i18n-aria-label="previous_month"><span aria-hidden="true">‹</span></button>
+            <h2 id="calendar-title" class="visually-hidden" data-i18n="calendar_activity"></h2>
+            <strong id="calendar-month"></strong>
+            <button id="calendar-next" type="button" data-i18n-aria-label="next_month"><span aria-hidden="true">›</span></button>
+          </div>
+          <div id="calendar-grid" class="calendar-grid" role="grid" aria-labelledby="calendar-title"></div>
+        </section>
+
+        <details class="progress-details">
+          <summary data-i18n="profile"></summary>
+          <div class="metric-grid" id="profile-metrics"></div>
+        </details>
       </section>
+
       <section id="panel-words" class="panel" role="tabpanel" data-panel="words" aria-labelledby="tab-words" hidden>
         <h1 id="words-heading" data-i18n="words"></h1><div id="word-list" class="word-list"></div>
         <div id="empty-words" class="state-card empty" hidden><p data-i18n="empty_words"></p><button type="button" data-action="learn" data-i18n="start_lesson"></button></div>
       </section>
+
       <section id="panel-credits" class="panel" role="tabpanel" data-panel="credits" aria-labelledby="tab-credits" hidden>
-        <h1 id="credits-heading" data-i18n="credits"></h1><div id="credit-summary" class="metric-grid"></div><p id="credit-contract" class="paper-card" data-i18n="credit_contract"></p><div id="product-list"></div><p id="checkout-disabled" class="state-card disabled" data-i18n="checkout_disabled" hidden></p>
+        <h1 id="credits-heading" data-i18n="credits"></h1>
+        <button class="ai-entry" type="button" data-action="ai"><span aria-hidden="true">✦</span><span data-i18n="ai_tutor"></span></button>
+        <div id="credit-summary" class="metric-grid"></div><p id="credit-contract" class="paper-card" data-i18n="credit_contract"></p><div id="product-list"></div><p id="checkout-disabled" class="state-card disabled" data-i18n="checkout_disabled" hidden></p>
       </section>
+
       <section id="panel-languages" class="panel" role="tabpanel" data-panel="languages" aria-labelledby="tab-languages" hidden>
         <h1 id="languages-heading" data-i18n="languages"></h1><div id="language-list" class="choice-list"></div><button type="button" data-action="lang" data-i18n="change_language"></button>
       </section>
+
       <section id="panel-settings" class="panel" role="tabpanel" data-panel="settings" aria-labelledby="tab-settings" hidden>
         <h1 id="settings-heading" data-i18n="settings"></h1><dl id="settings-list" class="paper-card"></dl><div class="action-grid"><button type="button" data-action="settings" data-i18n="open_settings"></button><button type="button" data-action="privacy" data-i18n="privacy"></button></div>
       </section>
@@ -45,11 +84,11 @@
   </main>
 
   <nav class="bottom-nav" role="tablist" data-i18n-aria-label="navigation_label" hidden>
-    <button id="tab-profile" type="button" role="tab" aria-selected="true" aria-controls="panel-profile" tabindex="0" data-tab="profile"><span aria-hidden="true">◉</span><span data-i18n="profile"></span></button>
-    <button id="tab-words" type="button" role="tab" aria-selected="false" aria-controls="panel-words" tabindex="-1" data-tab="words"><span aria-hidden="true">Aa</span><span data-i18n="words"></span></button>
-    <button id="tab-credits" type="button" role="tab" aria-selected="false" aria-controls="panel-credits" tabindex="-1" data-tab="credits"><span aria-hidden="true">✦</span><span data-i18n="credits"></span></button>
-    <button id="tab-languages" type="button" role="tab" aria-selected="false" aria-controls="panel-languages" tabindex="-1" data-tab="languages"><span aria-hidden="true">◎</span><span data-i18n="languages"></span></button>
-    <button id="tab-settings" type="button" role="tab" aria-selected="false" aria-controls="panel-settings" tabindex="-1" data-tab="settings"><span aria-hidden="true">⚙</span><span data-i18n="settings"></span></button>
+    <button id="tab-profile" type="button" role="tab" aria-selected="true" aria-controls="panel-profile" tabindex="0" data-tab="profile"><span class="nav-icon nav-icon-profile" aria-hidden="true">●</span><span data-i18n="profile"></span></button>
+    <button id="tab-words" type="button" role="tab" aria-selected="false" aria-controls="panel-words" tabindex="-1" data-tab="words"><span class="nav-icon nav-icon-words" aria-hidden="true">◆</span><span data-i18n="words"></span></button>
+    <button id="tab-credits" type="button" role="tab" aria-selected="false" aria-controls="panel-credits" tabindex="-1" data-tab="credits"><span class="nav-icon nav-icon-credits" aria-hidden="true">★</span><span data-i18n="credits"></span></button>
+    <button id="tab-languages" type="button" role="tab" aria-selected="false" aria-controls="panel-languages" tabindex="-1" data-tab="languages"><span class="nav-icon nav-icon-languages" aria-hidden="true">◎</span><span data-i18n="languages"></span></button>
+    <button id="tab-settings" type="button" role="tab" aria-selected="false" aria-controls="panel-settings" tabindex="-1" data-tab="settings"><span class="nav-icon nav-icon-settings" aria-hidden="true">✦</span><span data-i18n="settings"></span></button>
   </nav>
 </body>
 </html>

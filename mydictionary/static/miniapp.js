@@ -20,6 +20,7 @@
   document.documentElement.lang = hintedLocale;
   if (hintedLocale === "ar") document.documentElement.dir = "rtl";
   let payload = null;
+  let calendarCursor = null;
 
   const node = (id) => document.getElementById(id);
   const text = (element, value) => { element.textContent = String(value ?? ""); };
@@ -91,6 +92,73 @@
     list.append(term, detail);
   }
 
+  function isoMonth(value) {
+    return `${value.getUTCFullYear().toString().padStart(4, "0")}-${(value.getUTCMonth() + 1).toString().padStart(2, "0")}`;
+  }
+
+  function monthFromKey(value) {
+    const matched = /^(\d{4})-(\d{2})$/.exec(String(value || ""));
+    if (!matched) return null;
+    const year = Number(matched[1]);
+    const month = Number(matched[2]) - 1;
+    if (year < 1970 || year > 2100 || month < 0 || month > 11) return null;
+    return new Date(Date.UTC(year, month, 1));
+  }
+
+  function renderCalendar(calendar, copy, locale) {
+    const today = /^\d{4}-\d{2}-\d{2}$/.test(String(calendar.today || "")) ? calendar.today : "";
+    const maxMonth = monthFromKey(calendar.max_month) || new Date();
+    const minMonth = monthFromKey(calendar.min_month) || maxMonth;
+    if (!calendarCursor || calendarCursor < minMonth || calendarCursor > maxMonth) {
+      calendarCursor = new Date(Date.UTC(maxMonth.getUTCFullYear(), maxMonth.getUTCMonth(), 1));
+    }
+    const activityDays = new Set(
+      Array.isArray(calendar.activity_days)
+        ? calendar.activity_days.filter((day) => /^\d{4}-\d{2}-\d{2}$/.test(String(day)))
+        : []
+    );
+    const monthLabel = new Intl.DateTimeFormat(locale, {month: "long", year: "numeric", timeZone: "UTC"});
+    const weekdayLabel = new Intl.DateTimeFormat(locale, {weekday: "narrow", timeZone: "UTC"});
+    text(node("calendar-month"), monthLabel.format(calendarCursor));
+
+    const grid = node("calendar-grid");
+    grid.replaceChildren();
+    const monday = new Date(Date.UTC(2026, 7, 3));
+    for (let weekday = 0; weekday < 7; weekday += 1) {
+      const label = document.createElement("span");
+      label.className = "calendar-weekday";
+      label.setAttribute("role", "columnheader");
+      text(label, weekdayLabel.format(new Date(monday.getTime() + weekday * 86400000)));
+      grid.append(label);
+    }
+
+    const leading = (calendarCursor.getUTCDay() + 6) % 7;
+    const firstCell = new Date(Date.UTC(calendarCursor.getUTCFullYear(), calendarCursor.getUTCMonth(), 1 - leading));
+    for (let index = 0; index < 42; index += 1) {
+      const cellDate = new Date(firstCell.getTime() + index * 86400000);
+      const day = `${cellDate.getUTCFullYear().toString().padStart(4, "0")}-${(cellDate.getUTCMonth() + 1).toString().padStart(2, "0")}-${cellDate.getUTCDate().toString().padStart(2, "0")}`;
+      const cell = document.createElement("span");
+      const inMonth = cellDate.getUTCMonth() === calendarCursor.getUTCMonth();
+      const active = activityDays.has(day);
+      cell.className = `calendar-day${inMonth ? "" : " outside"}${active ? " active" : ""}${day === today ? " today" : ""}`;
+      cell.setAttribute("role", "gridcell");
+      cell.setAttribute("aria-label", `${new Intl.DateTimeFormat(locale, {dateStyle: "long", timeZone: "UTC"}).format(cellDate)}${active ? ` · ${copy.calendar_active_day}` : ""}${day === today ? ` · ${copy.calendar_today}` : ""}`);
+      if (day === today) cell.setAttribute("aria-current", "date");
+      text(cell, cellDate.getUTCDate());
+      grid.append(cell);
+    }
+    node("calendar-previous").disabled = isoMonth(calendarCursor) <= calendar.min_month;
+    node("calendar-next").disabled = isoMonth(calendarCursor) >= calendar.max_month;
+  }
+
+  function moveCalendar(offset) {
+    if (!payload || !calendarCursor) return;
+    const next = new Date(Date.UTC(calendarCursor.getUTCFullYear(), calendarCursor.getUTCMonth() + offset, 1));
+    if (isoMonth(next) < payload.progress.calendar.min_month || isoMonth(next) > payload.progress.calendar.max_month) return;
+    calendarCursor = next;
+    renderCalendar(payload.progress.calendar, payload.copy, payload.locale);
+  }
+
   function render(data) {
     payload = data;
     const copy = data.copy;
@@ -102,11 +170,36 @@
     } else {
       document.documentElement.dir = "ltr";
     }
-    text(node("display-name"), data.profile.display_name);
+    const profile = data.profile;
+    text(node("display-name"), profile.display_name);
     const currentLanguage = data.languages.find((language) => language.current);
     text(node("current-language"), currentLanguage ? currentLanguage.label : copy.setting_unknown);
+    text(node("profile-language"), currentLanguage ? currentLanguage.label : copy.setting_unknown);
+    text(node("profile-credit-balance"), profile.credits);
+    const avatar = node("profile-photo");
+    const avatarFallback = node("profile-avatar-fallback");
+    const initials = String(profile.display_name || "?").trim().split(/\s+/).slice(0, 2).map((part) => part.slice(0, 1).toUpperCase()).join("") || "?";
+    text(avatarFallback, initials);
+    if (profile.avatar_url) {
+      avatar.src = profile.avatar_url;
+      avatar.hidden = false;
+      avatarFallback.hidden = true;
+      avatar.addEventListener("error", () => {
+        avatar.hidden = true;
+        avatar.removeAttribute("src");
+        avatarFallback.hidden = false;
+      }, {once: true});
+    } else {
+      avatar.hidden = true;
+      avatar.removeAttribute("src");
+      avatarFallback.hidden = false;
+    }
 
     const progress = data.progress;
+    text(node("streak-count"), progress.streak);
+    text(node("best-streak"), progress.best_streak);
+    calendarCursor = null;
+    renderCalendar(progress.calendar, copy, data.locale);
     node("profile-metrics").replaceChildren(
       metric(copy.metric_level, progress.level),
       metric(copy.metric_xp, progress.xp),
@@ -244,5 +337,7 @@
     button.addEventListener("click", () => openAction(button.dataset.action));
   });
   node("retry-button").addEventListener("click", load);
+  node("calendar-previous").addEventListener("click", () => moveCalendar(-1));
+  node("calendar-next").addEventListener("click", () => moveCalendar(1));
   load();
 })();

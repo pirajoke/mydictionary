@@ -589,7 +589,9 @@ def create_app(
             "/miniapp/static/"
         ):
             response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; img-src 'self' data:; style-src 'self'; "
+                "default-src 'self'; img-src 'self' data: https://t.me "
+                "https://telegram.org https://*.telegram.org https://telegram-cdn.org "
+                "https://*.telegram-cdn.org; style-src 'self'; "
                 "script-src 'self' https://telegram.org; connect-src 'self'; "
                 "form-action 'none'; frame-ancestors https://web.telegram.org "
                 "https://*.telegram.org; base-uri 'none'"
@@ -645,6 +647,7 @@ def create_app(
                 store,
                 user_id=identity["user_id"],
                 display_name=identity["display_name"],
+                avatar_url=str(identity.get("photo_url") or ""),
                 locale=identity["language_code"],
                 catalog=CATALOG,
                 products=admin_store.billing_products(),
