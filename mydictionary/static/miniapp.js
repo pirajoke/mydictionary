@@ -37,6 +37,7 @@
   const metric = (label, value) => {
     const item = document.createElement("div");
     item.className = "metric";
+    item.classList.add("dashboard-metric");
     const number = document.createElement("b");
     const caption = document.createElement("span");
     text(number, value);
@@ -47,6 +48,7 @@
   const summaryStat = (label, value, tone) => {
     const item = document.createElement("div");
     item.className = `summary-stat ${tone}`;
+    item.classList.add("dashboard-metric");
     item.setAttribute("role", "listitem");
     const number = document.createElement("b");
     const caption = document.createElement("span");
@@ -108,6 +110,7 @@
   function addWord(word, copy) {
     const card = document.createElement("article");
     card.className = "word-card";
+    card.classList.add("dashboard-row");
     const main = document.createElement("div");
     main.className = "word-card-main";
     const header = document.createElement("header");
@@ -133,6 +136,7 @@
   function addSetting(list, label, value, state = "") {
     const row = document.createElement("div");
     row.className = `setting-row${state ? ` ${state}` : ""}`;
+    row.classList.add("dashboard-row");
     const term = document.createElement("dt");
     const detail = document.createElement("dd");
     text(term, label);
@@ -144,6 +148,7 @@
   function addInterfaceLocaleSetting(list, data, copy) {
     const row = document.createElement("div");
     row.className = "setting-row setting-row-control";
+    row.classList.add("dashboard-row");
     const term = document.createElement("dt");
     const detail = document.createElement("dd");
     const select = document.createElement("select");
@@ -173,6 +178,11 @@
   }
 
   function localeRetryStatus(status, message, label, retry) {
+    status.classList.add("dashboard-state");
+    status.classList.toggle("pending", !retry);
+    status.classList.toggle("error", Boolean(retry));
+    status.dataset.uiState = retry ? "error" : "pending";
+    status.setAttribute("role", "status");
     status.replaceChildren();
     const detail = document.createElement("span");
     text(detail, message);
@@ -245,6 +255,7 @@
     const control = {switch: template.content.firstElementChild};
     const card = control.switch;
     card.className = "language-card language-switch";
+    card.classList.add("dashboard-row");
     card.dir = language.direction;
     card.setAttribute("aria-checked", String(language.current));
     card.dataset.packId = language.switch_value;
@@ -271,7 +282,8 @@
       ? control.switch.parentElement.querySelector(".language-switch-error")
       : null;
     const status = existing || document.createElement("div");
-    status.className = "language-switch-error";
+    status.className = `language-switch-error dashboard-state ${retry ? "error" : "pending"}`;
+    status.dataset.uiState = retry ? "error" : "pending";
     status.setAttribute("role", "status");
     status.replaceChildren();
     const detail = document.createElement("span");
@@ -488,6 +500,7 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "product-card";
+      button.classList.add("dashboard-row", "dashboard-action");
       button.disabled = !data.features.stars_checkout;
       const productCopy = document.createElement("span");
       productCopy.className = "product-card-copy";

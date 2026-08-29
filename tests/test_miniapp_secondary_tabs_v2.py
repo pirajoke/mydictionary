@@ -37,7 +37,7 @@ class MiniAppSecondaryTabsV2ContractTest(unittest.TestCase):
             'id="wallet-available"',
             'id="credit-summary" class="wallet-secondary"',
             'class="credit-contract"',
-            'class="checkout-state"',
+            'class="checkout-state dashboard-state disabled"',
             'button.className = "product-card"',
             'product-card-copy',
             'product-card-price',
