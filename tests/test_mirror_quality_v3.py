@@ -352,7 +352,7 @@ class MirrorTelegramStyleContractTest(unittest.IsolatedAsyncioTestCase):
             retention_days=7,
         )
         message.reply_text.assert_awaited_once_with(
-            translate("ai_thinking_fast", "ru")
+            "⚡"
         )
         message.reply_text.return_value.delete.assert_awaited_once()
         sender.assert_awaited_once()

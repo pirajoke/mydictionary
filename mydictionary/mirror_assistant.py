@@ -238,6 +238,14 @@ _CONTINUATION_PATTERNS = frozenset(
         "谢谢 现在说说语言学习的方法",
         "спасибо теперь расскажи про методы изучения языков",
         "gracias ahora háblame de métodos para aprender idiomas",
+        "tell me more",
+        "dis m en plus",
+        "erzähl mir mehr",
+        "もっと詳しく教えて",
+        "أخبرني المزيد",
+        "再详细说说",
+        "расскажи подробнее",
+        "cuéntame más",
     }
 )
 _CONTINUATION_PREFIXES = (
@@ -292,6 +300,7 @@ _DIRECT_PROGRESS_LOCALES = {
     "мой прогресс": "ru",
     "как мой прогресс": "ru",
     "какой у меня прогресс": "ru",
+    "какой сейчас прогресс": "ru",
     "прогресс": "ru",
     "что я уже прошел": "ru",
     "en qué debo enfocarme": "es",
@@ -804,7 +813,17 @@ def direct_mirror_progress_locale(text: str) -> str | None:
     """Return the phrase locale only for an explicit progress/focus request."""
     normalized = " ".join(str(text).casefold().strip().split())
     words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
-    return _DIRECT_PROGRESS_LOCALES.get(words_only)
+    locale = _DIRECT_PROGRESS_LOCALES.get(words_only)
+    if locale is not None:
+        return locale
+    for greeting in _GREETING_PATTERNS:
+        greeting_words = " ".join(
+            re.findall(r"\w+", greeting, flags=re.UNICODE)
+        )
+        prefix = f"{greeting_words} "
+        if greeting_words and words_only.startswith(prefix):
+            return _DIRECT_PROGRESS_LOCALES.get(words_only[len(prefix) :])
+    return None
 
 
 def classify_ai_response_route(text: str) -> str:
@@ -947,8 +966,8 @@ def render_mirror_progress_focus(
     if not bool(snapshot.get("has_progress")):
         return "\n".join(
             (
-                translate("mirror_progress_no_history", selected),
-                translate("mirror_progress_focus_starter", selected),
+                "📊 " + translate("mirror_progress_no_history", selected),
+                "👉 " + translate("mirror_progress_focus_starter", selected),
             )
         )
 
@@ -990,7 +1009,7 @@ def render_mirror_progress_focus(
         focus = translate("mirror_progress_focus_due", selected, due=due)
     else:
         focus = translate("mirror_progress_focus_starter", selected)
-    return f"{facts}\n{focus}"
+    return f"📊 {facts}\n👉 {focus}"
 
 
 def _normalize_mirror_turn(value: Mapping[str, Any]) -> dict[str, str]:

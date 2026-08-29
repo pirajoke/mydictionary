@@ -255,19 +255,19 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
 
         async def reply(text, *args, **kwargs):
             del args, kwargs
-            return temporary if text[:1] in {"⚡", "🧠", "💭", "🤔"} else SimpleNamespace()
+            return temporary if text == "⚡" else SimpleNamespace()
 
         message.reply_text = AsyncMock(side_effect=reply)
         return temporary
 
     async def test_ac3_indicator_matches_fast_deep_and_contextual_state(self):
         cases = (
-            ("translate cat", "⚡", False),
-            ("explain this grammar rule", "🧠", False),
-            ("thanks, now tell me about study methods", "💭", True),
+            ("translate cat", False),
+            ("explain this grammar rule", False),
+            ("thanks, now tell me about study methods", True),
         )
-        for question, expected_emoji, contextual in cases:
-            with self.subTest(expected_emoji=expected_emoji):
+        for question, contextual in cases:
+            with self.subTest(question=question):
                 update, context, message, _store, service, patches = self.fixture(
                     locale="en", question=question
                 )
@@ -288,8 +288,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
 
                 service.ask.assert_awaited_once()
                 status = message.reply_text.await_args_list[0].args[0]
-                self.assertTrue(status.startswith(f"{expected_emoji} "))
-                self.assertGreater(len(status.strip()), len(expected_emoji))
+                self.assertEqual(status, "⚡")
                 context.bot.send_chat_action.assert_awaited_once_with(
                     chat_id=901, action="typing"
                 )
@@ -321,7 +320,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
                     service.ask.assert_awaited_once()
                     self.assertEqual(
                         message.reply_text.await_args_list[0].args[0],
-                        translate("ai_thinking_continuation", locale),
+                        "⚡",
                     )
                     temporary.delete.assert_awaited_once()
 
@@ -352,20 +351,20 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
                 temporary.delete.assert_awaited_once()
                 self.assertEqual(
                     {
-                        "localized_deep_status": rendered[0].startswith("🧠 "),
+                        "text_lightning_status": rendered[0] == "⚡",
                         "no_charge_copy": rendered[-1]
                         == translate("ai_unavailable_no_charge", locale),
                         "private_detail_leaked": "private" in " ".join(rendered).casefold(),
                         "provider_detail_leaked": "provider" in " ".join(rendered).casefold(),
                     },
                     {
-                        "localized_deep_status": True,
+                        "text_lightning_status": True,
                         "no_charge_copy": True,
                         "private_detail_leaked": False,
                         "provider_detail_leaked": False,
                     },
                 )
-        self.assertEqual(len(set(statuses.values())), len(bot.INTERFACE_LOCALES))
+        self.assertEqual(set(statuses.values()), {"⚡"})
 
     async def test_ec1_free_capability_route_has_no_indicator_or_metering(self):
         update, context, message, store, service, patches = self.fixture(
@@ -389,7 +388,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
         store.reserve_ai_usage.assert_not_called()
         context.bot.send_chat_action.assert_not_awaited()
         rendered = [item.args[0] for item in message.reply_text.await_args_list]
-        self.assertFalse(any(value[:1] in {"⚡", "🧠", "💭"} for value in rendered))
+        self.assertNotIn("⚡", rendered)
 
 
 class AIChatContinuityEconomicsTest(unittest.IsolatedAsyncioTestCase):
