@@ -461,22 +461,21 @@
     }
 
     const progress = data.progress;
+    text(node("profile-level"), progress.level);
+    text(node("profile-xp"), progress.xp);
+    text(node("achievement-streak-value"), progress.streak);
+    text(node("achievement-accuracy-value"), `${progress.accuracy.correct}/${progress.accuracy.total}`);
+    text(node("achievement-learned-value"), progress.learned_words);
+    text(node("daily-quest-today-xp"), progress.today_xp);
+    text(node("daily-quest-goal"), data.profile.daily_word_goal);
     text(node("streak-count"), progress.streak);
     text(node("best-streak"), progress.best_streak);
     calendarCursor = null;
     renderCalendar(progress.calendar, copy, data.locale);
     node("profile-metrics").replaceChildren(
-      metric(copy.metric_level, progress.level),
-      metric(copy.metric_xp, progress.xp),
-      metric(copy.metric_streak, progress.streak),
-      metric(copy.metric_best_streak, progress.best_streak),
       metric(copy.metric_sessions, progress.sessions),
-      metric(copy.metric_accuracy, `${progress.accuracy.correct}/${progress.accuracy.total}`),
-      metric(copy.metric_today_xp, progress.today_xp),
-      metric(copy.metric_daily_goal, data.profile.daily_word_goal),
-      metric(copy.metric_tracked_words, progress.tracked_words),
-      metric(copy.metric_learned_words, progress.learned_words),
-      metric(copy.metric_ai_credits, data.credits.available)
+      metric(copy.metric_best_streak, progress.best_streak),
+      metric(copy.metric_tracked_words, progress.tracked_words)
     );
 
     node("word-list").replaceChildren();
