@@ -167,7 +167,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .profile-header { margin-bottom: 10px; }
 .profile-identity {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) 44px;
   gap: 12px;
   align-items: center;
   margin-bottom: 10px;
@@ -202,10 +202,8 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .credit-chip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--dashboard-muted); font-size: .76rem; }
 .credit-chip > span:first-child { color: var(--amber); font-size: .95rem; }
 .credit-chip strong { color: var(--dashboard-text); font-size: .9rem; }
+.profile-share { display: grid; place-items: center; width: 44px; min-width: 44px; height: 44px; padding: 0; border-radius: 50%; font-size: 1.1rem; }
 
-.profile-actions { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 8px; margin-bottom: 10px; }
-.profile-actions button { width: 100%; min-height: 48px; }
-.profile-actions button span:first-child { margin-inline-end: 6px; }
 .primary-action,
 .ai-entry,
 .language-action,
@@ -216,21 +214,75 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 }
 .secondary-action { color: var(--dashboard-accent); background: var(--dashboard-soft-accent); }
 
-.streak-card { margin-bottom: 10px; padding: 12px; }
-.streak-summary {
+.profile-game-progress {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  gap: 8px;
-  min-height: 54px;
   margin-bottom: 8px;
+  padding: 12px;
+  background: var(--dashboard-surface);
 }
-.streak-summary .flame { font-size: 2rem; }
-.streak-summary > div { display: flex; gap: 7px; align-items: baseline; }
-.streak-summary strong { font-size: 2rem; line-height: 1; letter-spacing: -.055em; }
-.streak-summary div span { color: var(--dashboard-muted); font-size: .8rem; }
-.streak-summary p { justify-self: end; margin: 0; color: var(--dashboard-muted); font-size: .72rem; }
-.streak-summary p b { color: var(--dashboard-text); }
+.game-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  color: var(--dashboard-accent-text);
+  background: var(--dashboard-accent);
+  font-size: 1.65rem;
+}
+.profile-level-copy,
+.profile-xp-copy { display: grid; gap: 2px; min-width: 0; }
+.profile-level-copy span,
+.profile-xp-copy span { color: var(--dashboard-muted); font-size: .7rem; font-weight: 750; }
+.profile-level-copy strong { color: var(--dashboard-text); font-size: 1.75rem; line-height: 1; }
+.profile-xp-copy { justify-items: end; text-align: end; }
+.profile-xp-copy strong { color: var(--dashboard-accent); font-size: 1.15rem; }
+
+.profile-achievements {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid var(--dashboard-line);
+  border-radius: var(--dashboard-radius);
+  background: var(--dashboard-line);
+}
+.profile-achievement {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 6px;
+  align-content: center;
+  min-width: 0;
+  min-height: 76px;
+  padding: 9px;
+  background: var(--dashboard-surface);
+}
+.achievement-icon { grid-row: 1 / span 2; align-self: center; font-size: 1.15rem; }
+.profile-achievement strong { color: var(--dashboard-text); font-size: 1rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.profile-achievement > span:not(.achievement-icon) { color: var(--dashboard-muted); font-size: .62rem; line-height: 1.15; overflow-wrap: anywhere; }
+
+.daily-quest {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 11px;
+  border-color: color-mix(in srgb, var(--dashboard-accent) 48%, var(--dashboard-line));
+  background: var(--dashboard-soft-accent);
+}
+.quest-icon { display: grid; place-items: center; width: 38px; height: 38px; font-size: 1.2rem; }
+.daily-quest-copy { min-width: 0; }
+.daily-quest-copy h2 { margin: 0 0 4px; color: var(--dashboard-text); font-size: .84rem; }
+.daily-quest-values { display: flex; flex-wrap: wrap; gap: 5px 10px; color: var(--dashboard-muted); font-size: .62rem; }
+.daily-quest-values b { color: var(--dashboard-text); font-size: .72rem; font-variant-numeric: tabular-nums; }
+.daily-quest button { min-height: 48px; padding: 7px 10px; font-size: .7rem; }
+
+.streak-card { margin-bottom: 10px; padding: 12px; }
 .calendar-header { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 6px; margin-bottom: 7px; }
 .calendar-header button { min-width: 44px; padding: 0; border: 0; background: transparent; font-size: 1.4rem; }
 #calendar-month { text-align: center; text-transform: capitalize; font-size: .82rem; }
@@ -428,16 +480,20 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 @media (min-width: 560px) {
   .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .bottom-nav { left: 50%; width: min(720px, 100%); transform: translateX(-50%); }
-  .profile-actions { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 @media (max-width: 359px) {
   .app-shell { padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); }
   .bottom-nav button { font-size: .56rem; }
   .nav-icon { width: 30px; height: 30px; }
   .section-art { width: 58px; height: 44px; }
-  .profile-actions { grid-template-columns: 1fr; }
-  .streak-summary { grid-template-columns: auto 1fr; }
-  .streak-summary p { grid-column: 1 / -1; justify-self: start; }
+  .profile-identity { grid-template-columns: 74px minmax(0, 1fr) 44px; gap: 9px; padding: 10px; }
+  .avatar-shell { width: 74px; }
+  .profile-game-progress { grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; padding: 10px; }
+  .game-icon { width: 48px; height: 48px; font-size: 1.3rem; }
+  .profile-achievement { grid-template-columns: 1fr; justify-items: center; min-height: 78px; padding: 8px 4px; text-align: center; }
+  .achievement-icon { grid-row: auto; font-size: 1rem; }
+  .daily-quest { grid-template-columns: auto minmax(0, 1fr); }
+  .daily-quest button { grid-column: 1 / -1; width: 100%; }
   .wallet-card { grid-template-columns: 1fr; }
   .wallet-primary { justify-items: start; }
   .word-card { grid-template-columns: 1fr; gap: 5px; }

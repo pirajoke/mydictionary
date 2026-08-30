@@ -36,21 +36,56 @@
           <div class="profile-copy">
             <h2 id="display-name"></h2>
             <p id="profile-language"></p>
-            <div class="credit-chip"><span aria-hidden="true">✦</span><strong id="profile-credit-balance"></strong><span data-i18n="credits"></span></div>
+            <div class="credit-chip"><span aria-hidden="true">✦</span><strong id="profile-credit-balance"></strong><span data-i18n="metric_ai_credits"></span></div>
           </div>
+          <button class="profile-share secondary-action dashboard-action" type="button" data-action="share" data-i18n-aria-label="share">
+            <span aria-hidden="true">↗</span><span class="visually-hidden" data-i18n="share_profile"></span>
+          </button>
         </div>
 
-        <div class="profile-actions">
-          <button class="primary-action dashboard-action" type="button" data-action="learn"><span aria-hidden="true">▶</span><span data-i18n="continue_lesson"></span></button>
-          <button class="secondary-action dashboard-action" type="button" data-action="share" data-i18n-aria-label="share"><span aria-hidden="true">↗</span><span data-i18n="share_profile"></span></button>
-        </div>
+        <section id="profile-game-progress" class="profile-game-progress dashboard-section" aria-labelledby="profile-game-title">
+          <span class="game-icon" aria-hidden="true">🏆</span>
+          <div class="profile-level-copy">
+            <span id="profile-game-title" data-i18n="metric_level"></span>
+            <strong id="profile-level">0</strong>
+          </div>
+          <div class="profile-xp-copy">
+            <span data-i18n="metric_xp"></span>
+            <strong id="profile-xp">0</strong>
+          </div>
+        </section>
+
+        <section id="profile-achievements" class="profile-achievements" role="list" data-i18n-aria-label="profile">
+          <div class="profile-achievement" role="listitem">
+            <span class="achievement-icon" aria-hidden="true">🔥</span>
+            <strong id="achievement-streak-value">0</strong>
+            <span data-i18n="metric_streak"></span>
+          </div>
+          <div class="profile-achievement" role="listitem">
+            <span class="achievement-icon" aria-hidden="true">🎯</span>
+            <strong id="achievement-accuracy-value">0/0</strong>
+            <span data-i18n="metric_accuracy"></span>
+          </div>
+          <div class="profile-achievement" role="listitem">
+            <span class="achievement-icon" aria-hidden="true">🏅</span>
+            <strong id="achievement-learned-value">0</strong>
+            <span data-i18n="metric_learned_words"></span>
+          </div>
+        </section>
+
+        <section id="daily-quest" class="daily-quest dashboard-section" aria-labelledby="daily-quest-title">
+          <span class="quest-icon" aria-hidden="true">🎯</span>
+          <div class="daily-quest-copy">
+            <h2 id="daily-quest-title" data-i18n="daily_quest"></h2>
+            <div class="daily-quest-values">
+              <span><b id="daily-quest-goal">0</b> <span data-i18n="metric_daily_goal"></span></span>
+              <span><b id="daily-quest-today-xp">0</b> <span data-i18n="metric_today_xp"></span></span>
+            </div>
+          </div>
+          <button class="primary-action dashboard-action" type="button" data-action="learn" data-i18n="continue_lesson"></button>
+        </section>
 
         <section class="streak-card dashboard-section" aria-labelledby="calendar-title">
-          <div class="streak-summary">
-            <span class="flame" aria-hidden="true">🔥</span>
-            <div><strong id="streak-count">0</strong><span data-i18n="streak_days"></span></div>
-            <p><span data-i18n="best_streak_short"></span> <b id="best-streak">0</b></p>
-          </div>
           <div class="calendar-header">
             <button id="calendar-previous" type="button" data-i18n-aria-label="previous_month"><span aria-hidden="true">‹</span></button>
             <h2 id="calendar-title" class="visually-hidden" data-i18n="calendar_activity"></h2>
@@ -58,10 +93,14 @@
             <button id="calendar-next" type="button" data-i18n-aria-label="next_month"><span aria-hidden="true">›</span></button>
           </div>
           <div id="calendar-grid" class="calendar-grid" role="grid" aria-labelledby="calendar-title"></div>
+          <span id="streak-count" hidden>0</span>
+          <span data-i18n="streak_days" hidden></span>
+          <span data-i18n="best_streak_short" hidden></span>
         </section>
 
-        <details class="progress-details dashboard-section" open>
-          <summary data-i18n="profile"></summary>
+        <details class="progress-details dashboard-section">
+          <summary data-i18n="more_stats"></summary>
+          <span id="best-streak" hidden>0</span>
           <div class="metric-grid" id="profile-metrics"></div>
         </details>
       </section>
