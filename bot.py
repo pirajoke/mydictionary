@@ -1461,7 +1461,7 @@ def miniapp_start_action(payload: str | None) -> str | None:
     if not candidate.startswith("miniapp_"):
         return None
     action = candidate.removeprefix("miniapp_")
-    if action in {"learn", "ai", "buy", "lang", "settings", "privacy"}:
+    if action in {"learn", "ai", "buy", "lang", "settings", "privacy", "help"}:
         return action
     if action.startswith("buy_"):
         product_id = action.removeprefix("buy_")
@@ -1508,7 +1508,9 @@ async def route_miniapp_start_action(
         "ai": cmd_ai,
         "buy": cmd_buy,
         "lang": cmd_lang,
+        "settings": cmd_settings,
         "privacy": cmd_privacy,
+        "help": cmd_help,
     }
     selected_product = action.split(":", 1)[1] if action.startswith("buy:") else None
     handler_action = "buy" if selected_product is not None else action
@@ -1566,26 +1568,7 @@ async def route_miniapp_start_action(
         finally:
             context.args = original_args
         return
-    runtime = _ACTIVE_RUNTIME.get()
-    product = runtime.store.product_profile(runtime.user_id)
-    try:
-        product.update(runtime.store.get_mirror_preferences(runtime.user_id))
-        product["mirror_mode"] = product.pop("mode")
-    except (AttributeError, TypeError, ValueError):
-        pass
-    await update.effective_message.reply_text(
-        settings_text(
-            active_content_pack(),
-            product,
-            locale=interface_locale_for_update(update),
-        ),
-        reply_markup=settings_keyboard(
-            product,
-            mirror_policy=AdminStore(runtime.store).get_mirror_control_plane(),
-            locale=interface_locale_for_update(update),
-        ),
-        parse_mode="Markdown",
-    )
+    return
 
 
 def interface_locale_for_update(update: Update) -> str:
@@ -1966,6 +1949,27 @@ async def send_start_message(
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         translate("bot_help", interface_locale_for_update(update))
+    )
+
+
+@auth
+async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    runtime = _ACTIVE_RUNTIME.get()
+    product = runtime.store.product_profile(runtime.user_id)
+    try:
+        product.update(runtime.store.get_mirror_preferences(runtime.user_id))
+        product["mirror_mode"] = product.pop("mode")
+    except (AttributeError, TypeError, ValueError):
+        pass
+    locale = interface_locale_for_update(update)
+    await update.effective_message.reply_text(
+        settings_text(active_content_pack(), product, locale=locale),
+        reply_markup=settings_keyboard(
+            product,
+            mirror_policy=AdminStore(runtime.store).get_mirror_control_plane(),
+            locale=locale,
+        ),
+        parse_mode="Markdown",
     )
 
 

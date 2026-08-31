@@ -100,13 +100,14 @@
   }
 
   function openAction(action) {
+    if (!webApp || !botUsername) return;
     if (action === "share") {
       const url = `https://t.me/${botUsername}`;
-      if (webApp) webApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}`);
+      webApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}`);
       return;
     }
     const url = actionLink(action);
-    if (url && webApp) webApp.openTelegramLink(url);
+    if (url) webApp.openTelegramLink(url);
   }
 
   function validReferralInviteUrl(value) {
@@ -129,15 +130,23 @@
 
   async function issueReferralInvite() {
     if (referralInvitePending || !webApp || !webApp.initData) return;
-    const button = node("referral-invite");
-    const status = node("referral-status");
-    const copy = payload && payload.copy ? payload.copy : prebootstrapCopy[hintedLocale];
+    if (!payload || !payload.copy || !botUsername) return;
+    if (!node("referral-invite") || !node("referral-status")) return;
+    const buttons = Array.from(document.querySelectorAll("[data-referral-invite]"));
+    const statuses = Array.from(document.querySelectorAll("[data-referral-status]"));
+    const copy = payload.copy;
     referralInvitePending = true;
-    button.disabled = true;
-    button.setAttribute("aria-busy", "true");
-    text(button, copy.referral_pending);
-    text(status, copy.referral_pending);
-    status.className = "referral-status pending";
+    buttons.forEach((button) => {
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      const label = button.querySelector("[data-i18n='referral_invite']") || button;
+      text(label, copy.referral_pending);
+    });
+    statuses.forEach((status) => {
+      text(status, copy.referral_pending);
+      status.classList.remove("error");
+      status.classList.add("pending");
+    });
     try {
       const response = await fetch(referralInviteEndpoint, {
         method: "POST",
@@ -151,17 +160,30 @@
         throw new Error("invalid_referral_invite");
       }
       const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(result.invite_url)}&text=${encodeURIComponent(copy.referral_share_text)}`;
-      text(status, "");
+      statuses.forEach((status) => {
+        text(status, "");
+        status.classList.remove("pending", "error");
+      });
       webApp.openTelegramLink(shareUrl);
     } catch (_) {
-      text(status, copy.referral_error);
-      status.className = "referral-status error";
-      text(button, copy.referral_retry);
+      statuses.forEach((status) => {
+        text(status, copy.referral_error);
+        status.classList.remove("pending");
+        status.classList.add("error");
+      });
+      buttons.forEach((button) => {
+        const label = button.querySelector("[data-i18n='referral_invite']") || button;
+        text(label, copy.referral_retry);
+      });
     } finally {
       referralInvitePending = false;
-      button.disabled = false;
-      button.removeAttribute("aria-busy");
-      if (!status.textContent) text(button, copy.referral_invite);
+      buttons.forEach((button) => {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        const label = button.querySelector("[data-i18n='referral_invite']") || button;
+        const hasError = statuses.some((status) => status.classList.contains("error"));
+        if (!hasError) text(label, copy.referral_invite);
+      });
     }
   }
 
@@ -191,27 +213,9 @@
     node("word-list").append(card);
   }
 
-  function addSetting(list, label, value, state = "") {
-    const row = document.createElement("div");
-    row.className = `setting-row${state ? ` ${state}` : ""}`;
-    row.classList.add("dashboard-row");
-    const term = document.createElement("dt");
-    const detail = document.createElement("dd");
-    text(term, label);
-    text(detail, value);
-    row.append(term, detail);
-    list.append(row);
-  }
-
-  function addInterfaceLocaleSetting(list, data, copy) {
-    const row = document.createElement("div");
-    row.className = "setting-row setting-row-control";
-    row.classList.add("dashboard-row");
-    const term = document.createElement("dt");
-    const detail = document.createElement("dd");
+  function addInterfaceLocaleSetting(container, data, copy) {
     const select = document.createElement("select");
     const status = document.createElement("span");
-    text(term, copy.setting_interface_language);
     select.id = "interface-locale-select";
     select.className = "interface-locale-select";
     select.setAttribute("aria-label", copy.setting_interface_language);
@@ -230,9 +234,20 @@
     select.addEventListener("change", () => {
       switchInterfaceLocale(select.value, select, status, copy);
     });
-    detail.append(select, status);
-    row.append(term, detail);
-    list.append(row);
+    container.replaceChildren(select, status);
+  }
+
+  function boundedSettingValue(value, copy) {
+    const candidate = String(value ?? "").trim();
+    return candidate ? candidate.slice(0, 96) : copy.setting_unknown;
+  }
+
+  function joinedSettingValues(values, copy) {
+    const candidates = values
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean)
+      .map((value) => value.slice(0, 48));
+    return candidates.length ? candidates.join(" · ").slice(0, 96) : copy.setting_unknown;
   }
 
   function localeRetryStatus(status, message, label, retry) {
@@ -555,9 +570,16 @@
     text(node("referral-invited"), referrals.invited || 0);
     text(node("referral-activated"), referrals.activated || 0);
     text(node("referral-earned"), referrals.earned_credits || 0);
-    text(node("referral-status"), "");
-    node("referral-status").className = "referral-status";
-    text(node("referral-invite"), copy.referral_invite);
+    document.querySelectorAll("[data-referral-status]").forEach((status) => {
+      text(status, "");
+      status.classList.remove("pending", "error");
+    });
+    document.querySelectorAll("[data-referral-invite]").forEach((button) => {
+      const label = button.matches("[data-i18n='referral_invite']")
+        ? button
+        : button.querySelector("[data-i18n='referral_invite']");
+      text(label, copy.referral_invite);
+    });
     const products = node("product-list");
     products.replaceChildren();
     data.products.forEach((product) => {
@@ -592,22 +614,49 @@
       languages.append(languageCard(language, copy));
     });
 
-    const learningSettings = node("settings-learning");
-    const tutorSettings = node("settings-tutor");
-    const featureSettings = node("settings-features");
-    learningSettings.replaceChildren();
-    tutorSettings.replaceChildren();
-    featureSettings.replaceChildren();
-    addInterfaceLocaleSetting(learningSettings, data, copy);
-    addSetting(learningSettings, copy.setting_daily_goal, data.settings.daily_goal);
-    addSetting(learningSettings, copy.setting_meaning_language, data.settings.meaning_language);
-    addSetting(learningSettings, copy.setting_learning_goal, data.settings.learning_goal);
-    addSetting(tutorSettings, copy.setting_mirror_mode, data.settings.mirror_mode);
-    addSetting(tutorSettings, copy.setting_mirror_style, data.settings.mirror_style);
-    addSetting(tutorSettings, copy.setting_mirror_depth, data.settings.mirror_depth);
-    addSetting(tutorSettings, copy.setting_mirror_level, data.settings.mirror_level);
-    addSetting(featureSettings, copy.setting_ai, data.features.ai ? copy.feature_enabled : copy.feature_disabled, data.features.ai ? "enabled" : "disabled");
-    addSetting(featureSettings, copy.setting_voice, data.features.voice ? copy.feature_enabled : copy.feature_disabled, data.features.voice ? "enabled" : "disabled");
+    text(node("settings-credit-balance"), data.credits.available);
+    text(
+      node("settings-dictionary-value"),
+      joinedSettingValues(
+        [
+          currentLanguage ? currentLanguage.label : "",
+          `${copy.setting_meaning_language}: ${boundedSettingValue(data.settings.meaning_language, copy)}`
+        ],
+        copy
+      )
+    );
+    text(
+      node("settings-learning-plan-value"),
+      joinedSettingValues(
+        [
+          `${copy.setting_daily_goal}: ${boundedSettingValue(data.settings.daily_goal, copy)}`,
+          `${copy.setting_learning_goal}: ${boundedSettingValue(data.settings.learning_goal, copy)}`
+        ],
+        copy
+      )
+    );
+    node("settings-ai-tutor").disabled = !data.features.ai;
+    text(
+      node("settings-ai-tutor-value"),
+      data.features.ai ? copy.feature_enabled : copy.feature_disabled
+    );
+    text(
+      node("settings-tutor-preferences-value"),
+      joinedSettingValues(
+        [
+          `${copy.setting_mirror_style || copy.setting_mirror_mode}: ${boundedSettingValue(data.settings.mirror_style || data.settings.mirror_mode, copy)}`,
+          `${copy.setting_mirror_depth}: ${boundedSettingValue(data.settings.mirror_depth, copy)}`,
+          `${copy.setting_mirror_level}: ${boundedSettingValue(data.settings.mirror_level, copy)}`
+        ],
+        copy
+      )
+    );
+    text(node("settings-feature-ai"), data.features.ai ? copy.feature_enabled : copy.feature_disabled);
+    text(node("settings-feature-voice"), data.features.voice ? copy.feature_enabled : copy.feature_disabled);
+    node("settings-learning").setAttribute("aria-label", copy.settings_group_learning);
+    node("settings-tutor").setAttribute("aria-label", copy.settings_group_tutor);
+    node("settings-features").dataset.featureState = data.features.ai ? "enabled" : "disabled";
+    addInterfaceLocaleSetting(node("settings-interface-locale-control"), data, copy);
 
     node("loading-state").hidden = true;
     node("error-state").hidden = true;
@@ -678,9 +727,15 @@
   document.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", () => openAction(button.dataset.action));
   });
+  document.querySelectorAll("[data-settings-action]").forEach((button) => {
+    if (button.dataset.settingsAction !== "invite") {
+      button.addEventListener("click", () => openAction(button.dataset.settingsAction));
+    }
+  });
+  node("settings-credit-cta").addEventListener("click", () => activateTab(node("tab-credits")));
   node("retry-button").addEventListener("click", load);
   node("calendar-previous").addEventListener("click", () => moveCalendar(-1));
   node("calendar-next").addEventListener("click", () => moveCalendar(1));
-  node("referral-invite").addEventListener("click", issueReferralInvite);
+  document.querySelectorAll("[data-referral-invite]").forEach((button) => button.addEventListener("click", issueReferralInvite));
   load();
 })();

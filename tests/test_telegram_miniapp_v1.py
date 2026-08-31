@@ -323,7 +323,7 @@ class MiniAppBootstrapContractTest(unittest.TestCase):
         self.assertFalse(payload["features"]["stars_checkout"])
         self.assertEqual(
             set(payload["actions"]),
-            {"learn", "ai", "buy", "lang", "settings", "privacy", "share"},
+            {"learn", "ai", "buy", "lang", "settings", "privacy", "help", "share"},
         )
         for key in SENSITIVE_KEYS:
             with self.subTest(key=key):
@@ -1066,7 +1066,7 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
         source = importlib.import_module("inspect").getsource(bot.manual_polling)
         self.assertIn('CommandHandler("app", cmd_app)', source)
         self.assertIn("set_chat_menu_button", importlib.import_module("inspect").getsource(bot.sync_telegram_profile))
-        for action in ("learn", "ai", "buy", "lang", "settings", "privacy"):
+        for action in ("learn", "ai", "buy", "lang", "settings", "privacy", "help"):
             self.assertEqual(
                 bot.miniapp_start_action(f"miniapp_{action}"),
                 action,
