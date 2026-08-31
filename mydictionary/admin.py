@@ -610,6 +610,7 @@ def create_app(
         if request.path in {
             "/miniapp/api/active-pack",
             "/miniapp/api/interface-locale",
+            "/miniapp/api/referral-invite",
         }:
             return None
         supplied = str(request.form.get("csrf_token") or "")
@@ -702,6 +703,37 @@ def create_app(
         except Exception:
             return jsonify(error="temporarily_unavailable"), 503
         return jsonify(payload)
+
+    @app.post("/miniapp/api/referral-invite")
+    def miniapp_referral_invite():
+        if not miniapp_settings.enabled:
+            abort(404)
+        init_data = str(request.headers.get("X-Telegram-Init-Data") or "")
+        if not init_data or len(init_data.encode("utf-8")) > 8192:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            identity = miniapp_runtime.verify_init_data(
+                init_data,
+                bot_token=miniapp_settings.bot_token,
+                max_age_seconds=miniapp_settings.auth_max_age_seconds,
+            )
+        except MiniAppAuthenticationError:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            miniapp_runtime.require_active_learner(
+                store,
+                int(identity["user_id"]),
+            )
+            code = store.issue_referral_code(int(identity["user_id"]))
+        except (MiniAppAccessDenied, PermissionError):
+            return jsonify(error="access_denied"), 403
+        except Exception:
+            return jsonify(error="temporarily_unavailable"), 503
+        return jsonify(
+            invite_url=(
+                f"https://t.me/{miniapp_settings.bot_username}?start=ref_{code}"
+            )
+        )
 
     @app.post("/miniapp/api/active-pack")
     def miniapp_active_pack():

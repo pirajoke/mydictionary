@@ -31,6 +31,8 @@
   let languageSwitchPending = false;
   let interfaceLocaleSequence = 0;
   let interfaceLocalePending = false;
+  let referralInvitePending = false;
+  const referralInviteEndpoint = "/miniapp/api/referral-invite";
 
   const node = (id) => document.getElementById(id);
   const text = (element, value) => { element.textContent = String(value ?? ""); };
@@ -105,6 +107,62 @@
     }
     const url = actionLink(action);
     if (url && webApp) webApp.openTelegramLink(url);
+  }
+
+  function validReferralInviteUrl(value) {
+    try {
+      const candidate = new URL(String(value || ""));
+      const start = candidate.searchParams.get("start") || "";
+      return candidate.protocol === "https:"
+        && candidate.hostname === "t.me"
+        && !candidate.username
+        && !candidate.password
+        && !candidate.port
+        && !candidate.hash
+        && candidate.pathname === `/${botUsername}`
+        && candidate.searchParams.size === 1
+        && /^ref_[A-Za-z0-9_-]{16,48}$/.test(start);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function issueReferralInvite() {
+    if (referralInvitePending || !webApp || !webApp.initData) return;
+    const button = node("referral-invite");
+    const status = node("referral-status");
+    const copy = payload && payload.copy ? payload.copy : prebootstrapCopy[hintedLocale];
+    referralInvitePending = true;
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    text(button, copy.referral_pending);
+    text(status, copy.referral_pending);
+    status.className = "referral-status pending";
+    try {
+      const response = await fetch(referralInviteEndpoint, {
+        method: "POST",
+        headers: {"X-Telegram-Init-Data": webApp.initData},
+        cache: "no-store",
+        credentials: "omit"
+      });
+      if (!response.ok) throw new Error("referral_invite_failed");
+      const result = await response.json();
+      if (!validReferralInviteUrl(result.invite_url)) {
+        throw new Error("invalid_referral_invite");
+      }
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(result.invite_url)}&text=${encodeURIComponent(copy.referral_share_text)}`;
+      text(status, "");
+      webApp.openTelegramLink(shareUrl);
+    } catch (_) {
+      text(status, copy.referral_error);
+      status.className = "referral-status error";
+      text(button, copy.referral_retry);
+    } finally {
+      referralInvitePending = false;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      if (!status.textContent) text(button, copy.referral_invite);
+    }
   }
 
   function addWord(word, copy) {
@@ -493,6 +551,13 @@
       summaryStat(copy.credit_spent, data.credits.spent, "spent")
     );
     text(node("credit-contract"), data.credits.contract);
+    const referrals = data.referrals || {};
+    text(node("referral-invited"), referrals.invited || 0);
+    text(node("referral-activated"), referrals.activated || 0);
+    text(node("referral-earned"), referrals.earned_credits || 0);
+    text(node("referral-status"), "");
+    node("referral-status").className = "referral-status";
+    text(node("referral-invite"), copy.referral_invite);
     const products = node("product-list");
     products.replaceChildren();
     data.products.forEach((product) => {
@@ -616,5 +681,6 @@
   node("retry-button").addEventListener("click", load);
   node("calendar-previous").addEventListener("click", () => moveCalendar(-1));
   node("calendar-next").addEventListener("click", () => moveCalendar(1));
+  node("referral-invite").addEventListener("click", issueReferralInvite);
   load();
 })();

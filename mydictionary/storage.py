@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
+import secrets
 from typing import Any, Mapping
 from uuid import uuid4
 
@@ -72,6 +73,9 @@ METERED_PROVIDER_ACTIONS = (
     "voice_translation",
 )
 INTERFACE_LOCALES = frozenset({"en", "fr", "de", "ja", "ar", "zh", "ru", "es"})
+REFERRAL_CODE_RE = re.compile(r"^[A-Za-z0-9_-]{16,48}$")
+REFERRAL_REWARD_CREDITS = 5
+REFERRAL_REWARD_CAP = 10
 
 
 def utcnow() -> datetime:
@@ -201,6 +205,65 @@ class AnalyticsEvent(Base):
     properties_json: Mapped[str] = mapped_column(Text, default="{}")
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow
+    )
+
+
+class ReferralCode(Base):
+    __tablename__ = "referral_codes"
+    __table_args__ = (
+        UniqueConstraint(
+            "inviter_user_id", name="uq_referral_codes_inviter_user_id"
+        ),
+    )
+
+    code: Mapped[str] = mapped_column(String(48), primary_key=True)
+    inviter_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ReferralAttribution(Base):
+    __tablename__ = "referral_attributions"
+    __table_args__ = (
+        CheckConstraint(
+            "inviter_user_id != invitee_user_id",
+            name="ck_referral_attribution_distinct_users",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'activated')",
+            name="ck_referral_attribution_status",
+        ),
+        CheckConstraint(
+            "reward_credits >= 0 AND reward_credits <= 5",
+            name="ck_referral_attribution_reward",
+        ),
+        UniqueConstraint(
+            "invitee_user_id", name="uq_referral_attributions_invitee_user_id"
+        ),
+    )
+
+    attribution_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    inviter_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    invitee_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    reward_credits: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    activated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    rewarded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
 
@@ -1136,6 +1199,126 @@ class DatabaseStore:
         telegram_user = type("TelegramUser", (), {"id": int(user_id)})()
         self.ensure_user(telegram_user)
 
+    def issue_referral_code(self, user_id: int) -> str:
+        """Return one stable random invite code for an active learner."""
+        with self.Session.begin() as session:
+            user = session.execute(
+                select(User)
+                .where(User.telegram_user_id == int(user_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if (
+                user is None
+                or user.access_status != "active"
+                or user.privacy_status != "active"
+            ):
+                raise PermissionError("Learner cannot issue a referral invite")
+            existing = session.execute(
+                select(ReferralCode).where(
+                    ReferralCode.inviter_user_id == int(user_id)
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                return existing.code
+            insert_for_dialect = (
+                postgresql_insert
+                if self.engine.dialect.name == "postgresql"
+                else sqlite_insert
+            )
+            for _ in range(3):
+                code = secrets.token_urlsafe(18)
+                if not REFERRAL_CODE_RE.fullmatch(code):
+                    continue
+                created = session.execute(
+                    insert_for_dialect(ReferralCode)
+                    .values(
+                        code=code,
+                        inviter_user_id=int(user_id),
+                        created_at=utcnow(),
+                    )
+                    .on_conflict_do_nothing()
+                    .returning(ReferralCode.code)
+                ).scalar_one_or_none()
+                if created is not None:
+                    return str(created)
+                existing = session.execute(
+                    select(ReferralCode).where(
+                        ReferralCode.inviter_user_id == int(user_id)
+                    )
+                ).scalar_one_or_none()
+                if existing is not None:
+                    return existing.code
+            raise RuntimeError("Could not create referral code")
+
+    def capture_referral_attribution(
+        self,
+        telegram_user: Any,
+        code: str,
+    ) -> bool:
+        """Attribute a previously unknown learner without exposing invite data."""
+        candidate = str(code or "")
+        if not REFERRAL_CODE_RE.fullmatch(candidate):
+            return False
+        invitee_id = int(telegram_user.id)
+        with self.Session.begin() as session:
+            if session.get(User, invitee_id) is not None:
+                return False
+            referral = session.get(ReferralCode, candidate)
+            if referral is None or referral.inviter_user_id == invitee_id:
+                return False
+            inviter = session.get(User, int(referral.inviter_user_id))
+            if (
+                inviter is None
+                or inviter.access_status != "active"
+                or inviter.privacy_status != "active"
+            ):
+                return False
+            learner = User(
+                telegram_user_id=invitee_id,
+                role="learner",
+                access_status="pending",
+                acquisition_source="referral",
+            )
+            for field in ("username", "first_name", "last_name", "language_code"):
+                value = getattr(telegram_user, field, None)
+                if value is not None:
+                    setattr(learner, field, str(value))
+            session.add(learner)
+            session.add(UserProgress(telegram_user_id=invitee_id))
+            session.add(
+                ReferralAttribution(
+                    attribution_id=str(uuid4()),
+                    inviter_user_id=int(referral.inviter_user_id),
+                    invitee_user_id=invitee_id,
+                    status="pending",
+                    reward_credits=0,
+                )
+            )
+            return True
+
+    def referral_summary(self, user_id: int) -> dict[str, int]:
+        """Return privacy-safe referral aggregates without materializing state."""
+        with self.Session() as session:
+            invited, activated, earned = session.execute(
+                select(
+                    func.count(ReferralAttribution.attribution_id),
+                    func.sum(
+                        case(
+                            (ReferralAttribution.status == "activated", 1),
+                            else_=0,
+                        )
+                    ),
+                    func.sum(ReferralAttribution.reward_credits),
+                ).where(ReferralAttribution.inviter_user_id == int(user_id))
+            ).one()
+        return {
+            "invited": int(invited or 0),
+            "activated": int(activated or 0),
+            "earned_credits": int(earned or 0),
+            "reward_credits": REFERRAL_REWARD_CREDITS,
+            "reward_cap": REFERRAL_REWARD_CAP,
+        }
+
     def get_mirror_response_mode(self, user_id: int) -> str:
         self.ensure_user_id(user_id)
         with self.engine.connect() as connection:
@@ -1627,6 +1810,7 @@ class DatabaseStore:
         daily_word_goal: int | None = None,
         acquisition_source: str | None = None,
         complete_onboarding: bool = False,
+        initial_credits: int = 0,
     ) -> dict[str, Any]:
         self.ensure_user_id(user_id)
         if native_language is not None and not 2 <= len(native_language) <= 16:
@@ -1650,7 +1834,59 @@ class DatabaseStore:
             if acquisition_source and not user.acquisition_source:
                 user.acquisition_source = str(acquisition_source)[:64]
             if complete_onboarding and user.onboarding_completed_at is None:
-                user.onboarding_completed_at = utcnow()
+                completed_at = utcnow()
+                user.onboarding_completed_at = completed_at
+                attribution = session.execute(
+                    select(ReferralAttribution)
+                    .where(
+                        ReferralAttribution.invitee_user_id == int(user_id),
+                        ReferralAttribution.status == "pending",
+                    )
+                    .with_for_update()
+                ).scalar_one_or_none()
+                if attribution is not None:
+                    session.execute(
+                        select(User.telegram_user_id)
+                        .where(
+                            User.telegram_user_id
+                            == int(attribution.inviter_user_id)
+                        )
+                        .with_for_update()
+                    ).scalar_one()
+                    rewarded_count = session.execute(
+                        select(func.count(ReferralAttribution.attribution_id)).where(
+                            ReferralAttribution.inviter_user_id
+                            == int(attribution.inviter_user_id),
+                            ReferralAttribution.reward_credits > 0,
+                        )
+                    ).scalar_one()
+                    attribution.status = "activated"
+                    attribution.activated_at = completed_at
+                    if int(rewarded_count or 0) < REFERRAL_REWARD_CAP:
+                        wallet = self._ensure_ai_wallet(
+                            session,
+                            int(attribution.inviter_user_id),
+                            initial_credits=max(0, int(initial_credits)),
+                        )
+                        wallet.balance_credits += REFERRAL_REWARD_CREDITS
+                        wallet.updated_at = completed_at
+                        attribution.reward_credits = REFERRAL_REWARD_CREDITS
+                        attribution.rewarded_at = completed_at
+                        reference_id = attribution.attribution_id
+                        session.add(
+                            BillingCreditLedger(
+                                entry_id=str(uuid4()),
+                                telegram_user_id=int(attribution.inviter_user_id),
+                                delta=REFERRAL_REWARD_CREDITS,
+                                balance_after=wallet.balance_credits,
+                                entry_type="referral_reward",
+                                idempotency_key=f"referral:{reference_id}",
+                                reference_type="referral",
+                                reference_id=reference_id,
+                                reason="Qualified referral reward",
+                                actor="system",
+                            )
+                        )
             user.updated_at = utcnow()
         return self.product_profile(user_id)
 

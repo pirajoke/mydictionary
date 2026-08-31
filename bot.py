@@ -637,6 +637,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
             learning_goal=product["learning_goal"] or "personal",
             daily_word_goal=product["daily_word_goal"] or 10,
             complete_onboarding=True,
+            initial_credits=AI_SETTINGS.initial_credits,
         )
         product = store.product_profile(user_id)
     progress = store.load_profile(user_id, PROGRESS_DEFAULTS)
@@ -1283,8 +1284,31 @@ def auth(func):
             stored_status=stored["access_status"] if stored else None,
             is_start=func.__name__ == "cmd_start",
         )
+        referral_captured = False
+        referral_code = (
+            referral_code_from_start(getattr(context, "args", None))
+            if func.__name__ == "cmd_start" and stored is None
+            else None
+        )
+        if referral_code and decision in {"allow", "waitlist"}:
+            try:
+                referral_captured = store.capture_referral_attribution(
+                    telegram_user,
+                    referral_code,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Referral attribution unavailable: error_type=%s",
+                    type(exc).__name__,
+                )
+        if referral_captured and isinstance(user_data, MutableMapping):
+            user_data["start_source_override"] = "referral"
         if decision == "waitlist":
-            source = start_source(getattr(context, "args", None))
+            source = (
+                "referral"
+                if referral_captured
+                else start_source(getattr(context, "args", None))
+            )
             first_request = stored is None
             store.ensure_user(telegram_user, acquisition_source=source)
             store.record_event(user_id, "start_received", source=source)
@@ -1371,7 +1395,17 @@ def auth(func):
 @auth
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     runtime = _ACTIVE_RUNTIME.get()
-    source = start_source(getattr(context, "args", None))
+    user_data = getattr(context, "user_data", None)
+    source_override = (
+        user_data.pop("start_source_override", None)
+        if isinstance(user_data, MutableMapping)
+        else None
+    )
+    source = (
+        "referral"
+        if source_override == "referral"
+        else start_source(getattr(context, "args", None))
+    )
     runtime.store.update_product_profile(
         runtime.user_id, acquisition_source=source
     )
@@ -1399,6 +1433,8 @@ def start_source(args) -> str:
     if not args:
         return "direct"
     candidate = str(args[0]).strip().lower()
+    if candidate.startswith("ref_"):
+        return "direct"
     if not candidate or len(candidate) > 32:
         return "direct"
     if not candidate.isascii() or not candidate[0].isalnum() or not all(
@@ -1406,6 +1442,18 @@ def start_source(args) -> str:
     ):
         return "direct"
     return candidate
+
+
+def referral_code_from_start(args) -> str | None:
+    if not args:
+        return None
+    candidate = str(args[0]).strip()
+    if not candidate.startswith("ref_"):
+        return None
+    code = candidate.removeprefix("ref_")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{16,48}", code):
+        return None
+    return code
 
 
 def miniapp_start_action(payload: str | None) -> str | None:
@@ -1739,6 +1787,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             runtime.user_id,
             daily_word_goal=int(parts[2]),
             complete_onboarding=True,
+            initial_credits=AI_SETTINGS.initial_credits,
         )
         runtime.onboarding_completed = True
         record_product_event(
