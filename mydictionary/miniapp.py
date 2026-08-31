@@ -480,6 +480,115 @@ for _locale, (_label, _pending, _error, _retry) in _INTERFACE_LANGUAGE_COPY.item
         interface_language_retry=_retry,
     )
 
+_REFERRAL_COPY = {
+    "en": {
+        "referral_title": "Learn together, earn AI credits",
+        "referral_body": "Invite a friend. When they finish setup, you earn 5 AI credits.",
+        "referral_invited": "Invited",
+        "referral_activated": "Activated",
+        "referral_earned": "Credits earned",
+        "referral_terms": "5 credits per activated friend · rewards for the first 10 friends",
+        "referral_invite": "Invite friends",
+        "referral_pending": "Creating your invite…",
+        "referral_error": "Could not create the invite.",
+        "referral_retry": "Try again",
+        "referral_share_text": "Learn vocabulary with me in MY DICTIONARY!",
+    },
+    "fr": {
+        "referral_title": "Apprenez ensemble, gagnez des crédits IA",
+        "referral_body": "Invitez un ami. Quand il termine la configuration, vous gagnez 5 crédits IA.",
+        "referral_invited": "Invités",
+        "referral_activated": "Activés",
+        "referral_earned": "Crédits gagnés",
+        "referral_terms": "5 crédits par ami activé · récompenses pour les 10 premiers amis",
+        "referral_invite": "Inviter des amis",
+        "referral_pending": "Création de votre invitation…",
+        "referral_error": "Impossible de créer l’invitation.",
+        "referral_retry": "Réessayer",
+        "referral_share_text": "Apprenez du vocabulaire avec moi dans MY DICTIONARY !",
+    },
+    "de": {
+        "referral_title": "Gemeinsam lernen, KI-Credits verdienen",
+        "referral_body": "Lade einen Freund ein. Nach der Einrichtung erhältst du 5 KI-Credits.",
+        "referral_invited": "Eingeladen",
+        "referral_activated": "Aktiviert",
+        "referral_earned": "Credits verdient",
+        "referral_terms": "5 Credits je aktiviertem Freund · Prämien für die ersten 10 Freunde",
+        "referral_invite": "Freunde einladen",
+        "referral_pending": "Einladung wird erstellt…",
+        "referral_error": "Einladung konnte nicht erstellt werden.",
+        "referral_retry": "Erneut versuchen",
+        "referral_share_text": "Lerne mit mir Vokabeln in MY DICTIONARY!",
+    },
+    "ja": {
+        "referral_title": "一緒に学んでAIクレジットを獲得",
+        "referral_body": "友達を招待。初期設定を完了すると、5 AIクレジットを獲得できます。",
+        "referral_invited": "招待済み",
+        "referral_activated": "利用開始",
+        "referral_earned": "獲得クレジット",
+        "referral_terms": "利用開始した友達1人につき5クレジット · 最初の10人まで",
+        "referral_invite": "友達を招待",
+        "referral_pending": "招待リンクを作成中…",
+        "referral_error": "招待リンクを作成できませんでした。",
+        "referral_retry": "再試行",
+        "referral_share_text": "MY DICTIONARYで一緒に単語を学ぼう！",
+    },
+    "ar": {
+        "referral_title": "تعلّما معاً واكسب رصيد AI",
+        "referral_body": "ادعُ صديقاً. عند إكمال الإعداد تحصل على 5 أرصدة AI.",
+        "referral_invited": "المدعوون",
+        "referral_activated": "المفعّلون",
+        "referral_earned": "الرصيد المكتسب",
+        "referral_terms": "5 أرصدة لكل صديق مفعّل · مكافآت لأول 10 أصدقاء",
+        "referral_invite": "دعوة الأصدقاء",
+        "referral_pending": "جارٍ إنشاء الدعوة…",
+        "referral_error": "تعذر إنشاء الدعوة.",
+        "referral_retry": "إعادة المحاولة",
+        "referral_share_text": "تعلّم المفردات معي في MY DICTIONARY!",
+    },
+    "zh": {
+        "referral_title": "一起学习，赚取 AI 点数",
+        "referral_body": "邀请好友。好友完成设置后，你将获得 5 个 AI 点数。",
+        "referral_invited": "已邀请",
+        "referral_activated": "已激活",
+        "referral_earned": "已赚点数",
+        "referral_terms": "每位激活好友 5 点 · 前 10 位好友可获奖励",
+        "referral_invite": "邀请好友",
+        "referral_pending": "正在创建邀请…",
+        "referral_error": "无法创建邀请。",
+        "referral_retry": "重试",
+        "referral_share_text": "和我一起在 MY DICTIONARY 学单词吧！",
+    },
+    "ru": {
+        "referral_title": "Учитесь вместе — получайте AI-кредиты",
+        "referral_body": "Пригласите друга. Когда он завершит настройку, вы получите 5 AI-кредитов.",
+        "referral_invited": "Приглашено",
+        "referral_activated": "Активировано",
+        "referral_earned": "Получено кредитов",
+        "referral_terms": "5 кредитов за активного друга · награды за первых 10 друзей",
+        "referral_invite": "Пригласить друзей",
+        "referral_pending": "Создаю приглашение…",
+        "referral_error": "Не удалось создать приглашение.",
+        "referral_retry": "Повторить",
+        "referral_share_text": "Давай учить слова вместе в MY DICTIONARY!",
+    },
+    "es": {
+        "referral_title": "Aprendan juntos y ganen créditos de IA",
+        "referral_body": "Invita a un amigo. Cuando complete la configuración, ganarás 5 créditos de IA.",
+        "referral_invited": "Invitados",
+        "referral_activated": "Activados",
+        "referral_earned": "Créditos ganados",
+        "referral_terms": "5 créditos por amigo activado · premios para los primeros 10 amigos",
+        "referral_invite": "Invitar amigos",
+        "referral_pending": "Creando tu invitación…",
+        "referral_error": "No se pudo crear la invitación.",
+        "referral_retry": "Reintentar",
+        "referral_share_text": "¡Aprende vocabulario conmigo en MY DICTIONARY!",
+    },
+}
+for _locale, _copy in _REFERRAL_COPY.items():
+    MINIAPP_COPY[_locale].update(_copy)
+
 _SETTING_VALUE_COPY = {
     "en": {"basics": "Everyday basics", "travel": "Travel focus", "conversation": "Conversation practice", "work": "Work and study", "personal": "Personal growth", "text": "Text replies", "voice": "Voice replies", "both": "Text and voice", "teacher": "Teacher guidance", "coach": "Learning coach", "practice": "Practice partner", "brief": "Brief guidance", "exam": "Exam practice", "compact": "Compact detail", "balanced": "Balanced detail", "deep": "Detailed response", "adaptive": "Adaptive level"},
     "fr": {"basics": "Bases du quotidien", "travel": "Voyage", "conversation": "Conversation guidée", "work": "Travail et études", "personal": "Développement personnel", "text": "Texte", "voice": "Voix", "both": "Texte et voix", "teacher": "Professeur", "coach": "Coach pédagogique", "practice": "Entraînement", "brief": "Concis", "exam": "Examen", "compact": "Courte", "balanced": "Équilibrée", "deep": "Détaillée", "adaptive": "Adaptatif"},
@@ -750,6 +859,21 @@ def build_bootstrap(
     )
     if not isinstance(usage, Mapping):
         usage = {}
+    referrals = {
+        "invited": 0,
+        "activated": 0,
+        "earned_credits": 0,
+        "reward_credits": 5,
+        "reward_cap": 10,
+    }
+    referral_loader = getattr(store, "referral_summary", None)
+    if callable(referral_loader):
+        candidate = referral_loader(int(user_id))
+        if isinstance(candidate, Mapping):
+            referrals = {
+                key: max(0, int(candidate.get(key) or 0))
+                for key in referrals
+            }
     if database_snapshot is None:
         preference_loader = getattr(store, "get_mirror_preferences", None)
         if callable(preference_loader):
@@ -868,6 +992,7 @@ def build_bootstrap(
             "spent": max(0, int(usage.get("spent_credits") or 0)),
             "contract": copy["credit_contract"],
         },
+        "referrals": referrals,
         "products": visible_credit_products(products, locale=selected_locale),
         "languages": languages[:16],
         "settings": {

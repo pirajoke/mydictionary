@@ -129,6 +129,21 @@
         </section>
         <button class="ai-entry dashboard-action" type="button" data-action="ai"><span aria-hidden="true">✦</span><span data-i18n="ai_tutor"></span></button>
         <p id="credit-contract" class="credit-contract" data-i18n="credit_contract"></p>
+        <section id="referral-card" class="referral-card dashboard-section" aria-labelledby="referral-title">
+          <div class="referral-copy">
+            <h2 id="referral-title" data-i18n="referral_title"></h2>
+            <p data-i18n="referral_body"></p>
+          </div>
+          <div class="referral-orbit" aria-hidden="true"><span>✦</span><i></i><i></i><i></i></div>
+          <div class="referral-stats" role="list">
+            <div role="listitem"><strong id="referral-invited">0</strong><span data-i18n="referral_invited"></span></div>
+            <div role="listitem"><strong id="referral-activated">0</strong><span data-i18n="referral_activated"></span></div>
+            <div role="listitem"><strong id="referral-earned">0</strong><span data-i18n="referral_earned"></span></div>
+          </div>
+          <p class="referral-terms" data-i18n="referral_terms"></p>
+          <button id="referral-invite" class="referral-invite-button dashboard-action" type="button" data-i18n="referral_invite"></button>
+          <p id="referral-status" class="referral-status" role="status" aria-live="polite"></p>
+        </section>
         <div id="product-list" class="dashboard-list"></div>
         <p id="checkout-disabled" class="checkout-state dashboard-state disabled" data-ui-state="disabled" data-i18n="checkout_disabled" role="status" hidden></p>
       </section>

@@ -369,6 +369,39 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .product-card-copy small { margin-top: 2px; color: var(--dashboard-muted); font-size: .7rem; }
 .product-card-price { flex: 0 0 auto; margin-inline-start: 10px; border-radius: 999px; padding: 5px 8px; color: var(--dashboard-warning); background: color-mix(in srgb, var(--dashboard-warning) 13%, var(--dashboard-surface)); font-size: .7rem; font-weight: 850; }
 .checkout-state { margin: 0; font-size: .74rem; }
+.referral-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  overflow: hidden;
+  margin: 0 0 9px;
+  padding: 15px;
+  border-color: color-mix(in srgb, var(--dashboard-accent) 46%, var(--dashboard-line));
+  background: linear-gradient(145deg, var(--dashboard-surface), var(--dashboard-soft-accent));
+}
+.referral-copy { min-width: 0; }
+.referral-copy h2 { margin: 0; color: var(--dashboard-text); font-size: 1rem; line-height: 1.18; }
+.referral-copy p { margin: 6px 0 0; color: var(--dashboard-muted); font-size: .74rem; line-height: 1.4; }
+.referral-orbit { position: relative; width: 58px; height: 58px; align-self: start; }
+.referral-orbit > span { position: absolute; z-index: 1; inset: 13px; display: grid; place-items: center; border-radius: 50%; color: var(--dashboard-accent-text); background: var(--dashboard-accent); font-size: 1.05rem; box-shadow: 0 0 0 7px var(--dashboard-soft-accent); }
+.referral-orbit i { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--dashboard-warning); }
+.referral-orbit i:nth-child(2) { inset: 3px auto auto 8px; }
+.referral-orbit i:nth-child(3) { inset: auto 1px 11px auto; }
+.referral-orbit i:nth-child(4) { inset: auto auto 2px 13px; width: 5px; height: 5px; background: var(--dashboard-success); }
+.referral-stats { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--dashboard-line); border-radius: 12px; background: var(--dashboard-surface); }
+.referral-stats > div { display: grid; min-width: 0; padding: 9px 6px; text-align: center; }
+.referral-stats > div + div { border-inline-start: 1px solid var(--dashboard-line); }
+.referral-stats strong { color: var(--dashboard-text); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.referral-stats span { color: var(--dashboard-muted); font-size: .62rem; overflow-wrap: anywhere; }
+.referral-terms { grid-column: 1 / -1; margin: 0; color: var(--dashboard-muted); font-size: .66rem; text-align: center; }
+.referral-invite-button { min-height: 44px; grid-column: 1 / -1; border-color: transparent; color: var(--dashboard-accent-text); background: var(--dashboard-accent); }
+.referral-invite-button[aria-busy="true"] { cursor: progress; }
+.referral-status { grid-column: 1 / -1; min-height: 0; margin: 0; color: var(--dashboard-muted); font-size: .68rem; text-align: center; }
+.referral-status:not(:empty) { min-height: 1.2em; }
+.referral-status.error { color: var(--dashboard-danger); }
+html[dir="rtl"] .referral-copy,
+html[dir="rtl"] .referral-status { text-align: right; }
 
 /* Languages. */
 .language-spotlight { margin-bottom: 9px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--dashboard-accent) 52%, var(--dashboard-line)); border-radius: var(--dashboard-radius); background: var(--dashboard-soft-accent); }
@@ -496,6 +529,9 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   .daily-quest button { grid-column: 1 / -1; width: 100%; }
   .wallet-card { grid-template-columns: 1fr; }
   .wallet-primary { justify-items: start; }
+  .referral-card { grid-template-columns: minmax(0, 1fr) 48px; padding: 12px; }
+  .referral-orbit { width: 48px; height: 48px; }
+  .referral-orbit > span { inset: 10px; }
   .word-card { grid-template-columns: 1fr; gap: 5px; }
   .word-attempts { max-width: none; text-align: start; }
   .language-card { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding-inline: 10px; }
