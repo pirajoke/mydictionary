@@ -1247,6 +1247,68 @@ _MINIAPP_TELEGRAM_COPY = {
 for _locale, _messages in _MINIAPP_TELEGRAM_COPY.items():
     _CATALOG[_locale].update(_messages)
 
+_TELEGRAM_INVITE_COPY = {
+    "en": {
+        "command_invite": "Invite friends",
+        "invite_offer": "Invite friends to learn with MY DICTIONARY. You earn 5 AI credits for each friend who completes onboarding, for up to 10 friends. 🎁",
+        "invite_continue": "Continue",
+        "invite_share_text": "Learn vocabulary with me in MY DICTIONARY!",
+        "invite_unavailable": "Invitations are not available right now.",
+    },
+    "fr": {
+        "command_invite": "Inviter des amis",
+        "invite_offer": "Invitez des amis à apprendre avec MY DICTIONARY. Vous gagnez 5 crédits IA pour chaque ami qui termine sa configuration, dans la limite de 10 amis. 🎁",
+        "invite_continue": "Continuer",
+        "invite_share_text": "Apprenez du vocabulaire avec moi dans MY DICTIONARY !",
+        "invite_unavailable": "Les invitations ne sont pas disponibles pour le moment.",
+    },
+    "de": {
+        "command_invite": "Freunde einladen",
+        "invite_offer": "Lade Freunde ein, mit MY DICTIONARY zu lernen. Du erhältst 5 KI-Credits, nachdem jeder Freund die Einrichtung abgeschlossen hat, für bis zu 10 Freunde. 🎁",
+        "invite_continue": "Weiter",
+        "invite_share_text": "Lerne mit mir Vokabeln in MY DICTIONARY!",
+        "invite_unavailable": "Einladungen sind derzeit nicht verfügbar.",
+    },
+    "ja": {
+        "command_invite": "友達を招待",
+        "invite_offer": "MY DICTIONARYに友達を招待しましょう。友達がオンボーディングを完了すると、あなたは5 AIクレジットを獲得できます。報酬は最大10人までです。🎁",
+        "invite_continue": "続ける",
+        "invite_share_text": "MY DICTIONARYで一緒に単語を学ぼう！",
+        "invite_unavailable": "現在、招待は利用できません。",
+    },
+    "ar": {
+        "command_invite": "دعوة الأصدقاء",
+        "invite_offer": "ادعُ أصدقاءك للتعلّم مع MY DICTIONARY. تحصل على 5 أرصدة AI بعد إكمال كل صديق للإعداد، لما يصل إلى 10 أصدقاء. 🎁",
+        "invite_continue": "متابعة",
+        "invite_share_text": "تعلّم المفردات معي في MY DICTIONARY!",
+        "invite_unavailable": "الدعوات غير متاحة حالياً.",
+    },
+    "zh": {
+        "command_invite": "邀请好友",
+        "invite_offer": "邀请好友一起使用 MY DICTIONARY 学习。每位好友完成新手设置后，你将获得 5 个 AI 点数，最多计算 10 位好友。🎁",
+        "invite_continue": "继续",
+        "invite_share_text": "和我一起在 MY DICTIONARY 学单词吧！",
+        "invite_unavailable": "邀请功能暂时不可用。",
+    },
+    "ru": {
+        "command_invite": "Пригласить друзей",
+        "invite_offer": "Пригласите друзей учиться в MY DICTIONARY. Когда друг завершит настройку, вы получите 5 AI-кредитов. Награда доступна максимум за 10 друзей. 🎁",
+        "invite_continue": "Продолжить",
+        "invite_share_text": "Давай учить слова вместе в MY DICTIONARY!",
+        "invite_unavailable": "Приглашения сейчас недоступны.",
+    },
+    "es": {
+        "command_invite": "Invitar amigos",
+        "invite_offer": "Invita a tus amigos a aprender con MY DICTIONARY. Obtienes 5 créditos de IA por cada amigo que completa la configuración, hasta un máximo de 10 amigos. 🎁",
+        "invite_continue": "Continuar",
+        "invite_share_text": "¡Aprende vocabulario conmigo en MY DICTIONARY!",
+        "invite_unavailable": "Las invitaciones no están disponibles ahora.",
+    },
+}
+
+for _locale, _messages in _TELEGRAM_INVITE_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
 _USER_SURFACE_CYCLE2_COPY = {
     "en": {
         "privacy_voice_status": "Consent can be granted when you start /voice.",

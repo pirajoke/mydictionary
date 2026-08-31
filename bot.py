@@ -125,6 +125,9 @@ from mydictionary.storage import (
     AICreditExhausted,
     AIQuotaExceeded,
     DatabaseStore,
+    REFERRAL_CODE_RE,
+    REFERRAL_REWARD_CAP,
+    REFERRAL_REWARD_CREDITS,
     WORD_PROGRESS_DEFAULTS,
     vocabulary_id_for,
 )
@@ -1996,6 +1999,60 @@ async def cmd_app(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [[InlineKeyboardButton(
                 translate("miniapp_open", locale),
                 web_app=WebAppInfo(url=MINIAPP_SETTINGS.public_url),
+            )]]
+        ),
+    )
+
+
+@auth
+async def cmd_invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    locale = interface_locale_for_update(update)
+    message = update.effective_message
+    if getattr(update.effective_chat, "type", "") != "private":
+        await message.reply_text(translate("miniapp_private_only", locale))
+        return
+
+    bot_username = str(getattr(MINIAPP_SETTINGS, "bot_username", "") or "")
+    if (
+        not getattr(MINIAPP_SETTINGS, "enabled", False)
+        or not re.fullmatch(r"[A-Za-z0-9_]{5,32}", bot_username)
+    ):
+        await message.reply_text(translate("invite_unavailable", locale))
+        return
+
+    try:
+        runtime = _ACTIVE_RUNTIME.get()
+        code = str(runtime.store.issue_referral_code(runtime.user_id) or "")
+        if not REFERRAL_CODE_RE.fullmatch(code):
+            raise ValueError("Invalid referral code")
+        offer = translate("invite_offer", locale)
+        advertised_terms = set(re.findall(r"(?<!\d)\d+(?!\d)", offer))
+        required_terms = {
+            str(REFERRAL_REWARD_CREDITS),
+            str(REFERRAL_REWARD_CAP),
+        }
+        if not required_terms.issubset(advertised_terms):
+            raise ValueError("Referral terms are inconsistent")
+        deep_link = f"https://t.me/{bot_username}?start=ref_{code}"
+        share_url = (
+            "https://t.me/share/url?"
+            f"url={quote(deep_link, safe='')}"
+            f"&text={quote(translate('invite_share_text', locale), safe='')}"
+        )
+    except Exception as exc:
+        logger.warning(
+            "Telegram invite unavailable: error_type=%s",
+            type(exc).__name__,
+        )
+        await message.reply_text(translate("invite_unavailable", locale))
+        return
+
+    await message.reply_text(
+        offer,
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton(
+                translate("invite_continue", locale),
+                url=share_url,
             )]]
         ),
     )
@@ -7275,6 +7332,7 @@ def build_bot_commands(
         commands.append(BotCommand("ai", translate("command_ai", locale)))
     if miniapp_enabled:
         commands.append(BotCommand("app", translate("command_app", locale)))
+        commands.append(BotCommand("invite", translate("command_invite", locale)))
     commands.extend(
         [
             BotCommand("privacy", translate("command_privacy", locale)),
@@ -7441,6 +7499,7 @@ async def manual_polling():
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("app", cmd_app))
+    app.add_handler(CommandHandler("invite", cmd_invite))
     app.add_handler(CommandHandler("help", cmd_help))
     app.add_handler(CommandHandler("quiz", cmd_quiz))
     app.add_handler(CommandHandler("type", cmd_type))
