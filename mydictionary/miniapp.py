@@ -480,6 +480,75 @@ for _locale, (_label, _pending, _error, _retry) in _INTERFACE_LANGUAGE_COPY.item
         interface_language_retry=_retry,
     )
 
+_SETTINGS_HUB_COPY = {
+    "en": {
+        "settings_credit_cta": "Manage AI credits",
+        "settings_dictionary": "Dictionary",
+        "settings_learning_plan": "Learning plan",
+        "settings_tutor_preferences": "Tutor preferences",
+        "settings_help": "How to use MY DICTIONARY",
+        "settings_group_support": "Support",
+    },
+    "fr": {
+        "settings_credit_cta": "Gérer les crédits IA",
+        "settings_dictionary": "Dictionnaire",
+        "settings_learning_plan": "Plan d’apprentissage",
+        "settings_tutor_preferences": "Préférences du tuteur",
+        "settings_help": "Comment utiliser MY DICTIONARY",
+        "settings_group_support": "Aide",
+    },
+    "de": {
+        "settings_credit_cta": "KI-Credits verwalten",
+        "settings_dictionary": "Wörterbuch",
+        "settings_learning_plan": "Lernplan",
+        "settings_tutor_preferences": "Tutor-Einstellungen",
+        "settings_help": "MY DICTIONARY verwenden",
+        "settings_group_support": "Hilfe",
+    },
+    "ja": {
+        "settings_credit_cta": "AIクレジットを管理",
+        "settings_dictionary": "辞書",
+        "settings_learning_plan": "学習プラン",
+        "settings_tutor_preferences": "チューター設定",
+        "settings_help": "MY DICTIONARYの使い方",
+        "settings_group_support": "サポート",
+    },
+    "ar": {
+        "settings_credit_cta": "إدارة رصيد AI",
+        "settings_dictionary": "القاموس",
+        "settings_learning_plan": "خطة التعلّم",
+        "settings_tutor_preferences": "تفضيلات المدرّس",
+        "settings_help": "كيفية استخدام MY DICTIONARY",
+        "settings_group_support": "الدعم",
+    },
+    "zh": {
+        "settings_credit_cta": "管理 AI 点数",
+        "settings_dictionary": "词典",
+        "settings_learning_plan": "学习计划",
+        "settings_tutor_preferences": "导师偏好",
+        "settings_help": "如何使用 MY DICTIONARY",
+        "settings_group_support": "帮助",
+    },
+    "ru": {
+        "settings_credit_cta": "Управление AI-кредитами",
+        "settings_dictionary": "Словарь",
+        "settings_learning_plan": "План обучения",
+        "settings_tutor_preferences": "Настройки репетитора",
+        "settings_help": "Как пользоваться MY DICTIONARY",
+        "settings_group_support": "Помощь",
+    },
+    "es": {
+        "settings_credit_cta": "Gestionar créditos de IA",
+        "settings_dictionary": "Diccionario",
+        "settings_learning_plan": "Plan de aprendizaje",
+        "settings_tutor_preferences": "Preferencias del tutor",
+        "settings_help": "Cómo usar MY DICTIONARY",
+        "settings_group_support": "Ayuda",
+    },
+}
+for _locale, _copy in _SETTINGS_HUB_COPY.items():
+    MINIAPP_COPY[_locale].update(_copy)
+
 _REFERRAL_COPY = {
     "en": {
         "referral_title": "Learn together, earn AI credits",
@@ -1025,6 +1094,7 @@ def build_bootstrap(
             "lang": "miniapp_lang",
             "settings": "miniapp_settings",
             "privacy": "miniapp_privacy",
+            "help": "miniapp_help",
             "share": "share",
         },
     }

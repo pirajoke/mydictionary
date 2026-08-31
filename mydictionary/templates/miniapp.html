@@ -141,8 +141,8 @@
             <div role="listitem"><strong id="referral-earned">0</strong><span data-i18n="referral_earned"></span></div>
           </div>
           <p class="referral-terms" data-i18n="referral_terms"></p>
-          <button id="referral-invite" class="referral-invite-button dashboard-action" type="button" data-i18n="referral_invite"></button>
-          <p id="referral-status" class="referral-status" role="status" aria-live="polite"></p>
+          <button id="referral-invite" class="referral-invite-button dashboard-action" type="button" data-referral-invite data-i18n="referral_invite"></button>
+          <p id="referral-status" class="referral-status" data-referral-status role="status" aria-live="polite"></p>
         </section>
         <div id="product-list" class="dashboard-list"></div>
         <p id="checkout-disabled" class="checkout-state dashboard-state disabled" data-ui-state="disabled" data-i18n="checkout_disabled" role="status" hidden></p>
@@ -165,19 +165,82 @@
             <span><i></i></span><span><i></i></span><span><i></i></span>
           </div>
         </header>
-        <section class="settings-group dashboard-section">
-          <h2 data-i18n="settings_group_learning"></h2>
-          <dl id="settings-learning"></dl>
-        </section>
-        <section class="settings-group dashboard-section">
-          <h2 data-i18n="settings_group_tutor"></h2>
-          <dl id="settings-tutor"></dl>
-        </section>
-        <section class="settings-group dashboard-section">
+        <button id="settings-credit-cta" class="settings-credit-cta dashboard-action" type="button" data-settings-target="credits" aria-describedby="settings-credit-balance">
+          <span class="settings-cta-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 2.8 1.7 5 5 1.7-5 1.7-1.7 5-1.7-5-5-1.7 5-1.7 1.7-5Z"></path><path d="m18.4 14.5.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8.8-2.1Z"></path></svg>
+          </span>
+          <span class="settings-row-copy">
+            <strong data-i18n="settings_credit_cta"></strong>
+            <small class="settings-row-value"><span id="settings-credit-balance">0</span> <span data-i18n="credit_available"></span></small>
+          </span>
+          <svg class="settings-cta-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+        </button>
+
+        <section id="settings-account-group" class="settings-group">
           <h2 data-i18n="settings_group_features"></h2>
-          <dl id="settings-features"></dl>
+          <div class="settings-hub-list dashboard-section">
+            <button id="settings-invite" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="invite" data-referral-invite aria-describedby="settings-invite-status">
+              <span class="settings-icon-tile settings-tile--blue" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10" cy="8" r="3"></circle><path d="M4.8 18c.6-3.3 2.3-5 5.2-5 1.5 0 2.7.4 3.6 1.3M17.5 7v6M14.5 10h6"></path></svg></span>
+              <span class="settings-row-copy"><strong data-i18n="referral_invite"></strong></span>
+              <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+            </button>
+            <p id="settings-invite-status" class="referral-status settings-inline-status" data-referral-status role="status" aria-live="polite"></p>
+          </div>
         </section>
-        <div class="action-grid"><button type="button" data-action="settings" data-i18n="open_settings"></button><button type="button" data-action="privacy" data-i18n="privacy"></button></div>
+
+        <section id="settings-learning-group" class="settings-group">
+          <h2 data-i18n="settings_group_learning"></h2>
+          <div id="settings-learning" class="settings-hub-list dashboard-section">
+            <button id="settings-dictionary" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="lang">
+              <span class="settings-icon-tile settings-tile--cyan" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 4.5h8.5A2.5 2.5 0 0 1 16 7v12H7.5A2.5 2.5 0 0 1 5 16.5v-12Z"></path><path d="M8 8h5M8 11h5M7.5 19A2.5 2.5 0 0 1 10 16.5h6"></path></svg></span>
+              <span class="settings-row-copy"><strong data-i18n="settings_dictionary"></strong><small id="settings-dictionary-value" class="settings-row-value"></small></span>
+              <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+            </button>
+            <button id="settings-learning-plan" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="settings">
+              <span class="settings-icon-tile settings-tile--orange" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2M7 4.5 5 6.5M17 4.5l2 2"></path></svg></span>
+              <span class="settings-row-copy"><strong data-i18n="settings_learning_plan"></strong><small id="settings-learning-plan-value" class="settings-row-value"></small><span class="visually-hidden" data-i18n="open_settings"></span></span>
+              <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+            </button>
+            <div id="settings-interface-locale" class="settings-locale-row dashboard-row">
+              <span class="settings-icon-tile settings-tile--violet" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"></circle><path d="M4.5 12h15M12 4c2 2.2 3 4.8 3 8s-1 5.8-3 8M12 4c-2 2.2-3 4.8-3 8s1 5.8 3 8"></path></svg></span>
+              <span class="settings-row-copy"><strong id="settings-interface-locale-label" data-i18n="setting_interface_language"></strong><span id="settings-interface-locale-control" class="settings-locale-control"></span></span>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings-tutor-group" class="settings-group">
+          <h2 data-i18n="settings_group_tutor"></h2>
+          <div id="settings-tutor" class="settings-hub-list dashboard-section">
+            <button id="settings-ai-tutor" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="ai">
+              <span class="settings-icon-tile settings-tile--violet" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"></path><circle cx="12" cy="12" r="5.5"></circle><path d="m10 11 1.3 1.3L14.5 9"></path></svg></span>
+              <span class="settings-row-copy"><strong data-i18n="ai_tutor"></strong><small id="settings-ai-tutor-value" class="settings-row-value"></small></span>
+              <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+            </button>
+            <button id="settings-tutor-preferences" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="settings">
+              <span class="settings-icon-tile settings-tile--green" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 17h16"></path><circle cx="9" cy="7" r="2.2"></circle><circle cx="15" cy="17" r="2.2"></circle></svg></span>
+              <span class="settings-row-copy"><strong data-i18n="settings_tutor_preferences"></strong><small id="settings-tutor-preferences-value" class="settings-row-value"></small></span>
+              <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+            </button>
+            <span id="settings-features" class="visually-hidden"><span data-i18n="setting_ai"></span>: <span id="settings-feature-ai"></span> · <span data-i18n="setting_voice"></span>: <span id="settings-feature-voice"></span></span>
+          </div>
+        </section>
+
+        <section id="settings-support-group" class="settings-group">
+          <h2 data-i18n="settings_group_support"></h2>
+          <div class="settings-hub-list dashboard-section">
+            <button id="settings-help" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="help">
+              <span class="settings-icon-tile settings-tile--cyan" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"></circle><path d="M9.8 9.2a2.4 2.4 0 0 1 4.6 1c0 1.8-2.4 2.1-2.4 3.8M12 17.5h.01"></path></svg></span>
+              <span class="settings-row-copy"><strong data-i18n="settings_help"></strong></span>
+              <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+            </button>
+            <button id="settings-privacy" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="privacy">
+              <span class="settings-icon-tile settings-tile--slate" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.5 19 6v5.2c0 4.4-2.8 7.6-7 9.3-4.2-1.7-7-4.9-7-9.3V6l7-2.5Z"></path><path d="m9.2 12 1.8 1.8 3.8-4"></path></svg></span>
+              <span class="settings-row-copy"><strong data-i18n="privacy"></strong></span>
+              <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
+            </button>
+          </div>
+        </section>
+        <span data-action="settings" hidden></span><span data-action="privacy" hidden></span>
       </section>
     </div>
   </main>
