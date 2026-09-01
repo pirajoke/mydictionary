@@ -10,7 +10,7 @@
   <body>
     {% set active_group = (
       'overview' if tab == 'dashboard' else
-      'users' if tab in ['users', 'pilot'] else
+      'users' if tab in ['users', 'pilot', 'referrals'] else
       'product' if tab in ['funnel', 'learning', 'content'] else
       'ai-voice' if tab in ['ai', 'voice'] else
       'payments' if tab == 'billing' else
@@ -26,7 +26,7 @@
     ] %}
     {% set group_tabs = {
       'overview': [('dashboard', 'Сводка')],
-      'users': [('users', 'Пользователи'), ('pilot', 'Исторический пилот')],
+      'users': [('users', 'Пользователи'), ('referrals', 'Рефералы'), ('pilot', 'Исторический пилот')],
       'product': [('funnel', 'Воронка'), ('learning', 'Обучение'), ('content', 'Контент')],
       'ai-voice': [('ai', 'AI и кредиты'), ('voice', 'Голос')],
       'payments': [('billing', 'Stars и платежи')],
@@ -54,7 +54,7 @@
     <main class="workspace">
       <header class="topbar">
         <div><p class="eyebrow">MY DICTIONARY</p><h1>{{ {
-          'dashboard':'Обзор продукта','users':'Пользователи','pilot':'Исторический пилот','funnel':'Продуктовая воронка','learning':'Обучение',
+          'dashboard':'Обзор продукта','users':'Пользователи','referrals':'Реферальная программа','pilot':'Исторический пилот','funnel':'Продуктовая воронка','learning':'Обучение',
           'ai':'AI и кредиты','billing':'Stars и платежи','voice':'Голосовая практика','safety':'Безопасность продукта','content':'Словари и темы','profile':'Профиль бота',
           'diagnostics':'Диагностика','audit':'Журнал аудита'
         }[tab] }}</h1></div>
@@ -194,6 +194,62 @@
         <section class="panel">
           <div class="section-heading"><div><p class="eyebrow">Показаны {{ users|length }} из {{ dashboard.users|number }}</p><h2>Пользователи</h2></div></div>
           {% set compact = false %}{% include 'admin/users_table.html' %}
+        </section>
+      {% endif %}
+
+      {% if tab == 'referrals' %}
+        <section class="metric-grid referral-metrics" aria-label="Реферальная воронка за всё время">
+          <article><span>Выданные коды</span><strong>{{ referrals.all_time.issued_codes|number }}</strong><small>один код на приглашающего</small></article>
+          <article><span>Приглашённые</span><strong>{{ referrals.all_time.invited|number }}</strong><small>{{ referrals.all_time.pending|number }} ожидают активации</small></article>
+          <article><span>Активации</span><strong>{{ referrals.all_time.activated|number }}</strong><small>{{ referrals.all_time.conversion_percent|round(1) }}% конверсия</small></article>
+          <article><span>С наградой</span><strong>{{ referrals.all_time.rewarded|number }}</strong><small>в пределах лимита</small></article>
+          <article class="accent-teal"><span>Кредиты по атрибуциям</span><strong>{{ referrals.all_time.awarded_credits|number }}</strong><small>{{ referrals.economics.reward_credits }} за активацию</small></article>
+          <article class="{{ 'accent-teal' if referrals.accounting.reconciled else 'accent-coral' }}"><span>Сверка с ledger</span><strong>{{ 'Согласовано' if referrals.accounting.reconciled else 'Расхождение' }}</strong><small>{{ referrals.accounting.ledger_entries|number }} записей · {{ referrals.accounting.ledger_credits|number }} кредитов</small></article>
+        </section>
+
+        <section class="split-layout referral-overview">
+          <div class="panel">
+            <div class="section-heading">
+              <div><p class="eyebrow">UTC · {{ referrals.days }} дней</p><h2>Реферальная динамика</h2></div>
+              <nav class="segmented" aria-label="Период реферальной динамики">
+                {% for range in [7, 30, 90] %}<a href="{{ url_for('admin_index', tab='referrals', days=range) }}" class="{{ 'active' if referrals.days == range else '' }}"{% if referrals.days == range %} aria-current="page"{% endif %}>{{ range }} дней</a>{% endfor %}
+              </nav>
+            </div>
+            <div class="table-wrap"><table><caption class="sr-only">Реферальная динамика по дням UTC</caption><thead><tr><th>Дата UTC</th><th>Приглашено</th><th>Активировано</th><th>Кредиты по атрибуциям</th></tr></thead><tbody>
+              {% for row in referrals.trend %}<tr><td class="mono"><time datetime="{{ row.date }}">{{ row.date }}</time></td><td>{{ row.invited }}</td><td>{{ row.activated }}</td><td>{{ row.awarded_credits }}</td></tr>{% endfor %}
+            </tbody></table></div>
+          </div>
+          <div>
+            <section class="panel">
+              <div class="section-heading"><div><p class="eyebrow">Runtime</p><h2>Готовность приглашений</h2></div></div>
+              <dl class="diagnostic-list compact-diagnostics">
+                {% for label, ok in [
+                  ('Mini App', referral_readiness.miniapp),
+                  ('Settings Hub', referral_readiness.settings_hub),
+                  ('Имя бота', referral_readiness.bot_username),
+                  ('Команда /invite', referral_readiness.invite)
+                ] %}<div><dt>{{ label }}</dt><dd>{{ 'настроено' if ok else 'не готово' }}</dd><span class="readiness {{ 'ok' if ok else 'off' }}">{{ 'ready' if ok else 'off' }}</span></div>{% endfor %}
+              </dl>
+            </section>
+            <section class="panel">
+              <div class="section-heading"><div><p class="eyebrow">Экономика</p><h2>Правила награды</h2></div></div>
+              <dl class="key-values">
+                <div><dt>Награда</dt><dd>{{ referrals.economics.reward_credits }} кредитов</dd></div>
+                <div><dt>Лимит на приглашающего</dt><dd>{{ referrals.economics.reward_cap }} активаций</dd></div>
+                <div><dt>Кредиты по атрибуциям</dt><dd>{{ referrals.accounting.attributed_credits|number }}</dd></div>
+              </dl>
+            </section>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">Карта продукта</p><h2>Покрытие возможностей</h2></div></div>
+          <div class="adaptation-grid">
+            <article><h3>Stars и платежи</h3><p>Платёжная готовность, каталог и сверка уже находятся в разделе платежей.</p></article>
+            <article><h3>Mirror</h3><p>Настройки, качество и runtime-диагностика уже покрыты в разделах AI и настроек.</p></article>
+            <article><h3>Языки и контент</h3><p>Словари, темы и учебный прогресс доступны в разделе продукта.</p></article>
+            <article><h3>Settings Hub</h3><p>Это навигация ученика по существующим возможностям, а не отдельный набор серверных переключателей.</p></article>
+          </div>
         </section>
       {% endif %}
 
@@ -478,7 +534,12 @@
           <dl class="diagnostic-list">
             {% for label, value, ok in [
               ('База данных', diagnostics.database, true),
-              ('Alembic revision', diagnostics.migration, diagnostics.migration == '0012_ai_runtime_gates'),
+              ('Alembic revision', diagnostics.migration, diagnostics.migration == diagnostics.migration_head),
+              ('Mini App / Settings Hub', 'configured' if diagnostics.miniapp_ready and diagnostics.settings_hub_ready else 'not configured', diagnostics.miniapp_ready and diagnostics.settings_hub_ready),
+              ('Команда /invite', 'configured' if diagnostics.invite_ready else 'not configured', diagnostics.invite_ready),
+              ('Mirror memory', diagnostics.memory_state, diagnostics.memory_ready),
+              ('Mirror retention', diagnostics.retention_state, diagnostics.retention_ready),
+              ('Mirror voice output', diagnostics.voice_output_state, diagnostics.voice_output_ready),
               ('Telegram polling', diagnostics.bot_state ~ ' · ' ~ diagnostics.bot_reason, diagnostics.bot_ready),
               ('Heartbeat age', (diagnostics.bot_heartbeat_age_seconds|round(1)|string ~ ' s') if diagnostics.bot_heartbeat_age_seconds is not none else 'missing', diagnostics.bot_ready),
               ('Bot release', diagnostics.bot_release_sha, diagnostics.bot_release_sha != 'unknown'),

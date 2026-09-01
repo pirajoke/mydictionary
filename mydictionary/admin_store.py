@@ -42,8 +42,12 @@ from mydictionary.storage import (
     MirrorResponseFeedback,
     MirrorResponseQuality,
     PaymentOrder,
+    REFERRAL_REWARD_CAP,
+    REFERRAL_REWARD_CREDITS,
     RefundRequest,
     RateLimitBucket,
+    ReferralAttribution,
+    ReferralCode,
     StarsPayment,
     StarsSubscription,
     TelegramNotification,
@@ -119,6 +123,156 @@ class AdminStore:
             "mirror_safety_envelope_checksum"
         ]
         return result
+
+    def referral_overview(self, *, days: int = 30) -> dict[str, Any]:
+        """Return aggregate-only referral funnel and accounting diagnostics."""
+        range_days = int(days)
+        if range_days not in {7, 30, 90}:
+            raise ValueError("Referral range must be 7, 30, or 90 days")
+
+        today = utcnow().date()
+        range_start = datetime.combine(
+            today - timedelta(days=range_days - 1),
+            datetime.min.time(),
+            tzinfo=timezone.utc,
+        )
+        range_end = range_start + timedelta(days=range_days)
+
+        def utc_day(column):
+            if self.store.engine.dialect.name == "postgresql":
+                return func.date(func.timezone("UTC", column))
+            return func.date(column)
+
+        invited_day = utc_day(ReferralAttribution.created_at)
+        activated_day = utc_day(ReferralAttribution.activated_at)
+        rewarded_day = utc_day(ReferralAttribution.rewarded_at)
+        with self.store.Session() as session:
+            issued_codes = int(
+                session.scalar(select(func.count(ReferralCode.code))) or 0
+            )
+            invited, pending, activated, rewarded, attributed_credits = (
+                session.execute(
+                    select(
+                        func.count(ReferralAttribution.attribution_id),
+                        func.sum(
+                            case(
+                                (ReferralAttribution.status == "pending", 1),
+                                else_=0,
+                            )
+                        ),
+                        func.sum(
+                            case(
+                                (ReferralAttribution.status == "activated", 1),
+                                else_=0,
+                            )
+                        ),
+                        func.sum(
+                            case(
+                                (ReferralAttribution.reward_credits > 0, 1),
+                                else_=0,
+                            )
+                        ),
+                        func.sum(ReferralAttribution.reward_credits),
+                    )
+                ).one()
+            )
+            ledger_entries, ledger_credits = session.execute(
+                select(
+                    func.count(BillingCreditLedger.entry_id),
+                    func.sum(BillingCreditLedger.delta),
+                ).where(
+                    BillingCreditLedger.entry_type == "referral_reward",
+                    BillingCreditLedger.reference_type == "referral",
+                )
+            ).one()
+            invited_by_day = session.execute(
+                select(
+                    invited_day,
+                    func.count(ReferralAttribution.attribution_id),
+                )
+                .where(
+                    ReferralAttribution.created_at >= range_start,
+                    ReferralAttribution.created_at < range_end,
+                )
+                .group_by(invited_day)
+            ).all()
+            activated_by_day = session.execute(
+                select(
+                    activated_day,
+                    func.count(ReferralAttribution.attribution_id),
+                )
+                .where(
+                    ReferralAttribution.activated_at >= range_start,
+                    ReferralAttribution.activated_at < range_end,
+                )
+                .group_by(activated_day)
+            ).all()
+            credits_by_day = session.execute(
+                select(
+                    rewarded_day,
+                    func.sum(ReferralAttribution.reward_credits),
+                )
+                .where(
+                    ReferralAttribution.rewarded_at >= range_start,
+                    ReferralAttribution.rewarded_at < range_end,
+                )
+                .group_by(rewarded_day)
+            ).all()
+
+        invited_count = int(invited or 0)
+        activated_count = int(activated or 0)
+        rewarded_count = int(rewarded or 0)
+        attributed_credit_count = int(attributed_credits or 0)
+        ledger_entry_count = int(ledger_entries or 0)
+        ledger_credit_count = int(ledger_credits or 0)
+        invited_daily = {str(day): int(count or 0) for day, count in invited_by_day}
+        activated_daily = {
+            str(day): int(count or 0) for day, count in activated_by_day
+        }
+        credit_daily = {str(day): int(total or 0) for day, total in credits_by_day}
+        trend = []
+        for offset in range(range_days):
+            day = today - timedelta(days=range_days - offset - 1)
+            key = day.isoformat()
+            trend.append(
+                {
+                    "date": key,
+                    "invited": invited_daily.get(key, 0),
+                    "activated": activated_daily.get(key, 0),
+                    "awarded_credits": credit_daily.get(key, 0),
+                }
+            )
+
+        return {
+            "days": range_days,
+            "all_time": {
+                "issued_codes": issued_codes,
+                "invited": invited_count,
+                "pending": int(pending or 0),
+                "activated": activated_count,
+                "rewarded": rewarded_count,
+                "awarded_credits": attributed_credit_count,
+                "conversion_percent": (
+                    round(activated_count / invited_count * 100, 1)
+                    if invited_count
+                    else 0.0
+                ),
+            },
+            "economics": {
+                "reward_credits": REFERRAL_REWARD_CREDITS,
+                "reward_cap": REFERRAL_REWARD_CAP,
+            },
+            "accounting": {
+                "attributed_credits": attributed_credit_count,
+                "ledger_entries": ledger_entry_count,
+                "ledger_credits": ledger_credit_count,
+                "reconciled": (
+                    attributed_credit_count == ledger_credit_count
+                    and rewarded_count == ledger_entry_count
+                ),
+            },
+            "trend": trend,
+        }
 
     def update_mirror_settings(
         self, values: Mapping[str, str], *, actor: str
