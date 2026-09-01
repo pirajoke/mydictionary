@@ -22,6 +22,8 @@ import time
 from typing import Any, Callable
 from urllib.parse import urlencode
 
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 from flask import (
     Flask,
     Response,
@@ -42,8 +44,12 @@ from mydictionary.admin_auth import AdminAuthSettings
 from mydictionary.ai_metering import AIMeteringJournal
 from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
+from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.content import example_target_text
-from mydictionary.mirror_assistant import MIRROR_COMMUNICATION_MODES
+from mydictionary.mirror_assistant import (
+    MIRROR_COMMUNICATION_MODES,
+    MirrorMemorySettings,
+)
 from mydictionary.miniapp import (
     MiniAppAccessDenied,
     MiniAppAuthenticationError,
@@ -128,9 +134,60 @@ ADMIN_TABS = {
     "safety",
     "content",
     "profile",
+    "referrals",
     "diagnostics",
     "audit",
 }
+
+
+def _repository_alembic_head() -> str:
+    """Discover the single current migration head from repository metadata."""
+    try:
+        config = AlembicConfig(str(BASE_DIR / "alembic.ini"))
+        config.attributes["configure_logging"] = False
+        config.set_main_option("script_location", str(BASE_DIR / "migrations"))
+        heads = ScriptDirectory.from_config(config).get_heads()
+    except Exception:
+        return "unknown"
+    return str(heads[0]) if len(heads) == 1 else "unknown"
+
+
+def _mirror_runtime_diagnostics() -> dict[str, Any]:
+    memory = {
+        "memory_state": "invalid",
+        "memory_ready": False,
+        "retention_state": "invalid",
+        "retention_ready": False,
+    }
+    try:
+        settings = MirrorMemorySettings.from_env(
+            os.environ,
+            ai_consent_version=os.environ.get("AI_CONSENT_VERSION"),
+            ai_processing_notice=os.environ.get("AI_PROCESSING_NOTICE"),
+        )
+    except (TypeError, ValueError):
+        pass
+    else:
+        memory = {
+            "memory_state": "enabled" if settings.enabled else "disabled",
+            "memory_ready": settings.enabled,
+            "retention_state": f"{settings.retention_days} days",
+            "retention_ready": settings.enabled,
+        }
+
+    try:
+        voice_enabled = mirror_voice_output_enabled(os.environ)
+    except (TypeError, ValueError):
+        voice_state = "invalid"
+        voice_ready = False
+    else:
+        voice_state = "enabled" if voice_enabled else "disabled"
+        voice_ready = voice_enabled
+    return {
+        **memory,
+        "voice_output_state": voice_state,
+        "voice_output_ready": voice_ready,
+    }
 
 
 def _positive_decimal_setting(name: str) -> bool:
@@ -1233,6 +1290,26 @@ def create_app(
             context["audit"] = admin_store.audit_log(limit=8)
         elif tab == "users":
             context["users"] = admin_store.users(search=search, limit=250)
+        elif tab == "referrals":
+            try:
+                referral_days = int(str(request.args.get("days") or "30"))
+            except (TypeError, ValueError):
+                referral_days = 30
+            if referral_days not in {7, 30, 90}:
+                referral_days = 30
+            context["referrals"] = admin_store.referral_overview(
+                days=referral_days
+            )
+            context["referral_readiness"] = {
+                "miniapp": miniapp_settings.enabled,
+                "settings_hub": miniapp_settings.enabled,
+                "bot_username": bool(
+                    miniapp_settings.enabled and miniapp_settings.bot_username
+                ),
+                "invite": bool(
+                    miniapp_settings.enabled and miniapp_settings.bot_username
+                ),
+            }
         elif tab == "pilot":
             pilot_stage = str(request.args.get("pilot_stage") or "all")
             context["pilot_stage"] = pilot_stage
@@ -1307,9 +1384,17 @@ def create_app(
             ai_budget = store.ai_budget_status()
             metering_journal_pending = _ai_metering_journal().pending_count()
             ai_snapshot = _ai_snapshot_diagnostics()
+            mirror_runtime = _mirror_runtime_diagnostics()
             context["diagnostics"] = {
                 "database": store.engine.dialect.name,
                 "migration": revision,
+                "migration_head": _repository_alembic_head(),
+                "miniapp_ready": miniapp_settings.enabled,
+                "settings_hub_ready": miniapp_settings.enabled,
+                "invite_ready": bool(
+                    miniapp_settings.enabled and miniapp_settings.bot_username
+                ),
+                **mirror_runtime,
                 "ai_enabled": os.environ.get("AI_TUTOR_ENABLED", "false"),
                 "ai_provider_configured": (
                     os.environ.get("AI_PROVIDER_CONFIGURED", "false").lower()
