@@ -43,9 +43,9 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             commands,
             {
-                "start": "Leçon du jour",
+                "continue": "▶️ Leçon du jour",
+                "review": "🔁 Réviser",
                 "learn": "Choisir un thème",
-                "lang": "Changer de langue",
                 "stats": "Ma progression",
                 "ai": "Tuteur IA",
                 "privacy": "Données et confidentialité",
@@ -489,7 +489,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                 locale="ru",
             )
         )
-        self.assertEqual(russian["start"], "Урок на сегодня")
+        self.assertEqual(russian["continue"], "▶️ Урок на сегодня")
         self.assertNotEqual(russian, expected_english)
         self.assertTrue(catalog_is_complete())
 

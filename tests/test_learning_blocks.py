@@ -230,9 +230,13 @@ class LearningBlocksTest(unittest.TestCase):
 
         keyboard = bot.build_block_quiz_keyboard(user_data, indices[0])
         prefix = f"bquiz:{user_data['block_session']}:{indices[0]}:"
-        for row in keyboard.inline_keyboard:
+        for row in keyboard.inline_keyboard[:-1]:
             self.assertTrue(row[0].callback_data.startswith(prefix))
             self.assertLessEqual(len(row[0].callback_data.encode()), 64)
+        self.assertEqual(
+            keyboard.inline_keyboard[-1][0].callback_data,
+            f"bstudy:{user_data['block_session']}",
+        )
 
     def test_retry_attempt_keeps_original_block_and_rotates_session(self):
         indices = list(range(10))
@@ -248,7 +252,11 @@ class LearningBlocksTest(unittest.TestCase):
         self.assertNotEqual(user_data["block_session"], previous_session)
 
         keyboard = bot.build_block_quiz_keyboard(user_data, indices[1])
-        self.assertEqual(len(keyboard.inline_keyboard), 4)
+        self.assertEqual(len(keyboard.inline_keyboard), 5)
+        self.assertEqual(
+            keyboard.inline_keyboard[-1][0].callback_data,
+            f"bstudy:{user_data['block_session']}",
+        )
 
     def test_global_mode_invalidation_leaves_no_active_block_answer(self):
         user_data = {}
@@ -999,7 +1007,9 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         expected_idx = self.indices[0]
         self.assertIn(bot.format_word_label(expected_idx), call.args[0])
         option_texts = {
-            row[0].text for row in kwargs["reply_markup"].inline_keyboard
+            row[0].text
+            for row in kwargs["reply_markup"].inline_keyboard
+            if row[0].callback_data.startswith("bquiz:")
         }
         allowed_translations = {
             meaning_text(bot.W()[idx]) for idx in self.indices

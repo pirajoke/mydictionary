@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, patch
 
 from telegram import MenuButtonWebApp
 
@@ -59,7 +59,7 @@ class LearningModeMessageCleanupContractTest(unittest.IsolatedAsyncioTestCase):
                 )
                 await bot.learn_play_cb.__wrapped__(update, context)
 
-    async def test_ac1_quiz_and_written_remove_review_words_and_last_audio(self):
+    async def test_ac1_quiz_and_written_keep_review_words_and_last_audio(self):
         for mode in ("quiz", "type"):
             with self.subTest(mode=mode):
                 user_data, context = self._block_context()
@@ -84,31 +84,24 @@ class LearningModeMessageCleanupContractTest(unittest.IsolatedAsyncioTestCase):
                 ):
                     await bot.block_mode_cb.__wrapped__(update, context)
 
+                context.bot.delete_message.assert_not_awaited()
                 self.assertEqual(
-                    context.bot.delete_message.await_args_list,
-                    [
-                        call(chat_id=123, message_id=101),
-                        call(chat_id=123, message_id=102),
-                        call(chat_id=123, message_id=103),
-                    ],
+                    user_data.get("block_review_messages", {}).get("123"),
+                    [101, 102],
                 )
-                self.assertNotIn("123", user_data.get("block_review_messages", {}))
-                self.assertNotIn(
-                    "123",
-                    user_data.get(bot.LAST_PRONUNCIATION_MESSAGES_KEY, {}),
+                self.assertEqual(
+                    user_data.get(bot.LAST_PRONUNCIATION_MESSAGES_KEY, {}).get("123"),
+                    103,
                 )
                 self.assertEqual(user_data["block_mode"], mode)
+                self.assertEqual(user_data["block_all_indices"], [10, 21, 22])
                 send.assert_awaited_once_with(query, context)
 
-    async def test_ac2_cleanup_failure_still_starts_requested_mode(self):
+    async def test_ac2_mode_switch_never_attempts_cleanup(self):
         user_data, context = self._block_context()
         user_data["block_review_messages"] = {"123": [101, 102]}
         user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY] = {"123": 103}
-        context.bot.delete_message.side_effect = [
-            RuntimeError("cannot delete"),
-            None,
-            None,
-        ]
+        context.bot.delete_message.side_effect = RuntimeError("must not delete")
         session_id = user_data["block_session"]
         query = SimpleNamespace(
             data=f"bmode:{session_id}:quiz",
@@ -128,9 +121,12 @@ class LearningModeMessageCleanupContractTest(unittest.IsolatedAsyncioTestCase):
         ):
             await bot.block_mode_cb.__wrapped__(update, context)
 
-        self.assertEqual(context.bot.delete_message.await_count, 3)
-        self.assertEqual(user_data["block_review_messages"], {})
-        self.assertEqual(user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY], {})
+        context.bot.delete_message.assert_not_awaited()
+        self.assertEqual(user_data["block_review_messages"], {"123": [101, 102]})
+        self.assertEqual(
+            user_data[bot.LAST_PRONUNCIATION_MESSAGES_KEY],
+            {"123": 103},
+        )
         send.assert_awaited_once_with(query, context)
 
     def test_ec1_review_tracking_is_positive_bot_owned_and_bounded(self):
