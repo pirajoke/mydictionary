@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ provider_name }} key · MY DICTIONARY Admin</title>
+    <title>{{ provider_name }} key · Lexi Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
   </head>
   <body class="login-page">
     <main class="login-panel secret-enrollment-panel">
-      <img src="{{ url_for('static', filename='admin/brand-mark.png') }}" alt="" width="72" height="72">
-      <p class="eyebrow">MY DICTIONARY · Gate 2</p>
+      <img src="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}" alt="" width="72" height="72">
+      <p class="eyebrow">Lexi · Gate 2</p>
       <h1>{{ provider_name }} project key</h1>
 
       {% if error %}<div class="notice error">{{ error }}</div>{% endif %}

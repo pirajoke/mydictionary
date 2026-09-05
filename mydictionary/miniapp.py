@@ -486,7 +486,7 @@ _SETTINGS_HUB_COPY = {
         "settings_dictionary": "Dictionary",
         "settings_learning_plan": "Learning plan",
         "settings_tutor_preferences": "Tutor preferences",
-        "settings_help": "How to use MY DICTIONARY",
+        "settings_help": "How to use Lexi",
         "settings_group_support": "Support",
     },
     "fr": {
@@ -494,7 +494,7 @@ _SETTINGS_HUB_COPY = {
         "settings_dictionary": "Dictionnaire",
         "settings_learning_plan": "Plan d’apprentissage",
         "settings_tutor_preferences": "Préférences du tuteur",
-        "settings_help": "Comment utiliser MY DICTIONARY",
+        "settings_help": "Comment utiliser Lexi",
         "settings_group_support": "Aide",
     },
     "de": {
@@ -502,7 +502,7 @@ _SETTINGS_HUB_COPY = {
         "settings_dictionary": "Wörterbuch",
         "settings_learning_plan": "Lernplan",
         "settings_tutor_preferences": "Tutor-Einstellungen",
-        "settings_help": "MY DICTIONARY verwenden",
+        "settings_help": "Lexi verwenden",
         "settings_group_support": "Hilfe",
     },
     "ja": {
@@ -510,7 +510,7 @@ _SETTINGS_HUB_COPY = {
         "settings_dictionary": "辞書",
         "settings_learning_plan": "学習プラン",
         "settings_tutor_preferences": "チューター設定",
-        "settings_help": "MY DICTIONARYの使い方",
+        "settings_help": "Lexiの使い方",
         "settings_group_support": "サポート",
     },
     "ar": {
@@ -518,7 +518,7 @@ _SETTINGS_HUB_COPY = {
         "settings_dictionary": "القاموس",
         "settings_learning_plan": "خطة التعلّم",
         "settings_tutor_preferences": "تفضيلات المدرّس",
-        "settings_help": "كيفية استخدام MY DICTIONARY",
+        "settings_help": "كيفية استخدام Lexi",
         "settings_group_support": "الدعم",
     },
     "zh": {
@@ -526,7 +526,7 @@ _SETTINGS_HUB_COPY = {
         "settings_dictionary": "词典",
         "settings_learning_plan": "学习计划",
         "settings_tutor_preferences": "导师偏好",
-        "settings_help": "如何使用 MY DICTIONARY",
+        "settings_help": "如何使用 Lexi",
         "settings_group_support": "帮助",
     },
     "ru": {
@@ -534,7 +534,7 @@ _SETTINGS_HUB_COPY = {
         "settings_dictionary": "Словарь",
         "settings_learning_plan": "План обучения",
         "settings_tutor_preferences": "Настройки репетитора",
-        "settings_help": "Как пользоваться MY DICTIONARY",
+        "settings_help": "Как пользоваться Lexi",
         "settings_group_support": "Помощь",
     },
     "es": {
@@ -542,7 +542,7 @@ _SETTINGS_HUB_COPY = {
         "settings_dictionary": "Diccionario",
         "settings_learning_plan": "Plan de aprendizaje",
         "settings_tutor_preferences": "Preferencias del tutor",
-        "settings_help": "Cómo usar MY DICTIONARY",
+        "settings_help": "Cómo usar Lexi",
         "settings_group_support": "Ayuda",
     },
 }
@@ -561,7 +561,7 @@ _REFERRAL_COPY = {
         "referral_pending": "Creating your invite…",
         "referral_error": "Could not create the invite.",
         "referral_retry": "Try again",
-        "referral_share_text": "Learn vocabulary with me in MY DICTIONARY!",
+        "referral_share_text": "Learn vocabulary with me in Lexi!",
     },
     "fr": {
         "referral_title": "Apprenez ensemble, gagnez des crédits IA",
@@ -574,7 +574,7 @@ _REFERRAL_COPY = {
         "referral_pending": "Création de votre invitation…",
         "referral_error": "Impossible de créer l’invitation.",
         "referral_retry": "Réessayer",
-        "referral_share_text": "Apprenez du vocabulaire avec moi dans MY DICTIONARY !",
+        "referral_share_text": "Apprenez du vocabulaire avec moi dans Lexi !",
     },
     "de": {
         "referral_title": "Gemeinsam lernen, KI-Credits verdienen",
@@ -587,7 +587,7 @@ _REFERRAL_COPY = {
         "referral_pending": "Einladung wird erstellt…",
         "referral_error": "Einladung konnte nicht erstellt werden.",
         "referral_retry": "Erneut versuchen",
-        "referral_share_text": "Lerne mit mir Vokabeln in MY DICTIONARY!",
+        "referral_share_text": "Lerne mit mir Vokabeln in Lexi!",
     },
     "ja": {
         "referral_title": "一緒に学んでAIクレジットを獲得",
@@ -600,7 +600,7 @@ _REFERRAL_COPY = {
         "referral_pending": "招待リンクを作成中…",
         "referral_error": "招待リンクを作成できませんでした。",
         "referral_retry": "再試行",
-        "referral_share_text": "MY DICTIONARYで一緒に単語を学ぼう！",
+        "referral_share_text": "Lexiで一緒に単語を学ぼう！",
     },
     "ar": {
         "referral_title": "تعلّما معاً واكسب رصيد AI",
@@ -613,7 +613,7 @@ _REFERRAL_COPY = {
         "referral_pending": "جارٍ إنشاء الدعوة…",
         "referral_error": "تعذر إنشاء الدعوة.",
         "referral_retry": "إعادة المحاولة",
-        "referral_share_text": "تعلّم المفردات معي في MY DICTIONARY!",
+        "referral_share_text": "تعلّم المفردات معي في Lexi!",
     },
     "zh": {
         "referral_title": "一起学习，赚取 AI 点数",
@@ -626,7 +626,7 @@ _REFERRAL_COPY = {
         "referral_pending": "正在创建邀请…",
         "referral_error": "无法创建邀请。",
         "referral_retry": "重试",
-        "referral_share_text": "和我一起在 MY DICTIONARY 学单词吧！",
+        "referral_share_text": "和我一起在 Lexi 学单词吧！",
     },
     "ru": {
         "referral_title": "Учитесь вместе — получайте AI-кредиты",
@@ -639,7 +639,7 @@ _REFERRAL_COPY = {
         "referral_pending": "Создаю приглашение…",
         "referral_error": "Не удалось создать приглашение.",
         "referral_retry": "Повторить",
-        "referral_share_text": "Давай учить слова вместе в MY DICTIONARY!",
+        "referral_share_text": "Давай учить слова вместе в Lexi!",
     },
     "es": {
         "referral_title": "Aprendan juntos y ganen créditos de IA",
@@ -652,7 +652,7 @@ _REFERRAL_COPY = {
         "referral_pending": "Creando tu invitación…",
         "referral_error": "No se pudo crear la invitación.",
         "referral_retry": "Reintentar",
-        "referral_share_text": "¡Aprende vocabulario conmigo en MY DICTIONARY!",
+        "referral_share_text": "¡Aprende vocabulario conmigo en Lexi!",
     },
 }
 for _locale, _copy in _REFERRAL_COPY.items():

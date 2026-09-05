@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the verified MY DICTIONARY backup through the live admin container."""
+"""Run the verified Lexi backup through the live admin container."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def run_scheduled_backup() -> None:
         capture=True,
     )
     if status.stdout.strip() != "true":
-        raise ScheduledBackupError("MY DICTIONARY admin container is not running")
+        raise ScheduledBackupError("Lexi admin container is not running")
     _run(docker, *BACKUP_COMMAND)
     _run(docker, *BACKUP_COMMAND, "--check")
 

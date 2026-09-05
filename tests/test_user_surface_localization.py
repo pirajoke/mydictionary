@@ -123,7 +123,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
 
         payload = message.reply_text.await_args
         text = payload.args[0]
-        self.assertIn("Confidentialité MY DICTIONARY", text)
+        self.assertIn("Confidentialité Lexi", text)
         button_texts = [
             button.text
             for row in payload.kwargs["reply_markup"].inline_keyboard
@@ -423,7 +423,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
             set_my_description=AsyncMock(),
         )
         profile = {
-            "bot_name": "MY DICTIONARY",
+            "bot_name": "Lexi",
             "bot_short_description": "Configured short description",
             "bot_description": "Configured description",
         }
@@ -875,7 +875,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(delivered, 1)
         payload = telegram_bot.send_message.await_args
         text = payload.kwargs["text"]
-        self.assertIn("Votre accès au pilote gratuit MY DICTIONARY est ouvert.", text)
+        self.assertIn("Votre accès au pilote gratuit Lexi est ouvert.", text)
         self.assertIn("Envoyez /start", text)
         self.assertNotIn(str(recipient_id), text)
         log_payload = " ".join(
@@ -1438,7 +1438,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(delivered, 1)
                 text = telegram_bot.send_message.await_args.kwargs["text"]
                 self.assertIn(
-                    "Votre accès au pilote gratuit MY DICTIONARY est ouvert.",
+                    "Votre accès au pilote gratuit Lexi est ouvert.",
                     text,
                 )
                 self.assertNotIn(str(recipient_id), text)

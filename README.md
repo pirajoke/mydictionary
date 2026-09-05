@@ -1,8 +1,12 @@
-# MY DICTIONARY
+# Lexi
 
-MY DICTIONARY is a Telegram-first vocabulary trainer with themed lessons,
+Lexi is a Telegram-first vocabulary trainer with themed lessons,
 spaced repetition, pronunciation audio, quizzes, and a protected operations
 console.
+
+The repository, package and production domain keep the historical
+`mydictionary` identifier so the rebrand does not break stored data, URLs or
+deployment automation.
 
 ## Product scope
 

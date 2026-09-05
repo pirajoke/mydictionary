@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start the admin server from the active MY DICTIONARY release."""
+"""Start the admin server from the active Lexi release."""
 
 from __future__ import annotations
 

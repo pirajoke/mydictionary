@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Preview or execute MY DICTIONARY retention and user erasure."""
+"""Preview or execute Lexi retention and user erasure."""
 
 from __future__ import annotations
 

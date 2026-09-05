@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Upload only an age-encrypted, verified MY DICTIONARY backup off-site."""
+"""Upload only an age-encrypted, verified Lexi backup off-site."""
 
 from __future__ import annotations
 

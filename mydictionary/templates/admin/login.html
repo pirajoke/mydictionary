@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MY DICTIONARY Admin</title>
+    <title>Lexi Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
   </head>
   <body class="login-page">
     <main class="login-panel">
-      <img src="{{ url_for('static', filename='admin/brand-mark.png') }}" alt="" width="72" height="72">
-      <p class="eyebrow">MY DICTIONARY</p>
+      <img src="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}" alt="" width="72" height="72">
+      <p class="eyebrow">Lexi</p>
       <h1>Администрирование</h1>
       {% if unavailable %}
         <div class="notice error">Админка не настроена. Задайте ADMIN_USERNAME, ADMIN_PASSWORD_HASH и ADMIN_SESSION_SECRET.</div>

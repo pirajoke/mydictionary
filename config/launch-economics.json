@@ -77,7 +77,7 @@
     "minimum_margin_bps": 5000,
     "stress_net_micro_usd_per_xtr": 8500,
     "terms_document": "docs/legal/telegram-stars-terms-ru-v1.md",
-    "terms_sha256": "b3b4159f8ee82e73f690e55525d804ee61b37bee921fc28457146c36c29f9b63",
+    "terms_sha256": "61b2a64bb2a335e3b97c591e24470001f67fc40354d26b5b88cc99dd2f0f3f7c",
     "terms_version": "stars-ru-v1-2026-08-08",
     "packages": [
       {

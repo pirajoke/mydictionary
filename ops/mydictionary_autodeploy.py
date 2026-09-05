@@ -180,7 +180,7 @@ class Config:
         ).expanduser().resolve()
         repository_url = _required(env, "MYDICTIONARY_REPOSITORY_URL")
         if repository_url not in ALLOWED_REPOSITORY_URLS:
-            raise DeploymentError("Unexpected MY DICTIONARY repository URL")
+            raise DeploymentError("Unexpected Lexi repository URL")
         database_url = _required(env, "DATABASE_URL")
         if not database_url.startswith(
             ("postgres://", "postgresql://", "postgresql+psycopg://")

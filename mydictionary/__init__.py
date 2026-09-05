@@ -1,1 +1,1 @@
-"""Application services for MY DICTIONARY."""
+"""Application services for Lexi."""

@@ -100,7 +100,7 @@ class SMTPResetMailer:
 
     def send_password_reset(self, *, recipient: str, reset_url: str) -> None:
         message = EmailMessage()
-        message["Subject"] = "Сброс пароля MY DICTIONARY"
+        message["Subject"] = "Сброс пароля Lexi"
         message["From"] = self.sender
         message["To"] = recipient
         message.set_content(

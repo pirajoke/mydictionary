@@ -34,7 +34,9 @@ h3 { margin-bottom: 8px; font-size: 15px; }
 .eyebrow { margin-bottom: 4px; color: var(--green); font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .sidebar { position: fixed; inset: 0 auto 0 0; width: 220px; display: flex; flex-direction: column; padding: 20px 14px; color: #f7faf8; background: #18231e; }
 .brand { display: flex; align-items: center; gap: 10px; margin: 0 6px 22px; color: #fff; font-weight: 800; }
-.brand img { border-radius: 6px; object-fit: cover; }
+.brand img,
+.login-panel > img,
+.wizard-header img { border-radius: 50%; object-fit: cover; }
 .brand span { display: grid; }
 .brand small { color: #9db1a6; font-size: 11px; font-weight: 600; }
 .nav-disclosure summary { display: none; }

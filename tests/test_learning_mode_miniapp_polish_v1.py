@@ -224,9 +224,9 @@ class MiniAppCompactIllustratedSectionsContractTest(unittest.TestCase):
 
     def test_ac6_three_local_section_images_are_optimized_and_decorative(self):
         expected = (
-            "miniapp-section-words.webp",
-            "miniapp-section-credits.webp",
-            "miniapp-section-languages.webp",
+            "lexi-section-words-v1.webp",
+            "lexi-section-credits-v1.webp",
+            "lexi-section-languages-v1.webp",
         )
         self.assertEqual(self.html.count('class="section-art"'), 3)
         for filename in expected:

@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <title>MY DICTIONARY</title>
+  <title>Lexi — языковой тренер</title>
+  <link rel="icon" href="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}">
   <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}"></script>
@@ -12,8 +13,8 @@
 <body data-bot-username="{{ bot_username }}">
   <main class="app-shell" aria-live="polite">
     <header class="brand-bar">
-      <img class="brand-mark" src="{{ url_for('static', filename='admin/brand-mark.png') }}" alt="" aria-hidden="true">
-      <div><strong>MY DICTIONARY</strong><small id="current-language"></small></div>
+      <img class="brand-mark" src="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}" alt="" aria-hidden="true">
+      <div><strong>Lexi</strong><small id="current-language"></small></div>
     </header>
 
     <section id="loading-state" class="state-card dashboard-state loading" data-ui-state="loading" role="status">
@@ -111,7 +112,7 @@
       <section id="panel-words" class="panel dashboard-panel" role="tabpanel" data-panel="words" aria-labelledby="tab-words" hidden>
         <header class="section-heading dashboard-header">
           <h1 id="words-heading" data-i18n="words"></h1>
-          <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-words.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
+          <img class="section-art" src="{{ url_for('static', filename='miniapp/lexi-section-words-v1.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
         </header>
         <div id="word-summary" class="word-overview" role="list"></div>
         <div id="word-list" class="word-list dashboard-list"></div>
@@ -121,7 +122,7 @@
       <section id="panel-credits" class="panel dashboard-panel" role="tabpanel" data-panel="credits" aria-labelledby="tab-credits" hidden>
         <header class="section-heading dashboard-header">
           <h1 id="credits-heading" data-i18n="credits"></h1>
-          <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-credits.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
+          <img class="section-art" src="{{ url_for('static', filename='miniapp/lexi-section-credits-v1.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
         </header>
         <section class="wallet-card" aria-labelledby="wallet-available-label">
           <div class="wallet-primary">
@@ -154,7 +155,7 @@
       <section id="panel-languages" class="panel dashboard-panel" role="tabpanel" data-panel="languages" aria-labelledby="tab-languages" hidden>
         <header class="section-heading dashboard-header">
           <h1 id="languages-heading" data-i18n="languages"></h1>
-          <img class="section-art" src="{{ url_for('static', filename='miniapp/miniapp-section-languages.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="400">
+          <img class="section-art" src="{{ url_for('static', filename='miniapp/lexi-section-languages-v1.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="400">
         </header>
         <div id="language-current" class="language-spotlight"></div>
         <div id="language-list" class="choice-list dashboard-list"></div>

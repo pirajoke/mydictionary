@@ -1,4 +1,4 @@
-"""Loopback-first administration console for MY DICTIONARY."""
+"""Loopback-first administration console for Lexi."""
 
 from __future__ import annotations
 
@@ -1504,7 +1504,7 @@ def create_app(
                 "admin_host": app.config["ADMIN_HOST"],
                 "admin_port": app.config["ADMIN_PORT"],
                 "release_sha": os.environ.get("RELEASE_SHA", "not set"),
-                "welcome_banner": (BASE_DIR / "assets/mydictionary-welcome.jpg").exists(),
+                "welcome_banner": (BASE_DIR / "assets/lexi-welcome-v1.jpg").exists(),
                 "bot_ready": bot_readiness.ready,
                 "bot_state": bot_readiness.state,
                 "bot_reason": bot_readiness.reason,

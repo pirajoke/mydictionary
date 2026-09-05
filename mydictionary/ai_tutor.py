@@ -151,8 +151,8 @@ MIRROR_RESPONSE_SCHEMA = {
 }
 
 _PROMPT_ROOT = Path(__file__).resolve().parents[1] / "prompts"
-TUTOR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v1.txt")
-MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v7.txt")
+TUTOR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v2.txt")
+MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v8.txt")
 
 
 class AIConfigurationError(RuntimeError):

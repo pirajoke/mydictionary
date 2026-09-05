@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create and verify private PostgreSQL backups for MY DICTIONARY."""
+"""Create and verify private PostgreSQL backups for Lexi."""
 
 from __future__ import annotations
 
