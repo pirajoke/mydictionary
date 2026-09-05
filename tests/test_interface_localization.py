@@ -51,6 +51,13 @@ class LocaleContractTest(unittest.TestCase):
             "▶️ 今日のレッスン",
         )
 
+    def test_topic_start_lesson_action_is_localized_in_every_interface_locale(self):
+        for locale in INTERFACE_LOCALES:
+            with self.subTest(locale=locale):
+                button = bot.build_topic_keyboard("ja", locale=locale).inline_keyboard[0][0]
+                self.assertEqual(button.text, translate("start_lesson", locale))
+                self.assertEqual(button.callback_data, "start:daily")
+
     def test_onboarding_copy_is_available_in_every_locale(self):
         russian = translate("onboarding_intro", "ru")
         for locale in INTERFACE_LOCALES:

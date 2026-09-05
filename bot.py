@@ -6106,10 +6106,20 @@ def build_topic_keyboard(
         pack.target_language,
         topic_labels=CATALOG.topic_labels,
     )
-    rows = [[InlineKeyboardButton(
-        f"{translate('topic_all', locale)} ({len(words)})",
-        callback_data=f"ltopic:{pack.pack_id}:all",
-    )]]
+    rows = [
+        [
+            InlineKeyboardButton(
+                translate("start_lesson", locale),
+                callback_data="start:daily",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"{translate('topic_all', locale)} ({len(words)})",
+                callback_data=f"ltopic:{pack.pack_id}:all",
+            )
+        ],
+    ]
     topic_buttons = [
         InlineKeyboardButton(
             f"{translate(f'topic_{topic}', locale)} ({count})",
