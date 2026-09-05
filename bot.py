@@ -1529,7 +1529,16 @@ def miniapp_start_action(payload: str | None) -> str | None:
     if not candidate.startswith("miniapp_"):
         return None
     action = candidate.removeprefix("miniapp_")
-    if action in {"learn", "ai", "buy", "lang", "settings", "privacy", "help"}:
+    if action in {
+        "learn",
+        "continue",
+        "ai",
+        "buy",
+        "lang",
+        "settings",
+        "privacy",
+        "help",
+    }:
         return action
     if action.startswith("buy_"):
         product_id = action.removeprefix("buy_")
@@ -1573,6 +1582,7 @@ async def route_miniapp_start_action(
 ) -> None:
     handlers = {
         "learn": cmd_learn,
+        "continue": cmd_continue,
         "ai": cmd_ai,
         "buy": cmd_buy,
         "lang": cmd_lang,

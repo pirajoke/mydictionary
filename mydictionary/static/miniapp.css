@@ -293,6 +293,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .quest-icon { display: grid; place-items: center; width: 38px; height: 38px; font-size: 1.2rem; }
 .daily-quest-copy { min-width: 0; }
 .daily-quest-copy h2 { margin: 0 0 4px; color: var(--dashboard-text); font-size: .84rem; }
+.first-lesson-hint { margin: 0 0 5px; color: var(--dashboard-text); font-size: .68rem; line-height: 1.3; }
 .daily-quest-values { display: flex; flex-wrap: wrap; gap: 5px 10px; color: var(--dashboard-muted); font-size: .62rem; }
 .daily-quest-values b { color: var(--dashboard-text); font-size: .72rem; font-variant-numeric: tabular-nums; }
 .daily-quest button { min-height: 48px; padding: 7px 10px; font-size: .7rem; }

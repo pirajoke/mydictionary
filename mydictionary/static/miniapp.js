@@ -544,6 +544,10 @@
     text(node("achievement-learned-value"), progress.learned_words);
     text(node("daily-quest-today-xp"), progress.today_xp);
     text(node("daily-quest-goal"), data.profile.daily_word_goal);
+    const firstLesson = progress.sessions === 0;
+    text(node("daily-quest-action"), firstLesson ? copy.start_first_lesson : copy.continue_lesson);
+    text(node("first-lesson-hint"), copy.first_lesson_hint);
+    node("first-lesson-hint").hidden = !firstLesson;
     text(node("streak-count"), progress.streak);
     text(node("best-streak"), progress.best_streak);
     calendarCursor = null;
