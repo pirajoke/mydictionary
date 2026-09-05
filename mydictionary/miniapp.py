@@ -115,7 +115,11 @@ def sync_telegram_chat_commands(
         ),
         "scope": {"type": "chat", "chat_id": learner_id},
     }
-    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    body = json.dumps(
+        payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
     connection = HTTPSConnection("api.telegram.org", timeout=max(1.0, float(timeout)))
     try:
         connection.request(
