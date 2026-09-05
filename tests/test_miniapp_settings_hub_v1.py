@@ -275,7 +275,11 @@ class MiniAppSettingsHubV1SurfaceContractTest(unittest.TestCase):
             "min-width: 320px",
         ):
             self.assertIn(token, self.css)
-        self.assertNotRegex(self.settings_panel, r'<(?:img|image)\b')
+        settings_art = re.findall(r'<img\b[^>]*class="section-art"[^>]*>', self.settings_panel)
+        self.assertEqual(len(settings_art), 1)
+        self.assertIn("lexi-section-settings-v1.webp", settings_art[0])
+        self.assertIn('alt=""', settings_art[0])
+        self.assertIn('loading="lazy"', settings_art[0])
         self.assertNotRegex(self.settings_panel, r'https?://')
 
     def test_err2_external_actions_require_telegram_bridge_and_bot_username(self):

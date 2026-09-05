@@ -54,6 +54,8 @@ class LexiFullBrandContractTest(unittest.TestCase):
         self.assertIn("miniapp/lexi-section-words-v1.webp", miniapp)
         self.assertIn("miniapp/lexi-section-credits-v1.webp", miniapp)
         self.assertIn("miniapp/lexi-section-languages-v1.webp", miniapp)
+        self.assertIn("miniapp/lexi-section-profile-v1.webp", miniapp)
+        self.assertIn("miniapp/lexi-section-settings-v1.webp", miniapp)
         self.assertNotIn("admin/brand-mark.png", miniapp)
         self.assertNotIn("miniapp-section-", miniapp)
 
@@ -70,11 +72,11 @@ class LexiFullBrandContractTest(unittest.TestCase):
         admin_source = (ROOT / "mydictionary/admin.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn('assets" / "lexi-welcome-v1.jpg"', bot_source)
+        self.assertIn('"lexi-telegram-avatar-v1.jpg"', bot_source)
         self.assertNotIn("mydictionary-welcome.jpg", bot_source)
         self.assertIn("Lexi", admin_auth)
         self.assertNotIn("MY DICTIONARY", admin_auth)
-        self.assertIn("assets/lexi-welcome-v1.jpg", admin_source)
+        self.assertIn("mydictionary/static/mascot/lexi-telegram-avatar-v1.jpg", admin_source)
 
     def test_active_runtime_and_operator_surfaces_have_no_old_public_name(self) -> None:
         runtime_sources = [ROOT / "bot.py"]
@@ -89,14 +91,13 @@ class LexiFullBrandContractTest(unittest.TestCase):
 
     def test_selected_lexi_brand_assets_are_bounded_and_nonempty(self) -> None:
         expected = {
-            ROOT / "assets/lexi-welcome-v1.jpg": (b"\xff\xd8\xff", 450_000),
             ROOT / "mydictionary/static/mascot/lexi-telegram-avatar-v1.jpg": (
                 b"\xff\xd8\xff",
                 300_000,
             ),
-            ROOT / "mydictionary/static/mascot/lexi-miniapp-hero-v1.jpg": (
-                b"\xff\xd8\xff",
-                350_000,
+            ROOT / "mydictionary/static/miniapp/lexi-section-profile-v1.webp": (
+                b"RIFF",
+                150_000,
             ),
             ROOT / "mydictionary/static/miniapp/lexi-section-words-v1.webp": (
                 b"RIFF",
@@ -109,6 +110,10 @@ class LexiFullBrandContractTest(unittest.TestCase):
             ROOT / "mydictionary/static/miniapp/lexi-section-languages-v1.webp": (
                 b"RIFF",
                 300_000,
+            ),
+            ROOT / "mydictionary/static/miniapp/lexi-section-settings-v1.webp": (
+                b"RIFF",
+                150_000,
             ),
         }
         for asset, (magic, maximum_bytes) in expected.items():

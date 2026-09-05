@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 import hashlib
 import hmac
+from http.client import HTTPSConnection
 import json
 import re
 import time
@@ -18,6 +19,7 @@ from mydictionary.localization import (
     billing_product_display_copy,
     language_name,
     normalize_locale,
+    translate,
 )
 from mydictionary.runtime_secrets import RuntimeSecretError, load_bot_token_file
 from mydictionary.storage import AnalyticsEvent, User, UserProgress, vocabulary_id_for
@@ -53,6 +55,85 @@ class MiniAppConfigurationError(RuntimeError):
 
 class MiniAppAccessDenied(PermissionError):
     """Raised when the signed Telegram account is not an active learner."""
+
+
+class TelegramCommandSyncError(RuntimeError):
+    """Raised when a private command-menu update cannot be confirmed."""
+
+
+def build_telegram_command_payload(
+    *,
+    ai_enabled: bool,
+    miniapp_enabled: bool,
+    locale: str | None,
+) -> list[dict[str, str]]:
+    """Build the shared bounded command menu for one saved interface locale."""
+    selected_locale = normalize_locale(locale)
+    commands = [
+        ("continue", "start_daily"),
+        ("review", "start_review"),
+        ("learn", "command_learn"),
+        ("stats", "command_stats"),
+    ]
+    if ai_enabled:
+        commands.append(("ai", "command_ai"))
+    if miniapp_enabled:
+        commands.extend((("app", "command_app"), ("invite", "command_invite")))
+    commands.extend((("privacy", "command_privacy"), ("help", "command_help")))
+    return [
+        {
+            "command": command,
+            "description": translate(copy_key, selected_locale)[:256],
+        }
+        for command, copy_key in commands
+    ]
+
+
+def sync_telegram_chat_commands(
+    *,
+    bot_token: str,
+    user_id: int,
+    locale: str,
+    ai_enabled: bool,
+    miniapp_enabled: bool,
+    timeout: float = 3.0,
+) -> None:
+    """Apply one learner's saved locale to their private Telegram menu."""
+    token = str(bot_token or "").strip()
+    learner_id = int(user_id)
+    if (
+        learner_id <= 0
+        or len(token) > 256
+        or not re.fullmatch(r"\d{5,16}:[A-Za-z0-9_-]{20,128}", token)
+    ):
+        raise TelegramCommandSyncError("invalid Telegram command sync settings")
+    payload = {
+        "commands": build_telegram_command_payload(
+            ai_enabled=ai_enabled,
+            miniapp_enabled=miniapp_enabled,
+            locale=locale,
+        ),
+        "scope": {"type": "chat", "chat_id": learner_id},
+    }
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    connection = HTTPSConnection("api.telegram.org", timeout=max(1.0, float(timeout)))
+    try:
+        connection.request(
+            "POST",
+            f"/bot{token}/setMyCommands",
+            body=body,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+        )
+        response = connection.getresponse()
+        response_body = response.read(4096)
+        try:
+            result = json.loads(response_body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise TelegramCommandSyncError("invalid Telegram response") from exc
+        if response.status != 200 or result.get("ok") is not True:
+            raise TelegramCommandSyncError("Telegram command sync rejected")
+    finally:
+        connection.close()
 
 
 def _safe_telegram_photo_url(value: object) -> str:

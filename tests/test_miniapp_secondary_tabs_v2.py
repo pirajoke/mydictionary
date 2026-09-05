@@ -91,7 +91,11 @@ class MiniAppSecondaryTabsV2ContractTest(unittest.TestCase):
         ):
             with self.subTest(selector=selector):
                 self.assertIn(selector, self.css)
-        self.assertEqual(self.html.count('class="section-art"'), 3)
+        self.assertEqual(
+            self.html.count('class="section-art"'),
+            5,
+            "each Mini App tab must use the same compact local section-art format",
+        )
         self.assertNotIn("http://", f"{self.html}\n{self.css}\n{self.js}")
         self.assertEqual(
             self.html.count("https://"),

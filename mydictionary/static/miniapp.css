@@ -165,20 +165,6 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Profile. */
 .profile-header { margin-bottom: 10px; }
-.lexi-hero {
-  height: clamp(180px, 54vw, 260px);
-  margin: 0 0 10px;
-  padding: 0;
-  overflow: hidden;
-  background: #052b3b;
-}
-.lexi-hero img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 48%;
-}
 .profile-identity {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) 44px;
@@ -436,11 +422,6 @@ html[dir="rtl"] .referral-status { text-align: right; }
 
 /* Settings. */
 .settings-hero { min-height: 62px; }
-.settings-visual { display: grid; gap: 6px; width: 76px; padding: 9px; border: 1px solid var(--dashboard-line); border-radius: 12px; background: var(--dashboard-surface); }
-.settings-visual span { position: relative; height: 3px; border-radius: 999px; background: var(--dashboard-line); }
-.settings-visual i { position: absolute; top: 50%; left: 18%; width: 10px; height: 10px; border-radius: 50%; background: var(--dashboard-accent); transform: translate(-50%, -50%); }
-.settings-visual span:nth-child(2) i { left: 72%; }
-.settings-visual span:nth-child(3) i { left: 44%; }
 .settings-credit-cta {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
