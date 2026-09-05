@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check MY DICTIONARY readiness and emit deduplicated operator alerts."""
+"""Check Lexi readiness and emit deduplicated operator alerts."""
 
 from __future__ import annotations
 
@@ -193,7 +193,7 @@ def evaluate(
     failures = sorted(f"{row.name}:{row.reason}" for row in checks if not row.ok)
     if not failures:
         notification = (
-            "MY DICTIONARY восстановлен: все readiness-проверки пройдены."
+            "Lexi восстановлен: все readiness-проверки пройдены."
             if previous.active_fingerprint
             else None
         )
@@ -203,7 +203,7 @@ def evaluate(
     notification = None
     active = previous.active_fingerprint
     if count >= failure_threshold and fingerprint != previous.active_fingerprint:
-        notification = "MY DICTIONARY alert: " + "; ".join(failures)
+        notification = "Lexi alert: " + "; ".join(failures)
         active = fingerprint
     return Evaluation(MonitorState(count, active), notification, False)
 

@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Stars Launch Wizard · MY DICTIONARY Admin</title>
+    <title>Stars Launch Wizard · Lexi Admin</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='admin/admin.css') }}">
   </head>
   <body class="login-page wizard-page">
     <main class="login-panel stars-launch-panel">
       <header class="wizard-header">
-        <img src="{{ url_for('static', filename='admin/brand-mark.png') }}" alt="" width="64" height="64">
-        <div><p class="eyebrow">MY DICTIONARY · Payments</p><h1>Stars Launch Wizard</h1></div>
+        <img src="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}" alt="" width="64" height="64">
+        <div><p class="eyebrow">Lexi · Payments</p><h1>Stars Launch Wizard</h1></div>
       </header>
 
       {% if error %}<div class="notice error">{{ error }}</div>{% endif %}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MY DICTIONARY multilingual word-learning Telegram bot."""
+"""Lexi multilingual word-learning Telegram bot."""
 
 import asyncio
 from collections.abc import Iterator, MutableMapping
@@ -155,7 +155,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 BASE_DIR = Path(__file__).parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
-WELCOME_BANNER_PATH = BASE_DIR / "assets" / "mydictionary-welcome.jpg"
+WELCOME_BANNER_PATH = BASE_DIR / "assets" / "lexi-welcome-v1.jpg"
 
 # Config: owner-only token file, then env vars, then config.yaml fallback.
 _runtime_environment = load_runtime_secret_files(os.environ)

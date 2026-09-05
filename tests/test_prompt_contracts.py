@@ -130,10 +130,10 @@ class RuntimePromptContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             responses.kwargs["instructions"],
-            normalized_reviewed_prompt(ROOT / "prompts/ai-tutor-v1.txt"),
+            normalized_reviewed_prompt(ROOT / "prompts/ai-tutor-v2.txt"),
         )
 
-    async def test_ac_2_mirror_runtime_uses_exact_reviewed_v7_contract_and_token_cap(self):
+    async def test_ac_2_mirror_runtime_uses_exact_reviewed_v8_contract_and_token_cap(self):
         responses = CaptureResponses()
         payload = bot.build_mirror_provider_payload(
             question="Comment employer bonjour ?",
@@ -159,7 +159,7 @@ class RuntimePromptContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             responses.kwargs["instructions"],
-            normalized_reviewed_prompt(ROOT / "prompts/mirror-v7.txt"),
+            normalized_reviewed_prompt(ROOT / "prompts/mirror-v8.txt"),
         )
         self.assertEqual(responses.kwargs["max_output_tokens"], 480)
 
@@ -252,12 +252,12 @@ class PromptLibraryDocumentationTest(unittest.TestCase):
 
         expected_contracts = (
             (
-                "ai-tutor-v1.txt",
+                "ai-tutor-v2.txt",
                 "openairesponsesprovider.generate",
                 "tests/fixtures/ai_tutor_eval.json",
             ),
             (
-                "mirror-v7.txt",
+                "mirror-v8.txt",
                 "openairesponsesprovider.generate_mirror",
                 "tests/fixtures/mirror_quality_v2.json",
             ),
@@ -268,10 +268,10 @@ class PromptLibraryDocumentationTest(unittest.TestCase):
                 self.assertIn(consumer, normalized)
                 self.assertIn(evaluation, normalized)
 
-        self.assertTrue((ROOT / "prompts/mirror-v6.txt").is_file())
-        self.assertIn("mirror-v6.txt", normalized)
-        self.assertIn("historical", normalized)
+        self.assertTrue((ROOT / "prompts/mirror-v7.txt").is_file())
         self.assertIn("mirror-v7.txt", normalized)
+        self.assertIn("historical", normalized)
+        self.assertIn("mirror-v8.txt", normalized)
         self.assertIn("active", normalized)
 
         self.assertIn("change procedure", normalized)

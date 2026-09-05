@@ -508,7 +508,7 @@ class AdminConsoleTest(unittest.TestCase):
             with self.subTest(tab=tab):
                 response = self.client.get(f"/admin?tab={tab}")
                 self.assertEqual(response.status_code, 200)
-                self.assertIn("MY DICTIONARY", response.get_data(as_text=True))
+                self.assertIn("Lexi", response.get_data(as_text=True))
 
     def test_compact_navigation_has_six_primary_groups_and_context_tabs(self):
         self.login()

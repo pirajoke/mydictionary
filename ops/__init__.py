@@ -1,1 +1,1 @@
-"""Versioned local operations tooling for MY DICTIONARY."""
+"""Versioned local operations tooling for Lexi."""

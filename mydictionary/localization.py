@@ -12,7 +12,7 @@ DEFAULT_INTERFACE_LOCALE = "en"
 _CATALOG: dict[str, dict[str, str]] = {
     "en": {
         "onboarding_intro": (
-            "MY DICTIONARY brings short vocabulary lessons, flashcards and "
+            "Lexi brings short vocabulary lessons, flashcards and "
             "pronunciation practice to Telegram. The basic packs are free.\n\n"
             "Three quick steps and your first lesson is ready."
         ),
@@ -53,7 +53,7 @@ _CATALOG: dict[str, dict[str, str]] = {
             "or look at another question?"
         ),
         "start_text": (
-            "Hi, {name}! 👋\n\nYour short lesson is ready. Open one card at a "
+            "Hi, {name}! I'm Lexi 🦊\n\nYour short lesson is ready. Open one card at a "
             "time, listen to the pronunciation and mark the words you know.\n\n"
             "The bot will choose new words and bring them back for review at "
             "the right time. Your progress, XP and streak are saved automatically."
@@ -61,7 +61,7 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "fr": {
         "onboarding_intro": (
-            "MY DICTIONARY propose dans Telegram de courtes leçons de "
+            "Lexi propose dans Telegram de courtes leçons de "
             "vocabulaire, des cartes et la prononciation. Les packs de base "
             "sont gratuits.\n\nTrois étapes rapides et votre première leçon est prête."
         ),
@@ -102,7 +102,7 @@ _CATALOG: dict[str, dict[str, str]] = {
             "ou on traite une autre question ?"
         ),
         "start_text": (
-            "Bonjour, {name} ! 👋\n\nVotre courte leçon est prête. Ouvrez les "
+            "Bonjour, {name} ! Moi, c'est Lexi 🦊\n\nVotre courte leçon est prête. Ouvrez les "
             "cartes une par une, écoutez la prononciation et indiquez les mots "
             "connus.\n\nLe bot choisit les nouveaux mots et programme les "
             "révisions. Vos progrès, XP et série sont enregistrés automatiquement."
@@ -110,7 +110,7 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "de": {
         "onboarding_intro": (
-            "MY DICTIONARY bietet kurze Vokabellektionen, Karteikarten und "
+            "Lexi bietet kurze Vokabellektionen, Karteikarten und "
             "Aussprache direkt in Telegram. Die Basispakete sind kostenlos.\n\n"
             "Drei kurze Schritte, dann ist deine erste Lektion bereit."
         ),
@@ -151,7 +151,7 @@ _CATALOG: dict[str, dict[str, str]] = {
             "fortsetzen oder eine andere Frage klären?"
         ),
         "start_text": (
-            "Hallo, {name}! 👋\n\nDeine kurze Lektion ist bereit. Öffne eine "
+            "Hallo, {name}! Ich bin Lexi 🦊\n\nDeine kurze Lektion ist bereit. Öffne eine "
             "Karte nach der anderen, höre die Aussprache und markiere bekannte "
             "Wörter.\n\nDer Bot wählt neue Wörter und plant Wiederholungen. "
             "Fortschritt, XP und Serie werden automatisch gespeichert."
@@ -159,7 +159,7 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "ja": {
         "onboarding_intro": (
-            "MY DICTIONARYでは、Telegramで短い単語レッスン、カード、発音練習ができます。"
+            "Lexiでは、Telegramで短い単語レッスン、カード、発音練習ができます。"
             "基本パックは無料です。\n\n3つの簡単な設定で、最初のレッスンを始められます。"
         ),
         "onboarding_try": "無料で試す ✨",
@@ -194,14 +194,14 @@ _CATALOG: dict[str, dict[str, str]] = {
             "それとも別の質問を確認しますか？"
         ),
         "start_text": (
-            "{name}さん、こんにちは！ 👋\n\n短いレッスンの準備ができました。カードを1枚ずつ開き、"
+            "{name}さん、こんにちは！Lexiです 🦊\n\n短いレッスンの準備ができました。カードを1枚ずつ開き、"
             "発音を聞いて、知っている単語を記録しましょう。\n\n新しい単語と復習のタイミングは"
             "ボットが選びます。進捗、XP、連続学習日数は自動で保存されます。"
         ),
     },
     "ar": {
         "onboarding_intro": (
-            "يقدّم MY DICTIONARY دروس مفردات قصيرة وبطاقات وتدريباً على النطق "
+            "يقدّم Lexi دروس مفردات قصيرة وبطاقات وتدريباً على النطق "
             "داخل Telegram. الحزم الأساسية مجانية.\n\nثلاث خطوات سريعة وتصبح حصتك الأولى جاهزة."
         ),
         "onboarding_try": "جرّب مجاناً ✨",
@@ -233,14 +233,14 @@ _CATALOG: dict[str, dict[str, str]] = {
             "مرحباً{name}! أنت تتعلّم {language}. هل نتابع المجموعة الحالية أم نناقش سؤالاً آخر؟"
         ),
         "start_text": (
-            "مرحباً، {name}! 👋\n\nحصتك القصيرة جاهزة. افتح البطاقات واحدة تلو الأخرى، "
+            "مرحباً، {name}! أنا Lexi 🦊\n\nحصتك القصيرة جاهزة. افتح البطاقات واحدة تلو الأخرى، "
             "واستمع إلى النطق وحدد الكلمات التي تعرفها.\n\nسيختار البوت الكلمات "
             "الجديدة وموعد المراجعة. يُحفظ تقدّمك ونقاط XP وسلسلة التعلّم تلقائياً."
         ),
     },
     "zh": {
         "onboarding_intro": (
-            "MY DICTIONARY 在 Telegram 中提供短词汇课、卡片和发音练习。基础词包免费。"
+            "Lexi 在 Telegram 中提供短词汇课、卡片和发音练习。基础词包免费。"
             "\n\n只需三个简单步骤，第一课即可开始。"
         ),
         "onboarding_try": "免费试用 ✨",
@@ -271,14 +271,14 @@ _CATALOG: dict[str, dict[str, str]] = {
             "你好{name}！你正在学习{language}。继续当前学习组，还是讨论其他问题？"
         ),
         "start_text": (
-            "你好，{name}！👋\n\n今天的短课已经准备好。逐张打开卡片，听发音并标记"
+            "你好，{name}！我是 Lexi 🦊\n\n今天的短课已经准备好。逐张打开卡片，听发音并标记"
             "你认识的单词。\n\n机器人会选择新词并安排复习。学习进度、XP 和连续学习天数"
             "会自动保存。"
         ),
     },
     "ru": {
         "onboarding_intro": (
-            "MY DICTIONARY — короткие уроки со словами, карточками и "
+            "Lexi — короткие уроки со словами, карточками и "
             "произношением прямо в Telegram. Базовые наборы бесплатны.\n\n"
             "Три коротких шага — и первый урок готов."
         ),
@@ -319,7 +319,7 @@ _CATALOG: dict[str, dict[str, str]] = {
             "блок или разберём другой вопрос?"
         ),
         "start_text": (
-            "Привет, {name}! 👋\n\nТвой короткий урок уже готов. Открывай по "
+            "Привет, {name}! Я Lexi 🦊\n\nТвой короткий урок уже готов. Открывай по "
             "одной карточке, слушай произношение и отмечай, какие слова знаешь."
             "\n\nБот сам подберёт новые слова и вовремя вернёт их на повторение. "
             "Прогресс, XP и серия занятий сохраняются автоматически."
@@ -327,7 +327,7 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "es": {
         "onboarding_intro": (
-            "MY DICTIONARY ofrece lecciones breves de vocabulario, tarjetas y "
+            "Lexi ofrece lecciones breves de vocabulario, tarjetas y "
             "pronunciación dentro de Telegram. Los paquetes básicos son gratis."
             "\n\nTres pasos rápidos y tu primera lección estará lista."
         ),
@@ -368,7 +368,7 @@ _CATALOG: dict[str, dict[str, str]] = {
             "actual o revisamos otra pregunta?"
         ),
         "start_text": (
-            "¡Hola, {name}! 👋\n\nTu lección breve está lista. Abre las tarjetas "
+            "¡Hola, {name}! Soy Lexi 🦊\n\nTu lección breve está lista. Abre las tarjetas "
             "una a una, escucha la pronunciación y marca las palabras que "
             "conoces.\n\nEl bot elegirá palabras nuevas y programará los repasos. "
             "Tu progreso, XP y racha se guardan automáticamente."
@@ -989,7 +989,7 @@ _USER_SURFACE_COPY = {
         "voice_prompt_feedback": "I will recognize your speech, suggest a correction and give you the next task.",
         "voice_prompt_evaluation": "The recognized text is checked, not your accent.",
         "privacy_overview": (
-            "MY DICTIONARY privacy\n\nLearning history, product events and AI "
+            "Lexi privacy\n\nLearning history, product events and AI "
             "requests are deleted according to limited retention periods. You can "
             "erase your learning data immediately. Payment and audit records are "
             "kept for refunds, reconciliation and fraud prevention. Access will be "
@@ -1022,7 +1022,7 @@ _USER_SURFACE_COPY = {
         "voice_prompt_feedback": "Je reconnaîtrai votre voix, proposerai une correction et donnerai l’exercice suivant.",
         "voice_prompt_evaluation": "Le texte reconnu est évalué, pas votre accent.",
         "privacy_overview": (
-            "Confidentialité MY DICTIONARY\n\nL’historique d’apprentissage, les "
+            "Confidentialité Lexi\n\nL’historique d’apprentissage, les "
             "événements produit et les requêtes IA sont supprimés selon des durées "
             "de conservation limitées. Vous pouvez supprimer immédiatement vos "
             "données d’apprentissage. Les données de paiement et d’audit sont "
@@ -1057,7 +1057,7 @@ _USER_SURFACE_COPY = {
         "voice_prompt_feedback": "Ich erkenne deine Sprache, schlage eine Korrektur vor und gebe die nächste Aufgabe.",
         "voice_prompt_evaluation": "Geprüft wird der erkannte Text, nicht dein Akzent.",
         "privacy_overview": (
-            "Datenschutz bei MY DICTIONARY\n\nLernverlauf, Produktereignisse und "
+            "Datenschutz bei Lexi\n\nLernverlauf, Produktereignisse und "
             "KI-Anfragen werden nach begrenzten Aufbewahrungsfristen gelöscht. Du "
             "kannst deine Lerndaten sofort löschen. Zahlungs- und Prüfdatensätze "
             "bleiben für Rückerstattungen, Abgleich und Betrugsschutz erhalten. "
@@ -1090,7 +1090,7 @@ _USER_SURFACE_COPY = {
         "voice_prompt_feedback": "音声を認識し、修正案を示して次の課題へ進みます。",
         "voice_prompt_evaluation": "アクセントではなく、認識されたテキストを確認します。",
         "privacy_overview": (
-            "MY DICTIONARYのプライバシー\n\n学習履歴、製品イベント、AIリクエストは、"
+            "Lexiのプライバシー\n\n学習履歴、製品イベント、AIリクエストは、"
             "定められた保存期間に従って削除されます。学習データはすぐに削除できます。"
             "返金、照合、不正防止のため、支払い記録と監査記録は保持されます。削除後は"
             "アクセスが停止されます。\n\n{ai_consent}\n{mirror_memory}"
@@ -1122,7 +1122,7 @@ _USER_SURFACE_COPY = {
         "voice_prompt_feedback": "سأتعرّف على كلامك وأقترح تصحيحاً ثم أرسل المهمة التالية.",
         "voice_prompt_evaluation": "يُفحص النص المتعرّف عليه، وليس لهجتك.",
         "privacy_overview": (
-            "خصوصية MY DICTIONARY\n\nيتم حذف سجل التعلم وأحداث المنتج وطلبات AI "
+            "خصوصية Lexi\n\nيتم حذف سجل التعلم وأحداث المنتج وطلبات AI "
             "وفق مدد حفظ محدودة. يمكنك حذف بيانات التعلم فوراً. تُحفظ سجلات الدفع "
             "والتدقيق لأغراض الاسترداد والمطابقة ومنع الاحتيال. سيتم حظر الوصول بعد "
             "الحذف.\n\n{ai_consent}\n{mirror_memory}"
@@ -1154,7 +1154,7 @@ _USER_SURFACE_COPY = {
         "voice_prompt_feedback": "我会识别语音、给出纠正建议并发送下一项练习。",
         "voice_prompt_evaluation": "检查的是识别出的文本，而不是你的口音。",
         "privacy_overview": (
-            "MY DICTIONARY 隐私\n\n学习记录、产品事件和 AI 请求会按有限的保留期"
+            "Lexi 隐私\n\n学习记录、产品事件和 AI 请求会按有限的保留期"
             "删除。你可以立即删除学习数据。付款和审计记录会保留，用于退款、核对和"
             "防止欺诈。删除后访问权限将被禁用。\n\n{ai_consent}\n{mirror_memory}"
         ),
@@ -1185,7 +1185,7 @@ _USER_SURFACE_COPY = {
         "voice_prompt_feedback": "Я распознаю речь, подскажу исправление и сам дам следующее задание.",
         "voice_prompt_evaluation": "Проверяется распознанный текст, а не акцент.",
         "privacy_overview": (
-            "Приватность MY DICTIONARY\n\nУчебная история, события продукта и "
+            "Приватность Lexi\n\nУчебная история, события продукта и "
             "AI-запросы удаляются по ограниченным срокам хранения. Ты можешь "
             "стереть свои учебные данные сразу. Платёжные и аудиторские записи "
             "сохраняются для возвратов, сверки и защиты от мошенничества. После "
@@ -1218,7 +1218,7 @@ _USER_SURFACE_COPY = {
         "voice_prompt_feedback": "Reconoceré tu voz, sugeriré una corrección y enviaré la siguiente tarea.",
         "voice_prompt_evaluation": "Se comprueba el texto reconocido, no tu acento.",
         "privacy_overview": (
-            "Privacidad de MY DICTIONARY\n\nEl historial de aprendizaje, los eventos "
+            "Privacidad de Lexi\n\nEl historial de aprendizaje, los eventos "
             "del producto y las solicitudes de IA se eliminan según periodos de "
             "conservación limitados. Puedes borrar tus datos de aprendizaje de "
             "inmediato. Los registros de pago y auditoría se conservan para "
@@ -1242,14 +1242,14 @@ for _locale, _messages in _USER_SURFACE_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 _MINIAPP_TELEGRAM_COPY = {
-    "en": {"command_app": "Open app", "miniapp_open": "Open MY DICTIONARY", "miniapp_private_only": "Open /app in a private chat with the bot.", "miniapp_disabled": "The app menu is not available right now."},
-    "fr": {"command_app": "Ouvrir l’app", "miniapp_open": "Ouvrir MY DICTIONARY", "miniapp_private_only": "Ouvrez /app dans une conversation privée avec le bot.", "miniapp_disabled": "Le menu de l’application n’est pas disponible pour le moment."},
-    "de": {"command_app": "App öffnen", "miniapp_open": "MY DICTIONARY öffnen", "miniapp_private_only": "Öffne /app in einem privaten Chat mit dem Bot.", "miniapp_disabled": "Das App-Menü ist derzeit nicht verfügbar."},
-    "ja": {"command_app": "アプリを開く", "miniapp_open": "MY DICTIONARYを開く", "miniapp_private_only": "ボットとのプライベートチャットで /app を開いてください。", "miniapp_disabled": "アプリメニューは現在利用できません。"},
-    "ar": {"command_app": "فتح التطبيق", "miniapp_open": "فتح MY DICTIONARY", "miniapp_private_only": "افتح /app في محادثة خاصة مع البوت.", "miniapp_disabled": "قائمة التطبيق غير متاحة حالياً."},
-    "zh": {"command_app": "打开应用", "miniapp_open": "打开 MY DICTIONARY", "miniapp_private_only": "请在与机器人的私聊中打开 /app。", "miniapp_disabled": "应用菜单暂时不可用。"},
-    "ru": {"command_app": "Открыть приложение", "miniapp_open": "Открыть MY DICTIONARY", "miniapp_private_only": "Откройте /app в личном чате с ботом.", "miniapp_disabled": "Меню приложения сейчас недоступно."},
-    "es": {"command_app": "Abrir la app", "miniapp_open": "Abrir MY DICTIONARY", "miniapp_private_only": "Abre /app en un chat privado con el bot.", "miniapp_disabled": "El menú de la aplicación no está disponible ahora."},
+    "en": {"command_app": "Open app", "miniapp_open": "Open Lexi", "miniapp_private_only": "Open /app in a private chat with the bot.", "miniapp_disabled": "The app menu is not available right now."},
+    "fr": {"command_app": "Ouvrir l’app", "miniapp_open": "Ouvrir Lexi", "miniapp_private_only": "Ouvrez /app dans une conversation privée avec le bot.", "miniapp_disabled": "Le menu de l’application n’est pas disponible pour le moment."},
+    "de": {"command_app": "App öffnen", "miniapp_open": "Lexi öffnen", "miniapp_private_only": "Öffne /app in einem privaten Chat mit dem Bot.", "miniapp_disabled": "Das App-Menü ist derzeit nicht verfügbar."},
+    "ja": {"command_app": "アプリを開く", "miniapp_open": "Lexiを開く", "miniapp_private_only": "ボットとのプライベートチャットで /app を開いてください。", "miniapp_disabled": "アプリメニューは現在利用できません。"},
+    "ar": {"command_app": "فتح التطبيق", "miniapp_open": "فتح Lexi", "miniapp_private_only": "افتح /app في محادثة خاصة مع البوت.", "miniapp_disabled": "قائمة التطبيق غير متاحة حالياً."},
+    "zh": {"command_app": "打开应用", "miniapp_open": "打开 Lexi", "miniapp_private_only": "请在与机器人的私聊中打开 /app。", "miniapp_disabled": "应用菜单暂时不可用。"},
+    "ru": {"command_app": "Открыть приложение", "miniapp_open": "Открыть Lexi", "miniapp_private_only": "Откройте /app в личном чате с ботом.", "miniapp_disabled": "Меню приложения сейчас недоступно."},
+    "es": {"command_app": "Abrir la app", "miniapp_open": "Abrir Lexi", "miniapp_private_only": "Abre /app en un chat privado con el bot.", "miniapp_disabled": "El menú de la aplicación no está disponible ahora."},
 }
 
 for _locale, _messages in _MINIAPP_TELEGRAM_COPY.items():
@@ -1258,58 +1258,58 @@ for _locale, _messages in _MINIAPP_TELEGRAM_COPY.items():
 _TELEGRAM_INVITE_COPY = {
     "en": {
         "command_invite": "Invite friends",
-        "invite_offer": "Invite friends to learn with MY DICTIONARY. You earn 5 AI credits for each friend who completes onboarding, for up to 10 friends. 🎁",
+        "invite_offer": "Invite friends to learn with Lexi. You earn 5 AI credits for each friend who completes onboarding, for up to 10 friends. 🎁",
         "invite_continue": "Continue",
-        "invite_share_text": "Learn vocabulary with me in MY DICTIONARY!",
+        "invite_share_text": "Learn vocabulary with me in Lexi!",
         "invite_unavailable": "Invitations are not available right now.",
     },
     "fr": {
         "command_invite": "Inviter des amis",
-        "invite_offer": "Invitez des amis à apprendre avec MY DICTIONARY. Vous gagnez 5 crédits IA pour chaque ami qui termine sa configuration, dans la limite de 10 amis. 🎁",
+        "invite_offer": "Invitez des amis à apprendre avec Lexi. Vous gagnez 5 crédits IA pour chaque ami qui termine sa configuration, dans la limite de 10 amis. 🎁",
         "invite_continue": "Continuer",
-        "invite_share_text": "Apprenez du vocabulaire avec moi dans MY DICTIONARY !",
+        "invite_share_text": "Apprenez du vocabulaire avec moi dans Lexi !",
         "invite_unavailable": "Les invitations ne sont pas disponibles pour le moment.",
     },
     "de": {
         "command_invite": "Freunde einladen",
-        "invite_offer": "Lade Freunde ein, mit MY DICTIONARY zu lernen. Du erhältst 5 KI-Credits, nachdem jeder Freund die Einrichtung abgeschlossen hat, für bis zu 10 Freunde. 🎁",
+        "invite_offer": "Lade Freunde ein, mit Lexi zu lernen. Du erhältst 5 KI-Credits, nachdem jeder Freund die Einrichtung abgeschlossen hat, für bis zu 10 Freunde. 🎁",
         "invite_continue": "Weiter",
-        "invite_share_text": "Lerne mit mir Vokabeln in MY DICTIONARY!",
+        "invite_share_text": "Lerne mit mir Vokabeln in Lexi!",
         "invite_unavailable": "Einladungen sind derzeit nicht verfügbar.",
     },
     "ja": {
         "command_invite": "友達を招待",
-        "invite_offer": "MY DICTIONARYに友達を招待しましょう。友達がオンボーディングを完了すると、あなたは5 AIクレジットを獲得できます。報酬は最大10人までです。🎁",
+        "invite_offer": "Lexiに友達を招待しましょう。友達がオンボーディングを完了すると、あなたは5 AIクレジットを獲得できます。報酬は最大10人までです。🎁",
         "invite_continue": "続ける",
-        "invite_share_text": "MY DICTIONARYで一緒に単語を学ぼう！",
+        "invite_share_text": "Lexiで一緒に単語を学ぼう！",
         "invite_unavailable": "現在、招待は利用できません。",
     },
     "ar": {
         "command_invite": "دعوة الأصدقاء",
-        "invite_offer": "ادعُ أصدقاءك للتعلّم مع MY DICTIONARY. تحصل على 5 أرصدة AI بعد إكمال كل صديق للإعداد، لما يصل إلى 10 أصدقاء. 🎁",
+        "invite_offer": "ادعُ أصدقاءك للتعلّم مع Lexi. تحصل على 5 أرصدة AI بعد إكمال كل صديق للإعداد، لما يصل إلى 10 أصدقاء. 🎁",
         "invite_continue": "متابعة",
-        "invite_share_text": "تعلّم المفردات معي في MY DICTIONARY!",
+        "invite_share_text": "تعلّم المفردات معي في Lexi!",
         "invite_unavailable": "الدعوات غير متاحة حالياً.",
     },
     "zh": {
         "command_invite": "邀请好友",
-        "invite_offer": "邀请好友一起使用 MY DICTIONARY 学习。每位好友完成新手设置后，你将获得 5 个 AI 点数，最多计算 10 位好友。🎁",
+        "invite_offer": "邀请好友一起使用 Lexi 学习。每位好友完成新手设置后，你将获得 5 个 AI 点数，最多计算 10 位好友。🎁",
         "invite_continue": "继续",
-        "invite_share_text": "和我一起在 MY DICTIONARY 学单词吧！",
+        "invite_share_text": "和我一起在 Lexi 学单词吧！",
         "invite_unavailable": "邀请功能暂时不可用。",
     },
     "ru": {
         "command_invite": "Пригласить друзей",
-        "invite_offer": "Пригласите друзей учиться в MY DICTIONARY. Когда друг завершит настройку, вы получите 5 AI-кредитов. Награда доступна максимум за 10 друзей. 🎁",
+        "invite_offer": "Пригласите друзей учиться в Lexi. Когда друг завершит настройку, вы получите 5 AI-кредитов. Награда доступна максимум за 10 друзей. 🎁",
         "invite_continue": "Продолжить",
-        "invite_share_text": "Давай учить слова вместе в MY DICTIONARY!",
+        "invite_share_text": "Давай учить слова вместе в Lexi!",
         "invite_unavailable": "Приглашения сейчас недоступны.",
     },
     "es": {
         "command_invite": "Invitar amigos",
-        "invite_offer": "Invita a tus amigos a aprender con MY DICTIONARY. Obtienes 5 créditos de IA por cada amigo que completa la configuración, hasta un máximo de 10 amigos. 🎁",
+        "invite_offer": "Invita a tus amigos a aprender con Lexi. Obtienes 5 créditos de IA por cada amigo que completa la configuración, hasta un máximo de 10 amigos. 🎁",
         "invite_continue": "Continuar",
-        "invite_share_text": "¡Aprende vocabulario conmigo en MY DICTIONARY!",
+        "invite_share_text": "¡Aprende vocabulario conmigo en Lexi!",
         "invite_unavailable": "Las invitaciones no están disponibles ahora.",
     },
 }
@@ -1717,7 +1717,7 @@ for _locale, _messages in _USER_SURFACE_CYCLE2_COPY.items():
 
 _USER_SURFACE_CYCLE3_COPY = {
     "en": {
-        "bot_help": "MY DICTIONARY\n\n/start — today's lesson and main menu\n/learn — choose a language and topic\n/stats — view progress\n/lang — change language\n/ai — AI tutor, credits and voice\n/privacy — data and privacy\n/help — help\n\nIn a lesson, tap “Show meaning”, then rate the word. The bot will save the answer and schedule the next review.",
+        "bot_help": "Lexi\n\n/start — today's lesson and main menu\n/learn — choose a language and topic\n/stats — view progress\n/lang — change language\n/ai — AI tutor, credits and voice\n/privacy — data and privacy\n/help — help\n\nIn a lesson, tap “Show meaning”, then rate the word. The bot will save the answer and schedule the next review.",
         "billing_terms_accept": "I accept and want to start immediately",
         "billing_terms_instruction": "By tapping the button, you confirm that you have read and accept the terms.",
         "billing_terms_disabled": "Purchasing AI credits is currently disabled.",
@@ -1748,10 +1748,10 @@ _USER_SURFACE_CYCLE3_COPY = {
         "legacy_flash_retry": "🔁 We will review it again!",
         "legacy_smart_prompt": "Choose the translation:",
         "legacy_poll_translation": "translation?",
-        "pilot_access_approved_notification": "Your free MY DICTIONARY pilot access is open. Send /start, choose a language and begin your first block.",
+        "pilot_access_approved_notification": "Your free Lexi pilot access is open. Send /start, choose a language and begin your first block.",
     },
     "fr": {
-        "bot_help": "MY DICTIONARY\n\n/start — leçon du jour et menu principal\n/learn — choisir une langue et un thème\n/stats — voir la progression\n/lang — changer de langue\n/ai — tuteur IA, crédits et voix\n/privacy — données et confidentialité\n/help — aide\n\nPendant une leçon, appuyez sur « Afficher le sens », puis évaluez le mot. Le bot enregistrera la réponse et planifiera la prochaine révision.",
+        "bot_help": "Lexi\n\n/start — leçon du jour et menu principal\n/learn — choisir une langue et un thème\n/stats — voir la progression\n/lang — changer de langue\n/ai — tuteur IA, crédits et voix\n/privacy — données et confidentialité\n/help — aide\n\nPendant une leçon, appuyez sur « Afficher le sens », puis évaluez le mot. Le bot enregistrera la réponse et planifiera la prochaine révision.",
         "billing_terms_accept": "J’accepte et je souhaite commencer immédiatement",
         "billing_terms_instruction": "En appuyant sur le bouton, vous confirmez avoir lu et accepté les conditions.",
         "billing_terms_disabled": "L’achat de crédits IA est désactivé pour le moment.",
@@ -1782,10 +1782,10 @@ _USER_SURFACE_CYCLE3_COPY = {
         "legacy_flash_retry": "🔁 Nous le reverrons !",
         "legacy_smart_prompt": "Choisissez la traduction :",
         "legacy_poll_translation": "traduction ?",
-        "pilot_access_approved_notification": "Votre accès au pilote gratuit MY DICTIONARY est ouvert. Envoyez /start, choisissez une langue et commencez votre premier bloc.",
+        "pilot_access_approved_notification": "Votre accès au pilote gratuit Lexi est ouvert. Envoyez /start, choisissez une langue et commencez votre premier bloc.",
     },
     "ru": {
-        "bot_help": "MY DICTIONARY\n\n/start — урок на сегодня и главное меню\n/learn — выбрать язык и тему\n/stats — посмотреть прогресс\n/lang — сменить язык\n/ai — AI-репетитор, кредиты и голос\n/privacy — данные и приватность\n/help — помощь\n\nВ уроке нажми «Показать значение», затем оцени слово. Бот сохранит ответ и назначит следующее повторение.",
+        "bot_help": "Lexi\n\n/start — урок на сегодня и главное меню\n/learn — выбрать язык и тему\n/stats — посмотреть прогресс\n/lang — сменить язык\n/ai — AI-репетитор, кредиты и голос\n/privacy — данные и приватность\n/help — помощь\n\nВ уроке нажми «Показать значение», затем оцени слово. Бот сохранит ответ и назначит следующее повторение.",
         "billing_terms_accept": "Принимаю и начать сразу",
         "billing_terms_instruction": "Нажимая кнопку, ты подтверждаешь, что прочитал и принимаешь условия.",
         "billing_terms_disabled": "Покупка AI-кредитов сейчас выключена.",
@@ -1816,10 +1816,10 @@ _USER_SURFACE_CYCLE3_COPY = {
         "legacy_flash_retry": "🔁 Ещё повторим!",
         "legacy_smart_prompt": "Выбери перевод:",
         "legacy_poll_translation": "перевод?",
-        "pilot_access_approved_notification": "Доступ к бесплатному пилоту MY DICTIONARY открыт. Отправь /start, выбери язык и начни первый блок.",
+        "pilot_access_approved_notification": "Доступ к бесплатному пилоту Lexi открыт. Отправь /start, выбери язык и начни первый блок.",
     },
     "de": {
-        "bot_help": "MY DICTIONARY\n\n/start — heutige Lektion und Hauptmenü\n/learn — Sprache und Thema wählen\n/stats — Fortschritt anzeigen\n/lang — Sprache wechseln\n/ai — KI-Tutor, Credits und Sprache\n/privacy — Daten und Datenschutz\n/help — Hilfe\n\nTippe in einer Lektion auf „Bedeutung anzeigen“ und bewerte danach das Wort. Der Bot speichert die Antwort und plant die nächste Wiederholung.",
+        "bot_help": "Lexi\n\n/start — heutige Lektion und Hauptmenü\n/learn — Sprache und Thema wählen\n/stats — Fortschritt anzeigen\n/lang — Sprache wechseln\n/ai — KI-Tutor, Credits und Sprache\n/privacy — Daten und Datenschutz\n/help — Hilfe\n\nTippe in einer Lektion auf „Bedeutung anzeigen“ und bewerte danach das Wort. Der Bot speichert die Antwort und plant die nächste Wiederholung.",
         "billing_terms_accept": "Ich akzeptiere und möchte sofort beginnen",
         "billing_terms_instruction": "Mit der Schaltfläche bestätigst du, dass du die Bedingungen gelesen hast und akzeptierst.",
         "billing_terms_disabled": "Der Kauf von KI-Credits ist derzeit deaktiviert.",
@@ -1850,10 +1850,10 @@ _USER_SURFACE_CYCLE3_COPY = {
         "legacy_flash_retry": "🔁 Das wiederholen wir!",
         "legacy_smart_prompt": "Wähle die Übersetzung:",
         "legacy_poll_translation": "Übersetzung?",
-        "pilot_access_approved_notification": "Dein Zugang zum kostenlosen MY DICTIONARY-Pilotprojekt ist freigeschaltet. Sende /start, wähle eine Sprache und beginne deinen ersten Block.",
+        "pilot_access_approved_notification": "Dein Zugang zum kostenlosen Lexi-Pilotprojekt ist freigeschaltet. Sende /start, wähle eine Sprache und beginne deinen ersten Block.",
     },
     "es": {
-        "bot_help": "MY DICTIONARY\n\n/start — lección de hoy y menú principal\n/learn — elegir idioma y tema\n/stats — ver el progreso\n/lang — cambiar de idioma\n/ai — tutor de IA, créditos y voz\n/privacy — datos y privacidad\n/help — ayuda\n\nEn una lección, pulsa «Mostrar significado» y valora la palabra. El bot guardará la respuesta y programará el próximo repaso.",
+        "bot_help": "Lexi\n\n/start — lección de hoy y menú principal\n/learn — elegir idioma y tema\n/stats — ver el progreso\n/lang — cambiar de idioma\n/ai — tutor de IA, créditos y voz\n/privacy — datos y privacidad\n/help — ayuda\n\nEn una lección, pulsa «Mostrar significado» y valora la palabra. El bot guardará la respuesta y programará el próximo repaso.",
         "billing_terms_accept": "Acepto y quiero empezar inmediatamente",
         "billing_terms_instruction": "Al pulsar el botón, confirmas que has leído y aceptas las condiciones.",
         "billing_terms_disabled": "La compra de créditos de IA está desactivada ahora.",
@@ -1884,10 +1884,10 @@ _USER_SURFACE_CYCLE3_COPY = {
         "legacy_flash_retry": "🔁 ¡La repasaremos!",
         "legacy_smart_prompt": "Elige la traducción:",
         "legacy_poll_translation": "¿traducción?",
-        "pilot_access_approved_notification": "Tu acceso al piloto gratuito de MY DICTIONARY está abierto. Envía /start, elige un idioma y comienza tu primer bloque.",
+        "pilot_access_approved_notification": "Tu acceso al piloto gratuito de Lexi está abierto. Envía /start, elige un idioma y comienza tu primer bloque.",
     },
     "ja": {
-        "bot_help": "MY DICTIONARY\n\n/start — 今日のレッスンとメインメニュー\n/learn — 言語とテーマを選択\n/stats — 進捗を表示\n/lang — 言語を変更\n/ai — AIチューター、クレジット、音声\n/privacy — データとプライバシー\n/help — ヘルプ\n\nレッスンでは「意味を表示」を押してから単語を評価してください。回答が保存され、次の復習が設定されます。",
+        "bot_help": "Lexi\n\n/start — 今日のレッスンとメインメニュー\n/learn — 言語とテーマを選択\n/stats — 進捗を表示\n/lang — 言語を変更\n/ai — AIチューター、クレジット、音声\n/privacy — データとプライバシー\n/help — ヘルプ\n\nレッスンでは「意味を表示」を押してから単語を評価してください。回答が保存され、次の復習が設定されます。",
         "billing_terms_accept": "同意してすぐに開始する",
         "billing_terms_instruction": "ボタンを押すと、条件を読み同意したことを確認します。",
         "billing_terms_disabled": "AIクレジットの購入は現在無効です。",
@@ -1918,10 +1918,10 @@ _USER_SURFACE_CYCLE3_COPY = {
         "legacy_flash_retry": "🔁 また復習しましょう！",
         "legacy_smart_prompt": "訳を選んでください：",
         "legacy_poll_translation": "訳は？",
-        "pilot_access_approved_notification": "MY DICTIONARYの無料パイロットへのアクセスが有効になりました。/start を送り、言語を選んで最初のブロックを始めてください。",
+        "pilot_access_approved_notification": "Lexiの無料パイロットへのアクセスが有効になりました。/start を送り、言語を選んで最初のブロックを始めてください。",
     },
     "zh": {
-        "bot_help": "MY DICTIONARY\n\n/start — 今日课程和主菜单\n/learn — 选择语言和主题\n/stats — 查看进度\n/lang — 更改语言\n/ai — AI 导师、点数和语音\n/privacy — 数据与隐私\n/help — 帮助\n\n在课程中点击“显示释义”，然后评价这个单词。机器人会保存答案并安排下一次复习。",
+        "bot_help": "Lexi\n\n/start — 今日课程和主菜单\n/learn — 选择语言和主题\n/stats — 查看进度\n/lang — 更改语言\n/ai — AI 导师、点数和语音\n/privacy — 数据与隐私\n/help — 帮助\n\n在课程中点击“显示释义”，然后评价这个单词。机器人会保存答案并安排下一次复习。",
         "billing_terms_accept": "我同意并希望立即开始",
         "billing_terms_instruction": "点击按钮即表示你已阅读并接受相关条款。",
         "billing_terms_disabled": "AI 点数购买目前已关闭。",
@@ -1952,10 +1952,10 @@ _USER_SURFACE_CYCLE3_COPY = {
         "legacy_flash_retry": "🔁 我们会再次复习！",
         "legacy_smart_prompt": "请选择翻译：",
         "legacy_poll_translation": "翻译？",
-        "pilot_access_approved_notification": "你的 MY DICTIONARY 免费试用权限已开通。发送 /start，选择语言并开始第一组学习。",
+        "pilot_access_approved_notification": "你的 Lexi 免费试用权限已开通。发送 /start，选择语言并开始第一组学习。",
     },
     "ar": {
-        "bot_help": "MY DICTIONARY\n\n/start — درس اليوم والقائمة الرئيسية\n/learn — اختيار اللغة والموضوع\n/stats — عرض التقدم\n/lang — تغيير اللغة\n/ai — مدرّس AI والأرصدة والصوت\n/privacy — البيانات والخصوصية\n/help — المساعدة\n\nفي الدرس اضغط «إظهار المعنى» ثم قيّم الكلمة. سيحفظ البوت الإجابة ويحدد المراجعة التالية.",
+        "bot_help": "Lexi\n\n/start — درس اليوم والقائمة الرئيسية\n/learn — اختيار اللغة والموضوع\n/stats — عرض التقدم\n/lang — تغيير اللغة\n/ai — مدرّس AI والأرصدة والصوت\n/privacy — البيانات والخصوصية\n/help — المساعدة\n\nفي الدرس اضغط «إظهار المعنى» ثم قيّم الكلمة. سيحفظ البوت الإجابة ويحدد المراجعة التالية.",
         "billing_terms_accept": "أوافق وأرغب في البدء فوراً",
         "billing_terms_instruction": "بالضغط على الزر تؤكد أنك قرأت الشروط وتوافق عليها.",
         "billing_terms_disabled": "شراء أرصدة AI معطّل حالياً.",
@@ -1986,7 +1986,7 @@ _USER_SURFACE_CYCLE3_COPY = {
         "legacy_flash_retry": "🔁 سنراجعها مرة أخرى!",
         "legacy_smart_prompt": "اختر الترجمة:",
         "legacy_poll_translation": "الترجمة؟",
-        "pilot_access_approved_notification": "تم فتح وصولك إلى اختبار MY DICTIONARY المجاني. أرسل /start واختر لغة وابدأ مجموعتك الأولى.",
+        "pilot_access_approved_notification": "تم فتح وصولك إلى اختبار Lexi المجاني. أرسل /start واختر لغة وابدأ مجموعتك الأولى.",
     },
 }
 
@@ -2847,9 +2847,9 @@ if set(_BILLING_PRODUCT_COPY) != set(INTERFACE_LOCALES) or any(
 _SERVICE_COPY = {
     "en": {
         "access_waitlist": "Your free pilot request is registered. After approval, open /start again.",
-        "access_blocked": "Access to MY DICTIONARY is blocked. Contact support.",
+        "access_blocked": "Access to Lexi is blocked. Contact support.",
         "access_pending": "Pilot access is still awaiting approval. Check again with /start.",
-        "access_closed": "MY DICTIONARY is currently available only to closed-test participants.",
+        "access_closed": "Lexi is currently available only to closed-test participants.",
         "rate_limited": "Too many actions in a row. Try again in {seconds} sec.",
         "mirror_unavailable": "Mirror is not available for this account right now.",
         "onboarding_required": "Complete setup with /start first.",
@@ -2867,9 +2867,9 @@ _SERVICE_COPY = {
     },
     "fr": {
         "access_waitlist": "Votre demande pour le pilote gratuit est enregistrée. Après validation, ouvrez de nouveau /start.",
-        "access_blocked": "L'accès à MY DICTIONARY est bloqué. Contactez l'assistance.",
+        "access_blocked": "L'accès à Lexi est bloqué. Contactez l'assistance.",
         "access_pending": "L'accès au pilote attend encore une validation. Vérifiez avec /start.",
-        "access_closed": "MY DICTIONARY est actuellement réservé aux participants du test fermé.",
+        "access_closed": "Lexi est actuellement réservé aux participants du test fermé.",
         "rate_limited": "Trop d'actions successives. Réessayez dans {seconds} s.",
         "mirror_unavailable": "Mirror n'est pas disponible pour ce compte actuellement.",
         "onboarding_required": "Terminez d'abord la configuration avec /start.",
@@ -2887,9 +2887,9 @@ _SERVICE_COPY = {
     },
     "de": {
         "access_waitlist": "Deine Anfrage für den kostenlosen Pilot ist registriert. Öffne nach der Freigabe erneut /start.",
-        "access_blocked": "Der Zugang zu MY DICTIONARY ist gesperrt. Kontaktiere den Support.",
+        "access_blocked": "Der Zugang zu Lexi ist gesperrt. Kontaktiere den Support.",
         "access_pending": "Der Pilotzugang wartet noch auf Freigabe. Prüfe ihn mit /start.",
-        "access_closed": "MY DICTIONARY ist derzeit nur für geschlossene Testteilnehmer verfügbar.",
+        "access_closed": "Lexi ist derzeit nur für geschlossene Testteilnehmer verfügbar.",
         "rate_limited": "Zu viele Aktionen nacheinander. Versuche es in {seconds} Sek. erneut.",
         "mirror_unavailable": "Mirror ist für dieses Konto derzeit nicht verfügbar.",
         "onboarding_required": "Schließe zuerst die Einrichtung mit /start ab.",
@@ -2907,9 +2907,9 @@ _SERVICE_COPY = {
     },
     "ja": {
         "access_waitlist": "無料パイロットへの申請を受け付けました。承認後、もう一度 /start を開いてください。",
-        "access_blocked": "MY DICTIONARYへのアクセスは停止されています。サポートに連絡してください。",
+        "access_blocked": "Lexiへのアクセスは停止されています。サポートに連絡してください。",
         "access_pending": "パイロット参加は承認待ちです。/start で確認できます。",
-        "access_closed": "現在、MY DICTIONARYはクローズドテスト参加者のみ利用できます。",
+        "access_closed": "現在、Lexiはクローズドテスト参加者のみ利用できます。",
         "rate_limited": "操作が多すぎます。{seconds}秒後にもう一度お試しください。",
         "mirror_unavailable": "現在、このアカウントではMirrorを利用できません。",
         "onboarding_required": "先に /start で設定を完了してください。",
@@ -2927,9 +2927,9 @@ _SERVICE_COPY = {
     },
     "ar": {
         "access_waitlist": "تم تسجيل طلبك للنسخة التجريبية المجانية. بعد الموافقة افتح /start مجدداً.",
-        "access_blocked": "الوصول إلى MY DICTIONARY محظور. تواصل مع الدعم.",
+        "access_blocked": "الوصول إلى Lexi محظور. تواصل مع الدعم.",
         "access_pending": "الوصول التجريبي ما زال بانتظار الموافقة. تحقّق عبر /start.",
-        "access_closed": "MY DICTIONARY متاح حالياً للمشاركين في الاختبار المغلق فقط.",
+        "access_closed": "Lexi متاح حالياً للمشاركين في الاختبار المغلق فقط.",
         "rate_limited": "إجراءات كثيرة متتالية. حاول بعد {seconds} ثانية.",
         "mirror_unavailable": "Mirror غير متاح لهذا الحساب حالياً.",
         "onboarding_required": "أكمل الإعداد عبر /start أولاً.",
@@ -2947,9 +2947,9 @@ _SERVICE_COPY = {
     },
     "zh": {
         "access_waitlist": "免费试用申请已登记。批准后请再次打开 /start。",
-        "access_blocked": "MY DICTIONARY 访问已被阻止，请联系支持。",
+        "access_blocked": "Lexi 访问已被阻止，请联系支持。",
         "access_pending": "试用访问仍在等待批准，可通过 /start 查看。",
-        "access_closed": "MY DICTIONARY 目前仅对封闭测试参与者开放。",
+        "access_closed": "Lexi 目前仅对封闭测试参与者开放。",
         "rate_limited": "连续操作过多，请在 {seconds} 秒后重试。",
         "mirror_unavailable": "此账户目前无法使用 Mirror。",
         "onboarding_required": "请先通过 /start 完成设置。",
@@ -2967,9 +2967,9 @@ _SERVICE_COPY = {
     },
     "ru": {
         "access_waitlist": "Заявка на бесплатный пилот принята. После одобрения открой /start ещё раз.",
-        "access_blocked": "Доступ к MY DICTIONARY заблокирован. Обратись в поддержку.",
+        "access_blocked": "Доступ к Lexi заблокирован. Обратись в поддержку.",
         "access_pending": "Доступ к пилоту ещё не одобрен. Проверь статус через /start.",
-        "access_closed": "MY DICTIONARY пока доступен только участникам закрытого тестирования.",
+        "access_closed": "Lexi пока доступен только участникам закрытого тестирования.",
         "rate_limited": "Слишком много действий подряд. Попробуй снова через {seconds} сек.",
         "mirror_unavailable": "Доступ к Mirror сейчас недоступен.",
         "onboarding_required": "Сначала заверши настройку через /start.",
@@ -2987,9 +2987,9 @@ _SERVICE_COPY = {
     },
     "es": {
         "access_waitlist": "Tu solicitud para el piloto gratuito está registrada. Tras la aprobación, abre /start de nuevo.",
-        "access_blocked": "El acceso a MY DICTIONARY está bloqueado. Contacta con soporte.",
+        "access_blocked": "El acceso a Lexi está bloqueado. Contacta con soporte.",
         "access_pending": "El acceso piloto sigue pendiente. Compruébalo con /start.",
-        "access_closed": "MY DICTIONARY está disponible por ahora solo para participantes de la prueba cerrada.",
+        "access_closed": "Lexi está disponible por ahora solo para participantes de la prueba cerrada.",
         "rate_limited": "Demasiadas acciones seguidas. Inténtalo en {seconds} s.",
         "mirror_unavailable": "Mirror no está disponible para esta cuenta ahora.",
         "onboarding_required": "Completa primero la configuración con /start.",
