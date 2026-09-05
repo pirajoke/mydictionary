@@ -215,8 +215,10 @@ class LexiMiniAppArtworkContractTest(unittest.TestCase):
         self.assertNotIn("lexi-miniapp-hero-v1.jpg", html)
         self.assertNotIn('class="lexi-hero', html)
         self.assertNotIn('class="settings-visual', html)
-        self.assertIn("width: 72px", css)
-        self.assertIn("height: 48px", css)
+        self.assertEqual(html.count("section-hero"), 5)
+        self.assertIn(".section-hero .section-art", css)
+        self.assertIn("width: 100%", css)
+        self.assertIn("aspect-ratio: 2 / 1", css)
         self.assertIn("object-fit: cover", css)
 
     def test_all_tab_artwork_files_are_webp_1200_by_600(self) -> None:
