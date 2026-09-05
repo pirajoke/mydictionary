@@ -131,10 +131,16 @@ class LexiCommandLocaleContractTest(unittest.TestCase):
         self.assertTrue(request.args[1].endswith("/setMyCommands"))
         import json
 
-        payload = json.loads(request.kwargs["body"])
+        request_body = request.kwargs["body"]
+        self.assertIsInstance(
+            request_body,
+            bytes,
+            "http.client requires explicit UTF-8 bytes for localized command copy",
+        )
+        payload = json.loads(request_body.decode("utf-8"))
         self.assertEqual(payload["scope"], {"type": "chat", "chat_id": USER_ID})
         self.assertEqual(payload["commands"][0]["description"], translate("start_daily", "ru"))
-        self.assertNotIn("fr", request.kwargs["body"].casefold())
+        self.assertNotIn("fr", request_body.decode("utf-8").casefold())
         connection.close.assert_called_once()
 
 
