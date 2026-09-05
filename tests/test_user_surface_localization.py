@@ -46,6 +46,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                 "continue": "▶️ Leçon du jour",
                 "review": "🔁 Réviser",
                 "learn": "Choisir un thème",
+                "dictionary": translate("command_dictionary", "fr"),
                 "stats": "Ma progression",
                 "ai": "Tuteur IA",
                 "privacy": "Données et confidentialité",

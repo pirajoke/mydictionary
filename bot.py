@@ -15,6 +15,7 @@ import logging
 import os
 import time
 import sys
+import unicodedata
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -299,6 +300,8 @@ PENDING_AI_QUESTION_KEY = "pending_ai_question"
 PENDING_AI_QUESTION_TTL_SECONDS = 30 * 60
 PENDING_AI_TUTOR_KEY = "pending_ai_tutor"
 PENDING_AI_TUTOR_TTL_SECONDS = 10 * 60
+PENDING_DICTIONARY_LOOKUP_KEY = "pending_dictionary_lookup"
+DICTIONARY_LOOKUP_TTL_SECONDS = 10 * 60
 AI_TUTOR_ACTION_QUESTION_KEYS = {
     "vocabulary": "ai_tutor_question_vocabulary",
     "mistakes": "ai_tutor_question_mistakes",
@@ -2042,6 +2045,127 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         translate("bot_help", interface_locale_for_update(update))
     )
+
+
+def _normalized_dictionary_query(value: str) -> str | None:
+    query = str(value or "").strip()
+    if not query or len(query) > 80 or len(query.splitlines()) != 1:
+        return None
+    normalized = unicodedata.normalize("NFKC", query).casefold()
+    if not normalized or len(normalized) > 80 or len(normalized.splitlines()) != 1:
+        return None
+    return normalized
+
+
+def _dictionary_active_pack(
+    runtime: LearnerRuntime,
+) -> tuple[ContentPack, list[dict]] | None:
+    pack = CATALOG.get(str(runtime.progress.get("active_pack_id") or ""))
+    if (
+        pack is None
+        or pack.target_language != runtime.progress.get("active_lang")
+        or not pack.visible_to(runtime.role)
+        or pack not in CATALOG.compatible_packs(
+            runtime.meaning_language,
+            runtime.role,
+        )
+    ):
+        return None
+    try:
+        return pack, runtime.words(pack.pack_id)
+    except Exception:
+        return None
+
+
+def _dictionary_meanings(
+    word: Mapping[str, Any],
+    pack: ContentPack,
+    runtime: LearnerRuntime,
+) -> tuple[str, ...]:
+    if runtime.meaning_language == "ru":
+        return accepted_meanings(word)
+    aligned = CATALOG.meaning_entry(
+        word,
+        meaning_language=runtime.meaning_language,
+        target_pack=pack,
+        role=runtime.role,
+    )
+    meaning = target_text(aligned or {})
+    return (meaning,) if meaning else ()
+
+
+def _dictionary_card(
+    word: Mapping[str, Any],
+    pack: ContentPack,
+    meanings: tuple[str, ...],
+    *,
+    meaning_direction: str,
+) -> str:
+    target = _directional_text(target_text(word), pack.direction)
+    transcription = transcription_for(word, pack.target_language)
+    target_line = f"{pack.flag} {target}"
+    if transcription:
+        target_line += f" {transcription}"
+    meaning = _directional_text(
+        meanings[0] if meanings else "—",
+        meaning_direction,
+    )
+    meaning_line = f"{active_meaning_flag()} {meaning}"
+    return f"{target_line}\n{meaning_line}"[:4095]
+
+
+async def _reply_dictionary_lookup(message, query: str, *, locale: str) -> None:
+    runtime = _ACTIVE_RUNTIME.get()
+    selection = _dictionary_active_pack(runtime) if runtime is not None else None
+    if selection is None:
+        await message.reply_text(translate("dictionary_unavailable", locale))
+        return
+    normalized_query = _normalized_dictionary_query(query)
+    if normalized_query is None:
+        await message.reply_text(translate("dictionary_not_found", locale))
+        return
+    pack, words = selection
+    meaning_pack = CATALOG.aligned_pack_for_language(
+        runtime.meaning_language,
+        runtime.role,
+    )
+    meaning_direction = meaning_pack.direction if meaning_pack else "ltr"
+    for word in words:
+        meanings = _dictionary_meanings(word, pack, runtime)
+        candidates = (target_text(word), *meanings)
+        if any(
+            _normalized_dictionary_query(candidate) == normalized_query
+            for candidate in candidates
+        ):
+            await message.reply_text(
+                _dictionary_card(
+                    word,
+                    pack,
+                    meanings,
+                    meaning_direction=meaning_direction,
+                )
+            )
+            return
+    await message.reply_text(translate("dictionary_not_found", locale))
+
+
+@auth
+async def cmd_dictionary(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    locale = interface_locale_for_update(update)
+    query = " ".join(str(value) for value in getattr(context, "args", []))
+    raw_command = str(getattr(update.message, "text", "") or "")
+    if raw_command.splitlines() != [raw_command]:
+        context.user_data.pop(PENDING_DICTIONARY_LOOKUP_KEY, None)
+        await update.message.reply_text(translate("dictionary_not_found", locale))
+        return
+    if not query.strip():
+        context.user_data[PENDING_DICTIONARY_LOOKUP_KEY] = {
+            "expires_at": int(time.time()) + DICTIONARY_LOOKUP_TTL_SECONDS,
+        }
+        await update.message.reply_text(translate("dictionary_prompt", locale))
+        return
+    context.user_data.pop(PENDING_DICTIONARY_LOOKUP_KEY, None)
+    await _reply_dictionary_lookup(update.message, query, locale=locale)
 
 
 @auth
@@ -3985,6 +4109,24 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     question = str(update.message.text or "").strip()
+    dictionary_pending = context.user_data.get(PENDING_DICTIONARY_LOOKUP_KEY)
+    if dictionary_pending is not None:
+        try:
+            expires_at = int(dictionary_pending["expires_at"])
+        except (KeyError, TypeError, ValueError):
+            expires_at = 0
+        locale = interface_locale_for_update(update)
+        if expires_at < int(time.time()):
+            context.user_data.pop(PENDING_DICTIONARY_LOOKUP_KEY, None)
+            await update.message.reply_text(
+                translate("dictionary_pending_stale", locale)
+            )
+            return
+        if question:
+            context.user_data.pop(PENDING_DICTIONARY_LOOKUP_KEY, None)
+            await _reply_dictionary_lookup(update.message, question, locale=locale)
+            return
+
     pending = context.user_data.get(PENDING_AI_TUTOR_KEY)
     if isinstance(pending, Mapping) and question:
         context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
@@ -7762,6 +7904,7 @@ async def manual_polling():
     app.add_handler(CommandHandler("flash", cmd_flash))
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("learn", cmd_learn))
+    app.add_handler(CommandHandler("dictionary", cmd_dictionary))
     app.add_handler(CommandHandler("smart", cmd_smart))
     app.add_handler(CommandHandler("poll", cmd_poll))
     app.add_handler(CommandHandler("lang", cmd_lang))

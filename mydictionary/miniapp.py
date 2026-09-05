@@ -73,6 +73,7 @@ def build_telegram_command_payload(
         ("continue", "start_daily"),
         ("review", "start_review"),
         ("learn", "command_learn"),
+        ("dictionary", "command_dictionary"),
         ("stats", "command_stats"),
     ]
     if ai_enabled:
