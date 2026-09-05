@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from telegram import MenuButtonWebApp
+from telegram import MenuButtonCommands
 
 
 os.environ.setdefault("BOT_TOKEN", "123456:TESTTOKEN_ABCDEFGHIJKLMNOP")
@@ -157,7 +157,7 @@ class LearningModeMessageCleanupContractTest(unittest.IsolatedAsyncioTestCase):
 
 
 class TelegramMenuAndAvatarContractTest(unittest.IsolatedAsyncioTestCase):
-    async def test_ac3_persistent_webapp_button_is_named_menu(self):
+    async def test_ac3_startup_exposes_native_commands_menu_with_app_command(self):
         telegram_bot = SimpleNamespace(
             set_my_commands=AsyncMock(),
             set_my_name=AsyncMock(),
@@ -173,8 +173,13 @@ class TelegramMenuAndAvatarContractTest(unittest.IsolatedAsyncioTestCase):
             await bot.sync_telegram_profile(telegram_bot)
 
         menu = telegram_bot.set_chat_menu_button.await_args.kwargs["menu_button"]
-        self.assertIsInstance(menu, MenuButtonWebApp)
-        self.assertEqual(menu.text, "Menu")
+        self.assertIsInstance(menu, MenuButtonCommands)
+        commands = [
+            command.command
+            for call in telegram_bot.set_my_commands.await_args_list
+            for command in call.args[0]
+        ]
+        self.assertIn("app", commands)
 
     def test_ac4_signed_telegram_cdn_avatar_and_client_fallback_are_supported(self):
         safe_urls = (
