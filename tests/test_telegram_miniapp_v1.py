@@ -1450,6 +1450,33 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn('"en"', js)
         self.assertLess(js.index("language_code"), js.index("fetch("))
 
+    def test_err3_initial_bootstrap_is_bounded_and_recovers_without_reload(self):
+        root = Path(__file__).resolve().parents[1]
+        html = (root / "mydictionary/templates/miniapp.html").read_text(
+            encoding="utf-8"
+        )
+        js = (root / "mydictionary/static/miniapp.js").read_text(encoding="utf-8")
+
+        violations = []
+        if "AbortController" not in js:
+            violations.append("bootstrap-fetch-has-no-abort-controller")
+        if re.search(r"setTimeout\([\s\S]{0,240}?\.abort\(\)", js) is None:
+            violations.append("bootstrap-fetch-has-no-bounded-timeout")
+        if re.search(r"signal\s*:\s*[A-Za-z_$][\w$]*\.signal", js) is None:
+            violations.append("bootstrap-timeout-is-not-wired-to-fetch")
+        if "clearTimeout(" not in js:
+            violations.append("bootstrap-timeout-is-not-cleaned-up")
+        if re.search(r"BOOTSTRAP_MAX_ATTEMPTS\s*=\s*[2-9]", js) is None:
+            violations.append("initial-bootstrap-has-no-bounded-automatic-retry")
+        if re.search(r"location\s*\.\s*reload\s*\(", js):
+            violations.append("bootstrap-recovery-must-not-loop-page-reloads")
+        if 'headers: {"X-Telegram-Init-Data": webApp.initData}' not in js:
+            violations.append("bootstrap-retry-does-not-read-authenticated-init-data")
+        if 'id="retry-button"' not in html or 'data-i18n="retry"' not in html:
+            violations.append("exhausted-retries-have-no-localized-manual-retry")
+
+        self.assertEqual(violations, [])
+
     def test_ac7_languages_use_one_flag_and_a_dedicated_localized_current_label(self):
         miniapp = miniapp_module(self)
         root = Path(__file__).resolve().parents[1]

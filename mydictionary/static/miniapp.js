@@ -33,6 +33,9 @@
   let interfaceLocalePending = false;
   let referralInvitePending = false;
   const referralInviteEndpoint = "/miniapp/api/referral-invite";
+  const BOOTSTRAP_TIMEOUT_MS = 5000;
+  const BOOTSTRAP_RETRY_DELAY_MS = 400;
+  const BOOTSTRAP_MAX_ATTEMPTS = 2;
 
   const node = (id) => document.getElementById(id);
   const text = (element, value) => { element.textContent = String(value ?? ""); };
@@ -669,25 +672,47 @@
     node("error-state").hidden = false;
   }
 
-  async function load() {
-    node("loading-state").hidden = false;
-    node("error-state").hidden = true;
+  async function fetchBootstrap() {
+    if (!webApp || !webApp.initData) throw new Error("disabled");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), BOOTSTRAP_TIMEOUT_MS);
     try {
-      if (!webApp || !webApp.initData) throw new Error("disabled");
-      webApp.ready();
-      webApp.expand();
       const response = await fetch("/miniapp/api/bootstrap", {
         headers: {"X-Telegram-Init-Data": webApp.initData},
         cache: "no-store",
-        credentials: "omit"
+        credentials: "omit",
+        signal: controller.signal
       });
       if (!response.ok) throw new Error("error");
-      render(await response.json());
-      return true;
-    } catch (_) {
-      showError();
-      return false;
+      return await response.json();
+    } finally {
+      clearTimeout(timeoutId);
     }
+  }
+
+  async function load() {
+    node("loading-state").hidden = false;
+    node("error-state").hidden = true;
+    if (webApp) {
+      try {
+        webApp.ready();
+        webApp.expand();
+      } catch (_) {
+        // The authenticated bootstrap below remains authoritative.
+      }
+    }
+    for (let attempt = 1; attempt <= BOOTSTRAP_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        render(await fetchBootstrap());
+        return true;
+      } catch (_) {
+        if (attempt < BOOTSTRAP_MAX_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, BOOTSTRAP_RETRY_DELAY_MS));
+        }
+      }
+    }
+    showError();
+    return false;
   }
 
   const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
