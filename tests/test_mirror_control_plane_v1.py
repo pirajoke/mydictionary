@@ -219,7 +219,7 @@ class MirrorPreferenceContractTest(StoreTestCase):
         with self.assertRaises(ValueError):
             set_preferences(101, mode="exam", depth="compact", level="a2")
 
-    def test_ac_02_settings_show_only_enabled_modes_and_no_new_command(self):
+    def test_ac_02_settings_show_only_enabled_modes_and_no_new_mirror_command(self):
         signature = python_inspect.signature(bot.settings_keyboard)
         self.assertIn("mirror_policy", signature.parameters)
         keyboard = bot.settings_keyboard(
@@ -252,7 +252,8 @@ class MirrorPreferenceContractTest(StoreTestCase):
         self.assertIn("settings:mirror-level:b1", callbacks)
 
         commands = {item.command for item in bot.build_bot_commands(ai_enabled=True)}
-        self.assertLessEqual(len(commands), 7)
+        self.assertLessEqual(len(commands), 8)
+        self.assertNotIn("mirror", commands)
         self.assertNotIn("coach", commands)
         self.assertNotIn("exam", commands)
         self.assertNotIn("translate_voice", commands)

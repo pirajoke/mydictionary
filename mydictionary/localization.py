@@ -1263,6 +1263,68 @@ _MINIAPP_TELEGRAM_COPY = {
 for _locale, _messages in _MINIAPP_TELEGRAM_COPY.items():
     _CATALOG[_locale].update(_messages)
 
+_DICTIONARY_LOOKUP_COPY = {
+    "en": {
+        "command_dictionary": "Dictionary",
+        "dictionary_prompt": "Send one word or short phrase.",
+        "dictionary_not_found": "This word is not in your selected dictionary. Try /ai for an optional AI explanation.",
+        "dictionary_pending_stale": "This dictionary request has expired. Send /dictionary again.",
+        "dictionary_unavailable": "The dictionary is unavailable for the selected language.",
+    },
+    "fr": {
+        "command_dictionary": "Dictionnaire",
+        "dictionary_prompt": "Envoyez un mot ou une courte expression.",
+        "dictionary_not_found": "Ce mot ne figure pas dans le dictionnaire sélectionné. Essayez /ai pour une explication IA facultative.",
+        "dictionary_pending_stale": "Cette demande de dictionnaire a expiré. Envoyez de nouveau /dictionary.",
+        "dictionary_unavailable": "Le dictionnaire n’est pas disponible pour la langue sélectionnée.",
+    },
+    "de": {
+        "command_dictionary": "Wörterbuch",
+        "dictionary_prompt": "Sende ein Wort oder einen kurzen Ausdruck.",
+        "dictionary_not_found": "Dieses Wort ist nicht im ausgewählten Wörterbuch. Nutze optional /ai für eine KI-Erklärung.",
+        "dictionary_pending_stale": "Diese Wörterbuchanfrage ist abgelaufen. Sende erneut /dictionary.",
+        "dictionary_unavailable": "Das Wörterbuch ist für die gewählte Sprache nicht verfügbar.",
+    },
+    "ja": {
+        "command_dictionary": "辞書",
+        "dictionary_prompt": "単語または短いフレーズを送ってください。",
+        "dictionary_not_found": "選択中の辞書にこの単語はありません。必要なら /ai でAIの説明を利用できます。",
+        "dictionary_pending_stale": "辞書リクエストの期限が切れました。もう一度 /dictionary を送ってください。",
+        "dictionary_unavailable": "選択した言語の辞書は利用できません。",
+    },
+    "ar": {
+        "command_dictionary": "القاموس",
+        "dictionary_prompt": "أرسل كلمة واحدة أو عبارة قصيرة.",
+        "dictionary_not_found": "هذه الكلمة غير موجودة في القاموس المحدد. يمكنك استخدام /ai اختيارياً لشرح بالذكاء الاصطناعي.",
+        "dictionary_pending_stale": "انتهت صلاحية طلب القاموس. أرسل /dictionary من جديد.",
+        "dictionary_unavailable": "القاموس غير متاح للغة المحددة.",
+    },
+    "zh": {
+        "command_dictionary": "词典",
+        "dictionary_prompt": "请发送一个单词或短语。",
+        "dictionary_not_found": "所选词典中没有这个词。如需 AI 解释，可以选择使用 /ai。",
+        "dictionary_pending_stale": "本次词典请求已过期。请重新发送 /dictionary。",
+        "dictionary_unavailable": "所选语言的词典暂不可用。",
+    },
+    "ru": {
+        "command_dictionary": "Словарь",
+        "dictionary_prompt": "Отправь одно слово или короткую фразу.",
+        "dictionary_not_found": "Этого слова нет в выбранном словаре. Для необязательного AI-объяснения используй /ai.",
+        "dictionary_pending_stale": "Запрос к словарю устарел. Отправь /dictionary ещё раз.",
+        "dictionary_unavailable": "Словарь для выбранного языка сейчас недоступен.",
+    },
+    "es": {
+        "command_dictionary": "Diccionario",
+        "dictionary_prompt": "Envía una palabra o una frase corta.",
+        "dictionary_not_found": "Esta palabra no está en el diccionario seleccionado. Usa /ai si quieres una explicación opcional con IA.",
+        "dictionary_pending_stale": "Esta consulta del diccionario ha caducado. Envía /dictionary de nuevo.",
+        "dictionary_unavailable": "El diccionario no está disponible para el idioma seleccionado.",
+    },
+}
+
+for _locale, _messages in _DICTIONARY_LOOKUP_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
 _TELEGRAM_INVITE_COPY = {
     "en": {
         "command_invite": "Invite friends",

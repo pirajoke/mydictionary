@@ -116,13 +116,21 @@ class BotReadinessTest(unittest.TestCase):
 
 
 class BotPollingReadinessTest(unittest.IsolatedAsyncioTestCase):
-    def test_public_command_menu_has_at_most_seven_contextual_commands(self):
+    def test_public_command_menu_has_at_most_eight_contextual_commands(self):
         base = bot.build_bot_commands(ai_enabled=False)
         with_ai = bot.build_bot_commands(ai_enabled=True)
 
         self.assertEqual(
             [command.command for command in base],
-            ["continue", "review", "learn", "stats", "privacy", "help"],
+            [
+                "continue",
+                "review",
+                "learn",
+                "dictionary",
+                "stats",
+                "privacy",
+                "help",
+            ],
         )
         self.assertEqual(
             [command.command for command in with_ai],
@@ -130,14 +138,15 @@ class BotPollingReadinessTest(unittest.IsolatedAsyncioTestCase):
                 "continue",
                 "review",
                 "learn",
+                "dictionary",
                 "stats",
                 "ai",
                 "privacy",
                 "help",
             ],
         )
-        self.assertLessEqual(len(base), 7)
-        self.assertLessEqual(len(with_ai), 7)
+        self.assertLessEqual(len(base), 8)
+        self.assertLessEqual(len(with_ai), 8)
 
     async def test_polling_publishes_lifecycle_and_closes_resources(self):
         store = SimpleNamespace(
