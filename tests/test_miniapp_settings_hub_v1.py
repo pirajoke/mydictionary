@@ -297,7 +297,7 @@ class MiniAppSettingsHubV1SurfaceContractTest(unittest.TestCase):
 
 class MiniAppSettingsHubV1BotContractTest(unittest.IsolatedAsyncioTestCase):
     def test_ac4_help_and_settings_are_allowlisted_while_unknown_actions_are_rejected(self):
-        for action in ("learn", "ai", "buy", "lang", "settings", "privacy", "help"):
+        for action in ("learn", "continue", "ai", "buy", "lang", "settings", "privacy", "help"):
             with self.subTest(action=action):
                 self.assertEqual(
                     bot.miniapp_start_action(f"miniapp_{action}"),

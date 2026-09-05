@@ -24,6 +24,7 @@ class SafetySettingsTest(unittest.TestCase):
         self.assertEqual(settings.for_handler("billing_open_cb")[0], "billing")
         self.assertEqual(settings.for_handler("billing_resume_ai_cb")[0], "ai")
         self.assertEqual(settings.for_handler("block_quiz_cb")[0], "learning")
+        self.assertEqual(settings.for_handler("cmd_continue")[0], "learning")
 
     def test_invalid_values_fail_closed(self):
         with self.assertRaises(SafetyConfigurationError):

@@ -45,6 +45,19 @@
           </button>
         </div>
 
+        <section id="daily-quest" class="daily-quest dashboard-section" aria-labelledby="daily-quest-title">
+          <span class="quest-icon" aria-hidden="true">🎯</span>
+          <div class="daily-quest-copy">
+            <h2 id="daily-quest-title" data-i18n="daily_quest"></h2>
+            <p id="first-lesson-hint" class="first-lesson-hint" hidden></p>
+            <div class="daily-quest-values">
+              <span><b id="daily-quest-goal">0</b> <span data-i18n="metric_daily_goal"></span></span>
+              <span><b id="daily-quest-today-xp">0</b> <span data-i18n="metric_today_xp"></span></span>
+            </div>
+          </div>
+          <button id="daily-quest-action" class="primary-action dashboard-action" type="button" data-action="continue" data-i18n="continue_lesson"></button>
+        </section>
+
         <section id="profile-game-progress" class="profile-game-progress dashboard-section" aria-labelledby="profile-game-title">
           <span class="game-icon" aria-hidden="true">🏆</span>
           <div class="profile-level-copy">
@@ -75,18 +88,6 @@
           </div>
         </section>
 
-        <section id="daily-quest" class="daily-quest dashboard-section" aria-labelledby="daily-quest-title">
-          <span class="quest-icon" aria-hidden="true">🎯</span>
-          <div class="daily-quest-copy">
-            <h2 id="daily-quest-title" data-i18n="daily_quest"></h2>
-            <div class="daily-quest-values">
-              <span><b id="daily-quest-goal">0</b> <span data-i18n="metric_daily_goal"></span></span>
-              <span><b id="daily-quest-today-xp">0</b> <span data-i18n="metric_today_xp"></span></span>
-            </div>
-          </div>
-          <button class="primary-action dashboard-action" type="button" data-action="learn" data-i18n="continue_lesson"></button>
-        </section>
-
         <section class="streak-card dashboard-section" aria-labelledby="calendar-title">
           <div class="calendar-header">
             <button id="calendar-previous" type="button" data-i18n-aria-label="previous_month"><span aria-hidden="true">‹</span></button>
@@ -114,7 +115,7 @@
         </header>
         <div id="word-summary" class="word-overview" role="list"></div>
         <div id="word-list" class="word-list dashboard-list"></div>
-        <div id="empty-words" class="state-card dashboard-state empty" data-ui-state="empty" role="status" hidden><p data-i18n="empty_words"></p><button class="dashboard-action" type="button" data-action="learn" data-i18n="start_lesson"></button></div>
+        <div id="empty-words" class="state-card dashboard-state empty" data-ui-state="empty" role="status" hidden><p data-i18n="empty_words"></p><button class="dashboard-action" type="button" data-action="continue" data-i18n="start_lesson"></button></div>
       </section>
 
       <section id="panel-credits" class="panel dashboard-panel" role="tabpanel" data-panel="credits" aria-labelledby="tab-credits" hidden>

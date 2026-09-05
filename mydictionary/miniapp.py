@@ -363,7 +363,7 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     "en": {
         "loading": "Loading…", "error": "Something went wrong.", "retry": "Try again",
         "profile": "Profile", "words": "My words", "credits": "AI credits", "languages": "Languages", "settings": "Settings",
-        "continue_lesson": "Continue lesson", "daily_quest": "Daily quest", "ai_tutor": "AI Tutor", "share": "Share",
+        "continue_lesson": "Continue lesson", "start_first_lesson": "Start first lesson", "first_lesson_hint": "3 minutes · your first lesson is ready", "daily_quest": "Daily quest", "ai_tutor": "AI Tutor", "share": "Share",
         "empty_words": "No tracked words yet. Start a lesson to add some.", "start_lesson": "Start a lesson",
         "change_language": "Change in Telegram", "open_settings": "Open settings", "privacy": "Privacy",
         "word_review": "Review", "word_learned": "Learned", "attempts_correct": "Correct", "attempts_wrong": "Wrong",
@@ -384,7 +384,7 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     "fr": {
         "loading": "Chargement…", "error": "Un problème est survenu.", "retry": "Réessayer",
         "profile": "Profil", "words": "Mes mots", "credits": "Crédits IA", "languages": "Langues", "settings": "Réglages",
-        "continue_lesson": "Continuer la leçon", "daily_quest": "Mission du jour", "ai_tutor": "Tuteur IA", "share": "Partager",
+        "continue_lesson": "Continuer la leçon", "start_first_lesson": "Commencer le premier cours", "first_lesson_hint": "3 minutes · votre premier cours est prêt", "daily_quest": "Mission du jour", "ai_tutor": "Tuteur IA", "share": "Partager",
         "empty_words": "Aucun mot suivi. Commencez une leçon pour en ajouter.", "start_lesson": "Commencer une leçon",
         "change_language": "Changer dans Telegram", "open_settings": "Ouvrir les réglages", "privacy": "Confidentialité",
         "word_review": "À réviser", "word_learned": "Appris", "attempts_correct": "Correct", "attempts_wrong": "Incorrectes",
@@ -405,7 +405,7 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     "de": {
         "loading": "Wird geladen…", "error": "Ein Fehler ist aufgetreten.", "retry": "Erneut versuchen",
         "profile": "Profil", "words": "Meine Wörter", "credits": "KI-Credits", "languages": "Sprachen", "settings": "Einstellungen",
-        "continue_lesson": "Lektion fortsetzen", "daily_quest": "Tagesmission", "ai_tutor": "KI-Tutor", "share": "Teilen",
+        "continue_lesson": "Lektion fortsetzen", "start_first_lesson": "Erste Lektion starten", "first_lesson_hint": "3 Minuten · deine erste Lektion ist bereit", "daily_quest": "Tagesmission", "ai_tutor": "KI-Tutor", "share": "Teilen",
         "empty_words": "Noch keine Wörter gespeichert. Starte eine Lektion.", "start_lesson": "Lektion starten",
         "change_language": "In Telegram ändern", "open_settings": "Einstellungen öffnen", "privacy": "Datenschutz",
         "word_review": "Wiederholen", "word_learned": "Gelernt", "attempts_correct": "Richtig", "attempts_wrong": "Falsch",
@@ -426,7 +426,7 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     "ja": {
         "loading": "読み込み中…", "error": "問題が発生しました。", "retry": "再試行",
         "profile": "プロフィール", "words": "単語", "credits": "AIクレジット", "languages": "言語", "settings": "設定",
-        "continue_lesson": "レッスンを続ける", "daily_quest": "今日のミッション", "ai_tutor": "AIチューター", "share": "共有",
+        "continue_lesson": "レッスンを続ける", "start_first_lesson": "最初のレッスンを始める", "first_lesson_hint": "3分 · 最初のレッスンの準備ができました", "daily_quest": "今日のミッション", "ai_tutor": "AIチューター", "share": "共有",
         "empty_words": "記録された単語はまだありません。レッスンを始めましょう。", "start_lesson": "レッスンを始める",
         "change_language": "Telegramで変更", "open_settings": "設定を開く", "privacy": "プライバシー",
         "word_review": "復習", "word_learned": "習得済み", "attempts_correct": "正解", "attempts_wrong": "不正解",
@@ -447,7 +447,7 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     "ar": {
         "loading": "جارٍ التحميل…", "error": "حدث خطأ.", "retry": "إعادة المحاولة",
         "profile": "الملف", "words": "كلماتي", "credits": "رصيد AI", "languages": "اللغات", "settings": "الإعدادات",
-        "continue_lesson": "متابعة الدرس", "daily_quest": "مهمة اليوم", "ai_tutor": "مدرّس AI", "share": "مشاركة",
+        "continue_lesson": "متابعة الدرس", "start_first_lesson": "ابدأ الدرس الأول", "first_lesson_hint": "3 دقائق · درسك الأول جاهز", "daily_quest": "مهمة اليوم", "ai_tutor": "مدرّس AI", "share": "مشاركة",
         "empty_words": "لا توجد كلمات محفوظة بعد. ابدأ درساً.", "start_lesson": "بدء درس",
         "change_language": "التغيير في Telegram", "open_settings": "فتح الإعدادات", "privacy": "الخصوصية",
         "word_review": "مراجعة", "word_learned": "تم تعلمها", "attempts_correct": "صحيح", "attempts_wrong": "خاطئة",
@@ -468,7 +468,7 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     "zh": {
         "loading": "加载中…", "error": "出现问题。", "retry": "重试",
         "profile": "个人资料", "words": "我的单词", "credits": "AI 点数", "languages": "语言", "settings": "设置",
-        "continue_lesson": "继续课程", "daily_quest": "今日任务", "ai_tutor": "AI 导师", "share": "分享",
+        "continue_lesson": "继续课程", "start_first_lesson": "开始第一课", "first_lesson_hint": "3 分钟 · 第一课已准备好", "daily_quest": "今日任务", "ai_tutor": "AI 导师", "share": "分享",
         "empty_words": "还没有记录单词。开始课程即可添加。", "start_lesson": "开始课程",
         "change_language": "在 Telegram 中更改", "open_settings": "打开设置", "privacy": "隐私",
         "word_review": "复习", "word_learned": "已掌握", "attempts_correct": "正确", "attempts_wrong": "错误",
@@ -489,7 +489,7 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     "ru": {
         "loading": "Загрузка…", "error": "Что-то пошло не так.", "retry": "Повторить",
         "profile": "Профиль", "words": "Мои слова", "credits": "AI-кредиты", "languages": "Языки", "settings": "Настройки",
-        "continue_lesson": "Продолжить урок", "daily_quest": "Задание дня", "ai_tutor": "AI-репетитор", "share": "Поделиться",
+        "continue_lesson": "Продолжить урок", "start_first_lesson": "Начать первый урок", "first_lesson_hint": "3 минуты · первый урок уже готов", "daily_quest": "Задание дня", "ai_tutor": "AI-репетитор", "share": "Поделиться",
         "empty_words": "Пока нет отслеживаемых слов. Начните урок.", "start_lesson": "Начать урок",
         "change_language": "Сменить в Telegram", "open_settings": "Открыть настройки", "privacy": "Приватность",
         "word_review": "Повторить", "word_learned": "Изучено", "attempts_correct": "Верно", "attempts_wrong": "Неверно",
@@ -510,7 +510,7 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     "es": {
         "loading": "Cargando…", "error": "Ha ocurrido un problema.", "retry": "Reintentar",
         "profile": "Perfil", "words": "Mis palabras", "credits": "Créditos de IA", "languages": "Idiomas", "settings": "Ajustes",
-        "continue_lesson": "Continuar la lección", "daily_quest": "Misión del día", "ai_tutor": "Tutor de IA", "share": "Compartir",
+        "continue_lesson": "Continuar la lección", "start_first_lesson": "Empezar la primera lección", "first_lesson_hint": "3 minutos · tu primera lección está lista", "daily_quest": "Misión del día", "ai_tutor": "Tutor de IA", "share": "Compartir",
         "empty_words": "Aún no hay palabras guardadas. Empieza una lección.", "start_lesson": "Empezar una lección",
         "change_language": "Cambiar en Telegram", "open_settings": "Abrir ajustes", "privacy": "Privacidad",
         "word_review": "Repasar", "word_learned": "Aprendida", "attempts_correct": "Correcto", "attempts_wrong": "Incorrectos",
@@ -1174,6 +1174,7 @@ def build_bootstrap(
         },
         "actions": {
             "learn": "miniapp_learn",
+            "continue": "miniapp_continue",
             "ai": "miniapp_ai",
             "buy": "miniapp_buy",
             "lang": "miniapp_lang",

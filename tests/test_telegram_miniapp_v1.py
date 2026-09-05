@@ -47,6 +47,8 @@ MINIAPP_COPY_KEYS = {
     "languages",
     "settings",
     "continue_lesson",
+    "start_first_lesson",
+    "first_lesson_hint",
     "ai_tutor",
     "share",
     "empty_words",
@@ -323,7 +325,7 @@ class MiniAppBootstrapContractTest(unittest.TestCase):
         self.assertFalse(payload["features"]["stars_checkout"])
         self.assertEqual(
             set(payload["actions"]),
-            {"learn", "ai", "buy", "lang", "settings", "privacy", "help", "share"},
+            {"learn", "continue", "ai", "buy", "lang", "settings", "privacy", "help", "share"},
         )
         for key in SENSITIVE_KEYS:
             with self.subTest(key=key):
@@ -1066,7 +1068,7 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
         source = importlib.import_module("inspect").getsource(bot.manual_polling)
         self.assertIn('CommandHandler("app", cmd_app)', source)
         self.assertIn("set_chat_menu_button", importlib.import_module("inspect").getsource(bot.sync_telegram_profile))
-        for action in ("learn", "ai", "buy", "lang", "settings", "privacy", "help"):
+        for action in ("learn", "continue", "ai", "buy", "lang", "settings", "privacy", "help"):
             self.assertEqual(
                 bot.miniapp_start_action(f"miniapp_{action}"),
                 action,
@@ -1131,6 +1133,7 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
     async def test_ac6_start_deep_links_obey_target_specific_safety_limits(self):
         for action, expected_scope in (
             ("learn", "learning"),
+            ("continue", "learning"),
             ("ai", "ai"),
             ("buy", "billing"),
         ):
@@ -1159,6 +1162,7 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
                 policies = {
                     "cmd_start": ("default", object()),
                     "cmd_learn": ("learning", object()),
+                    "cmd_continue": ("learning", object()),
                     "cmd_ai": ("ai", object()),
                     "cmd_buy": ("billing", object()),
                 }
@@ -1175,6 +1179,7 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
                     return_value=bot.CATALOG.require("en-basics-100")
                 )
                 ai_probe = AsyncMock()
+                continue_probe = AsyncMock()
                 buy_probe = MagicMock(return_value=False)
 
                 @contextmanager
@@ -1203,6 +1208,11 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
                     ),
                     patch.object(bot, "record_product_event"),
                     patch.object(bot, "active_content_pack", learn_probe),
+                    patch.object(
+                        bot,
+                        "cmd_continue",
+                        SimpleNamespace(__wrapped__=continue_probe),
+                    ),
                     patch.object(bot, "handle_mirror_question", ai_probe),
                     patch.object(bot, "_billing_entry_enabled_for", buy_probe),
                 ):
@@ -1216,7 +1226,12 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
                     [call.kwargs["policy"] for call in limiter.consume.call_args_list],
                     [policies["cmd_start"][1], policies[f"cmd_{action}"][1]],
                 )
-                {"learn": learn_probe, "ai": ai_probe, "buy": buy_probe}[
+                {
+                    "learn": learn_probe,
+                    "continue": continue_probe,
+                    "ai": ai_probe,
+                    "buy": buy_probe,
+                }[
                     action
                 ].assert_not_called()
                 store.update_product_profile.assert_called_once()

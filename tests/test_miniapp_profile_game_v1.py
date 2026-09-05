@@ -44,6 +44,8 @@ EXISTING_GAME_COPY_KEYS = {
     "metric_tracked_words",
     "daily_quest",
     "continue_lesson",
+    "start_first_lesson",
+    "first_lesson_hint",
 }
 
 
@@ -169,7 +171,7 @@ class MiniAppProfileGameV1ContractTest(unittest.TestCase):
         self.assertIsNotNone(metric_render)
         self.assertIn("metric(copy.metric_best_streak, progress.best_streak)", metric_render.group(1))
 
-    def test_ac3_daily_quest_uses_real_goal_today_xp_and_existing_learn_action(self):
+    def test_ac3_daily_quest_uses_real_goal_today_xp_and_continue_action(self):
         quest = element_region(self.html, "daily-quest", "section")
         self.assertIn('aria-labelledby="daily-quest-title"', opening_tag(self.html, "daily-quest"))
         self.assertIn('id="daily-quest-today-xp"', quest)
@@ -178,7 +180,7 @@ class MiniAppProfileGameV1ContractTest(unittest.TestCase):
         self.assertIn('data-i18n="metric_daily_goal"', quest)
         self.assertRegex(
             quest,
-            r'<button\b(?=[^>]*\bdata-action=["\']learn["\'])'
+            r'<button\b(?=[^>]*\bdata-action=["\']continue["\'])'
             r'(?=[^>]*\bdata-i18n=["\']continue_lesson["\'])[^>]*>',
         )
         self.assertRegex(
@@ -197,11 +199,11 @@ class MiniAppProfileGameV1ContractTest(unittest.TestCase):
         if 'data-i18n="daily_quest"' not in title_tag:
             violations.append("template:#daily-quest-title->daily_quest")
         if not re.search(
-            r'<button\b(?=[^>]*\bdata-action=["\']learn["\'])'
+            r'<button\b(?=[^>]*\bdata-action=["\']continue["\'])'
             r'(?=[^>]*\bdata-i18n=["\']continue_lesson["\'])[^>]*>',
             quest,
         ):
-            violations.append("template:learn-cta->continue_lesson")
+            violations.append("template:continue-cta->continue_lesson")
 
         copy_node = next(
             (
@@ -282,7 +284,7 @@ class MiniAppProfileGameV1ContractTest(unittest.TestCase):
 
         self.assertEqual(
             set(re.findall(r'data-action=["\']([^"\']+)["\']', self.html)),
-            {"learn", "share", "ai", "lang", "settings", "privacy"},
+            {"continue", "share", "ai", "lang", "settings", "privacy"},
         )
         self.assertEqual(
             set(re.findall(r'fetch\(\s*["\']([^"\']+)["\']', self.js)),

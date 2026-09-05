@@ -133,6 +133,7 @@ class SafetySettings:
                 "smart",
                 "poll",
                 "learn",
+                "continue",
                 "block_",
             )
         ):

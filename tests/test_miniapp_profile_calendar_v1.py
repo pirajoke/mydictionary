@@ -221,7 +221,7 @@ class MiniAppProfileFrontendContractTest(unittest.TestCase):
             'id="profile-photo"',
             'id="profile-avatar-fallback"',
             'id="profile-credit-balance"',
-            'data-action="learn"',
+            'data-action="continue"',
             'data-action="share"',
             'data-action="ai"',
         ):
