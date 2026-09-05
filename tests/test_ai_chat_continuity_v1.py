@@ -22,6 +22,16 @@ PERSONA = "Answer directly as a careful language teacher using grounded facts."
 
 
 class AIChatContinuityRoutingTest(unittest.TestCase):
+    NATURAL_CONTEXT_FOLLOWUPS = {
+        "en": "what's the issue?",
+        "fr": "où est le problème ?",
+        "de": "wo liegt das Problem?",
+        "ja": "何が問題なの？",
+        "ar": "ما المشكلة؟",
+        "zh": "问题出在哪里？",
+        "ru": "в чем затык",
+        "es": "¿cuál es el problema?",
+    }
     DEEP_METHODS = {
         "en": "tell me about language-learning methods",
         "fr": "parle-moi des méthodes d’apprentissage des langues",
@@ -238,6 +248,54 @@ class AIChatContinuityRoutingTest(unittest.TestCase):
                     )
                     self.assertIs(empty["is_continuation"], False)
                     self.assertEqual(empty["recent_dialogue"], [])
+
+    def test_ac2_natural_context_questions_continue_chat_not_dictionary_mode(self):
+        history = companion_tests.recent_turns(3)
+        self.assertEqual(
+            set(self.NATURAL_CONTEXT_FOLLOWUPS), set(bot.INTERFACE_LOCALES)
+        )
+        for locale, question in self.NATURAL_CONTEXT_FOLLOWUPS.items():
+            with self.subTest(locale=locale, history="present"):
+                payload = companion.build_mirror_provider_payload(
+                    question=question,
+                    admin_guidance=PERSONA,
+                    grounded_snapshot={"has_progress": True, "due_count": 2},
+                    recent_dialogue=history,
+                    response_style="teacher",
+                    task_kind=companion.classify_mirror_task(question),
+                    communication_mode="teacher",
+                    answer_depth="balanced",
+                    learner_level="adaptive",
+                    interface_locale=locale,
+                )
+                self.assertIs(payload["is_continuation"], True)
+                self.assertEqual(payload["task_kind"], "general_conversation")
+                self.assertEqual(payload["recent_dialogue"], history[-8:])
+
+            with self.subTest(locale=locale, history="empty"):
+                payload = companion.build_mirror_provider_payload(
+                    question=question,
+                    admin_guidance=PERSONA,
+                    grounded_snapshot={"has_progress": False},
+                    recent_dialogue=[],
+                    response_style="teacher",
+                    task_kind=companion.classify_mirror_task(question),
+                    communication_mode="teacher",
+                    answer_depth="balanced",
+                    learner_level="adaptive",
+                    interface_locale=locale,
+                )
+                self.assertIs(payload["is_continuation"], False)
+
+        for explicit_request in (
+            "как перевести «в чем затык» на английский?",
+            "что значит выражение «в чем затык»?",
+        ):
+            with self.subTest(explicit_request=explicit_request):
+                self.assertEqual(
+                    companion.classify_mirror_task(explicit_request),
+                    "translation_nuance",
+                )
 
 
 class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
