@@ -229,6 +229,14 @@ _CONTINUATION_PATTERNS = frozenset(
         "и что дальше",
         "на чем фокус",
         "на чём фокус",
+        "в чем затык",
+        "what s the issue",
+        "où est le problème",
+        "wo liegt das problem",
+        "何が問題なの",
+        "ما المشكلة",
+        "问题出在哪里",
+        "cuál es el problema",
         "y después",
         "thanks now tell me about study methods",
         "merci maintenant parle moi des méthodes d apprentissage",
@@ -875,7 +883,14 @@ def classify_mirror_task(text: str) -> str:
         return "progress_review"
     if any(
         value in normalized
-        for value in ("значит", "перевод", "оттен", "вариант значения")
+        for value in (
+            "значит",
+            "перевод",
+            "перевед",
+            "перевест",
+            "оттен",
+            "вариант значения",
+        )
     ):
         return "translation_nuance"
     if any(value in normalized for value in ("исправ", "проверь фраз", "correct")):

@@ -1083,9 +1083,9 @@ class LearningCompanionServiceHardeningTest(unittest.IsolatedAsyncioTestCase):
 
 
 class LearningCompanionPromptContractTest(unittest.TestCase):
-    def test_ac_7_runtime_uses_exact_mirror_v6_contract_and_preserves_schema(self):
-        path = ROOT / "prompts/mirror-v6.txt"
-        self.assertTrue(path.is_file(), "missing reviewed Mirror V6 prompt contract")
+    def test_ac_7_runtime_uses_exact_mirror_v7_contract_and_preserves_schema(self):
+        path = ROOT / "prompts/mirror-v7.txt"
+        self.assertTrue(path.is_file(), "missing reviewed Mirror V7 prompt contract")
         reviewed = path.read_text(encoding="utf-8")
         if reviewed.endswith("\n"):
             reviewed = reviewed[:-1]
@@ -1113,6 +1113,10 @@ class LearningCompanionPromptContractTest(unittest.TestCase):
             "use relevant recent dialogue naturally",
             "answer the current question directly",
             "do not claim context is missing when it is present",
+            "general_conversation",
+            "do not turn an ordinary conversational message into a dictionary entry",
+            "only explain or translate wording when the learner explicitly asks",
+            "ask one short context-aware clarification",
         ):
             with self.subTest(prompt_marker=required):
                 self.assertIn(required, normalized)
