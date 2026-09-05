@@ -967,6 +967,23 @@ def create_app(
                 return jsonify(error="access_denied"), 403
             except Exception:
                 return jsonify(error="temporarily_unavailable"), 503
+        if miniapp_settings.bot_token or app.testing:
+            try:
+                miniapp_runtime.sync_telegram_chat_commands(
+                    bot_token=miniapp_settings.bot_token,
+                    user_id=user_id,
+                    locale=locale,
+                    ai_enabled=str(app.config.get("AI_TUTOR_ENABLED") or "")
+                    .strip()
+                    .lower()
+                    in {"1", "true", "yes", "on"},
+                    miniapp_enabled=miniapp_settings.enabled,
+                )
+            except Exception as exc:
+                app.logger.warning(
+                    "Private Telegram command sync unavailable: error_type=%s",
+                    type(exc).__name__,
+                )
         return app.response_class(
             response=serialized_payload,
             status=200,
@@ -1504,7 +1521,10 @@ def create_app(
                 "admin_host": app.config["ADMIN_HOST"],
                 "admin_port": app.config["ADMIN_PORT"],
                 "release_sha": os.environ.get("RELEASE_SHA", "not set"),
-                "welcome_banner": (BASE_DIR / "assets/lexi-welcome-v1.jpg").exists(),
+                "welcome_banner": (
+                    BASE_DIR
+                    / "mydictionary/static/mascot/lexi-telegram-avatar-v1.jpg"
+                ).exists(),
                 "bot_ready": bot_readiness.ready,
                 "bot_state": bot_readiness.state,
                 "bot_reason": bot_readiness.reason,

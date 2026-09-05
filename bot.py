@@ -31,6 +31,7 @@ from telegram import (
     MenuButtonDefault,
     MenuButtonWebApp,
     ReplyKeyboardMarkup,
+    BotCommandScopeChat,
     Update,
     WebAppInfo,
 )
@@ -115,7 +116,7 @@ from mydictionary.mirror_assistant import (
     render_mirror_greeting,
     render_mirror_progress_focus,
 )
-from mydictionary.miniapp import MiniAppSettings
+from mydictionary.miniapp import MiniAppSettings, build_telegram_command_payload
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.runtime_secrets import load_runtime_secret_files
 from mydictionary.privacy import erase_user_learning_data
@@ -155,7 +156,9 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 BASE_DIR = Path(__file__).parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
-WELCOME_BANNER_PATH = BASE_DIR / "assets" / "lexi-welcome-v1.jpg"
+WELCOME_BANNER_PATH = (
+    BASE_DIR / "mydictionary" / "static" / "mascot" / "lexi-telegram-avatar-v1.jpg"
+)
 
 # Config: owner-only token file, then env vars, then config.yaml fallback.
 _runtime_environment = load_runtime_secret_files(os.environ)
@@ -1403,6 +1406,13 @@ def auth(func):
             if runtime.access_status != "active":
                 runtime.store.activate_user_access(runtime.user_id)
                 runtime.access_status = "active"
+            telegram_bot = getattr(context, "bot", None)
+            if telegram_bot is not None:
+                await sync_user_command_menu(
+                    telegram_bot,
+                    user_id=runtime.user_id,
+                    locale=interface_locale,
+                )
             if (
                 isinstance(user_data, MutableMapping)
                 and user_data.get("block_pack_id")
@@ -1658,10 +1668,23 @@ def onboarding_intro_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
 
 
 async def send_onboarding_intro(message, *, locale: str = "ru") -> None:
-    await message.reply_text(
-        translate("onboarding_intro", locale),
-        reply_markup=onboarding_intro_keyboard(locale),
-    )
+    text = translate("onboarding_intro", locale)
+    keyboard = onboarding_intro_keyboard(locale)
+    if WELCOME_BANNER_PATH.exists():
+        try:
+            with WELCOME_BANNER_PATH.open("rb") as photo:
+                await message.reply_photo(
+                    photo=photo,
+                    caption=text,
+                    reply_markup=keyboard,
+                )
+            return
+        except Exception as exc:
+            logger.warning(
+                "Onboarding image unavailable; using text fallback: error_type=%s",
+                type(exc).__name__,
+            )
+    await message.reply_text(text, reply_markup=keyboard)
 
 
 ONBOARDING_GOALS = {
@@ -7507,30 +7530,61 @@ def build_bot_commands(
     locale: str | None = None,
 ) -> list[BotCommand]:
     """Return a stable, compact command menu; legacy handlers stay callable."""
-    commands = [
-        BotCommand("continue", translate("start_daily", locale)),
-        BotCommand("review", translate("start_review", locale)),
-        BotCommand("learn", translate("command_learn", locale)),
-        BotCommand("stats", translate("command_stats", locale)),
+    return [
+        BotCommand(item["command"], item["description"])
+        for item in build_telegram_command_payload(
+            ai_enabled=ai_enabled,
+            miniapp_enabled=miniapp_enabled,
+            locale=locale,
+        )
     ]
-    if ai_enabled:
-        commands.append(BotCommand("ai", translate("command_ai", locale)))
-    if miniapp_enabled:
-        commands.append(BotCommand("app", translate("command_app", locale)))
-        commands.append(BotCommand("invite", translate("command_invite", locale)))
-    commands.extend(
-        [
-            BotCommand("privacy", translate("command_privacy", locale)),
-            BotCommand("help", translate("command_help", locale)),
-        ]
-    )
-    return commands
 
 
 BOT_COMMANDS = build_bot_commands(
     ai_enabled=AI_SETTINGS.enabled,
     miniapp_enabled=MINIAPP_SETTINGS.enabled,
 )
+
+_USER_COMMAND_MENU_CACHE: dict[int, tuple[str, bool, bool]] = {}
+
+
+async def sync_user_command_menu(
+    telegram_bot,
+    *,
+    user_id: int,
+    locale: str,
+) -> None:
+    """Repair one private chat's command labels from the durable app locale."""
+    setter = getattr(telegram_bot, "set_my_commands", None)
+    learner_id = int(user_id)
+    if not callable(setter) or learner_id <= 0:
+        return
+    selected_locale = normalize_locale(locale)
+    cache_value = (
+        selected_locale,
+        bool(AI_SETTINGS.enabled),
+        bool(MINIAPP_SETTINGS.enabled),
+    )
+    if _USER_COMMAND_MENU_CACHE.get(learner_id) == cache_value:
+        return
+    try:
+        await setter(
+            build_bot_commands(
+                ai_enabled=AI_SETTINGS.enabled,
+                miniapp_enabled=MINIAPP_SETTINGS.enabled,
+                locale=selected_locale,
+            ),
+            scope=BotCommandScopeChat(chat_id=learner_id),
+        )
+    except Exception as exc:
+        logger.warning(
+            "Private command menu sync skipped: error_type=%s",
+            type(exc).__name__,
+        )
+        return
+    if len(_USER_COMMAND_MENU_CACHE) >= 1024:
+        _USER_COMMAND_MENU_CACHE.pop(next(iter(_USER_COMMAND_MENU_CACHE)))
+    _USER_COMMAND_MENU_CACHE[learner_id] = cache_value
 
 
 async def sync_telegram_profile(telegram_bot) -> None:

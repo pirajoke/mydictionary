@@ -222,13 +222,15 @@ class MiniAppCompactIllustratedSectionsContractTest(unittest.TestCase):
         self.assertNotIn("font-size: 1.35rem", self.css)
         self.assertIn("min-height: 44px", self.css)
 
-    def test_ac6_three_local_section_images_are_optimized_and_decorative(self):
+    def test_ac6_all_five_local_section_images_are_optimized_and_decorative(self):
         expected = (
+            "lexi-section-profile-v1.webp",
             "lexi-section-words-v1.webp",
             "lexi-section-credits-v1.webp",
             "lexi-section-languages-v1.webp",
+            "lexi-section-settings-v1.webp",
         )
-        self.assertEqual(self.html.count('class="section-art"'), 3)
+        self.assertEqual(self.html.count('class="section-art"'), 5)
         for filename in expected:
             with self.subTest(filename=filename):
                 self.assertIn(filename, self.html)
@@ -239,7 +241,7 @@ class MiniAppCompactIllustratedSectionsContractTest(unittest.TestCase):
                 self.assertEqual(data[:4], b"RIFF")
                 self.assertEqual(data[8:12], b"WEBP")
         for contract in ('alt=""', 'loading="lazy"', 'decoding="async"'):
-            self.assertGreaterEqual(self.html.count(contract), 3)
+            self.assertGreaterEqual(self.html.count(contract), 4)
 
 
 if __name__ == "__main__":
