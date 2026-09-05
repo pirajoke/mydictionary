@@ -981,7 +981,13 @@ def render_tutor_answer(result: TutorResult) -> str:
     return "\n".join(lines)
 
 
-def render_mirror_answer(answer: MirrorAnswer, *, available_credits: int) -> str:
+def render_mirror_answer(
+    answer: MirrorAnswer,
+    *,
+    available_credits: int,
+    task_kind: str = "general_conversation",
+    answer_depth: str = "balanced",
+) -> str:
     del available_credits
     seen: set[str] = set()
     protected_period = "\ue000"
@@ -1099,6 +1105,59 @@ def render_mirror_answer(answer: MirrorAnswer, *, available_credits: int) -> str
         if example_text:
             support.append(example_text)
     next_step = take(answer.next_step_ru)
+
+    if task_kind == "progress_review" and answer_depth == "compact":
+        compact_next_step = clean(answer.next_step_ru)
+        metric_pattern = re.compile(
+            r"(?<![\w/])\d+(?:[.,]\d+)?(?:\s*%)?",
+            re.UNICODE,
+        )
+
+        def metrics(value: str) -> set[str]:
+            return {
+                re.sub(r"\s+", "", match.group(0)).replace(",", ".")
+                for match in metric_pattern.finditer(value)
+            }
+
+        action_metrics = metrics(compact_next_step)
+        summary_parts: list[str] = []
+        summary_metrics: set[str] = set()
+        for sentence in sentences(answer_text):
+            for clause in re.split(r"(?<=[,;])\s+", sentence):
+                clause_metrics = metrics(clause)
+                if not clause_metrics:
+                    continue
+                if clause_metrics <= action_metrics:
+                    continue
+                if clause_metrics & summary_metrics:
+                    continue
+                summary_parts.append(clause.strip())
+                summary_metrics.update(clause_metrics)
+
+        summary = " ".join(summary_parts).strip(" ,;:-")
+        if not summary:
+            summary = next(
+                (unit.strip() for unit in sentences(answer_text) if unit.strip()),
+                answer_text or ".",
+            )
+        if summary and not re.search(r"[.!?。！？]$", summary):
+            summary += "."
+
+        def clip(value: str, limit: int) -> str:
+            if len(value) <= limit:
+                return value
+            if limit <= 1:
+                return "."
+            candidate = value[: limit - 1].rstrip()
+            word_boundary = candidate.rfind(" ")
+            if word_boundary >= max(1, limit // 2):
+                candidate = candidate[:word_boundary].rstrip()
+            return candidate.rstrip(" ,;:-") + "."
+
+        compact_action = clip(compact_next_step or ".", 220)
+        summary_limit = max(1, 500 - len(compact_action) - len("💡 \n\n👉 "))
+        compact_summary = clip(summary, summary_limit)
+        return f"💡 {compact_summary}\n\n👉 {compact_action}"
 
     lead = f"💡 {answer_text or '.'}"
     paragraphs = [lead]
@@ -1785,6 +1844,12 @@ class AITutorService:
             rendered = render_mirror_answer(
                 answer,
                 available_credits=allowance["available_credits"],
+                task_kind=str(
+                    provider_payload.get("task_kind") or "general_conversation"
+                ),
+                answer_depth=str(
+                    provider_payload.get("answer_depth") or "balanced"
+                ),
             )
             try:
                 self.store.record_mirror_quality(
