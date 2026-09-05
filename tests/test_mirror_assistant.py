@@ -462,7 +462,7 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
         required_public(self, bot, "mirror_text_handler")
         self.assertEqual(
             [item.command for item in bot.build_bot_commands(ai_enabled=False)],
-            ["start", "learn", "lang", "stats", "privacy", "help"],
+            ["continue", "review", "learn", "stats", "privacy", "help"],
         )
         self.assertFalse(bot.VOICE_SETTINGS.enabled)
 

@@ -70,8 +70,17 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
         payload = message.reply_photo.await_args.kwargs
         self.assertEqual(payload["caption"], "Привет, Анна! Настраиваемый старт.")
         self.assertEqual(
-            payload["reply_markup"].inline_keyboard[0][0].callback_data,
-            "start:daily",
+            [
+                button.text
+                for row in payload["reply_markup"].keyboard
+                for button in row
+            ],
+            [
+                bot.quick_action_label("continue", "ru"),
+                bot.quick_action_label("review", "ru"),
+                bot.quick_action_label("ai", "ru"),
+                bot.quick_action_label("audit", "ru"),
+            ],
         )
         message.reply_text.assert_not_awaited()
 

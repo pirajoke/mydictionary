@@ -937,6 +937,61 @@ def get_lang_keyboard():
     )
 
 
+QUICK_ACTION_KEYS = {
+    "continue": "start_daily",
+    "review": "start_review",
+    "ai": "command_ai",
+    "audit": "command_stats",
+}
+
+
+def quick_action_label(action: str, locale: str | None = None) -> str:
+    """Return one bounded localized label for the persistent action keyboard."""
+    key = QUICK_ACTION_KEYS[action]
+    label = translate(key, locale)
+    if action == "ai":
+        return f"✨ {label}"
+    if action == "audit":
+        return f"📊 {label}"
+    return label
+
+
+def get_quick_actions_keyboard(locale: str | None = None) -> ReplyKeyboardMarkup:
+    """Return the four frequent learning actions without duplicated languages."""
+    labels = [
+        quick_action_label("continue", locale),
+        quick_action_label("review", locale),
+        quick_action_label("ai", locale),
+        quick_action_label("audit", locale),
+    ]
+    return ReplyKeyboardMarkup(
+        [labels[:2], labels[2:]],
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        is_persistent=True,
+    )
+
+
+def quick_action_for_text(text: str | None) -> str | None:
+    """Resolve only an exact localized quick-action label."""
+    candidate = str(text or "")
+    for locale in INTERFACE_LOCALES:
+        for action in QUICK_ACTION_KEYS:
+            if candidate == quick_action_label(action, locale):
+                return action
+    return None
+
+
+QUICK_ACTION_TEXTS = {
+    quick_action_label(action, locale)
+    for locale in INTERFACE_LOCALES
+    for action in QUICK_ACTION_KEYS
+}
+QUICK_ACTION_PATTERN = r"^(?:" + "|".join(
+    re.escape(label) for label in sorted(QUICK_ACTION_TEXTS)
+) + r")$"
+
+
 def language_picker_keyboard() -> InlineKeyboardMarkup:
     current_pack_id = PROGRESS.get("active_pack_id")
     rows = []
@@ -1934,18 +1989,19 @@ async def send_start_message(
 ) -> None:
     profile = get_bot_profile()
     text = render_start_text(profile, first_name, locale=locale)
+    quick_actions = get_quick_actions_keyboard(locale)
     if WELCOME_BANNER_PATH.exists():
         try:
             with WELCOME_BANNER_PATH.open("rb") as photo:
                 await message.reply_photo(
                     photo=photo,
                     caption=text,
-                    reply_markup=start_keyboard(locale),
+                    reply_markup=quick_actions,
                 )
             return
         except Exception as exc:
             logger.warning("Welcome banner failed; using text fallback: %s", exc)
-    await message.reply_text(text, reply_markup=start_keyboard(locale))
+    await message.reply_text(text, reply_markup=quick_actions)
 
 
 @auth
@@ -5212,7 +5268,7 @@ async def lang_switch_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=query.message.chat_id,
         text="🔄",
-        reply_markup=get_lang_keyboard(),
+        reply_markup=get_quick_actions_keyboard(locale),
     )
 
 @auth
@@ -5365,7 +5421,7 @@ async def handle_lang_switch(update: Update, context: ContextTypes.DEFAULT_TYPE)
             count=pack.entry_count,
         ),
         parse_mode="Markdown",
-        reply_markup=get_lang_keyboard(),
+        reply_markup=get_quick_actions_keyboard(locale),
     )
 
 @auth
@@ -6173,7 +6229,21 @@ def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup
         is_right = "1" if option == correct_meaning else "0"
         callback_data = f"bquiz:{session_id}:{idx}:{is_right}"
         buttons.append([InlineKeyboardButton(option, callback_data=callback_data)])
+    buttons.append([InlineKeyboardButton(
+        translate("block_cards_study", learning_card_locale(user_data)),
+        callback_data=f"bstudy:{session_id}",
+    )])
     return InlineKeyboardMarkup(buttons)
+
+
+def build_return_to_study_keyboard(user_data: dict) -> InlineKeyboardMarkup:
+    """Return a session-bound action that reopens the selected card list."""
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton(
+            translate("block_cards_study", learning_card_locale(user_data)),
+            callback_data=f"bstudy:{user_data['block_session']}",
+        )
+    ]])
 
 
 def card_event_properties(user_data: dict, idx: int) -> dict:
@@ -6468,6 +6538,81 @@ async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📚 *{pack.label}*\n\n{translate('topic_prompt', locale)}",
         reply_markup=build_topic_keyboard(pack, locale=locale),
         parse_mode="Markdown",
+    )
+
+
+async def continue_or_start_lesson(message, context) -> None:
+    """Resume a valid incomplete block, otherwise start today's lesson."""
+    user_data = context.user_data
+    if active_tutor_context(user_data) is not None and not block_is_complete(user_data):
+        if user_data.get("block_mode") in BLOCK_MODES:
+            await block_send_question_msg(message, context)
+            return
+        indices = list(user_data.get("block_all_indices", []))
+        locale = learning_card_locale(user_data)
+        await message.reply_text(
+            format_block_intro(
+                indices,
+                user_data.get("block_topic"),
+                locale=locale,
+            ),
+            reply_markup=build_study_buttons(
+                indices,
+                user_data["block_session"],
+                locale=locale,
+            ),
+            parse_mode="Markdown",
+        )
+        return
+    await start_home_lesson(
+        SimpleNamespace(message=message),
+        context,
+        lesson_kind="daily",
+    )
+
+
+@auth
+async def cmd_continue(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await continue_or_start_lesson(update.message, context)
+
+
+@auth
+async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await start_home_lesson(
+        SimpleNamespace(message=update.message),
+        context,
+        lesson_kind="review",
+    )
+
+
+@auth
+async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Dispatch one exact persistent-keyboard action before Mirror free text."""
+    action = quick_action_for_text(getattr(update.message, "text", None))
+    if action is None:
+        return
+    locale = interface_locale_for_update(update)
+    if action == "continue":
+        await continue_or_start_lesson(update.message, context)
+        return
+    if action == "review":
+        await start_home_lesson(
+            SimpleNamespace(message=update.message),
+            context,
+            lesson_kind="review",
+        )
+        return
+    if action == "audit":
+        await cmd_stats.__wrapped__(update, context)
+        return
+    if not AI_SETTINGS.enabled:
+        await update.message.reply_text(translate("ai_disabled", locale))
+        return
+    await send_ai_tutor_menu(
+        update.message,
+        context,
+        user_id=int(update.effective_user.id),
+        locale=locale,
     )
 
 
@@ -6770,8 +6915,6 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await validate_block_callback(query, ud, session_id):
         return
     ud["interface_locale"] = interface_locale_for_update(update)
-    if mode in {"quiz", "type"}:
-        await clear_block_review_messages(query.message.chat_id, context)
     activate_block_language(ud)
     start_block_attempt(ud, mode)
     record_product_event(
@@ -6818,6 +6961,7 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             f"{progress_text} {format_word_label(idx)}\n\n"
             f"{translate('block_written_prompt', locale)}",
+            reply_markup=build_return_to_study_keyboard(ud),
             parse_mode="Markdown"
         )
         await send_pronunciation(query.message.chat_id, idx, context)
@@ -6901,6 +7045,7 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text(
             f"{progress_text} {format_word_label(idx)}\n\n"
             f"{translate('block_written_prompt', locale)}",
+            reply_markup=build_return_to_study_keyboard(ud),
             parse_mode="Markdown"
         )
         await send_pronunciation(message.chat_id, idx, context)
@@ -7029,6 +7174,10 @@ def build_block_summary_keyboard(user_data: dict) -> InlineKeyboardMarkup:
             translate("block_retry_errors", locale),
             callback_data=f"bretry:{session_id}",
         )])
+    rows.append([InlineKeyboardButton(
+        translate("block_cards_study", locale),
+        callback_data=f"bstudy:{session_id}",
+    )])
     if AI_SETTINGS.enabled:
         rows.append([
             InlineKeyboardButton(
@@ -7236,6 +7385,42 @@ async def block_flash_rate_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 @auth
+async def block_study_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Return to the original selected card list without scoring an answer."""
+    query = update.callback_query
+    parts = str(query.data or "").split(":")
+    user_data = context.user_data
+    if len(parts) != 2 or active_tutor_context(user_data) is None:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(query, user_data, parts[1]):
+        return
+
+    activate_block_language(user_data)
+    indices = list(user_data["block_all_indices"])
+    user_data["block_indices"] = indices
+    user_data["block_pos"] = 0
+    user_data["block_correct"] = 0
+    user_data["block_wrong"] = []
+    user_data["block_mode"] = None
+    user_data["block_typing"] = False
+    user_data["type_idx"] = None
+    user_data["smart_mode"] = False
+    user_data["block_session"] = new_block_session_id()
+    user_data["block_completion_tracked"] = False
+    locale = learning_card_locale(user_data)
+    await query.edit_message_text(
+        format_block_intro(indices, user_data.get("block_topic"), locale=locale),
+        reply_markup=build_study_buttons(
+            indices,
+            user_data["block_session"],
+            locale=locale,
+        ),
+        parse_mode="Markdown",
+    )
+
+
+@auth
 async def block_retry_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     ud = context.user_data
@@ -7323,9 +7508,9 @@ def build_bot_commands(
 ) -> list[BotCommand]:
     """Return a stable, compact command menu; legacy handlers stay callable."""
     commands = [
-        BotCommand("start", translate("command_start", locale)),
+        BotCommand("continue", translate("start_daily", locale)),
+        BotCommand("review", translate("start_review", locale)),
         BotCommand("learn", translate("command_learn", locale)),
-        BotCommand("lang", translate("command_lang", locale)),
         BotCommand("stats", translate("command_stats", locale)),
     ]
     if ai_enabled:
@@ -7498,6 +7683,8 @@ async def manual_polling():
 
     # Commands
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("continue", cmd_continue))
+    app.add_handler(CommandHandler("review", cmd_review))
     app.add_handler(CommandHandler("app", cmd_app))
     app.add_handler(CommandHandler("invite", cmd_invite))
     app.add_handler(CommandHandler("help", cmd_help))
@@ -7590,6 +7777,7 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(block_flash_rate_cb, pattern=r"^bflash_didnt:"))
     app.add_handler(CallbackQueryHandler(block_retry_cb, pattern=r"^bretry(?::|$)"))
     app.add_handler(CallbackQueryHandler(block_next_cb, pattern=r"^bnext(?::|$)"))
+    app.add_handler(CallbackQueryHandler(block_study_cb, pattern=r"^bstudy(?::|$)"))
 
     # Quiz callbacks
     app.add_handler(CallbackQueryHandler(quiz_callback, pattern=r"^quiz:"))
@@ -7607,6 +7795,12 @@ async def manual_polling():
     app.add_handler(MessageHandler(
         filters.TEXT & filters.Regex(PACK_SWITCH_PATTERN),
         handle_lang_switch,
+    ))
+
+    # Persistent quick-action keyboard; consume exact labels before Mirror.
+    app.add_handler(MessageHandler(
+        filters.TEXT & filters.Regex(QUICK_ACTION_PATTERN),
+        handle_quick_action,
     ))
 
     # Mirror delegates to every active exercise-answer state before free text.

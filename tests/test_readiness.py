@@ -122,11 +122,19 @@ class BotPollingReadinessTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             [command.command for command in base],
-            ["start", "learn", "lang", "stats", "privacy", "help"],
+            ["continue", "review", "learn", "stats", "privacy", "help"],
         )
         self.assertEqual(
             [command.command for command in with_ai],
-            ["start", "learn", "lang", "stats", "ai", "privacy", "help"],
+            [
+                "continue",
+                "review",
+                "learn",
+                "stats",
+                "ai",
+                "privacy",
+                "help",
+            ],
         )
         self.assertLessEqual(len(base), 7)
         self.assertLessEqual(len(with_ai), 7)
