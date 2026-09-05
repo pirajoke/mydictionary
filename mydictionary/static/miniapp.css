@@ -164,7 +164,22 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .dashboard-state.pending { color: var(--dashboard-muted); }
 
 /* Profile. */
-.profile-header { margin-bottom: 10px; }
+.profile-header {
+  display: grid;
+  grid-template-columns: minmax(0, .75fr) minmax(180px, 1.25fr);
+  align-items: end;
+  min-height: 132px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  padding-block: 10px 12px;
+}
+.profile-header h1 { align-self: end; padding-bottom: 5px; }
+.profile-header .section-art {
+  width: 100%;
+  height: 112px;
+  border-radius: 14px;
+  object-position: 72% 35%;
+}
 .profile-identity {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) 44px;
@@ -573,6 +588,12 @@ html[dir="rtl"] .interface-locale-select { padding-right: 9px; padding-left: 30p
   .bottom-nav button { font-size: .56rem; }
   .nav-icon { width: 30px; height: 30px; }
   .section-art { width: 58px; height: 44px; }
+  .profile-header {
+    grid-template-columns: minmax(110px, .8fr) minmax(0, 1.2fr);
+    gap: 8px;
+    min-height: 106px;
+  }
+  .profile-header .section-art { width: 100%; height: 88px; }
   .profile-identity { grid-template-columns: 74px minmax(0, 1fr) 44px; gap: 9px; padding: 10px; }
   .avatar-shell { width: 74px; }
   .profile-game-progress { grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; padding: 10px; }
