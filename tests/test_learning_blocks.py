@@ -148,6 +148,14 @@ class LearningBlocksTest(unittest.TestCase):
         self.assertIn("ltopic:ja-basics-100:food", callback_ids)
         self.assertIn("ltopic:ja-basics-100:time", callback_ids)
 
+    def test_topic_keyboard_starts_with_a_direct_lesson_action(self):
+        keyboard = bot.build_topic_keyboard("ja", locale="ru").inline_keyboard
+
+        self.assertEqual(len(keyboard[0]), 1)
+        self.assertEqual(keyboard[0][0].text, "▶️ Начать урок")
+        self.assertEqual(keyboard[0][0].callback_data, "start:daily")
+        self.assertEqual(keyboard[1][0].callback_data, "ltopic:ja-basics-100:all")
+
     def test_ai_context_is_limited_to_current_valid_block(self):
         user_data = {}
         bot.reset_block_state(user_data, [10, 21], "ja", "people")
