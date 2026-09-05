@@ -163,23 +163,6 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .dashboard-state.disabled { color: var(--dashboard-muted); }
 .dashboard-state.pending { color: var(--dashboard-muted); }
 
-/* Profile. */
-.profile-header {
-  display: grid;
-  grid-template-columns: minmax(0, .75fr) minmax(180px, 1.25fr);
-  align-items: end;
-  min-height: 132px;
-  margin-bottom: 10px;
-  overflow: hidden;
-  padding-block: 10px 12px;
-}
-.profile-header h1 { align-self: end; padding-bottom: 5px; }
-.profile-header .section-art {
-  width: 100%;
-  height: 112px;
-  border-radius: 14px;
-  object-position: 72% 35%;
-}
 .profile-identity {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) 44px;
@@ -319,18 +302,34 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .metric span { display: block; margin-top: 4px; color: #52605d; font-size: .72rem; overflow-wrap: anywhere; }
 .dashboard-metric span { color: var(--dashboard-muted); }
 
-/* Compact secondary-tab heading with the existing local artwork. */
-.section-heading { min-height: 62px; }
+/* One compact title-and-art header across all five tabs. */
+.section-heading { min-height: 0; }
 .section-heading::after { display: none; }
 .section-heading h1 { position: static; max-width: none; color: var(--dashboard-text); text-shadow: none; }
-.section-art {
+.section-hero {
+  display: grid;
+  grid-template-columns: minmax(108px, .72fr) minmax(0, 1.28fr);
+  align-items: start;
+  gap: 12px;
+  min-height: 0;
+  margin-bottom: 10px;
+  overflow: hidden;
+  padding: 2px 0 10px 2px;
+}
+.section-hero h1 {
+  align-self: start;
+  padding-top: 4px;
+}
+.section-hero .section-art {
   display: block;
-  width: 72px;
-  height: 48px;
-  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  max-height: 128px;
+  aspect-ratio: 2 / 1;
   border: 1px solid var(--dashboard-line);
-  border-radius: 12px;
+  border-radius: 14px;
   object-fit: cover;
+  object-position: center;
 }
 
 /* My words. */
@@ -437,7 +436,6 @@ html[dir="rtl"] .referral-status { text-align: right; }
 .language-action { width: 100%; }
 
 /* Settings. */
-.settings-hero { min-height: 62px; }
 .settings-credit-cta {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -588,13 +586,11 @@ html[dir="rtl"] .interface-locale-select { padding-right: 9px; padding-left: 30p
   .app-shell { padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); }
   .bottom-nav button { font-size: .56rem; }
   .nav-icon { width: 30px; height: 30px; }
-  .section-art { width: 58px; height: 44px; }
-  .profile-header {
-    grid-template-columns: minmax(110px, .8fr) minmax(0, 1.2fr);
+  .section-hero {
+    grid-template-columns: minmax(96px, .72fr) minmax(0, 1.28fr);
     gap: 8px;
-    min-height: 106px;
+    padding-inline-start: 0;
   }
-  .profile-header .section-art { width: 100%; height: 88px; }
   .profile-identity { grid-template-columns: 74px minmax(0, 1fr) 44px; gap: 9px; padding: 10px; }
   .avatar-shell { width: 74px; }
   .profile-game-progress { grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; padding: 10px; }
