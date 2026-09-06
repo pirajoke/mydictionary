@@ -1770,6 +1770,26 @@ def onboarding_pace_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
     )
 
 
+async def edit_onboarding_message(
+    query,
+    text: str,
+    *,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    """Edit either the welcome photo caption or a legacy text-only step."""
+    message = getattr(query, "message", None)
+    if message is not None and (
+        getattr(message, "photo", None)
+        or getattr(message, "caption", None) is not None
+    ):
+        await query.edit_message_caption(
+            caption=text,
+            reply_markup=reply_markup,
+        )
+        return
+    await query.edit_message_text(text, reply_markup=reply_markup)
+
+
 @auth
 async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1791,7 +1811,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             properties={"goal": "basics"},
             source="default",
         )
-        await query.edit_message_text(
+        await edit_onboarding_message(
+            query,
             translate("onboarding_choose_native", locale),
             reply_markup=onboarding_meaning_language_keyboard(locale),
         )
@@ -1799,7 +1820,9 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(parts) == 3 and parts[1] == "native":
         meaning_language = parts[2]
         if meaning_language not in CATALOG.meaning_languages("learner"):
-            await query.edit_message_text(translate("pack_unavailable", locale))
+            await edit_onboarding_message(
+                query, translate("pack_unavailable", locale)
+            )
             return
         runtime.store.update_product_profile(
             runtime.user_id,
@@ -1812,7 +1835,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "onboarding_native_selected",
             properties={"language": meaning_language},
         )
-        await query.edit_message_text(
+        await edit_onboarding_message(
+            query,
             translate("onboarding_choose_pack", locale),
             reply_markup=onboarding_pack_keyboard(locale, meaning_language),
         )
@@ -1829,7 +1853,9 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for candidate in compatible_onboarding_packs(meaning_language or "")
         }
         if pack is None or pack.pack_id not in compatible_ids:
-            await query.edit_message_text(translate("pack_unavailable", locale))
+            await edit_onboarding_message(
+                query, translate("pack_unavailable", locale)
+            )
             return
         activate_content_pack(pack, source="onboarding")
         context.user_data["onboarding_pack_id"] = pack.pack_id
@@ -1840,7 +1866,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "language": pack.target_language,
             },
         )
-        await query.edit_message_text(
+        await edit_onboarding_message(
+            query,
             translate("onboarding_choose_pace", locale),
             reply_markup=onboarding_pace_keyboard(locale),
         )
@@ -1853,7 +1880,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         record_product_event(
             "onboarding_goal_selected", properties={"goal": parts[2]}
         )
-        await query.edit_message_text(
+        await edit_onboarding_message(
+            query,
             translate("onboarding_choose_pace", locale),
             reply_markup=onboarding_pace_keyboard(locale),
         )
@@ -1865,7 +1893,9 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             or product["active_pack_id"]
         )
         if pack is None or not pack.visible_to("learner"):
-            await query.edit_message_text(translate("choose_pack_again", locale))
+            await edit_onboarding_message(
+                query, translate("choose_pack_again", locale)
+            )
             return
         runtime.store.update_product_profile(
             runtime.user_id,
@@ -1882,7 +1912,8 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "daily_word_goal": int(parts[2]),
             },
         )
-        await query.edit_message_text(
+        await edit_onboarding_message(
+            query,
             translate("onboarding_complete", locale, title=pack.label)
         )
         await send_start_message(
@@ -1892,7 +1923,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             locale=locale,
         )
         return
-    await query.edit_message_text(translate("onboarding_stale", locale))
+    await edit_onboarding_message(query, translate("onboarding_stale", locale))
 
 
 def start_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:

@@ -110,7 +110,10 @@
       return;
     }
     const url = actionLink(action);
-    if (url) webApp.openTelegramLink(url);
+    if (url) {
+      webApp.openTelegramLink(url);
+      webApp.close();
+    }
   }
 
   function openDictionary(download = false) {

@@ -291,8 +291,22 @@ class MiniAppSettingsHubV1SurfaceContractTest(unittest.TestCase):
             r'if\s*\(!webApp\s*\|\|\s*!botUsername\)\s*return;',
         )
         self.assertIn("const url = actionLink(action);", open_action)
-        self.assertIn("if (url) webApp.openTelegramLink(url);", open_action)
+        self.assertIn("webApp.openTelegramLink(url);", open_action)
         self.assertNotIn("window.location", self.js)
+
+    def test_ac7_non_share_action_closes_mini_app_after_opening_telegram_link(self):
+        """AC-MINIAPP-1: Telegram deep links hand control back to the bot."""
+
+        open_action = javascript_function(self.js, "openAction")
+        non_share = open_action[open_action.index("const url = actionLink(action);") :]
+        self.assertRegex(
+            non_share,
+            r"if\s*\(url\)\s*\{[^}]*"
+            r"webApp\.openTelegramLink\(url\);[^}]*"
+            r"webApp\.close\(\);[^}]*\}",
+            "a non-share Mini App action must open its bot deep link and then "
+            "explicitly close the Mini App",
+        )
 
 
 class MiniAppSettingsHubV1BotContractTest(unittest.IsolatedAsyncioTestCase):
