@@ -14,6 +14,13 @@ from mydictionary.storage import AbuseEvent, DatabaseStore, RateLimitBucket
 
 
 class SafetySettingsTest(unittest.TestCase):
+    def test_mirror_retry_uses_the_eight_request_ai_scope(self):
+        settings = SafetySettings.from_env({})
+        scope, policy = settings.for_handler("mirror_retry_cb")
+        self.assertEqual(scope, "ai")
+        self.assertEqual(policy, settings.ai)
+        self.assertEqual(policy.limit, 8)
+
     def test_defaults_are_enabled_and_sensitive_scopes_are_tighter(self):
         settings = SafetySettings.from_env({})
 

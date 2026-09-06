@@ -121,6 +121,7 @@ class SafetySettings:
             "block_ai_cb",
             "block_voice_cb",
             "billing_resume_ai_cb",
+            "mirror_retry_cb",
             "cmd_conversation",
         } or name.startswith("voice"):
             return "ai", self.ai

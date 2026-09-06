@@ -113,6 +113,18 @@
     if (url) webApp.openTelegramLink(url);
   }
 
+  function openDictionary(download = false) {
+    if (!payload || location.protocol === "file:") return;
+    const params = new URLSearchParams({
+      target: payload.profile.current_language || "en",
+      native: payload.profile.meaning_language || "ru",
+      ui: payload.locale || "en"
+    });
+    const url = new URL(`/dictionary/${download ? "download" : ""}?${params}`, location.origin).href;
+    if (webApp && typeof webApp.openLink === "function") webApp.openLink(url);
+    else window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   function validReferralInviteUrl(value) {
     try {
       const candidate = new URL(String(value || ""));
@@ -756,6 +768,8 @@
   document.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", () => openAction(button.dataset.action));
   });
+  document.querySelectorAll("[data-open-dictionary]").forEach((button) => button.addEventListener("click", () => openDictionary()));
+  document.querySelectorAll("[data-download-dictionary]").forEach((button) => button.addEventListener("click", () => openDictionary(true)));
   document.querySelectorAll("[data-settings-action]").forEach((button) => {
     if (button.dataset.settingsAction !== "invite") {
       button.addEventListener("click", () => openAction(button.dataset.settingsAction));

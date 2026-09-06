@@ -460,7 +460,7 @@ class AIChatContinuityEconomicsTest(unittest.IsolatedAsyncioTestCase):
             interface_locale="en",
         )
 
-    async def test_ac4_provider_parameters_use_fast_320_and_deep_480(self):
+    async def test_ac4_provider_parameters_use_fast_320_and_deep_1000(self):
         capture = response_tests.CaptureResponses()
         provider = ai_tutor.OpenAIResponsesProvider(
             api_key="test-key",
@@ -472,7 +472,7 @@ class AIChatContinuityEconomicsTest(unittest.IsolatedAsyncioTestCase):
         )
         cases = (
             ("translate cat", "fast", "none", "low", 320),
-            ("explain this grammar rule", "deep", "medium", "medium", 480),
+            ("explain this grammar rule", "deep", "medium", "medium", 1000),
         )
         for question, route, effort, verbosity, ceiling in cases:
             with self.subTest(route=route):
@@ -493,7 +493,7 @@ class AIChatContinuityEconomicsTest(unittest.IsolatedAsyncioTestCase):
         original = ai_tutor.estimate_mirror_provider_budget
         for question, expected_ceiling in (
             ("translate cat", 320),
-            ("explain this grammar rule", 480),
+            ("explain this grammar rule", 1000),
         ):
             with self.subTest(expected_ceiling=expected_ceiling):
                 service, store, provider, settings = (

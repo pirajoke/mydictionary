@@ -3694,6 +3694,47 @@ for _locale, _messages in _AI_RESPONSE_EXPERIENCE_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 
+_DICTIONARY_COMPANION_COPY = {
+    "en": (
+        "📖 Open dictionary", "⬇️ Download offline dictionary", "Offline download is not available for this language pair yet. Typed dictionary lookup still works here.", "↻ Retry question",
+        "A plan for today · 5 minutes", "Review {count} due words first.", "Open today's lesson and choose 5 words.", "Hide the meanings and recall the words from memory.", "Say one sentence with a word, then check it in the dictionary.",
+    ),
+    "fr": (
+        "📖 Ouvrir le dictionnaire", "⬇️ Télécharger le dictionnaire hors ligne", "Le téléchargement hors ligne n’est pas encore disponible pour cette paire de langues. La recherche par message reste disponible ici.", "↻ Réessayer la question",
+        "Programme du jour · 5 minutes", "Révise d’abord {count} mots à revoir.", "Ouvre la leçon du jour et choisis 5 mots.", "Cache les traductions et retrouve les mots de mémoire.", "Dis une phrase avec un mot, puis vérifie-le dans le dictionnaire.",
+    ),
+    "de": (
+        "📖 Wörterbuch öffnen", "⬇️ Offline-Wörterbuch herunterladen", "Für dieses Sprachpaar ist noch kein Offline-Download verfügbar. Die Wörterbuchsuche per Nachricht funktioniert hier weiterhin.", "↻ Frage erneut versuchen",
+        "Dein Plan für heute · 5 Minuten", "Wiederhole zuerst {count} fällige Wörter.", "Öffne die heutige Lektion und wähle 5 Wörter.", "Verdecke die Bedeutungen und rufe die Wörter aus dem Gedächtnis ab.", "Sage einen Satz mit einem Wort und prüfe es im Wörterbuch.",
+    ),
+    "ja": (
+        "📖 辞書を開く", "⬇️ オフライン辞書をダウンロード", "この言語ペアのオフラインダウンロードはまだ利用できません。ここでは入力による辞書検索を引き続き使えます。", "↻ 質問を再試行",
+        "今日の学習プラン · 5分", "まず復習予定の単語を{count}語復習しましょう。", "今日のレッスンを開き、5語選びましょう。", "意味を隠して、単語を思い出しましょう。", "1語を使って文を話し、辞書で確認しましょう。",
+    ),
+    "ar": (
+        "📖 افتح القاموس", "⬇️ تنزيل القاموس دون اتصال", "التنزيل دون اتصال غير متاح بعد لهذا الزوج من اللغات. لا يزال البحث الكتابي في القاموس متاحًا هنا.", "↻ أعد محاولة السؤال",
+        "خطة اليوم · 5 دقائق", "راجع أولًا {count} من الكلمات المستحقة للمراجعة.", "افتح درس اليوم واختر 5 كلمات.", "أخفِ المعاني واسترجع الكلمات من الذاكرة.", "قل جملة بإحدى الكلمات ثم تحقق منها في القاموس.",
+    ),
+    "zh": (
+        "📖 打开词典", "⬇️ 下载离线词典", "此语言组合暂不支持离线下载。仍可在此输入文字查词。", "↻ 重试问题",
+        "今日计划 · 5分钟", "先复习{count}个到期单词。", "打开今日课程，选择5个单词。", "遮住释义，凭记忆回想单词。", "用一个单词说一句话，然后查词典核对。",
+    ),
+    "ru": (
+        "📖 Открыть словарь", "⬇️ Скачать офлайн-словарь", "Офлайн-скачивание для этой языковой пары пока недоступно. Поиск слова сообщением продолжает работать здесь.", "↻ Повторить вопрос",
+        "План на сегодня · 5 минут", "Сначала повтори слова по расписанию: {count}.", "Открой урок на сегодня и выбери 5 слов.", "Скрой перевод и вспомни слова по памяти.", "Скажи одно предложение с любым словом и проверь его в словаре.",
+    ),
+    "es": (
+        "📖 Abrir diccionario", "⬇️ Descargar diccionario sin conexión", "La descarga sin conexión aún no está disponible para este par de idiomas. La búsqueda por mensaje sigue funcionando aquí.", "↻ Reintentar pregunta",
+        "Plan para hoy · 5 minutos", "Repasa primero {count} palabras pendientes.", "Abre la lección de hoy y elige 5 palabras.", "Oculta los significados y recuerda las palabras de memoria.", "Di una frase con una palabra y compruébala en el diccionario.",
+    ),
+}
+for _locale, _messages in _DICTIONARY_COMPANION_COPY.items():
+    _CATALOG[_locale].update(zip((
+        "dictionary_open", "dictionary_download", "dictionary_offline_unsupported", "companion_retry",
+        "companion_plan_title", "companion_plan_review", "companion_plan_start", "companion_plan_recall", "companion_plan_apply",
+    ), _messages))
+
+
 def normalize_locale(value: str | None, *, fallback: str = DEFAULT_INTERFACE_LOCALE) -> str:
     """Normalize Telegram language_code without guessing unsupported locales."""
     safe_fallback = fallback if fallback in INTERFACE_LOCALES else DEFAULT_INTERFACE_LOCALE

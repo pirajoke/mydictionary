@@ -830,7 +830,7 @@ class AIResponseRoutingContractTest(unittest.IsolatedAsyncioTestCase):
         )
         for route, effort, verbosity, max_tokens in (
             ("fast", "none", "low", 320),
-            ("deep", "medium", "medium", 480),
+            ("deep", "medium", "medium", 1000),
         ):
             payload = companion.build_mirror_provider_payload(
                 question=("translate cat" if route == "fast" else "explain this grammar rule"),

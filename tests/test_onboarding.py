@@ -80,6 +80,7 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
                 bot.quick_action_label("review", "ru"),
                 bot.quick_action_label("ai", "ru"),
                 bot.quick_action_label("audit", "ru"),
+                bot.quick_action_label("dictionary", "ru"),
             ],
         )
         message.reply_text.assert_not_awaited()
