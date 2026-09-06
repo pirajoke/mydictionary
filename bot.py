@@ -29,8 +29,8 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     LabeledPrice,
-    MenuButtonCommands,
     MenuButtonDefault,
+    MenuButtonWebApp,
     ReplyKeyboardMarkup,
     BotCommandScopeChat,
     Update,
@@ -7785,7 +7785,12 @@ async def sync_telegram_profile(telegram_bot) -> None:
                 "menu_button",
                 menu_setter,
                 (),
-                {"menu_button": MenuButtonCommands()},
+                {
+                    "menu_button": MenuButtonWebApp(
+                        text="Menu",
+                        web_app=WebAppInfo(url=MINIAPP_SETTINGS.public_url),
+                    )
+                },
             )
         )
     elif callable(menu_setter):

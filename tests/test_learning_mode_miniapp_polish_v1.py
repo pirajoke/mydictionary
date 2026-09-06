@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from telegram import MenuButtonCommands
+from telegram import MenuButtonDefault, MenuButtonWebApp
 
 
 os.environ.setdefault("BOT_TOKEN", "123456:TESTTOKEN_ABCDEFGHIJKLMNOP")
@@ -157,14 +157,17 @@ class LearningModeMessageCleanupContractTest(unittest.IsolatedAsyncioTestCase):
 
 
 class TelegramMenuAndAvatarContractTest(unittest.IsolatedAsyncioTestCase):
-    async def test_ac3_startup_exposes_native_commands_menu_with_app_command(self):
-        telegram_bot = SimpleNamespace(
+    def _telegram_bot(self):
+        return SimpleNamespace(
             set_my_commands=AsyncMock(),
             set_my_name=AsyncMock(),
             set_my_short_description=AsyncMock(),
             set_my_description=AsyncMock(),
             set_chat_menu_button=AsyncMock(),
         )
+
+    async def test_ac3_startup_exposes_interactive_miniapp_menu_with_app_command(self):
+        telegram_bot = self._telegram_bot()
         settings = SimpleNamespace(
             enabled=True,
             public_url="https://mydictionary.meshly.fr/miniapp",
@@ -173,13 +176,24 @@ class TelegramMenuAndAvatarContractTest(unittest.IsolatedAsyncioTestCase):
             await bot.sync_telegram_profile(telegram_bot)
 
         menu = telegram_bot.set_chat_menu_button.await_args.kwargs["menu_button"]
-        self.assertIsInstance(menu, MenuButtonCommands)
+        self.assertIsInstance(menu, MenuButtonWebApp)
+        self.assertEqual(menu.text, "Menu")
+        self.assertEqual(menu.web_app.url, settings.public_url)
         commands = [
             command.command
             for call in telegram_bot.set_my_commands.await_args_list
             for command in call.args[0]
         ]
         self.assertIn("app", commands)
+
+    async def test_ec2_disabled_miniapp_restores_default_menu(self):
+        telegram_bot = self._telegram_bot()
+        settings = SimpleNamespace(enabled=False, public_url="")
+        with patch.object(bot, "MINIAPP_SETTINGS", settings):
+            await bot.sync_telegram_profile(telegram_bot)
+
+        menu = telegram_bot.set_chat_menu_button.await_args.kwargs["menu_button"]
+        self.assertIsInstance(menu, MenuButtonDefault)
 
     def test_ac4_signed_telegram_cdn_avatar_and_client_fallback_are_supported(self):
         safe_urls = (
