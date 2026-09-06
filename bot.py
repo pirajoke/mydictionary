@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Mapping
-from urllib.parse import quote
+from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 
 import yaml
 from telegram import (
@@ -85,6 +85,7 @@ from mydictionary.content import (
     speech_text,
     target_text,
 )
+from mydictionary.dictionary import REDISTRIBUTABLE_PACK_IDS
 from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
 from mydictionary.localization import (
@@ -108,6 +109,7 @@ from mydictionary.mirror_assistant import (
     classify_mirror_intent,
     classify_mirror_task,
     direct_mirror_capability_greeting_locale,
+    direct_mirror_daily_plan_locale,
     direct_mirror_progress_locale,
     grounded_progress_snapshot,
     normalize_mirror_style,
@@ -115,6 +117,7 @@ from mydictionary.mirror_assistant import (
     resolve_companion_locale,
     render_mirror_capabilities,
     render_mirror_greeting,
+    render_mirror_daily_plan,
     render_mirror_progress_focus,
 )
 from mydictionary.miniapp import MiniAppSettings, build_telegram_command_payload
@@ -948,6 +951,7 @@ QUICK_ACTION_KEYS = {
     "review": "start_review",
     "ai": "command_ai",
     "audit": "command_stats",
+    "dictionary": "command_dictionary",
 }
 
 
@@ -959,19 +963,22 @@ def quick_action_label(action: str, locale: str | None = None) -> str:
         return f"✨ {label}"
     if action == "audit":
         return f"📊 {label}"
+    if action == "dictionary":
+        return f"📖 {label}"
     return label
 
 
 def get_quick_actions_keyboard(locale: str | None = None) -> ReplyKeyboardMarkup:
-    """Return the four frequent learning actions without duplicated languages."""
+    """Return frequent learning actions without duplicated languages."""
     labels = [
         quick_action_label("continue", locale),
         quick_action_label("review", locale),
         quick_action_label("ai", locale),
         quick_action_label("audit", locale),
+        quick_action_label("dictionary", locale),
     ]
     return ReplyKeyboardMarkup(
-        [labels[:2], labels[2:]],
+        [labels[:2], labels[2:4], labels[4:]],
         resize_keyboard=True,
         one_time_keyboard=False,
         is_persistent=True,
@@ -2149,20 +2156,77 @@ async def _reply_dictionary_lookup(message, query: str, *, locale: str) -> None:
     await message.reply_text(translate("dictionary_not_found", locale))
 
 
+def dictionary_browser_keyboard(locale: str) -> InlineKeyboardMarkup | None:
+    """Link only public language choices, never Telegram identity or auth data."""
+    runtime = _ACTIVE_RUNTIME.get()
+    if not MINIAPP_SETTINGS.enabled or runtime is None:
+        return None
+    try:
+        parsed = urlsplit(MINIAPP_SETTINGS.public_url)
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https" or not parsed.hostname
+        or parsed.username is not None or parsed.password is not None
+        or parsed.path != "/miniapp" or parsed.query or parsed.fragment
+    ):
+        return None
+    supported = {
+        pack.target_language
+        for pack in CATALOG.packs
+        if pack.pack_id in REDISTRIBUTABLE_PACK_IDS
+        and pack.content_schema == 2
+        and pack.is_free
+        and pack.visible_to("learner")
+    }
+    target = str(runtime.progress.get("active_lang") or "")
+    native = str(runtime.meaning_language)
+    if target not in supported or native not in supported:
+        return None
+    query = urlencode({
+        "target": target,
+        "native": native,
+        "ui": normalize_locale(locale),
+    })
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(
+            translate(key, locale),
+            url=urlunsplit((parsed.scheme, parsed.netloc, path, query, "")),
+        )]
+        for key, path in (
+            ("dictionary_open", "/dictionary/"),
+            ("dictionary_download", "/dictionary/download"),
+        )
+    ])
+
+
+async def send_dictionary_prompt(message, context, *, locale: str) -> None:
+    context.user_data[PENDING_DICTIONARY_LOOKUP_KEY] = {
+        "expires_at": int(time.time()) + DICTIONARY_LOOKUP_TTL_SECONDS,
+    }
+    keyboard = dictionary_browser_keyboard(locale)
+    text = translate("dictionary_prompt", locale)
+    if keyboard is not None:
+        await message.reply_text(text, reply_markup=keyboard)
+    elif MINIAPP_SETTINGS.enabled and _ACTIVE_RUNTIME.get() is not None:
+        await message.reply_text(
+            text + "\n\n" + translate("dictionary_offline_unsupported", locale)
+        )
+    else:
+        await message.reply_text(text)
+
+
 @auth
 async def cmd_dictionary(update: Update, context: ContextTypes.DEFAULT_TYPE):
     locale = interface_locale_for_update(update)
-    query = " ".join(str(value) for value in getattr(context, "args", []))
+    query = " ".join(str(value) for value in (getattr(context, "args", None) or []))
     raw_command = str(getattr(update.message, "text", "") or "")
     if raw_command.splitlines() != [raw_command]:
         context.user_data.pop(PENDING_DICTIONARY_LOOKUP_KEY, None)
         await update.message.reply_text(translate("dictionary_not_found", locale))
         return
     if not query.strip():
-        context.user_data[PENDING_DICTIONARY_LOOKUP_KEY] = {
-            "expires_at": int(time.time()) + DICTIONARY_LOOKUP_TTL_SECONDS,
-        }
-        await update.message.reply_text(translate("dictionary_prompt", locale))
+        await send_dictionary_prompt(update.message, context, locale=locale)
         return
     context.user_data.pop(PENDING_DICTIONARY_LOOKUP_KEY, None)
     await _reply_dictionary_lookup(update.message, query, locale=locale)
@@ -2456,6 +2520,9 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if action == "review":
         await start_home_lesson(query, context, lesson_kind="review")
+        return
+    if action == "dictionary":
+        await send_dictionary_prompt(query.message, context, locale=locale)
         return
     if action in {"topics", "learn"}:
         invalidate_block_session(context.user_data)
@@ -4243,6 +4310,26 @@ async def handle_mirror_question(
     deterministic_capability_greeting = capability_greeting_locale is not None
     progress_locale = direct_mirror_progress_locale(question)
     deterministic_progress = progress_locale is not None and task_kind is None
+    daily_plan_locale = direct_mirror_daily_plan_locale(question)
+    if daily_plan_locale is not None and task_kind is None:
+        try:
+            snapshot = (
+                grounded_progress_snapshot(store, user_id)
+                if isinstance(store, DatabaseStore)
+                else {}
+            )
+        except Exception as exc:
+            logger.warning(
+                "Mirror daily plan read failed: error_type=%s", type(exc).__name__
+            )
+            snapshot = {}
+        await message.reply_text(
+            render_mirror_daily_plan(snapshot, locale=daily_plan_locale),
+            reply_markup=companion_recovery_keyboard(
+                daily_plan_locale, include_lesson=True
+            ),
+        )
+        return
     if deterministic_capability_greeting:
         response = translate(
             "mirror_capability_greeting",
@@ -4322,7 +4409,10 @@ async def handle_mirror_question(
     else:
         response = ""
         if not AI_SETTINGS.enabled:
-            await message.reply_text(translate("ai_disabled", reply_locale))
+            await message.reply_text(
+                translate("ai_disabled", reply_locale),
+                reply_markup=companion_recovery_keyboard(reply_locale),
+            )
             return
         consent_version = AI_SETTINGS.consent_version or "unversioned"
         try:
@@ -4490,8 +4580,10 @@ async def handle_mirror_question(
             )
             return
         except AIQuotaExceeded:
+            _remember_pending_ai_question(context, question)
             await message.reply_text(
-                translate("ai_unavailable_no_charge", reply_locale)
+                translate("ai_unavailable_no_charge", reply_locale),
+                reply_markup=companion_recovery_keyboard(reply_locale, retry=True),
             )
             return
         except (AIProviderError, ValueError) as exc:
@@ -4499,8 +4591,10 @@ async def handle_mirror_question(
                 "Mirror AI response rejected: error_type=%s",
                 type(exc).__name__,
             )
+            _remember_pending_ai_question(context, question)
             await message.reply_text(
-                translate("ai_unavailable_no_charge", reply_locale)
+                translate("ai_unavailable_no_charge", reply_locale),
+                reply_markup=companion_recovery_keyboard(reply_locale, retry=True),
             )
             return
         except Exception as exc:
@@ -4708,6 +4802,43 @@ async def cmd_ai_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
             failed=summary["failed_requests"],
         )
     )
+
+
+def companion_recovery_keyboard(
+    locale: str, *, retry: bool = False, include_lesson: bool = False,
+) -> InlineKeyboardMarkup:
+    rows = [[
+        InlineKeyboardButton(
+            translate("start_review", locale), callback_data="start:review"
+        ),
+        InlineKeyboardButton(
+            quick_action_label("dictionary", locale), callback_data="start:dictionary"
+        ),
+    ]]
+    if retry:
+        rows.append([InlineKeyboardButton(
+            translate("companion_retry", locale), callback_data="mirror:retry"
+        )])
+    if include_lesson:
+        rows.insert(0, [InlineKeyboardButton(
+            translate("start_daily", locale), callback_data="start:daily"
+        )])
+    return InlineKeyboardMarkup(rows)
+
+
+@auth
+async def mirror_retry_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    locale = interface_locale_for_update(update)
+    question = _pending_ai_question(context, consume=True)
+    if question is None:
+        await query.message.reply_text(
+            translate("ai_tutor_pending_stale", locale),
+            reply_markup=companion_recovery_keyboard(locale),
+        )
+        return
+    await handle_mirror_question(update, context, question=question)
 
 
 def _remember_pending_ai_question(context, question: str | None) -> None:
@@ -6790,6 +6921,9 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     if action == "audit":
         await cmd_stats.__wrapped__(update, context)
         return
+    if action == "dictionary":
+        await cmd_dictionary.__wrapped__(update, context)
+        return
     if not AI_SETTINGS.enabled:
         await update.message.reply_text(translate("ai_disabled", locale))
         return
@@ -7934,6 +8068,7 @@ async def manual_polling():
     # Welcome menu callbacks
     app.add_handler(CallbackQueryHandler(onboarding_cb, pattern=r"^onboarding:"))
     app.add_handler(CallbackQueryHandler(start_menu_cb, pattern=r"^start:"))
+    app.add_handler(CallbackQueryHandler(mirror_retry_cb, pattern=r"^mirror:retry$"))
     app.add_handler(
         CallbackQueryHandler(billing_open_cb, pattern=r"^billing:open$")
     )

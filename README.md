@@ -24,9 +24,15 @@ deployment automation.
 - Optional metered AI tutor, voice practice, and Telegram Stars billing. Each
   has an independent fail-closed rollout gate.
 - Optional Telegram Mini App with five read-only learner views: profile,
-  tracked words, AI credits, languages, and settings. It uses signed Telegram
+  dictionary/tracked words, AI credits, languages, and settings. It uses signed Telegram
   `initData`, never creates learning or billing records on open, and delegates
   every action back to the existing bot flows.
+- A separate browser dictionary at `/dictionary/`: seven reviewed starter
+  packs (700 entries), bilingual local search, saved words, short written
+  practice, explicit offline storage, standalone HTML download and saved-word
+  CSV export. It opens without Telegram or a learner account. Words outside
+  these packs can be sent to Yandex Translate by an explicitly labelled link.
+  Local dictionary practice does not sync to Telegram learner progress.
 - Verified local PostgreSQL backups, encrypted off-site replication tooling,
   retention controls, health monitoring, and a migration-aware OVH release
   contract.
@@ -90,6 +96,8 @@ migrations, isolated persistence, and concurrent credit reservations.
 | `docs/launch-readiness.md` | Paid and voice release gates |
 | `docs/mirror-control-plane-v1.md` | Mirror modes, quality analytics, and voice translation gates |
 | `docs/telegram-miniapp.md` | Mini App security, product surface, configuration, and rollback contract |
+| `docs/offline-dictionary.md` | Offline dictionary capabilities, local data, verification and update contract |
+| `docs/research/lexi-market-product-2026-09-06.md` | Market evidence, adult/child positioning and staged product priorities |
 | `docs/runbooks/ovh-deployment.md` | Canonical production deployment and rollback runbook |
 | `docs/runbooks/mac-mini-deployment.md` | Historical Mac mini release contract |
 | `docs/runbooks/ovh-cloudflare-tunnel.md` | Owner-gated OVH public-route recovery with token-file handling |

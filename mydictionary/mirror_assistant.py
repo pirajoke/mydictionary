@@ -834,6 +834,41 @@ def direct_mirror_progress_locale(text: str) -> str | None:
     return None
 
 
+def direct_mirror_daily_plan_locale(text: str) -> str | None:
+    """Recognize only explicit, reviewed requests for today's short study plan."""
+    normalized = " ".join(re.findall(r"\w+", str(text).casefold(), flags=re.UNICODE))
+    phrases = {
+        "en": ("plan for today", "make a plan for today", "what should i study today"),
+        "fr": ("plan pour aujourd hui", "fais un plan pour aujourd hui", "que dois je étudier aujourd hui"),
+        "de": ("plan für heute", "erstelle einen plan für heute", "was soll ich heute lernen"),
+        "ja": ("今日の学習計画", "今日の勉強プラン", "今日は何を勉強すればいい"),
+        "ar": ("خطة اليوم", "ضع خطة لليوم", "ماذا أدرس اليوم"),
+        "zh": ("今天的学习计划", "制定今天的学习计划", "今天学什么"),
+        "ru": ("план на сегодня", "составь план на сегодня", "дай план на сегодня", "что учить сегодня", "составь мне план на сегодня"),
+        "es": ("plan para hoy", "haz un plan para hoy", "qué debo estudiar hoy"),
+    }
+    return next((locale for locale, values in phrases.items() if normalized in values), None)
+
+
+def render_mirror_daily_plan(snapshot: Mapping[str, Any], *, locale: str) -> str:
+    """An authored five-minute routine; only the due count uses learner data."""
+    raw_due = snapshot.get("due_count", snapshot.get("due_reviews", 0))
+    try:
+        due = max(0, int(raw_due)) if not isinstance(raw_due, bool) else 0
+    except (TypeError, ValueError):
+        due = 0
+    first = (
+        translate("companion_plan_review", locale, count=min(due, 5))
+        if due > 0 else translate("companion_plan_start", locale)
+    )
+    return "\n".join((
+        translate("companion_plan_title", locale),
+        f"1. {first}",
+        "2. " + translate("companion_plan_recall", locale),
+        "3. " + translate("companion_plan_apply", locale),
+    ))
+
+
 def classify_ai_response_route(text: str) -> str:
     """Choose a bounded provider response tier without reading mutable state."""
     normalized = " ".join(str(text).casefold().strip().split())

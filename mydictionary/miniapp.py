@@ -531,6 +531,25 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     },
 }
 
+_DICTIONARY_COMPANION_COPY = {
+    "en": ("Dictionary", "Open dictionary", "Search, saved words and offline practice · opens in your browser", "Download dictionary", "Your Telegram learning words"),
+    "fr": ("Dictionnaire", "Ouvrir le dictionnaire", "Recherche, mots enregistrés et pratique hors ligne · dans le navigateur", "Télécharger le dictionnaire", "Vos mots étudiés dans Telegram"),
+    "de": ("Wörterbuch", "Wörterbuch öffnen", "Suche, gespeicherte Wörter und Offline-Übungen · im Browser", "Wörterbuch herunterladen", "Deine Lernwörter aus Telegram"),
+    "ja": ("辞書", "辞書を開く", "検索・保存した単語・オフライン練習をブラウザーで", "辞書をダウンロード", "Telegramで学習中の単語"),
+    "ar": ("القاموس", "فتح القاموس", "بحث وكلمات محفوظة وتدريب دون إنترنت في المتصفح", "تنزيل القاموس", "كلماتك الدراسية في تيليجرام"),
+    "zh": ("词典", "打开词典", "在浏览器中搜索、保存单词和离线练习", "下载词典", "你在 Telegram 学习的单词"),
+    "ru": ("Словарь", "Открыть словарь", "Поиск, сохранённые слова и офлайн-практика · откроется в браузере", "Скачать словарь", "Твои слова из уроков в Telegram"),
+    "es": ("Diccionario", "Abrir diccionario", "Búsqueda, palabras guardadas y práctica sin conexión · en el navegador", "Descargar diccionario", "Tus palabras de las lecciones en Telegram"),
+}
+for _locale, (_words, _open, _hint, _download, _tracked) in _DICTIONARY_COMPANION_COPY.items():
+    MINIAPP_COPY[_locale].update(
+        words=_words,
+        dictionary_open=_open,
+        dictionary_hint=_hint,
+        dictionary_download=_download,
+        dictionary_tracked=_tracked,
+    )
+
 _LANGUAGE_SWITCH_COPY = {
     "en": ("Switching dictionary…", "Could not switch dictionary.", "Try again"),
     "fr": ("Changement de dictionnaire…", "Impossible de changer de dictionnaire.", "Réessayer"),

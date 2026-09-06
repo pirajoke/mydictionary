@@ -109,6 +109,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   border: 0;
 }
 
+.dictionary-shortcut { display:flex; align-items:center; gap:12px; width:100%; text-align:start; margin-block:12px; }
+.dictionary-shortcut > span:nth-child(2) { flex:1; min-width:0; }
+.dictionary-shortcut strong, .dictionary-shortcut small { display:block; }
+.dictionary-shortcut small { color:var(--dashboard-muted); font-size:.8rem; font-weight:400; margin-top:3px; }
+.dictionary-entry { display:flex; flex-wrap:wrap; gap:8px; margin-block:14px 22px; }
+.dictionary-entry p { flex-basis:100%; color:var(--dashboard-muted); font-size:.84rem; margin:2px 0 0; }
+.tracked-heading { font-size:1rem; margin:16px 0 10px; }
+
 /* Shared dashboard vocabulary. */
 .dashboard { display: grid; gap: var(--dashboard-gap); }
 .dashboard-panel { min-width: 0; }

@@ -46,6 +46,14 @@ from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, validate_bot_profile
 from mydictionary.catalog import load_catalog
 from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.content import example_target_text
+from mydictionary.dictionary import (
+    build_dictionary_data,
+    dictionary_content_security_policy,
+    dictionary_download_defaults,
+    dictionary_manifest,
+    dictionary_revision,
+    escape_inline_asset,
+)
 from mydictionary.mirror_assistant import (
     MIRROR_COMMUNICATION_MODES,
     MirrorMemorySettings,
@@ -617,6 +625,9 @@ def create_app(
 
     @app.context_processor
     def template_context():
+        # Portable public content must not read or vary with an admin session.
+        if request.endpoint in {"public_dictionary", "dictionary_download"}:
+            return {}
         return {
             "csrf_token": csrf_token,
             "current_actor": current_actor(),
@@ -680,7 +691,15 @@ def create_app(
 
     @app.after_request
     def security_headers(response):
-        if request.path == "/miniapp" or request.path.startswith(
+        if request.endpoint in {
+            "public_dictionary", "dictionary_download", "dictionary_worker",
+            "public_dictionary_manifest",
+        }:
+            response.headers.setdefault(
+                "Content-Security-Policy", dictionary_content_security_policy()
+            )
+            response.headers["X-Frame-Options"] = "DENY"
+        elif request.path == "/miniapp" or request.path.startswith(
             "/miniapp/static/"
         ):
             response.headers["Content-Security-Policy"] = (
@@ -705,6 +724,71 @@ def create_app(
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.get("/dictionary/")
+    def public_dictionary():
+        return render_template(
+            "dictionary.html",
+            dictionary_data=build_dictionary_data(CATALOG),
+            dictionary_css=None,
+            dictionary_js=None,
+            dictionary_csp=dictionary_content_security_policy().replace(
+                "frame-ancestors 'none'; ", ""
+            ),
+            dictionary_defaults=None,
+            offline_download=False,
+        )
+
+    @app.get("/dictionary/download")
+    def dictionary_download():
+        static_dir = Path(app.static_folder)
+        css = escape_inline_asset(
+            (static_dir / "dictionary.css").read_text(encoding="utf-8"), "style"
+        )
+        javascript = escape_inline_asset(
+            (static_dir / "dictionary.js").read_text(encoding="utf-8"), "script"
+        )
+        csp = dictionary_content_security_policy(css=css, javascript=javascript)
+        dictionary_data = build_dictionary_data(CATALOG)
+        response = Response(render_template(
+            "dictionary.html",
+            dictionary_data=dictionary_data,
+            dictionary_css=css,
+            dictionary_js=javascript,
+            dictionary_csp=csp.replace("frame-ancestors 'none'; ", ""),
+            dictionary_defaults=dictionary_download_defaults(request.args, dictionary_data),
+            offline_download=True,
+        ), mimetype="text/html")
+        response.headers["Content-Disposition"] = (
+            'attachment; filename="lexi-dictionary.html"'
+        )
+        response.headers["Content-Security-Policy"] = csp
+        return response
+
+    @app.get("/dictionary/sw.js")
+    def dictionary_worker():
+        static_dir = Path(app.static_folder)
+        sources = {
+            filename: (static_dir / filename).read_bytes()
+            for filename in ("dictionary.js", "dictionary.css", "dictionary-sw.js")
+        }
+        sources["dictionary.html"] = (
+            Path(app.root_path) / "templates" / "dictionary.html"
+        ).read_bytes()
+        revision = dictionary_revision(build_dictionary_data(CATALOG), sources)
+        worker = sources["dictionary-sw.js"].decode("utf-8").replace(
+            "__DICTIONARY_REVISION__", revision
+        )
+        response = Response(worker, mimetype="application/javascript")
+        response.headers["Service-Worker-Allowed"] = "/dictionary/"
+        return response
+
+    @app.get("/dictionary/manifest.webmanifest")
+    def public_dictionary_manifest():
+        return Response(
+            app.json.dumps(dictionary_manifest()),
+            mimetype="application/manifest+json",
+        )
 
     @app.get("/miniapp")
     def miniapp_shell():

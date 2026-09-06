@@ -804,7 +804,8 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             ) = await invoke(ai_enabled=False)
             service.ask.assert_not_awaited()
             message.reply_text.assert_awaited_once_with(
-                translate("ai_disabled", "fr")
+                translate("ai_disabled", "fr"),
+                reply_markup=bot.companion_recovery_keyboard("fr"),
             )
 
         with self.subTest(gate="consent"):

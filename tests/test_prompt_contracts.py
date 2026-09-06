@@ -161,7 +161,7 @@ class RuntimePromptContractTest(unittest.IsolatedAsyncioTestCase):
             responses.kwargs["instructions"],
             normalized_reviewed_prompt(ROOT / "prompts/mirror-v8.txt"),
         )
-        self.assertEqual(responses.kwargs["max_output_tokens"], 480)
+        self.assertEqual(responses.kwargs["max_output_tokens"], 1000)
 
 
 class PromptLoaderContractTest(unittest.TestCase):

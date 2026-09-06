@@ -153,6 +153,9 @@ MIRROR_RESPONSE_SCHEMA = {
 _PROMPT_ROOT = Path(__file__).resolve().parents[1] / "prompts"
 TUTOR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v2.txt")
 MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v8.txt")
+# Responses counts hidden reasoning in this ceiling too. Deep answers need room
+# for both reasoning and the complete strict JSON, within the approved cap.
+MIRROR_OUTPUT_TOKEN_CEILINGS = {"fast": 320, "deep": 1000}
 
 
 class AIConfigurationError(RuntimeError):
@@ -1306,11 +1309,10 @@ class OpenAIResponsesProvider:
         if complexity_route == "fast":
             reasoning_effort = "none"
             verbosity = "low"
-            output_ceiling = 320
         else:
             reasoning_effort = "medium"
             verbosity = "medium"
-            output_ceiling = 480
+        output_ceiling = MIRROR_OUTPUT_TOKEN_CEILINGS[complexity_route]
         serialized_input = json.dumps(
             dict(payload), ensure_ascii=False, separators=(",", ":")
         )
@@ -1708,7 +1710,7 @@ class AITutorService:
             pricing=self.settings.pricing,
             max_output_tokens=min(
                 self.settings.max_output_tokens,
-                320 if computed_route == "fast" else 480,
+                MIRROR_OUTPUT_TOKEN_CEILINGS[computed_route],
             ),
         )
         if (

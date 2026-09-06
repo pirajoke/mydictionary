@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#12202d">
+  {% if dictionary_csp %}<meta http-equiv="Content-Security-Policy" content="{{ dictionary_csp }}">{% endif %}
+  <title>Lexi · Dictionary</title>
+  {% if offline_download %}
+  <style>{{ dictionary_css|safe }}</style>
+  {% else %}
+  <link rel="stylesheet" href="/static/dictionary.css">
+  <link rel="manifest" href="/dictionary/manifest.webmanifest">
+  {% endif %}
+</head>
+<body data-download="{{ 'true' if offline_download else 'false' }}"{% if dictionary_defaults %} data-default-target="{{ dictionary_defaults.target }}" data-default-native="{{ dictionary_defaults.native }}" data-default-ui="{{ dictionary_defaults.ui }}"{% endif %}>
+  <main class="dictionary-shell">
+    <header class="dictionary-header">
+      <a class="brand" href="#dictionary-heading" aria-label="Lexi"><span aria-hidden="true">🦊</span> Lexi</a>
+      <span id="connection-status" class="connection-status" role="status"></span>
+    </header>
+    <section class="intro" aria-labelledby="dictionary-heading">
+      <h1 id="dictionary-heading" data-copy="title">Your words, at hand.</h1>
+      <p data-copy="intro">Find a word. Save it. Remember it.</p>
+      <a class="button" href="#offline-title" data-copy="download">Download dictionary</a>
+    </section>
+    <div class="language-pair">
+      <label><span data-copy="target">Learning</span><select id="target-language" aria-label="Learning language"></select></label>
+      <button id="swap-languages" class="icon-button" type="button" data-label="swap" aria-label="Swap languages">⇄</button>
+      <label><span data-copy="native">Translation</span><select id="native-language" aria-label="Translation language"></select></label>
+    </div>
+    <label class="search-label" for="dictionary-query" data-copy="search_label">Word or short phrase</label>
+    <div class="search-field"><span aria-hidden="true">⌕</span><input id="dictionary-query" type="search" maxlength="250" autocomplete="off" spellcheck="false" dir="auto" placeholder="Search either language"><button id="clear-query" type="button" class="icon-button" data-label="clear" aria-label="Clear">×</button></div>
+    <p id="pack-note" class="subtle"></p>
+    <p id="pair-notice" class="notice" role="status" hidden></p>
+    <div class="view-toolbar">
+      <div class="view-switch" role="group" aria-label="Dictionary view">
+        <button id="view-all" type="button" aria-pressed="true" data-copy="all">Dictionary</button>
+        <button id="view-saved" type="button" aria-pressed="false"><span data-copy="saved">Saved</span> <span id="saved-count">0</span></button>
+      </div>
+      <button id="start-practice" class="practice-button" type="button" data-copy="practice">Practise 5 words</button>
+    </div>
+    <section id="practice-area" class="practice-area" aria-labelledby="practice-title" hidden>
+      <div class="practice-top"><h2 id="practice-title" data-copy="practice_title">A little practice</h2><button id="close-practice" class="icon-button" type="button" data-label="close" aria-label="Close">×</button></div>
+      <p id="practice-position" class="subtle"></p>
+      <p id="practice-question" class="practice-question" dir="auto"></p>
+      <label for="practice-input" data-copy="answer_label">Write the translation</label>
+      <form id="practice-form"><input id="practice-input" autocomplete="off" maxlength="250" dir="auto"><button class="primary" id="check-answer" type="submit" data-copy="check">Check</button></form>
+      <p id="practice-feedback" role="status" aria-live="polite"></p>
+      <button id="show-answer" class="text-button" type="button" data-copy="show">Show answer</button>
+      <button id="next-word" class="primary" type="button" data-copy="next" hidden>Next word</button>
+    </section>
+    <p id="result-status" class="subtle" role="status" aria-live="polite"></p>
+    <div id="dictionary-results" class="results"></div>
+    <div id="empty-results" class="empty-state" hidden><p id="empty-copy"></p></div>
+    <aside id="online-translation" class="online-translation" hidden>
+      <p data-copy="online_hint">For words and phrases outside this pack, use online translation.</p>
+      <a id="translate-link" class="text-link" target="_blank" rel="noopener noreferrer" data-copy="translate">Translate in Yandex ↗</a>
+      <small data-copy="provider_note">Only this click sends your text to Yandex. Internet required.</small>
+    </aside>
+    <section class="offline-tools" aria-labelledby="offline-title">
+      <div><h2 id="offline-title" data-copy="offline_title">Take your dictionary with you</h2><p data-copy="offline_body">Save these packs for local search and practice without internet.</p></div>
+      <div class="download-actions">
+        <button id="save-offline" type="button" class="primary" data-copy="save_offline">Save on this device</button>
+        <a id="download-dictionary" class="button" href="/dictionary/download" download="lexi-dictionary.html" data-copy="download">Download dictionary</a>
+        <button id="export-saved" type="button" data-copy="export">Export saved words · CSV</button>
+      </div>
+      <p id="offline-status" role="status" aria-live="polite"></p>
+      <small data-copy="offline_limit">Offline: included words and flashcards. AI, new translations and online audio need internet. Browser storage can be cleared by your device.</small>
+      <details><summary data-copy="how_open">How to open offline</summary><p data-copy="instructions">Open this page in Safari or Chrome, save it on this device, then add it to your home screen. You can also download the HTML file and open it in a browser. Some phone file previews do not run interactive files.</p></details>
+      <p class="local-note" data-copy="local_note">Saved words and practice stay in this browser. They do not sync with your Telegram progress.</p>
+      <button id="remove-offline" class="text-button" type="button" data-copy="remove_offline" hidden>Remove offline packs</button>
+    </section>
+    <footer><label><span data-copy="interface">Interface language</span><select id="interface-language" aria-label="Interface language"></select></label><span>Lexi · <span data-copy="free">Free starter dictionary</span></span></footer>
+    <noscript>This interactive dictionary needs JavaScript enabled in your browser.</noscript>
+  </main>
+  <script id="dictionary-data" type="application/json">{{ dictionary_data|tojson }}</script>
+  {% if offline_download %}<script>{{ dictionary_js|safe }}</script>{% else %}<script defer src="/static/dictionary.js"></script>{% endif %}
+</body>
+</html>

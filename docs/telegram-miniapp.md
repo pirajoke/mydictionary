@@ -9,8 +9,9 @@ economics, privacy rules, and existing bot actions.
 
 - **Profile**: level, XP, streaks, sessions, accuracy, today's XP, daily goal,
   tracked and learned words, and available AI credits.
-- **My words**: at most 60 tracked words from the active pack, with curated
-  meaning, review/learned state, and correct/incorrect attempt counts.
+- **Dictionary**: browser dictionary/search and standalone download actions,
+  followed by at most 60 tracked words from the active Telegram pack, with
+  curated meaning, review/learned state and correct/incorrect attempt counts.
 - **AI credits**: durable available/reserved/spent balances, the one-credit
   contract, and active one-time Stars packs. Checkout buttons stay disabled
   while public Stars checkout is off.
@@ -23,6 +24,11 @@ All changes continue in the bot through allowlisted `/start miniapp_*` deep
 links. Opening or refreshing the Mini App does not update learner timestamps,
 create progress or wallet rows, reserve credits, call an AI provider, create an
 invoice, or modify settings.
+
+Public dictionary actions open `/dictionary/` or `/dictionary/download` with only
+target/native/interface language choices. They send no signed initData or
+learner identity to that public page. Its independently saved words/practice
+remain local; see [offline dictionary](offline-dictionary.md).
 
 ## Security and privacy
 
