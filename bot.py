@@ -72,7 +72,7 @@ from mydictionary.billing import (
     ProductionStarsCanarySettings,
     TelegramStarsGateway,
 )
-from mydictionary.bot_profile import render_start_text
+from mydictionary.bot_profile import localized_bot_profile, render_start_text
 from mydictionary.catalog import ContentPack, load_catalog
 from mydictionary.content import (
     accepted_meanings,
@@ -161,7 +161,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 BASE_DIR = Path(__file__).parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 WELCOME_BANNER_PATH = (
-    BASE_DIR / "mydictionary" / "static" / "mascot" / "lexi-telegram-avatar-v1.jpg"
+    BASE_DIR / "mydictionary" / "static" / "mascot" / "lexi-telegram-welcome-v1.jpg"
 )
 
 # Config: owner-only token file, then env vars, then config.yaml fallback.
@@ -7941,6 +7941,24 @@ async def sync_telegram_profile(telegram_bot) -> None:
             telegram_bot.set_my_description,
             (profile["bot_description"],),
             {},
+        ),
+        *(
+            item
+            for locale in sorted(INTERFACE_LOCALES)
+            for item in (
+                (
+                    f"short_description:{locale}",
+                    telegram_bot.set_my_short_description,
+                    (localized_bot_profile(profile, locale)["bot_short_description"],),
+                    {"language_code": locale},
+                ),
+                (
+                    f"description:{locale}",
+                    telegram_bot.set_my_description,
+                    (localized_bot_profile(profile, locale)["bot_description"],),
+                    {"language_code": locale},
+                ),
+            )
         ),
     ]
     menu_setter = getattr(telegram_bot, "set_chat_menu_button", None)

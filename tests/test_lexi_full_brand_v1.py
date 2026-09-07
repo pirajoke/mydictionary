@@ -1,7 +1,12 @@
 from pathlib import Path
 import unittest
 
-from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, render_start_text
+from mydictionary.bot_profile import (
+    BOT_PROFILE_DEFAULTS,
+    BOT_PROFILE_LIMITS,
+    BOT_PROFILE_LOCALIZED,
+    render_start_text,
+)
 from mydictionary.localization import INTERFACE_LOCALES, translate
 from mydictionary.miniapp import MINIAPP_COPY
 
@@ -32,6 +37,14 @@ class LexiFullBrandContractTest(unittest.TestCase):
                 self.assertNotIn("MY DICTIONARY", start)
                 self.assertIn("Lexi", translate("bot_help", locale))
                 self.assertIn("Lexi", translate("miniapp_open", locale))
+
+        self.assertEqual(set(BOT_PROFILE_LOCALIZED), set(INTERFACE_LOCALES))
+        for locale, profile in BOT_PROFILE_LOCALIZED.items():
+            with self.subTest(profile_locale=locale):
+                for key in ("bot_short_description", "bot_description"):
+                    self.assertIn("Lexi", profile[key])
+                    self.assertLessEqual(len(profile[key]), BOT_PROFILE_LIMITS[key])
+                self.assertLessEqual(len(profile["bot_description"]), 100)
 
     def test_miniapp_copy_uses_lexi_in_all_supported_locales(self) -> None:
         self.assertEqual(set(MINIAPP_COPY), set(INTERFACE_LOCALES))
@@ -72,7 +85,7 @@ class LexiFullBrandContractTest(unittest.TestCase):
         admin_source = (ROOT / "mydictionary/admin.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn('"lexi-telegram-avatar-v1.jpg"', bot_source)
+        self.assertIn('"lexi-telegram-welcome-v1.jpg"', bot_source)
         self.assertNotIn("mydictionary-welcome.jpg", bot_source)
         self.assertIn("Lexi", admin_auth)
         self.assertNotIn("MY DICTIONARY", admin_auth)
@@ -92,6 +105,14 @@ class LexiFullBrandContractTest(unittest.TestCase):
     def test_selected_lexi_brand_assets_are_bounded_and_nonempty(self) -> None:
         expected = {
             ROOT / "mydictionary/static/mascot/lexi-telegram-avatar-v1.jpg": (
+                b"\xff\xd8\xff",
+                300_000,
+            ),
+            ROOT / "mydictionary/static/mascot/lexi-telegram-description-v1.jpg": (
+                b"\xff\xd8\xff",
+                300_000,
+            ),
+            ROOT / "mydictionary/static/mascot/lexi-telegram-welcome-v1.jpg": (
                 b"\xff\xd8\xff",
                 300_000,
             ),

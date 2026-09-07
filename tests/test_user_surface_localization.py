@@ -15,7 +15,7 @@ os.environ.setdefault("ALLOW_SQLITE_DEV", "true")
 
 import bot
 from mydictionary.admin_store import AdminStore
-from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS
+from mydictionary.bot_profile import BOT_PROFILE_DEFAULTS, localized_bot_profile
 from mydictionary.localization import (
     INTERFACE_LOCALES,
     catalog_is_complete,
@@ -466,6 +466,29 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                         )
                     ),
                 )
+
+        short_calls = telegram_bot.set_my_short_description.await_args_list
+        description_calls = telegram_bot.set_my_description.await_args_list
+        self.assertEqual(len(short_calls), 1 + len(INTERFACE_LOCALES))
+        self.assertEqual(len(description_calls), 1 + len(INTERFACE_LOCALES))
+        self.assertEqual(short_calls[0], call(profile["bot_short_description"]))
+        self.assertEqual(description_calls[0], call(profile["bot_description"]))
+        localized_short = {
+            item.kwargs["language_code"]: item.args[0]
+            for item in short_calls[1:]
+        }
+        localized_description = {
+            item.kwargs["language_code"]: item.args[0]
+            for item in description_calls[1:]
+        }
+        for locale in INTERFACE_LOCALES:
+            expected = localized_bot_profile(profile, locale)
+            self.assertEqual(
+                localized_short[locale], expected["bot_short_description"]
+            )
+            self.assertEqual(
+                localized_description[locale], expected["bot_description"]
+            )
 
         for unsupported in (None, "", "pt-BR"):
             with self.subTest(fallback=unsupported):

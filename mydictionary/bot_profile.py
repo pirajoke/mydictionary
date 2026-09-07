@@ -9,12 +9,9 @@ from .localization import normalize_locale, translate
 
 BOT_PROFILE_DEFAULTS = {
     "bot_name": "Lexi",
-    "bot_short_description": (
-        "Лекси помогает учить слова, говорить увереннее и не терять прогресс."
-    ),
+    "bot_short_description": "Короткие уроки и умные повторения с Lexi 🦊",
     "bot_description": (
-        "Lexi — твой языковой тренер в Telegram: короткие уроки, карточки, "
-        "произношение, умные повторения и AI-помощь по твоему прогрессу."
+        "Учи слова, тренируй произношение и повторяй вовремя вместе с Lexi 🦊"
     ),
     "bot_start_text": (
         "Привет, {name}! Я Lexi 🦊\n\n"
@@ -35,6 +32,57 @@ BOT_PROFILE_DEFAULTS = {
         "В уроке нажми «Показать значение», затем оцени слово. Бот сохранит "
         "ответ и назначит следующее повторение."
     ),
+}
+
+BOT_PROFILE_LOCALIZED = {
+    "en": {
+        "bot_short_description": "Short lessons and smart reviews with Lexi 🦊",
+        "bot_description": (
+            "Learn words, practise pronunciation and review at the right time "
+            "with Lexi 🦊"
+        ),
+    },
+    "fr": {
+        "bot_short_description": "Leçons courtes et révisions futées avec Lexi 🦊",
+        "bot_description": (
+            "Apprends des mots, travaille ta prononciation et révise au bon "
+            "moment avec Lexi 🦊"
+        ),
+    },
+    "de": {
+        "bot_short_description": "Kurze Lektionen und clevere Wiederholungen mit Lexi 🦊",
+        "bot_description": (
+            "Lerne Wörter, übe die Aussprache und wiederhole zur richtigen "
+            "Zeit mit Lexi 🦊"
+        ),
+    },
+    "ja": {
+        "bot_short_description": "Lexiと短いレッスン、かしこく復習 🦊",
+        "bot_description": (
+            "Lexiと単語を学び、発音を練習し、最適なタイミングで復習しよう 🦊"
+        ),
+    },
+    "ar": {
+        "bot_short_description": "دروس قصيرة ومراجعة ذكية مع Lexi 🦊",
+        "bot_description": (
+            "تعلّم الكلمات، تدرّب على النطق وراجع في الوقت المناسب مع Lexi 🦊"
+        ),
+    },
+    "zh": {
+        "bot_short_description": "和 Lexi 一起短时学习、智能复习 🦊",
+        "bot_description": "和 Lexi 一起学单词、练发音，并在合适的时间复习 🦊",
+    },
+    "ru": {
+        "bot_short_description": BOT_PROFILE_DEFAULTS["bot_short_description"],
+        "bot_description": BOT_PROFILE_DEFAULTS["bot_description"],
+    },
+    "es": {
+        "bot_short_description": "Lecciones cortas y repasos inteligentes con Lexi 🦊",
+        "bot_description": (
+            "Aprende palabras, practica la pronunciación y repasa a tiempo "
+            "con Lexi 🦊"
+        ),
+    },
 }
 
 BOT_PROFILE_LIMITS = {
@@ -58,6 +106,19 @@ def validate_bot_profile(values: Mapping[str, str]) -> dict[str, str]:
             raise ValueError(f"{key} exceeds {limit} characters")
         result[key] = value
     return result
+
+
+def localized_bot_profile(
+    profile: Mapping[str, str], locale: str
+) -> dict[str, str]:
+    """Return Telegram profile copy for a supported interface locale."""
+    selected = normalize_locale(locale)
+    if selected == "ru":
+        return {
+            "bot_short_description": str(profile["bot_short_description"]),
+            "bot_description": str(profile["bot_description"]),
+        }
+    return dict(BOT_PROFILE_LOCALIZED[selected])
 
 
 def render_start_text(
