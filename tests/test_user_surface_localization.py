@@ -215,14 +215,22 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                     locale="fr",
                 )
                 payload = consent_message.reply_text.await_args
-                self.assertIn("Consentement au traitement par l’IA", payload.args[0])
+                self.assertIn("✨ Activer l’aide IA de Lexi ?", payload.args[0])
                 self.assertIn(processing_notice, payload.args[0])
+                self.assertNotIn("Version", payload.args[0])
+                self.assertNotIn("ai-v1", payload.args[0])
+                keyboard = payload.kwargs["reply_markup"].inline_keyboard
+                self.assertEqual(len(keyboard), 2)
                 buttons = [
                     button.text
-                    for row in payload.kwargs["reply_markup"].inline_keyboard
+                    for row in keyboard
                     for button in row
                 ]
-                self.assertEqual(buttons, ["Accepter et continuer", "Annuler"])
+                self.assertEqual(buttons, ["✅ Accepter", "Pas maintenant"])
+                self.assertEqual(
+                    keyboard[0][0].style,
+                    bot.KeyboardButtonStyle.SUCCESS,
+                )
                 self.assertNotIn("Согласие", payload.args[0])
 
             with self.subTest(surface="usage_stats"):

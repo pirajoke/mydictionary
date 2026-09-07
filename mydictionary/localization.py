@@ -1406,9 +1406,12 @@ _USER_SURFACE_CYCLE2_COPY = {
         "privacy_unknown_action": "Unknown action.",
         "privacy_data_deleted": "Data deleted.",
         "privacy_deletion_complete": "Learning data were deleted. Only the required payment and audit trail remains. Operation reference: {reference}.",
-        "ai_processing_consent": "AI-processing consent\n\n{notice}\n\nVersion: {version}",
-        "ai_consent_accept": "Accept and continue",
-        "ai_consent_cancel": "Cancel",
+        "ai_processing_consent": (
+            "✨ Activate Lexi’s AI help?\n\n{notice}\n\n"
+            "🔒 You can withdraw consent at any time in the privacy settings."
+        ),
+        "ai_consent_accept": "✅ Accept",
+        "ai_consent_cancel": "Not now",
         "ai_usage_stats": "AI usage\n\nAvailable credits: {available}\nReserved: {reserved}\nUsed: {spent}\nRequests: {completed} completed, {failed} refunded",
         "mirror_feedback_helpful": "Helpful",
         "mirror_feedback_unhelpful": "Not helpful",
@@ -1455,9 +1458,13 @@ _USER_SURFACE_CYCLE2_COPY = {
         "privacy_unknown_action": "Action inconnue.",
         "privacy_data_deleted": "Données supprimées.",
         "privacy_deletion_complete": "Les données d’apprentissage ont été supprimées. Seules les traces de paiement et d’audit obligatoires sont conservées. Référence de l’opération : {reference}.",
-        "ai_processing_consent": "Consentement au traitement par l’IA\n\n{notice}\n\nVersion : {version}",
-        "ai_consent_accept": "Accepter et continuer",
-        "ai_consent_cancel": "Annuler",
+        "ai_processing_consent": (
+            "✨ Activer l’aide IA de Lexi ?\n\n{notice}\n\n"
+            "🔒 Vous pouvez retirer votre consentement à tout moment dans les "
+            "paramètres de confidentialité."
+        ),
+        "ai_consent_accept": "✅ Accepter",
+        "ai_consent_cancel": "Pas maintenant",
         "ai_usage_stats": "Utilisation de l’IA\n\nCrédits disponibles : {available}\nRéservés : {reserved}\nUtilisés : {spent}\nRequêtes : {completed} réussies, {failed} remboursée",
         "mirror_feedback_helpful": "Utile",
         "mirror_feedback_unhelpful": "Pas utile",
@@ -1504,9 +1511,12 @@ _USER_SURFACE_CYCLE2_COPY = {
         "privacy_unknown_action": "Неизвестное действие.",
         "privacy_data_deleted": "Данные удалены.",
         "privacy_deletion_complete": "Учебные данные удалены. Сохранён только обязательный платёжный и аудиторский след. Номер операции: {reference}.",
-        "ai_processing_consent": "Согласие на обработку AI\n\n{notice}\n\nВерсия: {version}",
-        "ai_consent_accept": "Согласен и продолжить",
-        "ai_consent_cancel": "Отмена",
+        "ai_processing_consent": (
+            "✨ Подключить AI-помощника Lexi?\n\n{notice}\n\n"
+            "🔒 Согласие можно отозвать в любой момент в настройках приватности."
+        ),
+        "ai_consent_accept": "✅ Принять",
+        "ai_consent_cancel": "Не сейчас",
         "ai_usage_stats": "AI-использование\n\nДоступно кредитов: {available}\nЗарезервировано: {reserved}\nИспользовано: {spent}\nЗапросы: {completed} успешно, {failed} с возвратом",
         "mirror_feedback_helpful": "Полезно",
         "mirror_feedback_unhelpful": "Не помогло",
@@ -1553,9 +1563,13 @@ _USER_SURFACE_CYCLE2_COPY = {
         "privacy_unknown_action": "Unbekannte Aktion.",
         "privacy_data_deleted": "Daten gelöscht.",
         "privacy_deletion_complete": "Die Lerndaten wurden gelöscht. Nur der erforderliche Zahlungs- und Prüfpfad bleibt erhalten. Vorgangsnummer: {reference}.",
-        "ai_processing_consent": "Einwilligung zur KI-Verarbeitung\n\n{notice}\n\nVersion: {version}",
-        "ai_consent_accept": "Akzeptieren und fortfahren",
-        "ai_consent_cancel": "Abbrechen",
+        "ai_processing_consent": (
+            "✨ Lexis KI-Hilfe aktivieren?\n\n{notice}\n\n"
+            "🔒 Du kannst deine Einwilligung jederzeit in den "
+            "Datenschutzeinstellungen widerrufen."
+        ),
+        "ai_consent_accept": "✅ Akzeptieren",
+        "ai_consent_cancel": "Nicht jetzt",
         "ai_usage_stats": "KI-Nutzung\n\nVerfügbare Credits: {available}\nReserviert: {reserved}\nVerwendet: {spent}\nAnfragen: {completed} erfolgreich, {failed} erstattet",
         "mirror_feedback_helpful": "Hilfreich",
         "mirror_feedback_unhelpful": "Nicht hilfreich",
@@ -1602,9 +1616,13 @@ _USER_SURFACE_CYCLE2_COPY = {
         "privacy_unknown_action": "Acción desconocida.",
         "privacy_data_deleted": "Datos eliminados.",
         "privacy_deletion_complete": "Los datos de aprendizaje se eliminaron. Solo se conserva el registro obligatorio de pagos y auditoría. Referencia de operación: {reference}.",
-        "ai_processing_consent": "Consentimiento para el tratamiento por IA\n\n{notice}\n\nVersión: {version}",
-        "ai_consent_accept": "Aceptar y continuar",
-        "ai_consent_cancel": "Cancelar",
+        "ai_processing_consent": (
+            "✨ ¿Activar la ayuda de IA de Lexi?\n\n{notice}\n\n"
+            "🔒 Puedes retirar tu consentimiento en cualquier momento en los "
+            "ajustes de privacidad."
+        ),
+        "ai_consent_accept": "✅ Aceptar",
+        "ai_consent_cancel": "Ahora no",
         "ai_usage_stats": "Uso de IA\n\nCréditos disponibles: {available}\nReservados: {reserved}\nUsados: {spent}\nSolicitudes: {completed} correctas, {failed} reembolsadas",
         "mirror_feedback_helpful": "Útil",
         "mirror_feedback_unhelpful": "No útil",
@@ -1651,9 +1669,12 @@ _USER_SURFACE_CYCLE2_COPY = {
         "privacy_unknown_action": "不明な操作です。",
         "privacy_data_deleted": "データを削除しました。",
         "privacy_deletion_complete": "学習データを削除しました。必須の支払い・監査記録のみ保持されます。操作番号：{reference}。",
-        "ai_processing_consent": "AI処理への同意\n\n{notice}\n\nバージョン：{version}",
-        "ai_consent_accept": "同意して続ける",
-        "ai_consent_cancel": "キャンセル",
+        "ai_processing_consent": (
+            "✨ LexiのAIサポートを有効にしますか？\n\n{notice}\n\n"
+            "🔒 同意はプライバシー設定からいつでも撤回できます。"
+        ),
+        "ai_consent_accept": "✅ 同意する",
+        "ai_consent_cancel": "今はしない",
         "ai_usage_stats": "AI利用状況\n\n利用可能なクレジット：{available}\n予約済み：{reserved}\n使用済み：{spent}\nリクエスト：成功 {completed}、返却 {failed}",
         "mirror_feedback_helpful": "役に立った",
         "mirror_feedback_unhelpful": "役に立たなかった",
@@ -1700,9 +1721,12 @@ _USER_SURFACE_CYCLE2_COPY = {
         "privacy_unknown_action": "未知操作。",
         "privacy_data_deleted": "数据已删除。",
         "privacy_deletion_complete": "学习数据已删除，仅保留必要的付款和审计记录。操作编号：{reference}。",
-        "ai_processing_consent": "AI 处理授权\n\n{notice}\n\n版本：{version}",
-        "ai_consent_accept": "同意并继续",
-        "ai_consent_cancel": "取消",
+        "ai_processing_consent": (
+            "✨ 启用 Lexi 的 AI 助手吗？\n\n{notice}\n\n"
+            "🔒 你可以随时在隐私设置中撤回授权。"
+        ),
+        "ai_consent_accept": "✅ 同意",
+        "ai_consent_cancel": "暂不",
         "ai_usage_stats": "AI 使用情况\n\n可用点数：{available}\n已预留：{reserved}\n已使用：{spent}\n请求：成功 {completed}，退回 {failed}",
         "mirror_feedback_helpful": "有帮助",
         "mirror_feedback_unhelpful": "没有帮助",
@@ -1749,9 +1773,12 @@ _USER_SURFACE_CYCLE2_COPY = {
         "privacy_unknown_action": "إجراء غير معروف.",
         "privacy_data_deleted": "تم حذف البيانات.",
         "privacy_deletion_complete": "تم حذف بيانات التعلم. بقي فقط سجل الدفع والتدقيق الإلزامي. مرجع العملية: {reference}.",
-        "ai_processing_consent": "الموافقة على معالجة AI\n\n{notice}\n\nالإصدار: {version}",
-        "ai_consent_accept": "موافقة ومتابعة",
-        "ai_consent_cancel": "إلغاء",
+        "ai_processing_consent": (
+            "✨ هل تريد تفعيل مساعدة Lexi بالذكاء الاصطناعي؟\n\n{notice}\n\n"
+            "🔒 يمكنك سحب موافقتك في أي وقت من إعدادات الخصوصية."
+        ),
+        "ai_consent_accept": "✅ أوافق",
+        "ai_consent_cancel": "ليس الآن",
         "ai_usage_stats": "استخدام AI\n\nالأرصدة المتاحة: {available}\nالمحجوزة: {reserved}\nالمستخدمة: {spent}\nالطلبات: {completed} ناجحة، {failed} مستردة",
         "mirror_feedback_helpful": "مفيد",
         "mirror_feedback_unhelpful": "غير مفيد",

@@ -38,6 +38,7 @@ from telegram import (
 )
 from telegram.error import Conflict, TelegramError
 from telegram.helpers import escape_markdown
+from telegram.constants import KeyboardButtonStyle
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler, ContextTypes,
     MessageHandler, PollAnswerHandler, PreCheckoutQueryHandler, filters
@@ -3977,16 +3978,21 @@ async def request_ai_processing_consent(
             version=AI_SETTINGS.consent_version,
         ),
         reply_markup=InlineKeyboardMarkup(
-            [[
-                InlineKeyboardButton(
-                    translate("ai_consent_accept", locale),
-                    callback_data="aiconsent:accept",
-                ),
-                InlineKeyboardButton(
-                    translate("ai_consent_cancel", locale),
-                    callback_data="aiconsent:cancel",
-                ),
-            ]]
+            [
+                [
+                    InlineKeyboardButton(
+                        translate("ai_consent_accept", locale),
+                        callback_data="aiconsent:accept",
+                        style=KeyboardButtonStyle.SUCCESS,
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        translate("ai_consent_cancel", locale),
+                        callback_data="aiconsent:cancel",
+                    )
+                ],
+            ]
         ),
     )
 
