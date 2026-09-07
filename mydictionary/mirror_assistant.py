@@ -414,79 +414,6 @@ _FAST_CJK_CONTROL_PATTERNS = (
     r"[㐀-鿿]{1,12}怎么读[?？]?",
     r"[“「\"][^”」\"]{1,40}[”」\"]是什么意思[?？]?",
 )
-_LATIN_LOCALE_MARKERS = {
-    "en": frozenset(
-        {
-            "please",
-            "explain",
-            "why",
-            "this",
-            "word",
-            "used",
-            "here",
-            "form",
-            "what",
-            "can",
-            "you",
-            "do",
-        }
-    ),
-    "fr": frozenset(
-        {
-            "bonjour",
-            "pourquoi",
-            "utilise",
-            "emploie",
-            "mot",
-            "dans",
-            "cette",
-            "phrase",
-            "est",
-            "que",
-            "peux",
-            "tu",
-            "faire",
-        }
-    ),
-    "de": frozenset(
-        {
-            "warum",
-            "verwendet",
-            "dieses",
-            "wort",
-            "diesem",
-            "satz",
-            "ist",
-            "hier",
-            "was",
-            "kannst",
-            "du",
-        }
-    ),
-    "es": frozenset(
-        {
-            "por",
-            "qué",
-            "usa",
-            "esta",
-            "palabra",
-            "frase",
-            "explica",
-            "aquí",
-            "puedes",
-            "hacer",
-        }
-    ),
-}
-_UNAMBIGUOUS_LATIN_GREETINGS = {
-    "bonjour": "fr",
-    "salut": "fr",
-    "hallo": "de",
-    "hola": "es",
-    "hello": "en",
-}
-
-
 @dataclass(frozen=True)
 class MirrorMemorySettings:
     enabled: bool = False
@@ -633,44 +560,9 @@ def resolve_companion_locale(
     *,
     interface_locale: str | None,
 ) -> str:
-    """Resolve a confident message language or use the canonical UI fallback."""
-    fallback = normalize_locale(interface_locale)
-    value = str(text or "").strip()
-    if len(value) < 3:
-        return fallback
-
-    has_latin = bool(re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", value))
-    has_cyrillic = bool(re.search(r"[А-Яа-яЁё]", value))
-    has_arabic = bool(re.search(r"[\u0600-\u06ff]", value))
-    has_kana = bool(re.search(r"[\u3040-\u30ff]", value))
-    has_han = bool(re.search(r"[\u3400-\u4dbf\u4e00-\u9fff]", value))
-    non_latin_scripts = sum((has_cyrillic, has_arabic, has_kana or has_han))
-    if non_latin_scripts > 1 or (has_latin and non_latin_scripts):
-        return fallback
-    if has_cyrillic:
-        return "ru"
-    if has_arabic:
-        return "ar"
-    if has_kana:
-        return "ja"
-    if has_han:
-        return "zh"
-    if not has_latin:
-        return fallback
-
-    words = set(
-        re.findall(r"[a-zà-öø-ÿ]+", value.casefold(), flags=re.UNICODE)
-    )
-    if len(words) == 1:
-        greeting_locale = _UNAMBIGUOUS_LATIN_GREETINGS.get(next(iter(words)))
-        if greeting_locale is not None:
-            return greeting_locale
-    scores = {
-        locale: len(words & markers)
-        for locale, markers in _LATIN_LOCALE_MARKERS.items()
-    }
-    confident_locales = [locale for locale, score in scores.items() if score >= 2]
-    return confident_locales[0] if len(confident_locales) == 1 else fallback
+    """Keep every companion answer in the learner's saved bot language."""
+    del text
+    return normalize_locale(interface_locale)
 
 
 def resolve_learning_stage(grounded_progress: Mapping[str, Any]) -> str:

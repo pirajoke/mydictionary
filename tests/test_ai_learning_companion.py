@@ -99,23 +99,23 @@ class HandlerStore:
 
 
 class LearningCompanionContractTest(unittest.TestCase):
-    def test_ac_1_message_language_uses_script_and_confident_lexical_detection(self):
+    def test_ac_1_saved_interface_language_overrides_message_script(self):
         resolve = required_public(self, companion, "resolve_companion_locale")
-        cases = {
-            "Объясни, почему это слово здесь подходит.": "ru",
-            "この言葉の使い方を説明してください。": "ja",
-            "اشرح لماذا تستخدم هذه الكلمة هنا": "ar",
-            "请解释这个词为什么用在这里。": "zh",
-            "Please explain why this word is used here.": "en",
-            "Pourquoi utilise-t-on ce mot dans cette phrase ?": "fr",
-            "Warum verwendet man dieses Wort in diesem Satz?": "de",
-            "¿Por qué se usa esta palabra en esta frase?": "es",
-        }
-        for message, expected in cases.items():
-            with self.subTest(expected_locale=expected):
+        messages = (
+            "Объясни, почему это слово здесь подходит.",
+            "この言葉の使い方を説明してください。",
+            "اشرح لماذا تستخدم هذه الكلمة هنا",
+            "请解释这个词为什么用在这里。",
+            "Please explain why this word is used here.",
+            "Pourquoi utilise-t-on ce mot dans cette phrase ?",
+            "Warum verwendet man dieses Wort in diesem Satz?",
+            "¿Por qué se usa esta palabra en esta frase?",
+        )
+        for message in messages:
+            with self.subTest(message=message):
                 self.assertEqual(
                     resolve(message, interface_locale="de"),
-                    expected,
+                    "de",
                 )
 
     def test_ec_1_ambiguous_or_unsupported_text_uses_canonical_locale_fallback(self):
@@ -139,10 +139,10 @@ class LearningCompanionContractTest(unittest.TestCase):
                     expected,
                 )
 
-    def test_ac_1_ec_1_confident_greeting_and_mixed_latin_resolution(self):
+    def test_ac_1_ec_1_greetings_do_not_override_saved_interface_language(self):
         resolve = required_public(self, companion, "resolve_companion_locale")
         cases = (
-            ("Bonjour", "de", "fr"),
+            ("Bonjour", "de", "de"),
             (
                 "Please explain why this word est utilisé dans cette phrase",
                 "de",
@@ -157,13 +157,13 @@ class LearningCompanionContractTest(unittest.TestCase):
                     expected,
                 )
 
-    def test_ac_1_ac_5_capability_questions_use_message_locale_cross_interface(self):
+    def test_ac_1_ac_5_capability_questions_use_saved_interface_locale(self):
         resolve = required_public(self, companion, "resolve_companion_locale")
         cases = (
-            ("What can you do?", "ja", "en"),
-            ("Que peux-tu faire ?", "en", "fr"),
-            ("Was kannst du?", "en", "de"),
-            ("¿Qué puedes hacer?", "en", "es"),
+            ("What can you do?", "ja", "ja"),
+            ("Que peux-tu faire ?", "en", "en"),
+            ("Was kannst du?", "en", "en"),
+            ("¿Qué puedes hacer?", "en", "en"),
         )
         for text, interface_locale, expected in cases:
             with self.subTest(text=text):
@@ -507,11 +507,11 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
 
         service.ask.assert_awaited_once()
         payload = service.ask.await_args.kwargs["mirror_payload"]
-        with self.subTest(contract="message_locale"):
-            self.assertEqual(payload["interface_locale"], "fr")
+        with self.subTest(contract="saved_interface_locale"):
+            self.assertEqual(payload["interface_locale"], "de")
             self.assertEqual(
                 payload["response_language_instruction"],
-                response_language_instruction("fr"),
+                response_language_instruction("de"),
             )
         with self.subTest(contract="grounded_context"):
             self.assertIn("learner_context", payload)

@@ -649,7 +649,7 @@ class ZerkaloProgressFocusContractTest(unittest.IsolatedAsyncioTestCase):
                 progress_renderer.assert_not_called()
                 sender.assert_awaited_once()
 
-    async def test_ac3_direct_progress_uses_phrase_locale_with_english_interface(self):
+    async def test_ac3_direct_progress_uses_saved_english_interface(self):
         phrases = {
             "en": "what should I focus on",
             "fr": "sur quoi dois-je me concentrer",
@@ -660,8 +660,8 @@ class ZerkaloProgressFocusContractTest(unittest.IsolatedAsyncioTestCase):
             "ru": "на чем фокус",
             "es": "en qué debo enfocarme",
         }
-        for index, (expected_locale, phrase) in enumerate(phrases.items()):
-            with self.subTest(locale=expected_locale):
+        for index, (phrase_locale, phrase) in enumerate(phrases.items()):
+            with self.subTest(phrase_locale=phrase_locale):
                 update, context, message = text_surface(
                     phrase,
                     locale="en",
@@ -701,12 +701,12 @@ class ZerkaloProgressFocusContractTest(unittest.IsolatedAsyncioTestCase):
                     await bot.mirror_text_handler.__wrapped__(update, context)
 
                 message.reply_text.assert_awaited_once_with(
-                    f"free:{expected_locale}"
+                    "free:en"
                 )
                 progress_renderer.assert_called_once()
                 self.assertEqual(
                     progress_renderer.call_args.kwargs["locale"],
-                    expected_locale,
+                    "en",
                 )
                 store.has_consent.assert_not_called()
                 service.ask.assert_not_awaited()
