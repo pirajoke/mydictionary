@@ -577,11 +577,12 @@ class DailyLessonTest(unittest.IsolatedAsyncioTestCase):
         payload = query.edit_message_text.await_args
         self.assertIn("Carte 1 sur 5", payload.args[0])
         buttons = payload.kwargs["reply_markup"].inline_keyboard
-        self.assertEqual(buttons[0][0].text, "🔊 Réécouter")
         self.assertEqual(
-            [button.text for button in buttons[1]],
+            [button.text for button in buttons[0]],
             ["😵 Je ne sais pas", "✅ Je sais"],
         )
+        self.assertEqual([button.text for button in buttons[1]], ["🔊 Prononciation"])
+        self.assertTrue(buttons[1][0].url.startswith("https://forvo.com/word/"))
         for russian_ui in (
             "Карточка",
             "Слушать ещё",
@@ -640,7 +641,7 @@ class DailyLessonTest(unittest.IsolatedAsyncioTestCase):
             "start:daily",
         )
 
-    async def test_flash_card_reveal_has_replay_and_simple_rating_buttons(self):
+    async def test_flash_card_reveal_prioritizes_rating_then_pronunciation_link(self):
         user_data = {}
         bot.reset_block_state(user_data, [10], "ja", "people")
         bot.start_block_attempt(user_data, "flash")
@@ -662,8 +663,10 @@ class DailyLessonTest(unittest.IsolatedAsyncioTestCase):
         payload = query.edit_message_text.await_args
         self.assertIn("🇷🇺 *я*", payload.args[0])
         buttons = payload.kwargs["reply_markup"].inline_keyboard
-        self.assertEqual(buttons[0][0].callback_data, f"bplay:{session_id}:10")
-        self.assertEqual([button.text for button in buttons[1]], ["😵 Не знаю", "✅ Знаю"])
+        self.assertEqual([button.text for button in buttons[0]], ["😵 Не знаю", "✅ Знаю"])
+        self.assertEqual([button.text for button in buttons[1]], ["🔊 Произношение"])
+        self.assertIsNone(buttons[1][0].callback_data)
+        self.assertTrue(buttons[1][0].url.startswith("https://forvo.com/word/"))
         record.assert_called_once()
         self.assertEqual(record.call_args.args[0], "card_revealed")
 
