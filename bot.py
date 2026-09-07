@@ -1027,13 +1027,16 @@ PACK_SWITCH_PATTERN = r"^(?:" + "|".join(
     re.escape(label) for label in PACK_SWITCH_TEXTS
 ) + r")$"
 
-def forvo_button(idx: int) -> InlineKeyboardButton:
-    """Return an inline button linking to Forvo pronunciation page."""
+def forvo_button(idx: int, locale: str) -> InlineKeyboardButton:
+    """Return a localized inline button for native-speaker pronunciation."""
     word = W()[idx]
     pack = active_content_pack()
     encoded_word = quote(target_text(word).replace(" ", "_"), safe="")
     url = f"https://forvo.com/word/{encoded_word}/#{pack.target_language}"
-    return InlineKeyboardButton("🔊 Forvo", url=url)
+    return InlineKeyboardButton(
+        translate("learning_native_pronunciation", locale),
+        url=url,
+    )
 
 
 async def replace_previous_pronunciation(
@@ -5684,7 +5687,7 @@ async def quiz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     next_btn = InlineKeyboardMarkup([
-        [forvo_button(idx), InlineKeyboardButton(
+        [forvo_button(idx, locale), InlineKeyboardButton(
             translate("legacy_next", locale), callback_data="next_quiz"
         )]
     ])
@@ -5821,7 +5824,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 f"{format_xp_line(xp, sb, locale=locale)}"
             )
         next_btn = InlineKeyboardMarkup([
-            [forvo_button(idx), InlineKeyboardButton(
+            [forvo_button(idx, locale), InlineKeyboardButton(
                 translate("legacy_next", locale), callback_data="next_smart"
             )]
         ])
@@ -5850,7 +5853,7 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data["type_idx"] = None
 
     next_btn = InlineKeyboardMarkup([
-        [forvo_button(idx), InlineKeyboardButton(
+        [forvo_button(idx, locale), InlineKeyboardButton(
             translate("legacy_next", locale), callback_data="next_type"
         )]
     ])
@@ -5905,7 +5908,6 @@ async def flash_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
     locale = learning_card_locale(context.user_data)
 
     buttons = InlineKeyboardMarkup([
-        [forvo_button(idx)],
         [
             InlineKeyboardButton(
                 translate("learning_dont_know", locale),
@@ -5915,7 +5917,8 @@ async def flash_show(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 translate("learning_know", locale),
                 callback_data=f"flash_knew:{idx}",
             ),
-        ]
+        ],
+        [forvo_button(idx, locale)],
     ])
     await query.edit_message_text(
         format_word_details(idx),
@@ -6104,7 +6107,7 @@ async def smart_quiz_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     next_btn = InlineKeyboardMarkup([
-        [forvo_button(idx), InlineKeyboardButton(
+        [forvo_button(idx, locale), InlineKeyboardButton(
             translate("legacy_next", locale), callback_data="next_smart"
         )]
     ])
@@ -7665,13 +7668,6 @@ async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
     buttons = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                translate("learning_listen_again", locale),
-                callback_data=f"bplay:{session_id}:{idx}",
-            ),
-            forvo_button(idx),
-        ],
-        [
-            InlineKeyboardButton(
                 translate("learning_dont_know", locale),
                 callback_data=f"bflash_didnt:{session_id}:{idx}",
             ),
@@ -7679,7 +7675,8 @@ async def block_flash_show_cb(update: Update, context: ContextTypes.DEFAULT_TYPE
                 translate("learning_know", locale),
                 callback_data=f"bflash_knew:{session_id}:{idx}",
             ),
-        ]
+        ],
+        [forvo_button(idx, locale)],
     ])
     await query.edit_message_text(
         format_learning_card_back(user_data, idx),
