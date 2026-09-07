@@ -1127,8 +1127,8 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
         telegram_bot.set_chat_menu_button.assert_awaited_once()
         telegram_bot.set_my_commands.assert_awaited()
         telegram_bot.set_my_name.assert_awaited_once()
-        telegram_bot.set_my_short_description.assert_awaited_once()
-        telegram_bot.set_my_description.assert_awaited_once()
+        self.assertGreater(telegram_bot.set_my_short_description.await_count, 1)
+        self.assertGreater(telegram_bot.set_my_description.await_count, 1)
 
     async def test_ac6_start_deep_links_obey_target_specific_safety_limits(self):
         for action, expected_scope in (

@@ -14,6 +14,7 @@ os.environ.setdefault("ALLOWED_USER_ID", "1")
 
 import bot
 from telegram.error import RetryAfter
+from mydictionary.localization import INTERFACE_LOCALES
 from mydictionary.readiness import (
     BotHeartbeat,
     configured_max_age_seconds,
@@ -244,11 +245,19 @@ class BotPollingReadinessTest(unittest.IsolatedAsyncioTestCase):
                 await bot.manual_polling()
 
         telegram_bot.get_updates.assert_awaited()
-        telegram_bot.set_my_short_description.assert_awaited_once_with(
+        telegram_bot.set_my_short_description.assert_any_await(
             profile["bot_short_description"]
         )
-        telegram_bot.set_my_description.assert_awaited_once_with(
+        telegram_bot.set_my_description.assert_any_await(
             profile["bot_description"]
+        )
+        self.assertEqual(
+            telegram_bot.set_my_short_description.await_count,
+            1 + len(INTERFACE_LOCALES),
+        )
+        self.assertEqual(
+            telegram_bot.set_my_description.await_count,
+            1 + len(INTERFACE_LOCALES),
         )
         logs = "\n".join(captured.output)
         self.assertIn("operation=name error_type=RetryAfter", logs)

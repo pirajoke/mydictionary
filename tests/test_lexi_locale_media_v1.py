@@ -194,7 +194,7 @@ class LexiFirstStartMediaContractTest(unittest.IsolatedAsyncioTestCase):
     def test_start_media_uses_one_canonical_fox_asset_not_the_old_dictionary_banner(self) -> None:
         self.assertEqual(
             bot.WELCOME_BANNER_PATH,
-            ROOT / "mydictionary/static/mascot/lexi-telegram-avatar-v1.jpg",
+            ROOT / "mydictionary/static/mascot/lexi-telegram-welcome-v1.jpg",
         )
         self.assertFalse((ROOT / "assets/lexi-welcome-v1.jpg").exists())
 
