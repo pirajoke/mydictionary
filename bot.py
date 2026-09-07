@@ -1829,7 +1829,11 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             native_language=meaning_language,
             learning_goal="basics",
         )
+        runtime.store.set_interface_locale(runtime.user_id, meaning_language)
         runtime.meaning_language = meaning_language
+        runtime.interface_locale = meaning_language
+        locale = meaning_language
+        context.user_data["interface_locale"] = meaning_language
         context.user_data["onboarding_native_language"] = meaning_language
         record_product_event(
             "onboarding_native_selected",
@@ -4339,10 +4343,10 @@ async def handle_mirror_question(
     selected_task_kind = task_kind or classify_mirror_task(question)
     capability_greeting_locale = direct_mirror_capability_greeting_locale(question)
     deterministic_capability_greeting = capability_greeting_locale is not None
-    progress_locale = direct_mirror_progress_locale(question)
-    deterministic_progress = progress_locale is not None and task_kind is None
-    daily_plan_locale = direct_mirror_daily_plan_locale(question)
-    if daily_plan_locale is not None and task_kind is None:
+    progress_request_locale = direct_mirror_progress_locale(question)
+    deterministic_progress = progress_request_locale is not None and task_kind is None
+    daily_plan_request_locale = direct_mirror_daily_plan_locale(question)
+    if daily_plan_request_locale is not None and task_kind is None:
         try:
             snapshot = (
                 grounded_progress_snapshot(store, user_id)
@@ -4355,16 +4359,16 @@ async def handle_mirror_question(
             )
             snapshot = {}
         await message.reply_text(
-            render_mirror_daily_plan(snapshot, locale=daily_plan_locale),
+            render_mirror_daily_plan(snapshot, locale=reply_locale),
             reply_markup=companion_recovery_keyboard(
-                daily_plan_locale, include_lesson=True
+                reply_locale, include_lesson=True
             ),
         )
         return
     if deterministic_capability_greeting:
         response = translate(
             "mirror_capability_greeting",
-            capability_greeting_locale,
+            reply_locale,
         )
     elif intent == "greeting":
         role = str(profile.get("role") or "learner")
@@ -4407,7 +4411,7 @@ async def handle_mirror_question(
             snapshot = {"has_progress": False}
         progress_response = render_mirror_progress_focus(
             snapshot,
-            locale=progress_locale,
+            locale=reply_locale,
         )
         await message.reply_text(progress_response)
         if MIRROR_MEMORY_SETTINGS.enabled and AI_SETTINGS.consent_version:
@@ -8030,7 +8034,10 @@ async def deliver_telegram_notifications(
         if not profile or profile["access_status"] != "active" or not text_key:
             store.cancel_telegram_notification(notification_id)
             continue
-        text = translate(text_key, profile.get("language_code"))
+        text = translate(
+            text_key,
+            profile.get("interface_locale") or profile.get("language_code"),
+        )
         try:
             await telegram_bot.send_message(
                 chat_id=notification["telegram_user_id"],

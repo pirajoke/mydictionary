@@ -1423,7 +1423,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                         expected,
                     )
 
-    async def test_ac7_real_store_notification_reads_persisted_french_locale(self):
+    async def test_ac7_notification_prefers_saved_spanish_to_telegram_french(self):
         recipient_id = 7654321
         with tempfile.TemporaryDirectory(
             prefix="mydictionary-locale-notification-"
@@ -1444,10 +1444,12 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                     status="active",
                     actor="test",
                 )
+                store.set_interface_locale(recipient_id, "es")
 
                 with self.subTest(surface="access_profile"):
                     profile = store.access_profile(recipient_id)
                     self.assertEqual(profile.get("language_code"), "fr")
+                    self.assertEqual(profile.get("interface_locale"), "es")
 
                 telegram_bot = SimpleNamespace(send_message=AsyncMock())
                 with (
@@ -1462,6 +1464,10 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(delivered, 1)
                 text = telegram_bot.send_message.await_args.kwargs["text"]
                 self.assertIn(
+                    "Tu acceso al piloto gratuito de Lexi está abierto.",
+                    text,
+                )
+                self.assertNotIn(
                     "Votre accès au pilote gratuit Lexi est ouvert.",
                     text,
                 )

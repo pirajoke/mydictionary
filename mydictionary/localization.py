@@ -19,7 +19,7 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_try": "Try for free ✨",
         "onboarding_done": "Setup is already complete.",
         "onboarding_choose_native": (
-            "Step 1 of 3. In which language would you like to see word meanings?"
+            "Step 1 of 3. In which language should Lexi reply and show word meanings?"
         ),
         "onboarding_choose_pack": "Step 2 of 3. Which language do you want to learn?",
         "onboarding_choose_pace": (
@@ -69,7 +69,8 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_try": "Essayer gratuitement ✨",
         "onboarding_done": "La configuration est déjà terminée.",
         "onboarding_choose_native": (
-            "Étape 1 sur 3. Dans quelle langue voulez-vous voir le sens des mots ?"
+            "Étape 1 sur 3. Dans quelle langue Lexi doit-il répondre et afficher "
+            "le sens des mots ?"
         ),
         "onboarding_choose_pack": "Étape 2 sur 3. Quelle langue voulez-vous apprendre ?",
         "onboarding_choose_pace": (
@@ -119,7 +120,8 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_try": "Kostenlos testen ✨",
         "onboarding_done": "Die Einrichtung ist bereits abgeschlossen.",
         "onboarding_choose_native": (
-            "Schritt 1 von 3. In welcher Sprache möchtest du die Wortbedeutungen sehen?"
+            "Schritt 1 von 3. In welcher Sprache soll Lexi antworten und "
+            "Wortbedeutungen zeigen?"
         ),
         "onboarding_choose_pack": "Schritt 2 von 3. Welche Sprache möchtest du lernen?",
         "onboarding_choose_pace": (
@@ -167,7 +169,7 @@ _CATALOG: dict[str, dict[str, str]] = {
         ),
         "onboarding_try": "無料で試す ✨",
         "onboarding_done": "設定はすでに完了しています。",
-        "onboarding_choose_native": "ステップ1/3：単語の意味を何語で表示しますか？",
+        "onboarding_choose_native": "ステップ1/3：Lexiの返信と単語の意味を何語で表示しますか？",
         "onboarding_choose_pack": "ステップ2/3：学びたい言語を選んでください。",
         "onboarding_choose_pace": "ステップ3/3：1日に何枚のカードを学びますか？",
         "onboarding_pack_words": "{label} · {count}語",
@@ -210,7 +212,7 @@ _CATALOG: dict[str, dict[str, str]] = {
         ),
         "onboarding_try": "جرّب مجاناً ✨",
         "onboarding_done": "اكتمل الإعداد بالفعل.",
-        "onboarding_choose_native": "الخطوة 1 من 3. بأي لغة تريد رؤية معاني الكلمات؟",
+        "onboarding_choose_native": "الخطوة 1 من 3. بأي لغة يجيب Lexi ويعرض معاني الكلمات؟",
         "onboarding_choose_pack": "الخطوة 2 من 3. ما اللغة التي تريد تعلّمها؟",
         "onboarding_choose_pace": "الخطوة 3 من 3. كم بطاقة تريد دراستها يومياً؟",
         "onboarding_pack_words": "{label} · {count} كلمة",
@@ -250,7 +252,7 @@ _CATALOG: dict[str, dict[str, str]] = {
         ),
         "onboarding_try": "免费试用 ✨",
         "onboarding_done": "设置已经完成。",
-        "onboarding_choose_native": "第 1/3 步：你想用哪种语言查看单词含义？",
+        "onboarding_choose_native": "第 1/3 步：你希望 Lexi 用哪种语言回复并显示单词含义？",
         "onboarding_choose_pack": "第 2/3 步：你想学习哪种语言？",
         "onboarding_choose_pace": "第 3/3 步：你每天想学习多少张卡片？",
         "onboarding_pack_words": "{label} · {count} 个词",
@@ -291,7 +293,8 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_try": "Попробовать бесплатно ✨",
         "onboarding_done": "Настройка уже завершена.",
         "onboarding_choose_native": (
-            "Шаг 1 из 3. На каком языке показывать значения слов?"
+            "Шаг 1 из 3. На каком языке Lexi должен отвечать и показывать "
+            "значения слов?"
         ),
         "onboarding_choose_pack": "Шаг 2 из 3. Какой язык хочешь учить?",
         "onboarding_choose_pace": (
@@ -341,7 +344,8 @@ _CATALOG: dict[str, dict[str, str]] = {
         "onboarding_try": "Probar gratis ✨",
         "onboarding_done": "La configuración ya está completa.",
         "onboarding_choose_native": (
-            "Paso 1 de 3. ¿En qué idioma quieres ver el significado de las palabras?"
+            "Paso 1 de 3. ¿En qué idioma debe responder Lexi y mostrar el "
+            "significado de las palabras?"
         ),
         "onboarding_choose_pack": "Paso 2 de 3. ¿Qué idioma quieres aprender?",
         "onboarding_choose_pace": (

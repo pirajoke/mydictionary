@@ -319,6 +319,19 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
                     )
                 )
 
+    async def test_saved_spanish_interface_controls_french_companion_prompt(self):
+        _update, _context, message, store, service = await self.invoke(
+            locale="es",
+            question=self.GREETING_CASES["fr"],
+        )
+
+        rendered = message.reply_text.await_args_list[-1].args[0]
+
+        self.assertIn(translate("mirror_capability_greeting", "es"), rendered)
+        self.assertNotIn(translate("mirror_capability_greeting", "fr"), rendered)
+        service.ask.assert_not_awaited()
+        store.reserve_ai_usage.assert_not_called()
+
     async def test_ac2_eight_locale_completed_progress_is_free_and_grounded(self):
         self.assertEqual(set(self.PROGRESS_CASES), set(bot.INTERFACE_LOCALES))
         for locale, question in self.PROGRESS_CASES.items():

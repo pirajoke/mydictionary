@@ -225,6 +225,27 @@ class LanguagePairOnboardingTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(context.user_data["onboarding_native_language"], "fr")
 
+    async def test_native_spanish_choice_becomes_bot_dialogue_language(self):
+        update, query = self._update(language_code="fr-FR")
+        query.data = "onboarding:native:es"
+        context = SimpleNamespace(user_data={})
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "public"),
+            patch.object(bot, "LEGACY_USER_ID", None),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+        ):
+            await bot.onboarding_cb(update, context)
+
+        profile = self.store.product_profile(9701)
+        self.assertEqual(profile["native_language"], "es")
+        self.assertEqual(profile["interface_locale"], "es")
+        self.assertEqual(context.user_data["interface_locale"], "es")
+        self.assertIn(
+            "Paso 2 de 3",
+            query.edit_message_text.await_args.args[0],
+        )
+
     async def test_err_lang_01_forged_incompatible_pack_is_not_activated(self):
         update, query = self._update()
         context = SimpleNamespace(user_data={"onboarding_native_language": "fr"})
