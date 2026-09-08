@@ -7981,7 +7981,7 @@ async def sync_telegram_profile(telegram_bot) -> None:
                 (),
                 {
                     "menu_button": MenuButtonWebApp(
-                        text="Menu",
+                        text="Меню",
                         web_app=WebAppInfo(url=MINIAPP_SETTINGS.public_url),
                     )
                 },

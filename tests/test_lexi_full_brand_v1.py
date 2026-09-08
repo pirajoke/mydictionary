@@ -42,6 +42,7 @@ class LexiFullBrandContractTest(unittest.TestCase):
         for locale, profile in BOT_PROFILE_LOCALIZED.items():
             with self.subTest(profile_locale=locale):
                 for key in ("bot_short_description", "bot_description"):
+                    self.assertEqual(profile[key], BOT_PROFILE_DEFAULTS[key])
                     self.assertIn("Lexi", profile[key])
                     self.assertLessEqual(len(profile[key]), BOT_PROFILE_LIMITS[key])
                 self.assertLessEqual(len(profile["bot_description"]), 100)

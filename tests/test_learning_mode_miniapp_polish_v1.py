@@ -177,7 +177,7 @@ class TelegramMenuAndAvatarContractTest(unittest.IsolatedAsyncioTestCase):
 
         menu = telegram_bot.set_chat_menu_button.await_args.kwargs["menu_button"]
         self.assertIsInstance(menu, MenuButtonWebApp)
-        self.assertEqual(menu.text, "Menu")
+        self.assertEqual(menu.text, "Меню")
         self.assertEqual(menu.web_app.url, settings.public_url)
         commands = [
             command.command
