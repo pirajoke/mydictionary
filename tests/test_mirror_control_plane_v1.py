@@ -222,20 +222,27 @@ class MirrorPreferenceContractTest(StoreTestCase):
     def test_ac_02_settings_show_only_enabled_modes_and_no_new_mirror_command(self):
         signature = python_inspect.signature(bot.settings_keyboard)
         self.assertIn("mirror_policy", signature.parameters)
-        keyboard = bot.settings_keyboard(
-            {
-                "daily_word_goal": 10,
-                "mirror_mode": "coach",
-                "mirror_depth": "deep",
-                "mirror_level": "b1",
-            },
-            mirror_policy=policy_values(
-                enabled_modes=["teacher", "coach", "brief"],
-                default_mode="coach",
-            ),
+        product = {
+            "daily_word_goal": 10,
+            "mirror_mode": "coach",
+            "mirror_depth": "deep",
+            "mirror_level": "b1",
+        }
+        policy = policy_values(
+            enabled_modes=["teacher", "coach", "brief"],
+            default_mode="coach",
         )
+        keyboards = [
+            bot.settings_keyboard(
+                product,
+                mirror_policy=policy,
+                section=section,
+            )
+            for section in ("tutor-style", "tutor-depth", "tutor-level")
+        ]
         callbacks = {
             button.callback_data
+            for keyboard in keyboards
             for row in keyboard.inline_keyboard
             for button in row
             if button.callback_data

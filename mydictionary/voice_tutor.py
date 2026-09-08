@@ -663,12 +663,20 @@ class OpenAITranscriptionProvider:
     async def transcribe(
         self, request: TranscriptionRequest
     ) -> TranscriptionResult:
+        model_name = self.model.strip().lower()
+        json_only_models = ("gpt-4o-transcribe", "gpt-4o-mini-transcribe")
+        requires_json = any(
+            model_name == base or model_name.startswith(f"{base}-")
+            for base in json_only_models
+        )
         values = {
             "file": ("voice.ogg", request.audio, "audio/ogg"),
             "model": self.model,
             "prompt": request.prompt[:500],
             "response_format": (
-                "verbose_json" if request.detect_language else "json"
+                "verbose_json"
+                if request.detect_language and not requires_json
+                else "json"
             ),
         }
         if request.language:
