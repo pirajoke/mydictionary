@@ -1702,6 +1702,9 @@ class DatabaseStore:
         bounded_limit = int(limit)
         if not 1 <= bounded_limit <= 20:
             raise ValueError("Mirror dialogue limit must be 1-20 turns")
+        exchange_limit = bounded_limit // 2
+        if exchange_limit == 0:
+            return []
         observed_at = now or utcnow()
         if observed_at.tzinfo is None:
             observed_at = observed_at.replace(tzinfo=timezone.utc)
@@ -1715,21 +1718,55 @@ class DatabaseStore:
                     MirrorDialogueTurn.expires_at <= observed_at,
                 )
             )
-            rows = session.execute(
-                select(MirrorDialogueTurn)
+            latest_exchanges = session.execute(
+                select(
+                    MirrorDialogueTurn.exchange_id,
+                    func.max(MirrorDialogueTurn.created_at).label("exchange_created_at"),
+                )
                 .where(
                     MirrorDialogueTurn.telegram_user_id == int(user_id),
                     MirrorDialogueTurn.expires_at > observed_at,
                 )
+                .group_by(MirrorDialogueTurn.exchange_id)
                 .order_by(
-                    MirrorDialogueTurn.created_at.desc(),
-                    MirrorDialogueTurn.turn_index.desc(),
-                    MirrorDialogueTurn.turn_id.desc(),
+                    func.max(MirrorDialogueTurn.created_at).desc(),
+                    MirrorDialogueTurn.exchange_id.desc(),
                 )
-                .limit(bounded_limit)
+                .limit(exchange_limit)
+            ).all()
+            exchange_ids = [
+                str(row.exchange_id) for row in reversed(latest_exchanges)
+            ]
+            if not exchange_ids:
+                return []
+            rows = session.execute(
+                select(MirrorDialogueTurn).where(
+                    MirrorDialogueTurn.telegram_user_id == int(user_id),
+                    MirrorDialogueTurn.exchange_id.in_(exchange_ids),
+                    MirrorDialogueTurn.expires_at > observed_at,
+                )
             ).scalars().all()
-        rows.reverse()
-        return [{"role": row.role, "text": row.text} for row in rows]
+
+        turns_by_exchange: dict[str, list[MirrorDialogueTurn]] = {}
+        for row in rows:
+            turns_by_exchange.setdefault(str(row.exchange_id), []).append(row)
+        dialogue: list[dict[str, str]] = []
+        for exchange_id in exchange_ids:
+            linked_turns = sorted(
+                turns_by_exchange.get(exchange_id, []),
+                key=lambda row: row.turn_index,
+            )
+            if (
+                len(linked_turns) != 2
+                or linked_turns[0].role != "user"
+                or linked_turns[1].role != "assistant"
+            ):
+                continue
+            dialogue.extend(
+                {"role": row.role, "text": row.text}
+                for row in linked_turns
+            )
+        return dialogue
 
     def clear_mirror_dialogue(self, user_id: int) -> int:
         with self.Session.begin() as session:

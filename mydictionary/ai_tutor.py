@@ -33,7 +33,7 @@ from .mirror_assistant import (
     classify_ai_response_route,
     is_mirror_continuation,
     normalize_companion_learner_context,
-    normalize_mirror_dialogue,
+    normalize_linked_mirror_dialogue,
 )
 from .prompt_contracts import load_prompt_contract
 from .storage import AIQuotaExceeded, DatabaseStore
@@ -1675,9 +1675,9 @@ class AITutorService:
         question = str(payload["question"]).strip()
         if not 1 <= len(question) <= 500:
             raise ValueError("Mirror question must contain 1-500 characters")
-        normalized_dialogue = normalize_mirror_dialogue(payload["recent_dialogue"])[
-            -MIRROR_PROVIDER_DIALOGUE_LIMIT:
-        ]
+        normalized_dialogue = normalize_linked_mirror_dialogue(
+            payload["recent_dialogue"]
+        )[-MIRROR_PROVIDER_DIALOGUE_LIMIT:]
         computed_continuation = is_mirror_continuation(
             question,
             recent_dialogue=normalized_dialogue,
