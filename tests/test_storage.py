@@ -28,6 +28,7 @@ from mydictionary.storage import (
     AdminAuditLog,
     AnalyticsEvent,
     BillingCreditLedger,
+    CURRENT_ONBOARDING_VERSION,
     DatabaseStore,
     TelegramNotification,
     UserConsent,
@@ -99,6 +100,7 @@ class DatabaseStoreTest(unittest.TestCase):
                 "learning_goal",
                 "daily_word_goal",
                 "onboarding_completed_at",
+                "onboarding_version",
                 "acquisition_source",
                 "access_status",
                 "access_status_updated_at",
@@ -112,7 +114,7 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0019_referral_program_v1")
+        self.assertEqual(revision, "0020_onboarding_version_v2")
 
         ai_usage_columns = {
             column["name"] for column in inspector.get_columns("ai_usage")
@@ -284,11 +286,15 @@ class DatabaseStoreTest(unittest.TestCase):
             daily_word_goal=20,
             acquisition_source="telegram-ad",
             complete_onboarding=True,
+            onboarding_version=CURRENT_ONBOARDING_VERSION,
         )
         self.assertEqual(profile["active_pack_id"], "ja-basics-100")
         self.assertEqual(profile["active_lang"], "ja")
         self.assertEqual(profile["daily_word_goal"], 20)
         self.assertIsNotNone(profile["onboarding_completed_at"])
+        self.assertEqual(
+            profile["onboarding_version"], CURRENT_ONBOARDING_VERSION
+        )
         self.assertEqual(self.store.enrolled_pack_ids(211), {"ja-basics-100"})
         with self.store.Session() as session:
             enrollment = session.get(UserPackEnrollment, (211, "ja-basics-100"))

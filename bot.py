@@ -131,6 +131,7 @@ from mydictionary.storage import (
     ACCESS_STATUSES,
     AICreditExhausted,
     AIQuotaExceeded,
+    CURRENT_ONBOARDING_VERSION,
     DatabaseStore,
     REFERRAL_CODE_RE,
     REFERRAL_REWARD_CAP,
@@ -630,6 +631,23 @@ def resolve_runtime_meaning_language(
     return "ru"
 
 
+def current_onboarding_complete(product: Mapping[str, Any]) -> bool:
+    """Return whether the learner finished the current guided onboarding."""
+    # Lightweight test/integration stores created before the versioned field
+    # cannot express the distinction. The canonical DatabaseStore always
+    # includes the key after migration, where an explicit NULL means legacy.
+    if "onboarding_version" not in product:
+        return product.get("onboarding_completed_at") is not None
+    try:
+        version = int(product.get("onboarding_version") or 0)
+    except (TypeError, ValueError):
+        return False
+    return (
+        product.get("onboarding_completed_at") is not None
+        and version >= CURRENT_ONBOARDING_VERSION
+    )
+
+
 def _runtime_for_user(telegram_user) -> LearnerRuntime:
     store = get_store()
     user_id = int(telegram_user.id)
@@ -647,7 +665,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
     product = store.product_profile(user_id)
     role = product["role"]
     if role == "admin" and (
-        product["onboarding_completed_at"] is None
+        not current_onboarding_complete(product)
         or product["active_pack_id"] is None
     ):
         pack = (
@@ -666,6 +684,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
             learning_goal=product["learning_goal"] or "personal",
             daily_word_goal=product["daily_word_goal"] or 10,
             complete_onboarding=True,
+            onboarding_version=CURRENT_ONBOARDING_VERSION,
             initial_credits=AI_SETTINGS.initial_credits,
         )
         product = store.product_profile(user_id)
@@ -678,7 +697,7 @@ def _runtime_for_user(telegram_user) -> LearnerRuntime:
         interface_locale=product.get("interface_locale"),
         role=product["role"],
         access_status=product["access_status"],
-        onboarding_completed=product["onboarding_completed_at"] is not None,
+        onboarding_completed=current_onboarding_complete(product),
     )
 
 
@@ -2032,6 +2051,7 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             runtime.user_id,
             daily_word_goal=int(parts[2]),
             complete_onboarding=True,
+            onboarding_version=CURRENT_ONBOARDING_VERSION,
             initial_credits=AI_SETTINGS.initial_credits,
         )
         runtime.onboarding_completed = True
@@ -3937,7 +3957,7 @@ async def voice_message_handler(
             locale=interface_locale_for_update(update),
         )
         return
-    if not profile.get("onboarding_completed_at"):
+    if not current_onboarding_complete(profile):
         await update.message.reply_text(
             translate("onboarding_required", interface_locale_for_update(update))
         )
@@ -4460,7 +4480,7 @@ async def handle_mirror_question(
             translate("mirror_unavailable", reply_locale)
         )
         return
-    if not profile.get("onboarding_completed_at"):
+    if not current_onboarding_complete(profile):
         await message.reply_text(
             translate("onboarding_required", reply_locale)
         )

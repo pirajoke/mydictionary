@@ -330,6 +330,7 @@ class TelegramInviteCommandV1ContractTest(unittest.IsolatedAsyncioTestCase):
                     learning_goal="travel",
                     daily_word_goal=10,
                     complete_onboarding=True,
+                    onboarding_version=bot.CURRENT_ONBOARDING_VERSION,
                 )
 
                 settings = SimpleNamespace(enabled=True, bot_username=BOT_USERNAME)

@@ -239,6 +239,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             learning_goal="basics",
             daily_word_goal=10,
             complete_onboarding=True,
+            onboarding_version=bot.CURRENT_ONBOARDING_VERSION,
         )
         message = SimpleNamespace(chat_id=7, reply_text=AsyncMock())
         query = SimpleNamespace(
@@ -654,6 +655,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             learning_goal="basics",
             daily_word_goal=5,
             complete_onboarding=True,
+            onboarding_version=bot.CURRENT_ONBOARDING_VERSION,
         )
         self.store.activate_pack(
             user_id,

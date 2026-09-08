@@ -119,6 +119,7 @@ def admitted_profile(**overrides):
     values = {
         "access_status": "active",
         "onboarding_completed_at": "2026-08-09T12:00:00+00:00",
+        "onboarding_version": bot.CURRENT_ONBOARDING_VERSION,
         "active_lang": "ja",
         "active_pack_id": "ja-basics-100",
     }
@@ -503,6 +504,7 @@ class MirrorMeteredIntegrationTest(unittest.IsolatedAsyncioTestCase):
             learning_goal="basics",
             daily_word_goal=10,
             complete_onboarding=True,
+            onboarding_version=bot.CURRENT_ONBOARDING_VERSION,
         )
         progress = dict(
             PROFILE_DEFAULTS,
@@ -1100,7 +1102,7 @@ class MirrorProgressAndPreferenceTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0019_referral_program_v1")
+        self.assertEqual(revision, "0020_onboarding_version_v2")
 
         set_mode = required_public(self, self.store, "set_mirror_response_mode")
         get_mode = required_public(self, self.store, "get_mirror_response_mode")
@@ -1181,7 +1183,7 @@ class MirrorProgressAndPreferenceTest(unittest.TestCase):
             roundtrip_revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(roundtrip_revision, "0019_referral_program_v1")
+        self.assertEqual(roundtrip_revision, "0020_onboarding_version_v2")
         self.store.ensure_user_id(614)
         self.assertEqual(self.store.get_mirror_response_mode(614), "text")
 

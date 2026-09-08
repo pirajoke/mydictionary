@@ -33,9 +33,12 @@ commands are available:
    the completion screen.
 
 The explanation language, active pack, goal, preferred tutor format, pace, and
-completion state are persisted per Telegram user independently from Telegram
-session state. Existing configured administrators are bootstrapped onto the
-pack matching their previous active language and do not lose legacy progress.
+versioned completion state are persisted per Telegram user independently from
+Telegram session state. A completion timestamp from an older funnel does not
+bypass the current five-step onboarding; learners who already completed the
+current funnel keep their completion through deployment. Existing configured
+administrators are bootstrapped onto the pack matching their previous active
+language and do not lose legacy progress.
 
 ## Telegram learning experience
 
