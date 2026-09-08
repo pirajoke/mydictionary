@@ -199,6 +199,29 @@ class MirrorPersistentContextContractTest(unittest.TestCase):
             [],
         )
 
+    def test_regression_memory_limit_keeps_question_answer_pairs_linked(self):
+        append_exchange = required(self, self.store, "append_mirror_exchange")
+        get_dialogue = required(self, self.store, "get_mirror_dialogue")
+        for index in range(3):
+            append_exchange(
+                707,
+                question=f"question {index}",
+                answer=f"answer {index}",
+                retention_days=7,
+                now=self.now,
+            )
+
+        dialogue = get_dialogue(707, limit=5, now=self.now)
+
+        self.assertEqual(len(dialogue), 4)
+        for question, answer in zip(dialogue[::2], dialogue[1::2]):
+            self.assertEqual(question["role"], "user")
+            self.assertEqual(answer["role"], "assistant")
+            self.assertEqual(
+                question["text"].removeprefix("question "),
+                answer["text"].removeprefix("answer "),
+            )
+
     def test_ec_01_memory_is_user_isolated_and_bounds_text(self):
         append_exchange = required(self, self.store, "append_mirror_exchange")
         append_exchange(

@@ -260,7 +260,7 @@ class AIChatContinuityRoutingTest(unittest.TestCase):
                     self.assertEqual(empty["recent_dialogue"], [])
 
     def test_ac2_natural_context_questions_continue_chat_not_dictionary_mode(self):
-        history = companion_tests.recent_turns(3)
+        history = companion_tests.recent_turns(4)
         self.assertEqual(
             set(self.NATURAL_CONTEXT_FOLLOWUPS), set(bot.INTERFACE_LOCALES)
         )
@@ -343,6 +343,34 @@ class AIChatContinuityRoutingTest(unittest.TestCase):
                 self.assertIs(payload["is_continuation"], True)
                 self.assertEqual(payload["complexity_route"], "deep")
                 self.assertEqual(payload["recent_dialogue"][-1], history[-1])
+
+    def test_regression_provider_context_discards_orphans_and_keeps_whole_links(self):
+        payload = companion.build_mirror_provider_payload(
+            question="Почему?",
+            admin_guidance=PERSONA,
+            grounded_snapshot={"has_progress": True},
+            recent_dialogue=[
+                {"role": "assistant", "text": "orphan answer"},
+                {"role": "user", "text": "linked question"},
+                {"role": "assistant", "text": "linked answer"},
+                {"role": "user", "text": "orphan question"},
+            ],
+            response_style="conversation",
+            task_kind="general_conversation",
+            communication_mode="conversation",
+            answer_depth="balanced",
+            learner_level="adaptive",
+            interface_locale="ru",
+        )
+
+        self.assertEqual(
+            payload["recent_dialogue"],
+            [
+                {"role": "user", "text": "linked question"},
+                {"role": "assistant", "text": "linked answer"},
+            ],
+        )
+        self.assertIs(payload["is_continuation"], True)
 
 
 class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):

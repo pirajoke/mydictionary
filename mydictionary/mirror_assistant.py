@@ -823,7 +823,7 @@ def is_mirror_continuation(
     recent_dialogue: Sequence[Mapping[str, Any]] | None,
 ) -> bool:
     """Recognize a short follow-up only when bounded dialogue exists."""
-    dialogue = normalize_mirror_dialogue(recent_dialogue)
+    dialogue = normalize_linked_mirror_dialogue(recent_dialogue)
     if not dialogue:
         return False
     normalized = " ".join(str(text).casefold().strip().split())
@@ -1013,6 +1013,23 @@ def normalize_mirror_dialogue(
     ]
 
 
+def normalize_linked_mirror_dialogue(
+    values: Sequence[Mapping[str, Any]] | None,
+) -> list[dict[str, str]]:
+    """Keep only complete ordered user-to-assistant exchanges."""
+    linked: list[dict[str, str]] = []
+    pending_user: dict[str, str] | None = None
+    for turn in normalize_mirror_dialogue(values):
+        if turn["role"] == "user":
+            pending_user = turn
+            continue
+        if pending_user is None:
+            continue
+        linked.extend((pending_user, turn))
+        pending_user = None
+    return linked
+
+
 def recent_mirror_dialogue(user_data: Mapping[str, Any]) -> list[dict[str, str]]:
     """Return a defensive copy of bounded process-memory dialogue context."""
     raw = user_data.get(MIRROR_DIALOGUE_KEY, [])
@@ -1112,7 +1129,7 @@ def build_mirror_provider_payload(
         "general_conversation",
     }:
         raise ValueError("Mirror task kind is invalid")
-    normalized_dialogue = normalize_mirror_dialogue(recent_dialogue)[
+    normalized_dialogue = normalize_linked_mirror_dialogue(recent_dialogue)[
         -MIRROR_PROVIDER_DIALOGUE_LIMIT:
     ]
     normalized_learner_context = None
@@ -1180,7 +1197,7 @@ def build_mirror_provider_payload(
             break
         if not payload["recent_dialogue"]:
             raise ValueError("Mirror provider payload exceeds the safe bound")
-        payload["recent_dialogue"].pop(0)
+        del payload["recent_dialogue"][:2]
     return payload
 
 
