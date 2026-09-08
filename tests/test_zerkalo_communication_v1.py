@@ -125,7 +125,7 @@ class ZerkaloContinuationContractTest(unittest.TestCase):
                     classify(greeting, recent_dialogue=recent_turns(3))
                 )
 
-    def test_ac1_payload_owns_continuation_flag_and_exposes_latest_eight_only(self):
+    def test_ac1_payload_owns_continuation_flag_and_exposes_latest_sixteen_only(self):
         payload = companion.build_mirror_provider_payload(
             question="et ensuite",
             admin_guidance=PERSONA,
@@ -136,7 +136,7 @@ class ZerkaloContinuationContractTest(unittest.TestCase):
         )
 
         self.assertIs(payload["is_continuation"], True)
-        self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-8:])
+        self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-16:])
         self.assertNotIn("continuation", payload["question"].casefold())
 
         no_history = companion.build_mirror_provider_payload(
@@ -764,7 +764,7 @@ class ZerkaloFeedbackContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             [item.args[0] for item in message.reply_text.await_args_list],
             [
-                "⚡",
+                "🦊⚡",
                 "Réponse courte et directe.",
             ],
         )

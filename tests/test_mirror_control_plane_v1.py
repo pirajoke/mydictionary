@@ -317,7 +317,7 @@ class MirrorTaskRoutingContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["answer_depth"], "deep")
         self.assertEqual(payload["learner_level"], "b1")
         message.reply_text.assert_awaited_once_with(
-            "⚡"
+            "🦊⚡"
         )
         message.reply_text.return_value.delete.assert_awaited_once()
         sender.assert_awaited_once()
@@ -471,7 +471,7 @@ class MirrorGroundingContractTest(StoreTestCase):
         self.assertEqual(payload["communication_mode"], "coach")
         self.assertEqual(payload["answer_depth"], "deep")
         self.assertEqual(payload["learner_level"], "b1")
-        self.assertLessEqual(len(payload["recent_dialogue"]), 8)
+        self.assertLessEqual(len(payload["recent_dialogue"]), 16)
         self.assertLessEqual(len(json.dumps(payload, ensure_ascii=False)), 12000)
         serialized = json.dumps(payload, ensure_ascii=False).casefold()
         self.assertNotIn("telegram_user_id", serialized)

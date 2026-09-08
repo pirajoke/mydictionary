@@ -27,6 +27,7 @@ from .economics import (
 from .localization import response_language_instruction
 from .mirror_assistant import (
     MIRROR_COMPACT_REPLY_POLICY,
+    MIRROR_PROVIDER_DIALOGUE_LIMIT,
     MIRROR_SAFETY_ENVELOPE,
     MIRROR_STYLE_GUIDANCE,
     classify_ai_response_route,
@@ -1674,18 +1675,23 @@ class AITutorService:
         question = str(payload["question"]).strip()
         if not 1 <= len(question) <= 500:
             raise ValueError("Mirror question must contain 1-500 characters")
-        computed_route = classify_ai_response_route(question)
+        normalized_dialogue = normalize_mirror_dialogue(payload["recent_dialogue"])[
+            -MIRROR_PROVIDER_DIALOGUE_LIMIT:
+        ]
+        computed_continuation = is_mirror_continuation(
+            question,
+            recent_dialogue=normalized_dialogue,
+        )
+        computed_route = classify_ai_response_route(
+            question,
+            recent_dialogue=normalized_dialogue,
+        )
         if (
             not has_complexity_route
             or str(payload["complexity_route"]) != computed_route
         ):
             raise ValueError("Mirror response route is invalid")
         provider_payload["complexity_route"] = computed_route
-        normalized_dialogue = normalize_mirror_dialogue(payload["recent_dialogue"])[-8:]
-        computed_continuation = is_mirror_continuation(
-            question,
-            recent_dialogue=normalized_dialogue,
-        )
         if has_continuation_flag and (
             type(payload["is_continuation"]) is not bool
             or payload["is_continuation"] is not computed_continuation

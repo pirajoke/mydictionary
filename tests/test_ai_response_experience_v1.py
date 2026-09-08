@@ -314,7 +314,7 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
                 context.bot.send_chat_action.assert_not_awaited()
                 self.assertFalse(
                     any(
-                        c.args[0][:1] in {"⚡", "🧠", "💭"}
+                        c.args[0] in {"🦊⚡", "🧠", "💭"}
                         for c in message.reply_text.await_args_list
                     )
                 )
@@ -383,7 +383,7 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
         context.bot.send_chat_action.assert_not_awaited()
 
     async def test_ac4_thinking_lifecycle_cleans_up_success_errors_quota_and_cancel(self):
-        deep_status = "⚡"
+        deep_status = "🦊⚡"
         cases = (
             ("success", None, None),
             ("provider", RuntimeError("provider failed"), None),
@@ -449,13 +449,13 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
         context.bot.send_chat_action.assert_not_awaited()
         self.assertFalse(
             any(
-                c.args[0][:1] in {"⚡", "🧠", "💭"}
+                c.args[0] in {"🦊⚡", "🧠", "💭"}
                 for c in message.reply_text.await_args_list
             )
         )
 
     async def test_ac4_indicator_send_and_delete_failures_are_non_blocking(self):
-        deep_status = "⚡"
+        deep_status = "🦊⚡"
         for failure_point in ("action", "emoji", "delete", "missing_methods"):
             with self.subTest(failure=failure_point):
                 update, context, message, _store, service, patches = self.handler_fixture(
@@ -501,7 +501,7 @@ class AIResponseHandlerContractTest(unittest.IsolatedAsyncioTestCase):
                     temporary.delete.assert_awaited_once()
 
     async def test_edge_concurrent_requests_delete_only_their_own_thinking_message(self):
-        deep_status = "⚡"
+        deep_status = "🦊⚡"
         update1, context1, message1, _store, service, patches = self.handler_fixture(
             locale="en", question="explain this grammar", enabled=True, credits=3
         )
@@ -722,7 +722,7 @@ class AIResponseRoutingContractTest(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(classify(phrase), "fast")
 
     async def test_ac4_legacy_service_adapter_keeps_thinking_and_final_answer(self):
-        deep_status = "⚡"
+        deep_status = "🦊⚡"
         update, context, message, _store, service, patches = (
             AIResponseHandlerContractTest().handler_fixture(
                 locale="en",

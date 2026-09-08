@@ -85,7 +85,7 @@ class MirrorNaturalReplyContractTest(unittest.TestCase):
         self.assertNotIn("Транскрипция:", rendered)
         self.assertNotIn("AI-кредиты", rendered)
 
-    def test_ac_04_payload_contains_style_and_latest_eight_turns(self):
+    def test_ac_04_payload_contains_style_and_latest_sixteen_turns(self):
         turns = [
             {"role": "user" if index % 2 == 0 else "assistant", "text": f"turn {index}"}
             for index in range(24)
@@ -101,8 +101,8 @@ class MirrorNaturalReplyContractTest(unittest.TestCase):
         )
 
         self.assertEqual(payload["response_style"], "conversation")
-        self.assertEqual(len(payload["recent_dialogue"]), 8)
-        self.assertEqual(payload["recent_dialogue"][0]["text"], "turn 16")
+        self.assertEqual(len(payload["recent_dialogue"]), 16)
+        self.assertEqual(payload["recent_dialogue"][0]["text"], "turn 8")
         self.assertEqual(payload["recent_dialogue"][-1]["text"], "turn 23")
 
 
@@ -352,7 +352,7 @@ class MirrorTelegramStyleContractTest(unittest.IsolatedAsyncioTestCase):
             retention_days=7,
         )
         message.reply_text.assert_awaited_once_with(
-            "⚡"
+            "🦊⚡"
         )
         message.reply_text.return_value.delete.assert_awaited_once()
         sender.assert_awaited_once()

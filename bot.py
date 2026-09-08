@@ -101,6 +101,7 @@ from mydictionary.mirror_assistant import (
     MIRROR_ADMIN_DEFAULTS,
     MIRROR_CONTROL_PLANE_DEFAULTS,
     MIRROR_LEARNER_LEVELS,
+    MIRROR_PROVIDER_DIALOGUE_LIMIT,
     MIRROR_STYLE_LABELS,
     MirrorMemorySettings,
     append_mirror_turn,
@@ -4530,7 +4531,7 @@ async def handle_mirror_question(
                 except Exception:
                     pass
             try:
-                thinking_message = await message.reply_text("⚡")
+                thinking_message = await message.reply_text("🦊⚡")
             except Exception:
                 thinking_message = None
 
@@ -4548,7 +4549,10 @@ async def handle_mirror_question(
             )
             if MIRROR_MEMORY_SETTINGS.enabled:
                 try:
-                    dialogue = store.get_mirror_dialogue(user_id, limit=8)
+                    dialogue = store.get_mirror_dialogue(
+                        user_id,
+                        limit=MIRROR_PROVIDER_DIALOGUE_LIMIT,
+                    )
                 except Exception as exc:
                     logger.warning(
                         "Mirror memory read failed: error_type=%s",

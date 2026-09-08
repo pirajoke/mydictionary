@@ -255,7 +255,7 @@ class LearningCompanionContractTest(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, serialized)
 
-    def test_ac_4_payload_has_immutable_compact_policy_newest_eight_turns_and_safe_bound(self):
+    def test_ac_4_payload_has_immutable_compact_policy_newest_sixteen_turns_and_safe_bound(self):
         build_context = required_public(
             self,
             companion,
@@ -301,7 +301,7 @@ class LearningCompanionContractTest(unittest.TestCase):
         except TypeError as exc:
             self.fail(f"missing companion payload integration: {exc}")
 
-        self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-8:])
+        self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-16:])
         self.assertEqual(payload["learner_context"], learner_context)
         self.assertEqual(payload["compact_reply_policy"], dict(policy))
         self.assertLess(
@@ -535,8 +535,8 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
                 dict(companion.MIRROR_COMPACT_REPLY_POLICY),
             )
         with self.subTest(contract="bounded_memory"):
-            self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-8:])
-            store.get_mirror_dialogue.assert_called_once_with(602, limit=8)
+            self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-16:])
+            store.get_mirror_dialogue.assert_called_once_with(602, limit=16)
         with self.subTest(contract="memory_write"):
             store.append_mirror_exchange.assert_called_once_with(
                 602,
@@ -547,7 +547,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("602", json.dumps(payload, ensure_ascii=False))
         self.assertEqual(
             [item.args[0] for item in message.reply_text.await_args_list],
-            ["⚡", "Réponse courte."],
+            ["🦊⚡", "Réponse courte."],
         )
         message.reply_text.return_value.delete.assert_awaited_once()
 
@@ -704,7 +704,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
         store.get_mirror_dialogue.assert_not_called()
         store.append_mirror_exchange.assert_not_called()
         payload = service.ask.await_args.kwargs["mirror_payload"]
-        self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-8:])
+        self.assertEqual(payload["recent_dialogue"], recent_turns(12)[-16:])
 
     async def test_err_1_existing_access_onboarding_ai_and_metering_gates_remain_authoritative(self):
         processing_notice = "NOTICE-COMPAGNON-CONFIGURÉE"
@@ -867,7 +867,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(
                 [item.args[0] for item in message.reply_text.await_args_list],
                 [
-                    "⚡",
+                    "🦊⚡",
                     translate("ai_unavailable_no_charge", "fr"),
                 ],
             )
@@ -902,7 +902,7 @@ class LearningCompanionHandlerTest(unittest.IsolatedAsyncioTestCase):
             service.ask.assert_awaited_once()
             self.assertEqual(
                 [item.args[0] for item in message.reply_text.await_args_list],
-                ["⚡", "Réponse sûre."],
+                ["🦊⚡", "Réponse sûre."],
             )
             message.reply_text.return_value.delete.assert_awaited_once()
 
