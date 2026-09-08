@@ -192,10 +192,22 @@ class LexiFirstStartMediaContractTest(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_start_media_uses_one_canonical_fox_asset_not_the_old_dictionary_banner(self) -> None:
+        expected = (
+            ROOT
+            / "mydictionary/static/mascot/lexi-telegram-welcome-v2.jpg"
+        )
         self.assertEqual(
             bot.WELCOME_BANNER_PATH,
-            ROOT / "mydictionary/static/mascot/lexi-telegram-welcome-v1.jpg",
+            expected,
         )
+        data = expected.read_bytes()
+        self.assertEqual(data[:3], b"\xff\xd8\xff")
+        frame = data.find(b"\xff\xc0")
+        self.assertGreater(frame, 0)
+        height = int.from_bytes(data[frame + 5 : frame + 7], "big")
+        width = int.from_bytes(data[frame + 7 : frame + 9], "big")
+        self.assertEqual(width, height, "Telegram welcome art must be square")
+        self.assertGreaterEqual(width, 1024)
         self.assertFalse((ROOT / "assets/lexi-welcome-v1.jpg").exists())
 
 

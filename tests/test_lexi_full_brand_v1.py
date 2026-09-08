@@ -85,7 +85,7 @@ class LexiFullBrandContractTest(unittest.TestCase):
         admin_source = (ROOT / "mydictionary/admin.py").read_text(
             encoding="utf-8"
         )
-        self.assertIn('"lexi-telegram-welcome-v1.jpg"', bot_source)
+        self.assertIn('"lexi-telegram-welcome-v2.jpg"', bot_source)
         self.assertNotIn("mydictionary-welcome.jpg", bot_source)
         self.assertIn("Lexi", admin_auth)
         self.assertNotIn("MY DICTIONARY", admin_auth)
@@ -112,7 +112,7 @@ class LexiFullBrandContractTest(unittest.TestCase):
                 b"\xff\xd8\xff",
                 300_000,
             ),
-            ROOT / "mydictionary/static/mascot/lexi-telegram-welcome-v1.jpg": (
+            ROOT / "mydictionary/static/mascot/lexi-telegram-welcome-v2.jpg": (
                 b"\xff\xd8\xff",
                 300_000,
             ),

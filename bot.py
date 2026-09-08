@@ -163,7 +163,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 BASE_DIR = Path(__file__).parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 WELCOME_BANNER_PATH = (
-    BASE_DIR / "mydictionary" / "static" / "mascot" / "lexi-telegram-welcome-v1.jpg"
+    BASE_DIR / "mydictionary" / "static" / "mascot" / "lexi-telegram-welcome-v2.jpg"
 )
 
 # Config: owner-only token file, then env vars, then config.yaml fallback.
