@@ -307,6 +307,8 @@ PENDING_AI_TUTOR_KEY = "pending_ai_tutor"
 PENDING_AI_TUTOR_TTL_SECONDS = 10 * 60
 PENDING_DICTIONARY_LOOKUP_KEY = "pending_dictionary_lookup"
 DICTIONARY_LOOKUP_TTL_SECONDS = 10 * 60
+AI_THINKING_EMOJI_INDEX_KEY = "ai_thinking_emoji_index"
+AI_THINKING_EMOJIS = ("⚡", "🦊")
 AI_TUTOR_ACTION_QUESTION_KEYS = {
     "vocabulary": "ai_tutor_question_vocabulary",
     "mistakes": "ai_tutor_question_mistakes",
@@ -317,6 +319,19 @@ AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS = {
     "review": "ai_tutor_starter_review_question",
     "quiz": "ai_tutor_starter_quiz_question",
 }
+
+
+def next_ai_thinking_emoji(user_data: MutableMapping[str, Any]) -> str:
+    """Return one large Telegram emoji and rotate the next choice per learner."""
+    try:
+        index = int(user_data.get(AI_THINKING_EMOJI_INDEX_KEY, 0))
+    except (TypeError, ValueError):
+        index = 0
+    normalized_index = index % len(AI_THINKING_EMOJIS)
+    user_data[AI_THINKING_EMOJI_INDEX_KEY] = (
+        normalized_index + 1
+    ) % len(AI_THINKING_EMOJIS)
+    return AI_THINKING_EMOJIS[normalized_index]
 
 
 def database_url() -> str:
@@ -4531,7 +4546,9 @@ async def handle_mirror_question(
                 except Exception:
                     pass
             try:
-                thinking_message = await message.reply_text("🦊⚡")
+                thinking_message = await message.reply_text(
+                    next_ai_thinking_emoji(context.user_data)
+                )
             except Exception:
                 thinking_message = None
 

@@ -388,7 +388,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
 
         async def reply(text, *args, **kwargs):
             del args, kwargs
-            return temporary if text == "🦊⚡" else SimpleNamespace()
+            return temporary if text == "⚡" else SimpleNamespace()
 
         message.reply_text = AsyncMock(side_effect=reply)
         return temporary
@@ -421,7 +421,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
 
                 service.ask.assert_awaited_once()
                 status = message.reply_text.await_args_list[0].args[0]
-                self.assertEqual(status, "🦊⚡")
+                self.assertEqual(status, "⚡")
                 context.bot.send_chat_action.assert_awaited_once_with(
                     chat_id=901, action="typing"
                 )
@@ -453,7 +453,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
                     service.ask.assert_awaited_once()
                     self.assertEqual(
                         message.reply_text.await_args_list[0].args[0],
-                        "🦊⚡",
+                        "⚡",
                     )
                     temporary.delete.assert_awaited_once()
 
@@ -484,20 +484,20 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
                 temporary.delete.assert_awaited_once()
                 self.assertEqual(
                     {
-                        "fox_lightning_status": rendered[0] == "🦊⚡",
+                        "single_animated_status": rendered[0] == "⚡",
                         "no_charge_copy": rendered[-1]
                         == translate("ai_unavailable_no_charge", locale),
                         "private_detail_leaked": "private" in " ".join(rendered).casefold(),
                         "provider_detail_leaked": "provider" in " ".join(rendered).casefold(),
                     },
                     {
-                        "fox_lightning_status": True,
+                        "single_animated_status": True,
                         "no_charge_copy": True,
                         "private_detail_leaked": False,
                         "provider_detail_leaked": False,
                     },
                 )
-        self.assertEqual(set(statuses.values()), {"🦊⚡"})
+        self.assertEqual(set(statuses.values()), {"⚡"})
 
     async def test_ec1_free_capability_route_has_no_indicator_or_metering(self):
         update, context, message, store, service, patches = self.fixture(
@@ -521,7 +521,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
         store.reserve_ai_usage.assert_not_called()
         context.bot.send_chat_action.assert_not_awaited()
         rendered = [item.args[0] for item in message.reply_text.await_args_list]
-        self.assertNotIn("🦊⚡", rendered)
+        self.assertFalse(any(item in {"⚡", "🦊"} for item in rendered))
 
 
 class AIChatContinuityEconomicsTest(unittest.IsolatedAsyncioTestCase):
