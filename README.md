@@ -17,6 +17,8 @@ deployment automation.
 - Curated meaning languages selected during onboarding, target-language
   spelling, Latin transcription, and text-to-speech pronunciation. Legacy
   packs without a curated pair keep an explicit Russian fallback.
+- A five-step native Telegram onboarding saves each learner's language pair,
+  goal, preferred format, and daily pace, then opens the first lesson directly.
 - PostgreSQL multi-user storage with Alembic migrations and an explicit
   local-only SQLite mode.
 - A server-rendered admin console for learner access, pilot D1/D7 retention,

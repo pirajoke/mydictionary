@@ -12,6 +12,7 @@ os.environ.setdefault("ALLOW_SQLITE_DEV", "true")
 
 import bot
 from mydictionary.content import target_text
+from mydictionary.localization import translate
 from mydictionary.storage import DatabaseStore
 
 
@@ -192,7 +193,7 @@ class LanguagePairOnboardingTest(unittest.IsolatedAsyncioTestCase):
         text = query.edit_message_text.await_args.args[0]
         keyboard = query.edit_message_text.await_args.kwargs["reply_markup"]
         callbacks = [row[0].callback_data for row in keyboard.inline_keyboard]
-        self.assertIn("Étape 1 sur 3", text)
+        self.assertIn("Étape 1 sur 5", text)
         self.assertEqual(callbacks[0], "onboarding:native:fr")
         self.assertTrue(
             all(value.startswith("onboarding:native:") for value in callbacks)
@@ -216,7 +217,7 @@ class LanguagePairOnboardingTest(unittest.IsolatedAsyncioTestCase):
         callbacks = {
             row[0].callback_data for row in keyboard.inline_keyboard
         }
-        self.assertIn("Étape 2 sur 3", text)
+        self.assertIn("Étape 2 sur 5", text)
         self.assertIn("onboarding:pack:en-basics-100", callbacks)
         self.assertNotIn("onboarding:pack:fr-basics-100", callbacks)
         self.assertNotIn("onboarding:pack:ja-basics-100", callbacks)
@@ -242,7 +243,7 @@ class LanguagePairOnboardingTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(profile["interface_locale"], "es")
         self.assertEqual(context.user_data["interface_locale"], "es")
         self.assertIn(
-            "Paso 2 de 3",
+            "Paso 2 de 5",
             query.edit_message_text.await_args.args[0],
         )
 
@@ -278,6 +279,8 @@ class LanguagePairOnboardingTest(unittest.IsolatedAsyncioTestCase):
                 "onboarding:begin",
                 "onboarding:native:fr",
                 "onboarding:pack:en-basics-100",
+                "onboarding:goal:work",
+                "onboarding:preference:teacher",
                 "onboarding:pace:5",
             ):
                 query.data = callback
@@ -293,6 +296,17 @@ class LanguagePairOnboardingTest(unittest.IsolatedAsyncioTestCase):
         completion_text = query.edit_message_text.await_args.args[0]
         self.assertIn(pack.label, completion_text)
         self.assertNotIn(pack.title, completion_text)
+        self.assertIn(translate("onboarding_goal_work", "fr"), completion_text)
+        self.assertIn(
+            translate("onboarding_preference_teacher", "fr"),
+            completion_text,
+        )
+        self.assertIn("5", completion_text)
+        completion_button = (
+            query.edit_message_text.await_args.kwargs["reply_markup"]
+            .inline_keyboard[0][0]
+        )
+        self.assertEqual(completion_button.callback_data, "start:daily")
 
 
 if __name__ == "__main__":

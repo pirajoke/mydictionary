@@ -21,14 +21,19 @@ carry `pack_id`; the server rechecks visibility before activation.
 
 Users have an immutable-safe role transition: runtime configuration can promote
 a learner to `admin`, but a later request cannot downgrade an administrator.
-New learners complete two visible onboarding decisions before learning commands
-are available:
+New learners complete a short five-step, button-only onboarding before learning
+commands are available:
 
-1. Select a published public pack. Russian meanings and a general-learning goal
-   are applied as safe defaults.
-2. Select a daily pace of 5, 10, or 20 cards.
+1. Select the language Lexi uses for explanations and replies.
+2. Select a compatible published public pack to learn.
+3. Select a learning goal: basics, travel, conversation, or work and study.
+4. Select a preferred format: cards and practice, more dialogue, or teacher
+   explanations.
+5. Select a daily pace of 5, 10, or 20 cards, then start the first lesson from
+   the completion screen.
 
-Pack enrollment and the active pack are persisted independently from Telegram
+The explanation language, active pack, goal, preferred tutor format, pace, and
+completion state are persisted per Telegram user independently from Telegram
 session state. Existing configured administrators are bootstrapped onto the
 pack matching their previous active language and do not lose legacy progress.
 
