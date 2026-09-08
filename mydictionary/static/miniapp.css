@@ -331,32 +331,49 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 .metric span { display: block; margin-top: 4px; color: #52605d; font-size: .72rem; overflow-wrap: anywhere; }
 .dashboard-metric span { color: var(--dashboard-muted); }
 
-/* One compact title-and-art header across all five tabs. */
+/* One full-width title-and-art card across all five tabs. */
 .section-heading { min-height: 0; }
 .section-heading::after { display: none; }
 .section-heading h1 { position: static; max-width: none; color: var(--dashboard-text); text-shadow: none; }
 .section-hero {
   display: grid;
-  grid-template-columns: minmax(108px, .72fr) minmax(0, 1.28fr);
-  align-items: start;
-  gap: 12px;
-  min-height: 0;
-  margin-bottom: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 168px;
+  height: clamp(168px, 45vw, 240px);
+  margin-bottom: 12px;
   overflow: hidden;
-  padding: 2px 0 10px 2px;
+  isolation: isolate;
+  padding: 0;
+  border: 1px solid var(--dashboard-line);
+  border-radius: var(--dashboard-radius);
+  background: var(--dashboard-surface);
+}
+.section-hero::after {
+  content: "";
+  display: block;
+  grid-area: 1 / 1;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(2, 10, 18, .86), rgba(2, 10, 18, .12) 62%, transparent);
 }
 .section-hero h1 {
-  align-self: start;
-  padding-top: 4px;
+  grid-area: 1 / 1;
+  z-index: 2;
+  align-self: end;
+  max-width: min(78%, 18ch);
+  padding: 16px;
+  color: #fff;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, .5);
 }
 .section-hero .section-art {
   display: block;
+  grid-area: 1 / 1;
   width: 100%;
-  height: auto;
-  max-height: 128px;
-  aspect-ratio: 2 / 1;
-  border: 1px solid var(--dashboard-line);
-  border-radius: 14px;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
   object-fit: cover;
   object-position: center;
 }
@@ -791,11 +808,7 @@ html[dir="rtl"] .interface-locale-select { padding-right: 9px; padding-left: 30p
   .app-shell { padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); }
   .bottom-nav button { font-size: .56rem; }
   .nav-icon { width: 30px; height: 30px; }
-  .section-hero {
-    grid-template-columns: minmax(96px, .72fr) minmax(0, 1.28fr);
-    gap: 8px;
-    padding-inline-start: 0;
-  }
+  .section-hero h1 { max-width: 86%; padding: 14px; }
   .profile-identity { grid-template-columns: 74px minmax(0, 1fr) 44px; gap: 9px; padding: 10px; }
   .avatar-shell { width: 74px; }
   .profile-game-progress { grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; padding: 10px; }

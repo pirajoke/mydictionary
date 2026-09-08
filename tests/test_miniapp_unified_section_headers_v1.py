@@ -37,19 +37,25 @@ class MiniAppUnifiedSectionHeadersV1ContractTest(unittest.TestCase):
         self.assertEqual(violations, [])
         self.assertEqual(HTML.count('class="section-art"'), 5)
 
-    def test_shared_header_keeps_title_at_top_and_art_fills_the_right_column(self) -> None:
+    def test_shared_header_uses_a_full_width_art_card_with_title_overlay(self) -> None:
         header = css_rule(".section-hero")
         title = css_rule(".section-hero h1")
         art = css_rule(".section-hero .section-art")
+        scrim = css_rule(".section-hero::after")
 
         self.assertIn("display: grid", header)
-        self.assertRegex(header, r"grid-template-columns:\s*minmax\([^;]+\)\s+minmax\([^;]+\)")
-        self.assertIn("align-items: start", header)
+        self.assertRegex(header, r"grid-template-columns:\s*minmax\(0,\s*1fr\)")
+        self.assertIn("border-radius: var(--dashboard-radius)", header)
         self.assertIn("overflow: hidden", header)
-        self.assertIn("align-self: start", title)
+        self.assertIn("grid-area: 1 / 1", title)
+        self.assertIn("align-self: end", title)
+        self.assertIn("z-index: 2", title)
+        self.assertIn("grid-area: 1 / 1", art)
         self.assertIn("width: 100%", art)
-        self.assertIn("aspect-ratio: 2 / 1", art)
+        self.assertIn("height: 100%", art)
         self.assertIn("object-fit: cover", art)
+        self.assertIn("grid-area: 1 / 1", scrim)
+        self.assertIn("linear-gradient", scrim)
 
         self.assertNotRegex(CSS, r"\.profile-header\s*\{[^}]*min-height:\s*132px")
         self.assertNotRegex(CSS, r"\.section-art\s*\{[^}]*width:\s*(?:58|72)px")

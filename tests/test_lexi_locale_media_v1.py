@@ -212,7 +212,7 @@ class LexiFirstStartMediaContractTest(unittest.IsolatedAsyncioTestCase):
 
 
 class LexiMiniAppArtworkContractTest(unittest.TestCase):
-    def test_all_five_tabs_use_the_same_compact_artwork_format(self) -> None:
+    def test_all_five_tabs_use_the_same_full_width_artwork_format(self) -> None:
         html = (ROOT / "mydictionary/templates/miniapp.html").read_text(
             encoding="utf-8"
         )
@@ -230,7 +230,8 @@ class LexiMiniAppArtworkContractTest(unittest.TestCase):
         self.assertEqual(html.count("section-hero"), 5)
         self.assertIn(".section-hero .section-art", css)
         self.assertIn("width: 100%", css)
-        self.assertIn("aspect-ratio: 2 / 1", css)
+        self.assertIn("height: 100%", css)
+        self.assertIn("grid-area: 1 / 1", css)
         self.assertIn("object-fit: cover", css)
 
     def test_all_tab_artwork_files_are_webp_1200_by_600(self) -> None:
