@@ -1027,7 +1027,7 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         }
         self.assertTrue(option_texts.issubset(allowed_translations))
 
-    async def test_ai_callback_opens_free_action_menu_once_for_active_session(self):
+    async def test_ac1_ac2_ac5_ai_callback_opens_learning_only_menu_once(self):
         session_id = self.user_data["block_session"]
         update, context, query = self.make_update(f"bai:{session_id}")
         store = Mock()
@@ -1057,18 +1057,14 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         send_answer.assert_not_awaited()
         payload = query.message.reply_text.await_args
         rendered = payload.args[0]
-        self.assertIn(bot.translate("ai_tutor_economics_intro", "ru"), rendered)
-        self.assertIn(
-            bot.translate("ai_tutor_economics_balance", "ru", balance=8),
-            rendered,
-        )
-        self.assertIn(bot.translate("ai_tutor_economics_policy", "ru"), rendered)
+        self.assertEqual(rendered, bot.translate("ai_tutor_menu_intro", "ru"))
+        self.assertNotIn(bot.translate("ai_tutor_economics_policy", "ru"), rendered)
         buttons = [
             button
             for row in payload.kwargs["reply_markup"].inline_keyboard
             for button in row
         ]
-        self.assertEqual(len(buttons), 4)
+        self.assertEqual(len(buttons), 5)
         self.assertEqual(
             [button.callback_data for button in buttons],
             [
@@ -1076,12 +1072,13 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
                 f"bait:{session_id}:mistakes",
                 f"bait:{session_id}:progress",
                 f"bait:{session_id}:ask",
+                "aitutor:credits",
             ],
         )
-        store.ai_usage_summary.assert_called_once_with(1, initial_credits=40)
+        store.ai_usage_summary.assert_not_called()
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
-        billing_service.active_products.assert_called_once_with()
+        billing_service.active_products.assert_not_called()
         billing_service.create_order.assert_not_called()
         provider.assert_not_called()
 

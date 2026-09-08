@@ -840,6 +840,132 @@ for _locale, _messages in _HOME_SURFACE_COPY.items():
         _messages[f"stats_level_title_{_level}"] = _name
     _CATALOG[_locale].update(_messages)
 
+_SETTINGS_NAV_COPY: dict[str, dict[str, str]] = {
+    "en": {
+        "settings_section_language": "🌍 Learning language",
+        "settings_section_pace": "🎯 Daily pace",
+        "settings_section_tutor": "✨ AI tutor",
+        "settings_tutor_style": "🎭 Teaching style",
+        "settings_tutor_depth": "📝 Answer length",
+        "settings_tutor_level": "📈 Language level",
+        "settings_back": "⬅️ Back",
+        "settings_language_text": "🌍 *Learning language*\n\nChoose the language you want to study:",
+        "settings_pace_text": "🎯 *Daily pace*\n\nHow many cards should be in one lesson?",
+        "settings_tutor_text": "✨ *AI tutor*\n\nAdjust how Lexi explains and practises with you:",
+        "settings_tutor_style_text": "🎭 *Teaching style*\n\nChoose how Lexi should guide you:",
+        "settings_tutor_depth_text": "📝 *Answer length*\n\nChoose how detailed the answers should be:",
+        "settings_tutor_level_text": "📈 *Language level*\n\nChoose your level or leave automatic selection on:",
+    },
+    "fr": {
+        "settings_section_language": "🌍 Langue étudiée",
+        "settings_section_pace": "🎯 Rythme quotidien",
+        "settings_section_tutor": "✨ Tuteur IA",
+        "settings_tutor_style": "🎭 Style d’enseignement",
+        "settings_tutor_depth": "📝 Longueur des réponses",
+        "settings_tutor_level": "📈 Niveau de langue",
+        "settings_back": "⬅️ Retour",
+        "settings_language_text": "🌍 *Langue étudiée*\n\nChoisissez la langue que vous voulez apprendre :",
+        "settings_pace_text": "🎯 *Rythme quotidien*\n\nCombien de cartes pour une leçon ?",
+        "settings_tutor_text": "✨ *Tuteur IA*\n\nRéglez la façon dont Lexi explique et pratique avec vous :",
+        "settings_tutor_style_text": "🎭 *Style d’enseignement*\n\nChoisissez comment Lexi doit vous accompagner :",
+        "settings_tutor_depth_text": "📝 *Longueur des réponses*\n\nChoisissez le niveau de détail des réponses :",
+        "settings_tutor_level_text": "📈 *Niveau de langue*\n\nChoisissez votre niveau ou gardez la sélection automatique :",
+    },
+    "de": {
+        "settings_section_language": "🌍 Lernsprache",
+        "settings_section_pace": "🎯 Tagespensum",
+        "settings_section_tutor": "✨ KI-Tutor",
+        "settings_tutor_style": "🎭 Unterrichtsstil",
+        "settings_tutor_depth": "📝 Antwortlänge",
+        "settings_tutor_level": "📈 Sprachniveau",
+        "settings_back": "⬅️ Zurück",
+        "settings_language_text": "🌍 *Lernsprache*\n\nWähle die Sprache, die du lernen möchtest:",
+        "settings_pace_text": "🎯 *Tagespensum*\n\nWie viele Karten soll eine Lektion enthalten?",
+        "settings_tutor_text": "✨ *KI-Tutor*\n\nStelle ein, wie Lexi erklärt und mit dir übt:",
+        "settings_tutor_style_text": "🎭 *Unterrichtsstil*\n\nWähle, wie Lexi dich begleiten soll:",
+        "settings_tutor_depth_text": "📝 *Antwortlänge*\n\nWähle, wie ausführlich die Antworten sein sollen:",
+        "settings_tutor_level_text": "📈 *Sprachniveau*\n\nWähle dein Niveau oder lasse die Automatik aktiv:",
+    },
+    "ja": {
+        "settings_section_language": "🌍 学習する言語",
+        "settings_section_pace": "🎯 1日のペース",
+        "settings_section_tutor": "✨ AIチューター",
+        "settings_tutor_style": "🎭 指導スタイル",
+        "settings_tutor_depth": "📝 回答の長さ",
+        "settings_tutor_level": "📈 言語レベル",
+        "settings_back": "⬅️ 戻る",
+        "settings_language_text": "🌍 *学習する言語*\n\n学びたい言語を選んでください：",
+        "settings_pace_text": "🎯 *1日のペース*\n\n1回のレッスンのカード枚数を選んでください：",
+        "settings_tutor_text": "✨ *AIチューター*\n\nLexiの説明と練習方法を調整できます：",
+        "settings_tutor_style_text": "🎭 *指導スタイル*\n\nLexiのサポート方法を選んでください：",
+        "settings_tutor_depth_text": "📝 *回答の長さ*\n\n回答の詳しさを選んでください：",
+        "settings_tutor_level_text": "📈 *言語レベル*\n\nレベルを選ぶか、自動のままにしてください：",
+    },
+    "ar": {
+        "settings_section_language": "🌍 لغة التعلّم",
+        "settings_section_pace": "🎯 الوتيرة اليومية",
+        "settings_section_tutor": "✨ مدرّس الذكاء الاصطناعي",
+        "settings_tutor_style": "🎭 أسلوب التدريس",
+        "settings_tutor_depth": "📝 طول الإجابة",
+        "settings_tutor_level": "📈 مستوى اللغة",
+        "settings_back": "⬅️ رجوع",
+        "settings_language_text": "🌍 *لغة التعلّم*\n\nاختر اللغة التي تريد تعلّمها:",
+        "settings_pace_text": "🎯 *الوتيرة اليومية*\n\nكم بطاقة تريد في كل درس؟",
+        "settings_tutor_text": "✨ *مدرّس الذكاء الاصطناعي*\n\nاضبط طريقة شرح Lexi وتدرّبه معك:",
+        "settings_tutor_style_text": "🎭 *أسلوب التدريس*\n\nاختر كيف يوجّهك Lexi:",
+        "settings_tutor_depth_text": "📝 *طول الإجابة*\n\nاختر مقدار تفصيل الإجابات:",
+        "settings_tutor_level_text": "📈 *مستوى اللغة*\n\nاختر مستواك أو اترك الاختيار تلقائياً:",
+    },
+    "zh": {
+        "settings_section_language": "🌍 学习语言",
+        "settings_section_pace": "🎯 每日进度",
+        "settings_section_tutor": "✨ AI 导师",
+        "settings_tutor_style": "🎭 教学风格",
+        "settings_tutor_depth": "📝 回答长度",
+        "settings_tutor_level": "📈 语言等级",
+        "settings_back": "⬅️ 返回",
+        "settings_language_text": "🌍 *学习语言*\n\n请选择你想学习的语言：",
+        "settings_pace_text": "🎯 *每日进度*\n\n每节课学习多少张卡片？",
+        "settings_tutor_text": "✨ *AI 导师*\n\n设置 Lexi 讲解和陪练的方式：",
+        "settings_tutor_style_text": "🎭 *教学风格*\n\n请选择 Lexi 指导你的方式：",
+        "settings_tutor_depth_text": "📝 *回答长度*\n\n请选择回答的详细程度：",
+        "settings_tutor_level_text": "📈 *语言等级*\n\n请选择你的等级，或保留自动选择：",
+    },
+    "ru": {
+        "settings_section_language": "🌍 Язык обучения",
+        "settings_section_pace": "🎯 Темп занятий",
+        "settings_section_tutor": "✨ AI-тьютор",
+        "settings_tutor_style": "🎭 Стиль общения",
+        "settings_tutor_depth": "📝 Длина ответов",
+        "settings_tutor_level": "📈 Уровень языка",
+        "settings_back": "⬅️ Назад",
+        "settings_language_text": "🌍 *Язык обучения*\n\nВыбери язык, который хочешь изучать:",
+        "settings_pace_text": "🎯 *Темп занятий*\n\nСколько карточек будет в одном уроке?",
+        "settings_tutor_text": "✨ *AI-тьютор*\n\nНастрой, как Lexi объясняет и практикуется с тобой:",
+        "settings_tutor_style_text": "🎭 *Стиль общения*\n\nВыбери, как Lexi будет вести диалог:",
+        "settings_tutor_depth_text": "📝 *Длина ответов*\n\nВыбери подробность ответов:",
+        "settings_tutor_level_text": "📈 *Уровень языка*\n\nВыбери свой уровень или оставь автоопределение:",
+    },
+    "es": {
+        "settings_section_language": "🌍 Idioma de estudio",
+        "settings_section_pace": "🎯 Ritmo diario",
+        "settings_section_tutor": "✨ Tutor de IA",
+        "settings_tutor_style": "🎭 Estilo de enseñanza",
+        "settings_tutor_depth": "📝 Longitud de respuesta",
+        "settings_tutor_level": "📈 Nivel de idioma",
+        "settings_back": "⬅️ Volver",
+        "settings_language_text": "🌍 *Idioma de estudio*\n\nElige el idioma que quieres aprender:",
+        "settings_pace_text": "🎯 *Ritmo diario*\n\n¿Cuántas tarjetas tendrá cada lección?",
+        "settings_tutor_text": "✨ *Tutor de IA*\n\nAjusta cómo Lexi explica y practica contigo:",
+        "settings_tutor_style_text": "🎭 *Estilo de enseñanza*\n\nElige cómo quieres que Lexi te guíe:",
+        "settings_tutor_depth_text": "📝 *Longitud de respuesta*\n\nElige el nivel de detalle de las respuestas:",
+        "settings_tutor_level_text": "📈 *Nivel de idioma*\n\nElige tu nivel o mantén la selección automática:",
+    },
+}
+
+for _locale, _messages in _SETTINGS_NAV_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
 _LEARNING_BLOCK_COPY: dict[str, dict[str, str]] = {
     "en": {
         "block_intro": "📖 *{topic}*\nMemorize {count} words:\n\n{study}",
@@ -3207,9 +3333,8 @@ for _locale, _messages in _SERVICE_COPY.items():
 _AI_TUTOR_ACTION_COPY = {
     "en": {
         "ai_tutor_menu_intro": (
-            "AI Tutor uses your current lesson and progress. Choose a short "
-            "analysis or ask one question. An AI credit is used only when an "
-            "answer is generated."
+            "✨ AI Tutor\n\nI use your current lesson and progress. "
+            "Choose a quick analysis or ask me a question."
         ),
         "ai_tutor_action_vocabulary": "📚 Vocabulary",
         "ai_tutor_action_mistakes": "🎯 Mistakes",
@@ -3239,9 +3364,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "fr": {
         "ai_tutor_menu_intro": (
-            "Le tuteur IA utilise votre leçon et vos progrès actuels. Choisissez "
-            "une analyse courte ou posez une question. Un crédit IA n’est utilisé "
-            "que lorsqu’une réponse est générée."
+            "✨ Tuteur IA\n\nJe m’appuie sur votre leçon et vos progrès actuels. "
+            "Choisissez une analyse rapide ou posez-moi une question."
         ),
         "ai_tutor_action_vocabulary": "📚 Vocabulaire",
         "ai_tutor_action_mistakes": "🎯 Erreurs",
@@ -3270,9 +3394,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "de": {
         "ai_tutor_menu_intro": (
-            "Der KI-Tutor nutzt deine aktuelle Lektion und deinen Fortschritt. "
-            "Wähle eine kurze Analyse oder stelle eine Frage. Ein KI-Guthaben wird "
-            "nur verbraucht, wenn eine Antwort erzeugt wird."
+            "✨ KI-Tutor\n\nIch nutze deine aktuelle Lektion und deinen Fortschritt. "
+            "Wähle eine kurze Analyse oder stelle mir eine Frage."
         ),
         "ai_tutor_action_vocabulary": "📚 Wortschatz",
         "ai_tutor_action_mistakes": "🎯 Fehler",
@@ -3301,8 +3424,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "ja": {
         "ai_tutor_menu_intro": (
-            "AIチューターは現在のレッスンと進捗を使います。短い分析を選ぶか、質問を1つ送ってください。"
-            "AIクレジットは回答が生成されたときだけ使われます。"
+            "✨ AIチューター\n\n現在のレッスンと進捗を参考にします。"
+            "短い分析を選ぶか、質問してください。"
         ),
         "ai_tutor_action_vocabulary": "📚 単語を分析",
         "ai_tutor_action_mistakes": "🎯 間違いを分析",
@@ -3329,8 +3452,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "ar": {
         "ai_tutor_menu_intro": (
-            "يستخدم مدرس الذكاء الاصطناعي درسك الحالي وتقدمك. اختر تحليلاً قصيراً أو اطرح "
-            "سؤالاً واحداً. يُستخدم رصيد AI فقط عند إنشاء إجابة."
+            "✨ مدرس AI\n\nأستخدم درسك الحالي وتقدمك. "
+            "اختر تحليلاً سريعاً أو اطرح عليّ سؤالاً."
         ),
         "ai_tutor_action_vocabulary": "📚 المفردات",
         "ai_tutor_action_mistakes": "🎯 الأخطاء",
@@ -3357,8 +3480,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "zh": {
         "ai_tutor_menu_intro": (
-            "AI 导师会参考你当前的课程和进度。请选择一项简短分析，或发送一个问题。"
-            "只有生成 AI 回答时才会使用一个点数。"
+            "✨ AI 导师\n\n我会参考你当前的课程和进度。"
+            "请选择一项快速分析，或向我提问。"
         ),
         "ai_tutor_action_vocabulary": "📚 分析词汇",
         "ai_tutor_action_mistakes": "🎯 分析错误",
@@ -3385,8 +3508,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "ru": {
         "ai_tutor_menu_intro": (
-            "AI-тьютор учитывает текущий урок и твой прогресс. Выбери короткий "
-            "анализ или задай один вопрос. AI-кредит списывается только при создании ответа."
+            "✨ AI-тьютор\n\nЯ учитываю текущий урок и твой прогресс. "
+            "Выбери быстрый анализ или задай мне вопрос."
         ),
         "ai_tutor_action_vocabulary": "📚 Словарь",
         "ai_tutor_action_mistakes": "🎯 Ошибки",
@@ -3416,8 +3539,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "es": {
         "ai_tutor_menu_intro": (
-            "El tutor de IA usa tu lección y progreso actuales. Elige un análisis "
-            "breve o haz una pregunta. Solo se usa un crédito de IA al generar una respuesta."
+            "✨ Tutor de IA\n\nUso tu lección y progreso actuales. "
+            "Elige un análisis rápido o hazme una pregunta."
         ),
         "ai_tutor_action_vocabulary": "📚 Vocabulario",
         "ai_tutor_action_mistakes": "🎯 Errores",
@@ -3452,7 +3575,7 @@ for _locale, _messages in _AI_TUTOR_ACTION_COPY.items():
 
 _AI_TUTOR_ECONOMICS_COPY = {
     "en": {
-        "ai_tutor_economics_intro": "✨ AI Tutor — chat and credit packs",
+        "ai_tutor_economics_intro": "⭐ AI credits and plans",
         "ai_tutor_economics_balance": "Balance: {balance} AI credits.",
         "ai_tutor_economics_balance_unavailable": "Balance is temporarily unavailable.",
         "ai_tutor_economics_policy": (
@@ -3460,6 +3583,8 @@ _AI_TUTOR_ECONOMICS_COPY = {
             "A failed or rejected answer costs 0."
         ),
         "ai_tutor_economics_purchase_unavailable": "Credit purchases are currently unavailable.",
+        "ai_tutor_action_credits": "⭐ Credits and plans",
+        "ai_tutor_action_back": "↩️ Back to AI Tutor",
         "ai_tutor_action_start_lesson": "📚 Start a lesson",
         "ai_tutor_general_ask_prompt": (
             "You can chat freely with Tutor about language learning or your progress. "
@@ -3483,7 +3608,7 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
     },
     "fr": {
-        "ai_tutor_economics_intro": "✨ Tuteur IA — discussion et packs de crédits",
+        "ai_tutor_economics_intro": "⭐ Crédits IA et offres",
         "ai_tutor_economics_balance": "Solde : {balance} crédits IA.",
         "ai_tutor_economics_balance_unavailable": "Le solde est temporairement indisponible.",
         "ai_tutor_economics_policy": (
@@ -3491,6 +3616,8 @@ _AI_TUTOR_ECONOMICS_COPY = {
             "Une réponse échouée ou rejetée coûte 0."
         ),
         "ai_tutor_economics_purchase_unavailable": "L’achat de crédits est actuellement indisponible.",
+        "ai_tutor_action_credits": "⭐ Crédits et offres",
+        "ai_tutor_action_back": "↩️ Retour au tuteur IA",
         "ai_tutor_action_start_lesson": "📚 Commencer une leçon",
         "ai_tutor_general_ask_prompt": (
             "Vous pouvez discuter librement avec le tuteur de votre apprentissage ou de "
@@ -3515,7 +3642,7 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
     },
     "de": {
-        "ai_tutor_economics_intro": "✨ KI-Tutor — Chat und Guthabenpakete",
+        "ai_tutor_economics_intro": "⭐ KI-Credits und Pakete",
         "ai_tutor_economics_balance": "Guthaben: {balance} KI-Credits.",
         "ai_tutor_economics_balance_unavailable": "Das Guthaben ist vorübergehend nicht verfügbar.",
         "ai_tutor_economics_policy": (
@@ -3523,6 +3650,8 @@ _AI_TUTOR_ECONOMICS_COPY = {
             "Eine fehlgeschlagene oder abgelehnte Antwort kostet 0."
         ),
         "ai_tutor_economics_purchase_unavailable": "Der Kauf von Credits ist derzeit nicht verfügbar.",
+        "ai_tutor_action_credits": "⭐ Credits und Pakete",
+        "ai_tutor_action_back": "↩️ Zurück zum KI-Tutor",
         "ai_tutor_action_start_lesson": "📚 Lektion starten",
         "ai_tutor_general_ask_prompt": (
             "Du kannst frei mit dem Tutor über dein Sprachenlernen oder deinen Fortschritt "
@@ -3546,7 +3675,7 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
     },
     "ja": {
-        "ai_tutor_economics_intro": "✨ AIチューター — チャットとクレジットパック",
+        "ai_tutor_economics_intro": "⭐ AIクレジットとプラン",
         "ai_tutor_economics_balance": "残高：AIクレジット {balance}。",
         "ai_tutor_economics_balance_unavailable": "残高は一時的に確認できません。",
         "ai_tutor_economics_policy": (
@@ -3554,6 +3683,8 @@ _AI_TUTOR_ECONOMICS_COPY = {
             "失敗または拒否された回答は0です。"
         ),
         "ai_tutor_economics_purchase_unavailable": "現在、クレジットは購入できません。",
+        "ai_tutor_action_credits": "⭐ クレジットとプラン",
+        "ai_tutor_action_back": "↩️ AIチューターに戻る",
         "ai_tutor_action_start_lesson": "📚 レッスンを始める",
         "ai_tutor_general_ask_prompt": (
             "語学学習や進捗について、チューターと自由に話せます。質問を書くか、下の例を選んでください。"
@@ -3575,7 +3706,7 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
     },
     "ar": {
-        "ai_tutor_economics_intro": "✨ مدرس AI — المحادثة وباقات الرصيد",
+        "ai_tutor_economics_intro": "⭐ أرصدة AI والباقات",
         "ai_tutor_economics_balance": "الرصيد: {balance} من أرصدة AI.",
         "ai_tutor_economics_balance_unavailable": "الرصيد غير متاح مؤقتاً.",
         "ai_tutor_economics_policy": (
@@ -3583,6 +3714,8 @@ _AI_TUTOR_ECONOMICS_COPY = {
             "الإجابة الفاشلة أو المرفوضة تكلّف صفراً."
         ),
         "ai_tutor_economics_purchase_unavailable": "شراء الرصيد غير متاح حالياً.",
+        "ai_tutor_action_credits": "⭐ الرصيد والباقات",
+        "ai_tutor_action_back": "↩️ العودة إلى مدرس AI",
         "ai_tutor_action_start_lesson": "📚 ابدأ درساً",
         "ai_tutor_general_ask_prompt": (
             "يمكنك التحدث بحرية مع المدرس عن تعلم اللغة أو تقدمك. اكتب أي سؤال أو اختر مثالاً أدناه."
@@ -3604,7 +3737,7 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
     },
     "zh": {
-        "ai_tutor_economics_intro": "✨ AI 导师 — 对话与点数包",
+        "ai_tutor_economics_intro": "⭐ AI 点数与套餐",
         "ai_tutor_economics_balance": "余额：{balance} 个 AI 点数。",
         "ai_tutor_economics_balance_unavailable": "暂时无法查看余额。",
         "ai_tutor_economics_policy": (
@@ -3612,6 +3745,8 @@ _AI_TUTOR_ECONOMICS_COPY = {
             "生成失败或被拒绝的回答消耗 0 个。"
         ),
         "ai_tutor_economics_purchase_unavailable": "目前无法购买点数。",
+        "ai_tutor_action_credits": "⭐ 点数与套餐",
+        "ai_tutor_action_back": "↩️ 返回 AI 导师",
         "ai_tutor_action_start_lesson": "📚 开始课程",
         "ai_tutor_general_ask_prompt": (
             "你可以自由地与导师聊语言学习或学习进度。输入任何问题，或选择下面的示例。"
@@ -3633,7 +3768,7 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
     },
     "ru": {
-        "ai_tutor_economics_intro": "✨ AI-тьютор — чат и пакеты кредитов",
+        "ai_tutor_economics_intro": "⭐ AI-кредиты и тарифы",
         "ai_tutor_economics_balance": "Баланс: {balance} AI-кредитов.",
         "ai_tutor_economics_balance_unavailable": "Баланс временно недоступен.",
         "ai_tutor_economics_policy": (
@@ -3641,6 +3776,8 @@ _AI_TUTOR_ECONOMICS_COPY = {
             "Неудачный или отклонённый ответ стоит 0."
         ),
         "ai_tutor_economics_purchase_unavailable": "Покупка кредитов сейчас недоступна.",
+        "ai_tutor_action_credits": "⭐ Кредиты и тарифы",
+        "ai_tutor_action_back": "↩️ Назад к AI-тьютору",
         "ai_tutor_action_start_lesson": "📚 Начать урок",
         "ai_tutor_general_ask_prompt": (
             "С тьютором можно свободно общаться об изучении языка и своём прогрессе. "
@@ -3664,7 +3801,7 @@ _AI_TUTOR_ECONOMICS_COPY = {
         ),
     },
     "es": {
-        "ai_tutor_economics_intro": "✨ Tutor de IA — chat y paquetes de créditos",
+        "ai_tutor_economics_intro": "⭐ Créditos de IA y planes",
         "ai_tutor_economics_balance": "Saldo: {balance} créditos de IA.",
         "ai_tutor_economics_balance_unavailable": "El saldo no está disponible temporalmente.",
         "ai_tutor_economics_policy": (
@@ -3672,6 +3809,8 @@ _AI_TUTOR_ECONOMICS_COPY = {
             "Una respuesta fallida o rechazada cuesta 0."
         ),
         "ai_tutor_economics_purchase_unavailable": "La compra de créditos no está disponible ahora.",
+        "ai_tutor_action_credits": "⭐ Créditos y planes",
+        "ai_tutor_action_back": "↩️ Volver al tutor de IA",
         "ai_tutor_action_start_lesson": "📚 Empezar una lección",
         "ai_tutor_general_ask_prompt": (
             "Puedes hablar libremente con el tutor sobre idiomas o tu progreso. "

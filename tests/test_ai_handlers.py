@@ -79,7 +79,7 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIn("AI", message.reply_text.await_args.args[0])
 
-    async def test_active_block_ai_button_opens_free_menu_before_consent_or_credit(self):
+    async def test_ac1_ac2_ac5_active_block_ai_button_opens_learning_only_menu(self):
         user_data = {}
         bot.reset_block_state(
             user_data,
@@ -118,28 +118,21 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
 
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
-        store.ai_usage_summary.assert_called_once_with(
-            55,
-            initial_credits=40,
-        )
-        billing_service.active_products.assert_called_once_with()
+        store.ai_usage_summary.assert_not_called()
+        billing_service.active_products.assert_not_called()
         service.assert_not_called()
         answer.assert_not_awaited()
         query.answer.assert_awaited_once_with()
         payload = query.message.reply_text.await_args
         rendered = payload.args[0]
-        self.assertIn(bot.translate("ai_tutor_economics_intro", "ru"), rendered)
-        self.assertIn(
-            bot.translate("ai_tutor_economics_balance_unavailable", "ru"),
-            rendered,
-        )
-        self.assertIn(bot.translate("ai_tutor_economics_policy", "ru"), rendered)
+        self.assertEqual(rendered, bot.translate("ai_tutor_menu_intro", "ru"))
+        self.assertNotIn(bot.translate("ai_tutor_economics_policy", "ru"), rendered)
         buttons = [
             button
             for row in payload.kwargs["reply_markup"].inline_keyboard
             for button in row
         ]
-        self.assertEqual(len(buttons), 4)
+        self.assertEqual(len(buttons), 5)
         self.assertEqual(
             [button.callback_data for button in buttons],
             [
@@ -147,6 +140,7 @@ class AIConsentHandlerTest(unittest.IsolatedAsyncioTestCase):
                 f"bait:{session_id}:mistakes",
                 f"bait:{session_id}:progress",
                 f"bait:{session_id}:ask",
+                "aitutor:credits",
             ],
         )
         self.assertNotIn("pending_ai_consent", context.user_data)

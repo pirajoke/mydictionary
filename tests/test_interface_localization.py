@@ -138,11 +138,15 @@ class HomeSurfaceLocaleTest(unittest.IsolatedAsyncioTestCase):
         }
 
         text = bot.settings_text(pack, product, locale="fr")
-        keyboard = bot.settings_keyboard(
-            product,
-            mirror_policy=mirror_policy,
-            locale="fr",
-        )
+        keyboards = [
+            bot.settings_keyboard(
+                product,
+                mirror_policy=mirror_policy,
+                locale="fr",
+                section=section,
+            )
+            for section in ("tutor-style", "tutor-depth", "tutor-level")
+        ]
 
         self.assertIn("⚙️ *Réglages*", text)
         self.assertIn(f"Langue : *{pack.label}*", text)
@@ -153,6 +157,7 @@ class HomeSurfaceLocaleTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("niveau : *Auto*", text)
         button_texts = [
             button.text
+            for keyboard in keyboards
             for row in keyboard.inline_keyboard
             for button in row
         ]

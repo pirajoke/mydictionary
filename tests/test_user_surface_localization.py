@@ -1192,21 +1192,12 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                 ):
                     await bot.cmd_ai.__wrapped__(update, context)
                 requester.assert_not_awaited()
-                store.ai_usage_summary.assert_called_once_with(
-                    42,
-                    initial_credits=40,
-                )
-                billing_service.active_products.assert_called_once_with()
+                store.ai_usage_summary.assert_not_called()
+                billing_service.active_products.assert_not_called()
                 payload = message.reply_text.await_args
                 rendered = payload.args[0]
-                self.assertIn(
-                    translate("ai_tutor_economics_intro", "fr"), rendered
-                )
-                self.assertIn(
-                    translate("ai_tutor_economics_balance", "fr", balance=9),
-                    rendered,
-                )
-                self.assertIn(
+                self.assertEqual(rendered, translate("ai_tutor_menu_intro", "fr"))
+                self.assertNotIn(
                     translate("ai_tutor_economics_policy", "fr"), rendered
                 )
                 buttons = [
@@ -1221,6 +1212,7 @@ class FrenchUserSurfaceLocalizationTest(unittest.IsolatedAsyncioTestCase):
                         "🎯 Erreurs",
                         "📊 Progrès",
                         "💬 Poser une question",
+                        translate("ai_tutor_action_credits", "fr"),
                     ],
                 )
                 self.assertNotRegex(rendered, r"[А-Яа-яЁё]")

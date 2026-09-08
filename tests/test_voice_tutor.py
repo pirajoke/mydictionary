@@ -401,6 +401,76 @@ class OpenAITranscriptionProviderTest(unittest.IsolatedAsyncioTestCase):
         file_value = create.await_args.kwargs["file"]
         self.assertEqual(file_value, ("voice.ogg", b"ogg-bytes", "audio/ogg"))
 
+    async def test_gpt_4o_transcribe_uses_supported_json_when_detecting_language(self):
+        create = AsyncMock(
+            return_value=MagicMock(
+                text="hola",
+                id="tr-gpt-4o",
+                model="gpt-4o-transcribe",
+                language="es",
+                usage=MagicMock(
+                    input_tokens=4,
+                    output_tokens=1,
+                    total_tokens=5,
+                    input_token_details=MagicMock(cached_tokens=0),
+                ),
+            )
+        )
+        client = MagicMock()
+        client.audio.transcriptions.create = create
+        provider = OpenAITranscriptionProvider(
+            api_key="test-key", model="gpt-4o-transcribe", client=client
+        )
+
+        await provider.transcribe(
+            MagicMock(
+                audio=b"ogg-bytes",
+                language=None,
+                prompt="",
+                detect_language=True,
+            )
+        )
+
+        self.assertEqual(
+            create.await_args.kwargs["response_format"],
+            "json",
+        )
+
+    async def test_whisper_1_can_use_verbose_json_when_detecting_language(self):
+        create = AsyncMock(
+            return_value=MagicMock(
+                text="hola",
+                id="tr-whisper",
+                model="whisper-1",
+                language="es",
+                usage=MagicMock(
+                    input_tokens=0,
+                    output_tokens=0,
+                    total_tokens=0,
+                    input_token_details=MagicMock(cached_tokens=0),
+                ),
+            )
+        )
+        client = MagicMock()
+        client.audio.transcriptions.create = create
+        provider = OpenAITranscriptionProvider(
+            api_key="test-key", model="whisper-1", client=client
+        )
+
+        await provider.transcribe(
+            MagicMock(
+                audio=b"ogg-bytes",
+                language=None,
+                prompt="",
+                detect_language=True,
+            )
+        )
+
+        self.assertEqual(
+            create.await_args.kwargs["response_format"],
+            "verbose_json",
+        )
+
 
 class VoiceSettingsTest(unittest.TestCase):
     def test_feature_is_disabled_by_default(self):
