@@ -76,6 +76,7 @@ INTERFACE_LOCALES = frozenset({"en", "fr", "de", "ja", "ar", "zh", "ru", "es"})
 REFERRAL_CODE_RE = re.compile(r"^[A-Za-z0-9_-]{16,48}$")
 REFERRAL_REWARD_CREDITS = 5
 REFERRAL_REWARD_CAP = 10
+CURRENT_ONBOARDING_VERSION = 2
 
 
 def utcnow() -> datetime:
@@ -1782,26 +1783,27 @@ class DatabaseStore:
         with self.Session() as session:
             user = session.get(User, int(user_id))
             progress = session.get(UserProgress, int(user_id))
-            interface_locale = session.execute(
+            interface_settings = session.execute(
                 text(
-                    "SELECT interface_locale FROM users "
+                    "SELECT interface_locale, onboarding_version FROM users "
                     "WHERE telegram_user_id = :user_id"
                 ),
                 {"user_id": int(user_id)},
-            ).scalar_one()
+            ).mappings().one()
             return {
                 "role": user.role,
                 "native_language": user.native_language,
                 "learning_goal": user.learning_goal,
                 "daily_word_goal": user.daily_word_goal,
                 "onboarding_completed_at": user.onboarding_completed_at,
+                "onboarding_version": interface_settings["onboarding_version"],
                 "acquisition_source": user.acquisition_source,
                 "access_status": user.access_status,
                 "access_status_updated_at": user.access_status_updated_at,
                 "active_pack_id": progress.active_pack_id if progress else None,
                 "active_lang": progress.active_lang if progress else "en",
                 "mirror_style": self.get_mirror_style(user_id),
-                "interface_locale": interface_locale,
+                "interface_locale": interface_settings["interface_locale"],
             }
 
     def access_profile(self, user_id: int) -> dict[str, Any] | None:
@@ -1847,6 +1849,7 @@ class DatabaseStore:
         daily_word_goal: int | None = None,
         acquisition_source: str | None = None,
         complete_onboarding: bool = False,
+        onboarding_version: int | None = None,
         initial_credits: int = 0,
     ) -> dict[str, Any]:
         self.ensure_user_id(user_id)
@@ -1860,6 +1863,13 @@ class DatabaseStore:
             str(acquisition_source)
         ):
             raise ValueError("Invalid acquisition source")
+        if onboarding_version is not None:
+            if not complete_onboarding:
+                raise ValueError(
+                    "Onboarding version requires onboarding completion"
+                )
+            if type(onboarding_version) is not int or onboarding_version < 1:
+                raise ValueError("Invalid onboarding version")
         with self.Session.begin() as session:
             user = session.get(User, int(user_id))
             if native_language is not None:
@@ -1870,6 +1880,17 @@ class DatabaseStore:
                 user.daily_word_goal = int(daily_word_goal)
             if acquisition_source and not user.acquisition_source:
                 user.acquisition_source = str(acquisition_source)[:64]
+            if complete_onboarding and onboarding_version is not None:
+                session.execute(
+                    text(
+                        "UPDATE users SET onboarding_version = :version "
+                        "WHERE telegram_user_id = :user_id"
+                    ),
+                    {
+                        "version": onboarding_version,
+                        "user_id": int(user_id),
+                    },
+                )
             if complete_onboarding and user.onboarding_completed_at is None:
                 completed_at = utcnow()
                 user.onboarding_completed_at = completed_at

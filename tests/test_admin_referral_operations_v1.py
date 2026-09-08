@@ -242,7 +242,7 @@ class AdminReferralOperationsV1Test(unittest.TestCase):
         body = re.sub(r"\s+", " ", response.get_data(as_text=True))
         self.assertRegex(
             body,
-            r"Alembic revision</dt><dd>0019_referral_program_v1</dd>"
+            r"Alembic revision</dt><dd>0020_onboarding_version_v2</dd>"
             r"<span class=\"readiness ok\">ready</span>",
         )
         for label in (
