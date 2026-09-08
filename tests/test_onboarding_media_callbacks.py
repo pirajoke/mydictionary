@@ -77,16 +77,25 @@ class OnboardingMediaCallbackRegressionTest(unittest.IsolatedAsyncioTestCase):
                 "onboarding:begin",
                 "onboarding:native:ru",
                 "onboarding:pack:en-basics-100",
+                "onboarding:goal:conversation",
+                "onboarding:preference:practice",
                 "onboarding:pace:10",
             ):
                 query.data = callback_data
                 await bot.onboarding_cb(update, context)
 
         query.edit_message_text.assert_not_awaited()
-        self.assertEqual(len(query.caption_edits), 4)
-        self.assertIn("Шаг 1 из 3", query.caption_edits[0][0])
-        self.assertIn("Шаг 2 из 3", query.caption_edits[1][0])
-        self.assertIn("Шаг 3 из 3", query.caption_edits[2][0])
+        self.assertEqual(len(query.caption_edits), 6)
+        for step, (caption, _keyboard) in enumerate(
+            query.caption_edits[:5], start=1
+        ):
+            self.assertIn(f"Шаг {step} из 5", caption)
+        final_caption, final_keyboard = query.caption_edits[-1]
+        self.assertIn("10", final_caption)
+        self.assertEqual(
+            final_keyboard.inline_keyboard[0][0].callback_data,
+            "start:daily",
+        )
         self.assertIsNotNone(
             self.store.product_profile(user_id)["onboarding_completed_at"]
         )
@@ -97,7 +106,8 @@ class OnboardingMediaCallbackRegressionTest(unittest.IsolatedAsyncioTestCase):
         cases = (
             "onboarding:native:not-a-language",
             "onboarding:pack:not-a-pack",
-            "onboarding:goal:basics",
+            "onboarding:goal:not-a-goal",
+            "onboarding:preference:not-a-preference",
             "onboarding:pace:10",
             "onboarding:stale",
         )
@@ -113,6 +123,8 @@ class OnboardingMediaCallbackRegressionTest(unittest.IsolatedAsyncioTestCase):
                         chat_id=92 + offset,
                         photo=(SimpleNamespace(file_id="welcome-photo"),),
                         caption=bot.translate("onboarding_intro", "ru"),
+                        reply_photo=AsyncMock(),
+                        reply_text=AsyncMock(),
                     )
                     query = _PhotoCallbackQuery(message)
                     query.data = callback_data

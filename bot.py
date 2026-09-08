@@ -1734,6 +1734,10 @@ ONBOARDING_GOALS = {
     "work": "Работа и учёба",
 }
 
+ONBOARDING_GOAL_PENDING = "pending"
+ONBOARDING_PREFERENCES = frozenset({"practice", "conversation", "teacher"})
+ONBOARDING_PREFERENCE_PENDING = "brief"
+
 
 def onboarding_meaning_language_keyboard(
     locale: str = "ru",
@@ -1774,6 +1778,30 @@ def onboarding_pack_keyboard(
     )
 
 
+def onboarding_goal_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                translate(f"onboarding_goal_{goal}", locale),
+                callback_data=f"onboarding:goal:{goal}",
+            )]
+            for goal in ONBOARDING_GOALS
+        ]
+    )
+
+
+def onboarding_preference_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                translate(f"onboarding_preference_{mode}", locale),
+                callback_data=f"onboarding:preference:{mode}",
+            )]
+            for mode in ("practice", "conversation", "teacher")
+        ]
+    )
+
+
 def onboarding_pace_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
@@ -1788,6 +1816,25 @@ def onboarding_pace_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
             )],
         ]
     )
+
+
+def active_onboarding_pack(
+    runtime: LearnerRuntime,
+    product: Mapping[str, Any] | None = None,
+) -> ContentPack | None:
+    """Return the persisted pack only when prior onboarding choices are valid."""
+    profile = product or runtime.store.product_profile(runtime.user_id)
+    meaning_language = str(profile.get("native_language") or "")
+    pack = CATALOG.get(str(profile.get("active_pack_id") or ""))
+    if (
+        meaning_language not in CATALOG.meaning_languages("learner")
+        or pack is None
+        or not pack.visible_to("learner")
+        or pack not in compatible_onboarding_packs(meaning_language)
+        or pack.pack_id not in runtime.store.enrolled_pack_ids(runtime.user_id)
+    ):
+        return None
+    return pack
 
 
 async def edit_onboarding_message(
@@ -1822,15 +1869,6 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     if parts == ["onboarding", "begin"]:
         record_product_event("onboarding_started")
-        runtime.store.update_product_profile(
-            runtime.user_id,
-            learning_goal="basics",
-        )
-        record_product_event(
-            "onboarding_goal_selected",
-            properties={"goal": "basics"},
-            source="default",
-        )
         await edit_onboarding_message(
             query,
             translate("onboarding_choose_native", locale),
@@ -1847,7 +1885,6 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         runtime.store.update_product_profile(
             runtime.user_id,
             native_language=meaning_language,
-            learning_goal="basics",
         )
         runtime.store.set_interface_locale(runtime.user_id, meaning_language)
         runtime.meaning_language = meaning_language
@@ -1882,6 +1919,10 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         activate_content_pack(pack, source="onboarding")
+        runtime.store.update_product_profile(
+            runtime.user_id,
+            learning_goal=ONBOARDING_GOAL_PENDING,
+        )
         context.user_data["onboarding_pack_id"] = pack.pack_id
         record_product_event(
             "onboarding_pack_selected",
@@ -1892,17 +1933,69 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await edit_onboarding_message(
             query,
-            translate("onboarding_choose_pace", locale),
-            reply_markup=onboarding_pace_keyboard(locale),
+            translate("onboarding_choose_goal", locale),
+            reply_markup=onboarding_goal_keyboard(locale),
         )
         return
-    # Compatibility for an in-flight goal step from the previous version.
     if len(parts) == 3 and parts[1] == "goal" and parts[2] in ONBOARDING_GOALS:
+        if active_onboarding_pack(runtime) is None:
+            await edit_onboarding_message(
+                query, translate("choose_pack_again", locale)
+            )
+            return
         runtime.store.update_product_profile(
             runtime.user_id, learning_goal=parts[2]
         )
+        # ``brief`` is not offered in onboarding and therefore doubles as a
+        # durable pending marker until the learner chooses a format.
+        runtime.store.set_mirror_preferences(
+            runtime.user_id,
+            mode=ONBOARDING_PREFERENCE_PENDING,
+            depth="balanced",
+            level="adaptive",
+        )
         record_product_event(
             "onboarding_goal_selected", properties={"goal": parts[2]}
+        )
+        await edit_onboarding_message(
+            query,
+            translate("onboarding_choose_preference", locale),
+            reply_markup=onboarding_preference_keyboard(locale),
+        )
+        return
+    if (
+        len(parts) == 3
+        and parts[1] == "preference"
+        and parts[2] in ONBOARDING_PREFERENCES
+    ):
+        product = runtime.store.product_profile(runtime.user_id)
+        current_mode = runtime.store.get_mirror_preferences(runtime.user_id)["mode"]
+        if active_onboarding_pack(runtime, product) is None:
+            await edit_onboarding_message(
+                query, translate("choose_pack_again", locale)
+            )
+            return
+        if product.get("learning_goal") not in ONBOARDING_GOALS:
+            await edit_onboarding_message(
+                query,
+                translate("onboarding_choose_goal", locale),
+                reply_markup=onboarding_goal_keyboard(locale),
+            )
+            return
+        if current_mode != ONBOARDING_PREFERENCE_PENDING:
+            await edit_onboarding_message(
+                query, translate("onboarding_stale", locale)
+            )
+            return
+        runtime.store.set_mirror_preferences(
+            runtime.user_id,
+            mode=parts[2],
+            depth="balanced",
+            level="adaptive",
+        )
+        record_product_event(
+            "onboarding_preference_selected",
+            properties={"mode": parts[2]},
         )
         await edit_onboarding_message(
             query,
@@ -1912,13 +2005,27 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if len(parts) == 3 and parts[1] == "pace" and parts[2] in {"5", "10", "20"}:
         product = runtime.store.product_profile(runtime.user_id)
-        pack = CATALOG.get(
-            context.user_data.get("onboarding_pack_id")
-            or product["active_pack_id"]
-        )
-        if pack is None or not pack.visible_to("learner"):
+        pack = active_onboarding_pack(runtime, product)
+        if pack is None:
             await edit_onboarding_message(
                 query, translate("choose_pack_again", locale)
+            )
+            return
+        goal = str(product.get("learning_goal") or "")
+        preferences = runtime.store.get_mirror_preferences(runtime.user_id)
+        preference = str(preferences.get("mode") or "")
+        if goal not in ONBOARDING_GOALS:
+            await edit_onboarding_message(
+                query,
+                translate("onboarding_choose_goal", locale),
+                reply_markup=onboarding_goal_keyboard(locale),
+            )
+            return
+        if preference not in ONBOARDING_PREFERENCES:
+            await edit_onboarding_message(
+                query,
+                translate("onboarding_choose_preference", locale),
+                reply_markup=onboarding_preference_keyboard(locale),
             )
             return
         runtime.store.update_product_profile(
@@ -1933,18 +2040,29 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             properties={
                 "pack_id": pack.pack_id,
                 "language": pack.target_language,
+                "goal": goal,
+                "mode": preference,
                 "daily_word_goal": int(parts[2]),
             },
         )
         await edit_onboarding_message(
             query,
-            translate("onboarding_complete", locale, title=pack.label)
-        )
-        await send_start_message(
-            query.message,
-            context,
-            first_name=getattr(update.effective_user, "first_name", None),
-            locale=locale,
+            translate(
+                "onboarding_complete",
+                locale,
+                title=pack.label,
+                goal=translate(f"onboarding_goal_{goal}", locale),
+                preference=translate(
+                    f"onboarding_preference_{preference}", locale
+                ),
+                pace=int(parts[2]),
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton(
+                    translate("onboarding_start_first_lesson", locale),
+                    callback_data="start:daily",
+                )]]
+            ),
         )
         return
     await edit_onboarding_message(query, translate("onboarding_stale", locale))

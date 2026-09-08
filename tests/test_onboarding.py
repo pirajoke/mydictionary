@@ -131,13 +131,17 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             await bot.cmd_start(update, context)
 
         text = message.reply_text.await_args.args[0]
-        self.assertIn("Три коротких шага", text)
-        self.assertEqual(
+        self.assertIn("минут", text.lower())
+        self.assertLessEqual(len(text), 220)
+        button = (
             message.reply_text.await_args.kwargs["reply_markup"]
             .inline_keyboard[0][0]
-            .callback_data,
+        )
+        self.assertEqual(
+            button.callback_data,
             "onboarding:begin",
         )
+        self.assertIn("Выбрать язык", button.text)
         self.assertEqual(
             self.store.product_profile(9901)["acquisition_source"],
             "telegram-ad",
@@ -204,7 +208,7 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "LEGACY_USER_ID", None),
         ):
             await bot.cmd_start(update, context)
-        self.assertIn("Три коротких шага", message.reply_text.await_args.args[0])
+        self.assertIn("минут", message.reply_text.await_args.args[0].lower())
 
         AdminStore(self.store).set_user_access_status(
             user_id, status="blocked", actor="owner"
@@ -287,6 +291,8 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
             "onboarding:begin",
             "onboarding:native:ru",
             "onboarding:pack:ja-basics-100",
+            "onboarding:goal:travel",
+            "onboarding:preference:conversation",
             "onboarding:pace:10",
         )
         with (
@@ -301,10 +307,18 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
 
         profile = self.store.product_profile(user_id)
         self.assertEqual(profile["native_language"], "ru")
-        self.assertEqual(profile["learning_goal"], "basics")
+        self.assertEqual(profile["learning_goal"], "travel")
         self.assertEqual(profile["daily_word_goal"], 10)
         self.assertEqual(profile["active_pack_id"], "ja-basics-100")
         self.assertIsNotNone(profile["onboarding_completed_at"])
+        self.assertEqual(
+            self.store.get_mirror_preferences(user_id),
+            {
+                "mode": "conversation",
+                "depth": "balanced",
+                "level": "adaptive",
+            },
+        )
         with self.store.Session() as session:
             event_names = session.execute(
                 select(AnalyticsEvent.event_name).where(
@@ -318,10 +332,25 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
                 "onboarding_native_selected",
                 "onboarding_pack_selected",
                 "onboarding_goal_selected",
+                "onboarding_preference_selected",
                 "onboarding_completed",
             },
         )
-        message.reply_photo.assert_awaited_once()
+        message.reply_photo.assert_not_awaited()
+        completion = query.edit_message_text.await_args
+        self.assertIn(bot.CATALOG.require("ja-basics-100").label, completion.args[0])
+        self.assertIn(bot.translate("onboarding_goal_travel", "ru"), completion.args[0])
+        self.assertIn(
+            bot.translate("onboarding_preference_conversation", "ru"),
+            completion.args[0],
+        )
+        self.assertIn("10", completion.args[0])
+        final_button = completion.kwargs["reply_markup"].inline_keyboard[0][0]
+        self.assertEqual(final_button.callback_data, "start:daily")
+        self.assertEqual(
+            final_button.text,
+            bot.translate("onboarding_start_first_lesson", "ru"),
+        )
 
     async def test_onboarding_begin_asks_for_meaning_language(self):
         user_id = 9904
@@ -348,13 +377,330 @@ class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):
         text = query.edit_message_text.await_args.args[0]
         keyboard = query.edit_message_text.await_args.kwargs["reply_markup"]
         callbacks = [row[0].callback_data for row in keyboard.inline_keyboard]
-        self.assertIn("Шаг 1 из 3", text)
+        self.assertIn("Шаг 1 из 5", text)
         self.assertTrue(
             all(value.startswith("onboarding:native:") for value in callbacks)
         )
         profile = self.store.product_profile(user_id)
         self.assertIsNone(profile["native_language"])
-        self.assertEqual(profile["learning_goal"], "basics")
+        self.assertIsNone(profile["learning_goal"])
+
+    async def test_pack_goal_and_preference_steps_use_native_buttons(self):
+        user_id = 9905
+        message = SimpleNamespace(chat_id=10)
+        query = SimpleNamespace(
+            data="onboarding:native:ru",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_message=message,
+            effective_user=SimpleNamespace(
+                id=user_id,
+                first_name="Лена",
+                language_code="ru",
+            ),
+        )
+        context = SimpleNamespace(user_data={})
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "public"),
+            patch.object(bot, "LEGACY_USER_ID", None),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+        ):
+            await bot.onboarding_cb(update, context)
+            self.assertIn("Шаг 2 из 5", query.edit_message_text.await_args.args[0])
+
+            query.data = "onboarding:pack:en-basics-100"
+            await bot.onboarding_cb(update, context)
+            goal_edit = query.edit_message_text.await_args
+            self.assertIn("Шаг 3 из 5", goal_edit.args[0])
+            self.assertEqual(
+                {
+                    button.callback_data
+                    for row in goal_edit.kwargs["reply_markup"].inline_keyboard
+                    for button in row
+                },
+                {
+                    "onboarding:goal:basics",
+                    "onboarding:goal:travel",
+                    "onboarding:goal:conversation",
+                    "onboarding:goal:work",
+                },
+            )
+
+            query.data = "onboarding:goal:work"
+            await bot.onboarding_cb(update, context)
+            preference_edit = query.edit_message_text.await_args
+            self.assertIn("Шаг 4 из 5", preference_edit.args[0])
+            self.assertEqual(
+                {
+                    button.callback_data
+                    for row in preference_edit.kwargs["reply_markup"].inline_keyboard
+                    for button in row
+                },
+                {
+                    "onboarding:preference:practice",
+                    "onboarding:preference:conversation",
+                    "onboarding:preference:teacher",
+                },
+            )
+            self.assertEqual(
+                self.store.product_profile(user_id)["learning_goal"], "work"
+            )
+
+            query.data = "onboarding:preference:teacher"
+            await bot.onboarding_cb(update, context)
+            pace_edit = query.edit_message_text.await_args
+
+        self.assertIn("Шаг 5 из 5", pace_edit.args[0])
+        self.assertEqual(
+            self.store.get_mirror_preferences(user_id),
+            {"mode": "teacher", "depth": "balanced", "level": "adaptive"},
+        )
+        callback_values = [
+            button.callback_data
+            for edit in (goal_edit, preference_edit, pace_edit)
+            for row in edit.kwargs["reply_markup"].inline_keyboard
+            for button in row
+        ]
+        self.assertTrue(all(len(value.encode("utf-8")) <= 64 for value in callback_values))
+
+    async def test_onboarding_answers_are_durable_and_isolated_by_user_id(self):
+        async def complete(
+            user_id: int,
+            native: str,
+            pack_id: str,
+            goal: str,
+            preference: str,
+            pace: int,
+        ) -> None:
+            message = SimpleNamespace(
+                chat_id=user_id,
+                reply_photo=AsyncMock(),
+                reply_text=AsyncMock(),
+            )
+            query = SimpleNamespace(
+                data="onboarding:begin",
+                answer=AsyncMock(),
+                edit_message_text=AsyncMock(),
+                message=message,
+            )
+            update = SimpleNamespace(
+                callback_query=query,
+                effective_message=message,
+                effective_user=SimpleNamespace(
+                    id=user_id,
+                    first_name="Ученик",
+                    language_code="ru",
+                ),
+            )
+            for callback in (
+                "onboarding:begin",
+                f"onboarding:native:{native}",
+                f"onboarding:pack:{pack_id}",
+                f"onboarding:goal:{goal}",
+                f"onboarding:preference:{preference}",
+                f"onboarding:pace:{pace}",
+            ):
+                query.data = callback
+                # Simulate a fresh process/update: no in-memory onboarding state.
+                await bot.onboarding_cb(update, SimpleNamespace(user_data={}))
+
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "public"),
+            patch.object(bot, "LEGACY_USER_ID", None),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+        ):
+            await complete(9912, "ru", "en-basics-100", "travel", "practice", 5)
+            await complete(9913, "ru", "de-basics-100", "work", "teacher", 20)
+
+        first = self.store.product_profile(9912)
+        second = self.store.product_profile(9913)
+        self.assertEqual(
+            (first["active_pack_id"], first["learning_goal"], first["daily_word_goal"]),
+            ("en-basics-100", "travel", 5),
+        )
+        self.assertEqual(
+            (second["active_pack_id"], second["learning_goal"], second["daily_word_goal"]),
+            ("de-basics-100", "work", 20),
+        )
+        self.assertEqual(self.store.get_mirror_preferences(9912)["mode"], "practice")
+        self.assertEqual(self.store.get_mirror_preferences(9913)["mode"], "teacher")
+
+    async def test_unknown_goal_preference_and_pace_do_not_complete_onboarding(self):
+        user_id = 9914
+        message = SimpleNamespace(chat_id=user_id)
+        query = SimpleNamespace(
+            data="onboarding:goal:not-real",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_message=message,
+            effective_user=SimpleNamespace(id=user_id, language_code="ru"),
+        )
+        self.store.ensure_user(update.effective_user)
+        self.store.activate_user_access(user_id)
+        self.store.update_product_profile(user_id, native_language="ru")
+        self.store.activate_pack(
+            user_id,
+            pack_id="en-basics-100",
+            language="en",
+            source="onboarding",
+        )
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "public"),
+            patch.object(bot, "LEGACY_USER_ID", None),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+        ):
+            for callback in (
+                "onboarding:goal:not-real",
+                "onboarding:preference:not-real",
+                "onboarding:pace:99",
+            ):
+                query.data = callback
+                await bot.onboarding_cb(update, SimpleNamespace(user_data={}))
+                self.assertIsNone(
+                    self.store.product_profile(user_id)["onboarding_completed_at"]
+                )
+
+    async def test_stale_answers_cannot_skip_fresh_goal_selection(self):
+        user_id = 9916
+        telegram_user = SimpleNamespace(
+            id=user_id,
+            first_name="Лена",
+            language_code="ru",
+        )
+        self.store.ensure_user(telegram_user)
+        self.store.activate_user_access(user_id)
+        self.store.update_product_profile(user_id, learning_goal="travel")
+        self.store.set_mirror_preferences(
+            user_id,
+            mode="conversation",
+            depth="balanced",
+            level="adaptive",
+        )
+        initial_daily_word_goal = self.store.product_profile(user_id)[
+            "daily_word_goal"
+        ]
+        message = SimpleNamespace(
+            chat_id=user_id,
+            reply_photo=AsyncMock(),
+            reply_text=AsyncMock(),
+        )
+        query = SimpleNamespace(
+            data="onboarding:begin",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_message=message,
+            effective_user=telegram_user,
+        )
+        context = SimpleNamespace(user_data={})
+
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "public"),
+            patch.object(bot, "LEGACY_USER_ID", None),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+        ):
+            for callback in (
+                "onboarding:begin",
+                "onboarding:native:ru",
+                "onboarding:pack:en-basics-100",
+            ):
+                query.data = callback
+                await bot.onboarding_cb(update, context)
+
+            rejection_texts = []
+            for forged_callback in (
+                "onboarding:preference:teacher",
+                "onboarding:pace:10",
+            ):
+                query.data = forged_callback
+                await bot.onboarding_cb(update, SimpleNamespace(user_data={}))
+                rejection_texts.append(query.edit_message_text.await_args.args[0])
+
+        profile = self.store.product_profile(user_id)
+        self.assertIsNone(profile["onboarding_completed_at"])
+        self.assertEqual(profile["daily_word_goal"], initial_daily_word_goal)
+        self.assertEqual(
+            self.store.get_mirror_preferences(user_id)["mode"],
+            "conversation",
+        )
+        self.assertTrue(
+            all("Шаг 3 из 5" in text for text in rejection_texts),
+            rejection_texts,
+        )
+
+    async def test_final_daily_callback_enters_existing_lesson_path(self):
+        user_id = 9915
+        telegram_user = SimpleNamespace(id=user_id, language_code="ru")
+        self.store.ensure_user(telegram_user)
+        self.store.activate_user_access(user_id)
+        self.store.update_product_profile(
+            user_id,
+            native_language="ru",
+            learning_goal="basics",
+            daily_word_goal=5,
+            complete_onboarding=True,
+        )
+        self.store.activate_pack(
+            user_id,
+            pack_id="en-basics-100",
+            language="en",
+            source="onboarding",
+        )
+        message = SimpleNamespace(chat_id=user_id)
+        query = SimpleNamespace(
+            data="start:daily",
+            answer=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_message=message,
+            effective_user=telegram_user,
+        )
+        context = SimpleNamespace(user_data={})
+        with (
+            patch.object(bot, "_STORE", self.store),
+            patch.object(bot, "BOT_ACCESS_MODE", "public"),
+            patch.object(bot, "LEGACY_USER_ID", None),
+            patch.object(bot, "ADMIN_USER_IDS", set()),
+            patch.object(bot, "start_home_lesson", new=AsyncMock()) as start_lesson,
+        ):
+            await bot.start_menu_cb(update, context)
+
+        start_lesson.assert_awaited_once_with(query, context, lesson_kind="daily")
+
+    def test_new_onboarding_copy_exists_for_every_interface_locale(self):
+        keys = (
+            "onboarding_choose_goal",
+            "onboarding_goal_basics",
+            "onboarding_goal_travel",
+            "onboarding_goal_conversation",
+            "onboarding_goal_work",
+            "onboarding_choose_preference",
+            "onboarding_preference_practice",
+            "onboarding_preference_conversation",
+            "onboarding_preference_teacher",
+            "onboarding_start_first_lesson",
+        )
+        for locale in bot.INTERFACE_LOCALES:
+            with self.subTest(locale=locale):
+                for key in keys:
+                    self.assertTrue(bot.translate(key, locale))
 
 
 if __name__ == "__main__":

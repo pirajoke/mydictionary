@@ -12,18 +12,26 @@ DEFAULT_INTERFACE_LOCALE = "en"
 _CATALOG: dict[str, dict[str, str]] = {
     "en": {
         "onboarding_intro": (
-            "Lexi brings short vocabulary lessons, flashcards and "
-            "pronunciation practice to Telegram. The basic packs are free.\n\n"
-            "Three quick steps and your first lesson is ready."
+            "Hi! I'm Lexi 🦊\n\nI'll personalize your learning in about a "
+            "minute, then start your first lesson."
         ),
-        "onboarding_try": "Try for free ✨",
+        "onboarding_try": "🌍 Choose language",
         "onboarding_done": "Setup is already complete.",
         "onboarding_choose_native": (
-            "Step 1 of 3. In which language should Lexi reply and show word meanings?"
+            "Step 1 of 5. In which language should Lexi explain words and reply?"
         ),
-        "onboarding_choose_pack": "Step 2 of 3. Which language do you want to learn?",
+        "onboarding_choose_pack": "Step 2 of 5. Which language do you want to learn?",
+        "onboarding_choose_goal": "Step 3 of 5. What is your main learning goal?",
+        "onboarding_goal_basics": "🌱 Start with the basics",
+        "onboarding_goal_travel": "✈️ Travel",
+        "onboarding_goal_conversation": "💬 Conversation",
+        "onboarding_goal_work": "💼 Work and study",
+        "onboarding_choose_preference": "Step 4 of 5. How do you prefer to learn?",
+        "onboarding_preference_practice": "🎯 Cards and practice",
+        "onboarding_preference_conversation": "💬 More dialogue",
+        "onboarding_preference_teacher": "🧑‍🏫 Teacher explanations",
         "onboarding_choose_pace": (
-            "Step 3 of 3. How many cards would you like to study each day?"
+            "Step 5 of 5. How many cards would you like to study each day?"
         ),
         "onboarding_pack_words": "{label} · {count} words",
         "pace_5": "5 cards · easy",
@@ -32,8 +40,10 @@ _CATALOG: dict[str, dict[str, str]] = {
         "pack_unavailable": "This pack is unavailable. Start setup again.",
         "choose_pack_again": "Choose a study pack again with /start.",
         "onboarding_complete": (
-            "Ready ✨ The “{title}” pack is active. Your first lesson is waiting."
+            "Ready ✨\n\n🌍 Language: {title}\n🎯 Goal: {goal}\n"
+            "🧩 Format: {preference}\n📅 Daily pace: {pace} cards"
         ),
+        "onboarding_start_first_lesson": "▶️ Start the first lesson",
         "onboarding_stale": "This setup step has expired. Send /start.",
         "start_daily": "▶️ Today's lesson",
         "start_lesson": "▶️ Start lesson",
@@ -62,19 +72,27 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "fr": {
         "onboarding_intro": (
-            "Lexi propose dans Telegram de courtes leçons de "
-            "vocabulaire, des cartes et la prononciation. Les packs de base "
-            "sont gratuits.\n\nTrois étapes rapides et votre première leçon est prête."
+            "Bonjour ! Moi, c'est Lexi 🦊\n\nJe personnalise votre apprentissage "
+            "en une minute environ, puis nous lançons votre première leçon."
         ),
-        "onboarding_try": "Essayer gratuitement ✨",
+        "onboarding_try": "🌍 Choisir la langue",
         "onboarding_done": "La configuration est déjà terminée.",
         "onboarding_choose_native": (
-            "Étape 1 sur 3. Dans quelle langue Lexi doit-il répondre et afficher "
+            "Étape 1 sur 5. Dans quelle langue Lexi doit-il répondre et afficher "
             "le sens des mots ?"
         ),
-        "onboarding_choose_pack": "Étape 2 sur 3. Quelle langue voulez-vous apprendre ?",
+        "onboarding_choose_pack": "Étape 2 sur 5. Quelle langue voulez-vous apprendre ?",
+        "onboarding_choose_goal": "Étape 3 sur 5. Quel est votre objectif principal ?",
+        "onboarding_goal_basics": "🌱 Commencer par les bases",
+        "onboarding_goal_travel": "✈️ Voyager",
+        "onboarding_goal_conversation": "💬 Converser",
+        "onboarding_goal_work": "💼 Travail et études",
+        "onboarding_choose_preference": "Étape 4 sur 5. Comment préférez-vous apprendre ?",
+        "onboarding_preference_practice": "🎯 Cartes et pratique",
+        "onboarding_preference_conversation": "💬 Plus de dialogue",
+        "onboarding_preference_teacher": "🧑‍🏫 Explications du professeur",
         "onboarding_choose_pace": (
-            "Étape 3 sur 3. Combien de cartes voulez-vous étudier par jour ?"
+            "Étape 5 sur 5. Combien de cartes voulez-vous étudier par jour ?"
         ),
         "onboarding_pack_words": "{label} · {count} mots",
         "pace_5": "5 cartes · facile",
@@ -83,8 +101,10 @@ _CATALOG: dict[str, dict[str, str]] = {
         "pack_unavailable": "Ce pack n'est pas disponible. Recommencez la configuration.",
         "choose_pack_again": "Choisissez à nouveau un pack avec /start.",
         "onboarding_complete": (
-            "C'est prêt ✨ Le pack « {title} » est actif. Votre première leçon vous attend."
+            "C'est prêt ✨\n\n🌍 Langue : {title}\n🎯 Objectif : {goal}\n"
+            "🧩 Format : {preference}\n📅 Rythme : {pace} cartes par jour"
         ),
+        "onboarding_start_first_lesson": "▶️ Commencer la première leçon",
         "onboarding_stale": "Cette étape a expiré. Envoyez /start.",
         "start_daily": "▶️ Leçon du jour",
         "start_lesson": "▶️ Commencer la leçon",
@@ -113,19 +133,27 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "de": {
         "onboarding_intro": (
-            "Lexi bietet kurze Vokabellektionen, Karteikarten und "
-            "Aussprache direkt in Telegram. Die Basispakete sind kostenlos.\n\n"
-            "Drei kurze Schritte, dann ist deine erste Lektion bereit."
+            "Hallo! Ich bin Lexi 🦊\n\nIn etwa einer Minute passe ich dein "
+            "Lernen an, danach starten wir deine erste Lektion."
         ),
-        "onboarding_try": "Kostenlos testen ✨",
+        "onboarding_try": "🌍 Sprache wählen",
         "onboarding_done": "Die Einrichtung ist bereits abgeschlossen.",
         "onboarding_choose_native": (
-            "Schritt 1 von 3. In welcher Sprache soll Lexi antworten und "
+            "Schritt 1 von 5. In welcher Sprache soll Lexi antworten und "
             "Wortbedeutungen zeigen?"
         ),
-        "onboarding_choose_pack": "Schritt 2 von 3. Welche Sprache möchtest du lernen?",
+        "onboarding_choose_pack": "Schritt 2 von 5. Welche Sprache möchtest du lernen?",
+        "onboarding_choose_goal": "Schritt 3 von 5. Was ist dein wichtigstes Lernziel?",
+        "onboarding_goal_basics": "🌱 Mit den Grundlagen anfangen",
+        "onboarding_goal_travel": "✈️ Reisen",
+        "onboarding_goal_conversation": "💬 Gespräche führen",
+        "onboarding_goal_work": "💼 Arbeit und Studium",
+        "onboarding_choose_preference": "Schritt 4 von 5. Wie lernst du am liebsten?",
+        "onboarding_preference_practice": "🎯 Karten und Übungen",
+        "onboarding_preference_conversation": "💬 Mehr Dialog",
+        "onboarding_preference_teacher": "🧑‍🏫 Erklärungen vom Lehrer",
         "onboarding_choose_pace": (
-            "Schritt 3 von 3. Wie viele Karten möchtest du täglich lernen?"
+            "Schritt 5 von 5. Wie viele Karten möchtest du täglich lernen?"
         ),
         "onboarding_pack_words": "{label} · {count} Wörter",
         "pace_5": "5 Karten · leicht",
@@ -134,8 +162,10 @@ _CATALOG: dict[str, dict[str, str]] = {
         "pack_unavailable": "Dieses Paket ist nicht verfügbar. Starte die Einrichtung neu.",
         "choose_pack_again": "Wähle mit /start erneut ein Lernpaket.",
         "onboarding_complete": (
-            "Fertig ✨ Das Paket „{title}“ ist aktiv. Deine erste Lektion wartet."
+            "Fertig ✨\n\n🌍 Sprache: {title}\n🎯 Ziel: {goal}\n"
+            "🧩 Format: {preference}\n📅 Tempo: {pace} Karten täglich"
         ),
+        "onboarding_start_first_lesson": "▶️ Erste Lektion starten",
         "onboarding_stale": "Dieser Einrichtungsschritt ist abgelaufen. Sende /start.",
         "start_daily": "▶️ Heutige Lektion",
         "start_lesson": "▶️ Lektion starten",
@@ -164,14 +194,22 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "ja": {
         "onboarding_intro": (
-            "Lexiでは、Telegramで短い単語レッスン、カード、発音練習ができます。"
-            "基本パックは無料です。\n\n3つの簡単な設定で、最初のレッスンを始められます。"
+            "こんにちは！Lexiです 🦊\n\n約1分で学習内容を設定し、すぐに最初のレッスンを始めます。"
         ),
-        "onboarding_try": "無料で試す ✨",
+        "onboarding_try": "🌍 言語を選ぶ",
         "onboarding_done": "設定はすでに完了しています。",
-        "onboarding_choose_native": "ステップ1/3：Lexiの返信と単語の意味を何語で表示しますか？",
-        "onboarding_choose_pack": "ステップ2/3：学びたい言語を選んでください。",
-        "onboarding_choose_pace": "ステップ3/3：1日に何枚のカードを学びますか？",
+        "onboarding_choose_native": "ステップ1/5：Lexiの返信と単語の意味を何語で表示しますか？",
+        "onboarding_choose_pack": "ステップ2/5：学びたい言語を選んでください。",
+        "onboarding_choose_goal": "ステップ3/5：一番大切な学習目標は何ですか？",
+        "onboarding_goal_basics": "🌱 基礎から始める",
+        "onboarding_goal_travel": "✈️ 旅行",
+        "onboarding_goal_conversation": "💬 会話",
+        "onboarding_goal_work": "💼 仕事と勉強",
+        "onboarding_choose_preference": "ステップ4/5：どんな学び方が好きですか？",
+        "onboarding_preference_practice": "🎯 カードと練習",
+        "onboarding_preference_conversation": "💬 会話を多めに",
+        "onboarding_preference_teacher": "🧑‍🏫 先生の説明",
+        "onboarding_choose_pace": "ステップ5/5：1日に何枚のカードを学びますか？",
         "onboarding_pack_words": "{label} · {count}語",
         "pace_5": "5枚 · やさしい",
         "pace_10": "10枚 · 標準",
@@ -179,8 +217,10 @@ _CATALOG: dict[str, dict[str, str]] = {
         "pack_unavailable": "このパックは利用できません。設定をやり直してください。",
         "choose_pack_again": "/start から学習パックを選び直してください。",
         "onboarding_complete": (
-            "準備完了 ✨ 「{title}」パックを有効にしました。最初のレッスンを始めましょう。"
+            "準備完了 ✨\n\n🌍 言語：{title}\n🎯 目標：{goal}\n"
+            "🧩 学び方：{preference}\n📅 1日：{pace}枚"
         ),
+        "onboarding_start_first_lesson": "▶️ 最初のレッスンを始める",
         "onboarding_stale": "この設定ステップは期限切れです。/start を送信してください。",
         "start_daily": "▶️ 今日のレッスン",
         "start_lesson": "▶️ レッスンを始める",
@@ -207,21 +247,33 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "ar": {
         "onboarding_intro": (
-            "يقدّم Lexi دروس مفردات قصيرة وبطاقات وتدريباً على النطق "
-            "داخل Telegram. الحزم الأساسية مجانية.\n\nثلاث خطوات سريعة وتصبح حصتك الأولى جاهزة."
+            "مرحباً! أنا Lexi 🦊\n\nسأخصص تعلّمك خلال دقيقة تقريباً، ثم نبدأ درسك الأول."
         ),
-        "onboarding_try": "جرّب مجاناً ✨",
+        "onboarding_try": "🌍 اختر اللغة",
         "onboarding_done": "اكتمل الإعداد بالفعل.",
-        "onboarding_choose_native": "الخطوة 1 من 3. بأي لغة يجيب Lexi ويعرض معاني الكلمات؟",
-        "onboarding_choose_pack": "الخطوة 2 من 3. ما اللغة التي تريد تعلّمها؟",
-        "onboarding_choose_pace": "الخطوة 3 من 3. كم بطاقة تريد دراستها يومياً؟",
+        "onboarding_choose_native": "الخطوة 1 من 5. بأي لغة يجيب Lexi ويعرض معاني الكلمات؟",
+        "onboarding_choose_pack": "الخطوة 2 من 5. ما اللغة التي تريد تعلّمها؟",
+        "onboarding_choose_goal": "الخطوة 3 من 5. ما هدفك الأساسي من التعلّم؟",
+        "onboarding_goal_basics": "🌱 البدء بالأساسيات",
+        "onboarding_goal_travel": "✈️ السفر",
+        "onboarding_goal_conversation": "💬 المحادثة",
+        "onboarding_goal_work": "💼 العمل والدراسة",
+        "onboarding_choose_preference": "الخطوة 4 من 5. كيف تفضّل أن تتعلّم؟",
+        "onboarding_preference_practice": "🎯 البطاقات والتدريب",
+        "onboarding_preference_conversation": "💬 مزيد من الحوار",
+        "onboarding_preference_teacher": "🧑‍🏫 شرح المعلّم",
+        "onboarding_choose_pace": "الخطوة 5 من 5. كم بطاقة تريد دراستها يومياً؟",
         "onboarding_pack_words": "{label} · {count} كلمة",
         "pace_5": "5 بطاقات · سهل",
         "pace_10": "10 بطاقات · عادي",
         "pace_20": "20 بطاقة · مكثّف",
         "pack_unavailable": "هذه الحزمة غير متاحة. ابدأ الإعداد من جديد.",
         "choose_pack_again": "اختر حزمة تعليمية من جديد عبر /start.",
-        "onboarding_complete": "تم ✨ حزمة «{title}» مفعّلة. حصتك الأولى جاهزة.",
+        "onboarding_complete": (
+            "تم ✨\n\n🌍 اللغة: {title}\n🎯 الهدف: {goal}\n"
+            "🧩 الأسلوب: {preference}\n📅 يومياً: {pace} بطاقة"
+        ),
+        "onboarding_start_first_lesson": "▶️ ابدأ الدرس الأول",
         "onboarding_stale": "انتهت صلاحية خطوة الإعداد. أرسل /start.",
         "start_daily": "▶️ درس اليوم",
         "start_lesson": "▶️ ابدأ الدرس",
@@ -247,21 +299,33 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "zh": {
         "onboarding_intro": (
-            "Lexi 在 Telegram 中提供短词汇课、卡片和发音练习。基础词包免费。"
-            "\n\n只需三个简单步骤，第一课即可开始。"
+            "你好！我是 Lexi 🦊\n\n大约一分钟就能完成个性化设置，然后马上开始第一课。"
         ),
-        "onboarding_try": "免费试用 ✨",
+        "onboarding_try": "🌍 选择语言",
         "onboarding_done": "设置已经完成。",
-        "onboarding_choose_native": "第 1/3 步：你希望 Lexi 用哪种语言回复并显示单词含义？",
-        "onboarding_choose_pack": "第 2/3 步：你想学习哪种语言？",
-        "onboarding_choose_pace": "第 3/3 步：你每天想学习多少张卡片？",
+        "onboarding_choose_native": "第 1/5 步：你希望 Lexi 用哪种语言回复并显示单词含义？",
+        "onboarding_choose_pack": "第 2/5 步：你想学习哪种语言？",
+        "onboarding_choose_goal": "第 3/5 步：你的主要学习目标是什么？",
+        "onboarding_goal_basics": "🌱 从基础开始",
+        "onboarding_goal_travel": "✈️ 旅行",
+        "onboarding_goal_conversation": "💬 日常对话",
+        "onboarding_goal_work": "💼 工作与学习",
+        "onboarding_choose_preference": "第 4/5 步：你喜欢怎样学习？",
+        "onboarding_preference_practice": "🎯 卡片与练习",
+        "onboarding_preference_conversation": "💬 更多对话",
+        "onboarding_preference_teacher": "🧑‍🏫 老师讲解",
+        "onboarding_choose_pace": "第 5/5 步：你每天想学习多少张卡片？",
         "onboarding_pack_words": "{label} · {count} 个词",
         "pace_5": "5 张 · 轻松",
         "pace_10": "10 张 · 标准",
         "pace_20": "20 张 · 强化",
         "pack_unavailable": "此词包不可用，请重新开始设置。",
         "choose_pack_again": "请通过 /start 重新选择学习词包。",
-        "onboarding_complete": "准备好了 ✨ 已启用“{title}”词包，第一课正在等你。",
+        "onboarding_complete": (
+            "准备好了 ✨\n\n🌍 语言：{title}\n🎯 目标：{goal}\n"
+            "🧩 方式：{preference}\n📅 每天：{pace} 张卡片"
+        ),
+        "onboarding_start_first_lesson": "▶️ 开始第一课",
         "onboarding_stale": "此设置步骤已过期，请发送 /start。",
         "start_daily": "▶️ 今日课程",
         "start_lesson": "▶️ 开始课程",
@@ -286,19 +350,27 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "ru": {
         "onboarding_intro": (
-            "Lexi — короткие уроки со словами, карточками и "
-            "произношением прямо в Telegram. Базовые наборы бесплатны.\n\n"
-            "Три коротких шага — и первый урок готов."
+            "Привет! Я Lexi 🦊\n\nЗа минуту настрою обучение под тебя — "
+            "и сразу начнём первый урок."
         ),
-        "onboarding_try": "Попробовать бесплатно ✨",
+        "onboarding_try": "🌍 Выбрать язык",
         "onboarding_done": "Настройка уже завершена.",
         "onboarding_choose_native": (
-            "Шаг 1 из 3. На каком языке Lexi должен отвечать и показывать "
+            "Шаг 1 из 5. На каком языке Lexi должен отвечать и показывать "
             "значения слов?"
         ),
-        "onboarding_choose_pack": "Шаг 2 из 3. Какой язык хочешь учить?",
+        "onboarding_choose_pack": "Шаг 2 из 5. Какой язык хочешь учить?",
+        "onboarding_choose_goal": "Шаг 3 из 5. Какая у тебя главная цель?",
+        "onboarding_goal_basics": "🌱 Начать с основ",
+        "onboarding_goal_travel": "✈️ Путешествия",
+        "onboarding_goal_conversation": "💬 Разговорная речь",
+        "onboarding_goal_work": "💼 Работа и учёба",
+        "onboarding_choose_preference": "Шаг 4 из 5. Как тебе удобнее учиться?",
+        "onboarding_preference_practice": "🎯 Карточки и практика",
+        "onboarding_preference_conversation": "💬 Больше диалогов",
+        "onboarding_preference_teacher": "🧑‍🏫 Объяснения преподавателя",
         "onboarding_choose_pace": (
-            "Шаг 3 из 3. Сколько карточек удобно проходить в день?"
+            "Шаг 5 из 5. Сколько карточек удобно проходить в день?"
         ),
         "onboarding_pack_words": "{label} · {count} слов",
         "pace_5": "5 карточек · легко",
@@ -307,8 +379,10 @@ _CATALOG: dict[str, dict[str, str]] = {
         "pack_unavailable": "Этот набор недоступен. Начни настройку заново.",
         "choose_pack_again": "Выбери учебный набор заново через /start.",
         "onboarding_complete": (
-            "Готово ✨ Подключён набор «{title}». Первый урок уже ждёт тебя."
+            "Готово ✨\n\n🌍 Язык: {title}\n🎯 Цель: {goal}\n"
+            "🧩 Формат: {preference}\n📅 Темп: {pace} карточек в день"
         ),
+        "onboarding_start_first_lesson": "▶️ Начать первый урок",
         "onboarding_stale": "Шаг настройки устарел. Отправь /start.",
         "start_daily": "▶️ Урок на сегодня",
         "start_lesson": "▶️ Начать урок",
@@ -337,19 +411,27 @@ _CATALOG: dict[str, dict[str, str]] = {
     },
     "es": {
         "onboarding_intro": (
-            "Lexi ofrece lecciones breves de vocabulario, tarjetas y "
-            "pronunciación dentro de Telegram. Los paquetes básicos son gratis."
-            "\n\nTres pasos rápidos y tu primera lección estará lista."
+            "¡Hola! Soy Lexi 🦊\n\nEn aproximadamente un minuto personalizaré "
+            "tu aprendizaje y empezaremos la primera lección."
         ),
-        "onboarding_try": "Probar gratis ✨",
+        "onboarding_try": "🌍 Elegir idioma",
         "onboarding_done": "La configuración ya está completa.",
         "onboarding_choose_native": (
-            "Paso 1 de 3. ¿En qué idioma debe responder Lexi y mostrar el "
+            "Paso 1 de 5. ¿En qué idioma debe responder Lexi y mostrar el "
             "significado de las palabras?"
         ),
-        "onboarding_choose_pack": "Paso 2 de 3. ¿Qué idioma quieres aprender?",
+        "onboarding_choose_pack": "Paso 2 de 5. ¿Qué idioma quieres aprender?",
+        "onboarding_choose_goal": "Paso 3 de 5. ¿Cuál es tu objetivo principal?",
+        "onboarding_goal_basics": "🌱 Empezar desde lo básico",
+        "onboarding_goal_travel": "✈️ Viajar",
+        "onboarding_goal_conversation": "💬 Conversación",
+        "onboarding_goal_work": "💼 Trabajo y estudios",
+        "onboarding_choose_preference": "Paso 4 de 5. ¿Cómo prefieres aprender?",
+        "onboarding_preference_practice": "🎯 Tarjetas y práctica",
+        "onboarding_preference_conversation": "💬 Más diálogo",
+        "onboarding_preference_teacher": "🧑‍🏫 Explicaciones del profesor",
         "onboarding_choose_pace": (
-            "Paso 3 de 3. ¿Cuántas tarjetas quieres estudiar al día?"
+            "Paso 5 de 5. ¿Cuántas tarjetas quieres estudiar al día?"
         ),
         "onboarding_pack_words": "{label} · {count} palabras",
         "pace_5": "5 tarjetas · fácil",
@@ -358,8 +440,10 @@ _CATALOG: dict[str, dict[str, str]] = {
         "pack_unavailable": "Este paquete no está disponible. Inicia la configuración de nuevo.",
         "choose_pack_again": "Vuelve a elegir un paquete con /start.",
         "onboarding_complete": (
-            "Listo ✨ El paquete «{title}» está activo. Tu primera lección te espera."
+            "Listo ✨\n\n🌍 Idioma: {title}\n🎯 Objetivo: {goal}\n"
+            "🧩 Formato: {preference}\n📅 Ritmo: {pace} tarjetas al día"
         ),
+        "onboarding_start_first_lesson": "▶️ Empezar la primera lección",
         "onboarding_stale": "Este paso ha caducado. Envía /start.",
         "start_daily": "▶️ Lección de hoy",
         "start_lesson": "▶️ Empezar la lección",
