@@ -15,6 +15,17 @@
   --dashboard-warning: #ffc857;
   --dashboard-elevated: color-mix(in srgb, var(--dashboard-surface) 88%, var(--dashboard-text) 12%);
   --dashboard-soft-accent: color-mix(in srgb, var(--dashboard-accent) 14%, var(--dashboard-surface));
+  --lexi-orange: #ff9850;
+  --lexi-orange-ink: #281002;
+  --lexi-gold: #ffd166;
+  --lexi-gold-ink: #241800;
+  --lexi-teal: #4bd6b4;
+  --lexi-teal-ink: #03241b;
+  --lexi-blue: #6aa9ff;
+  --lexi-blue-ink: #061a35;
+  --lexi-violet: #b69af4;
+  --lexi-violet-ink: #1e1238;
+  --control-ease: cubic-bezier(.22, 1, .36, 1);
 
   /* Compatibility aliases for the established Mini App public surface. */
   --ink: #071b18;
@@ -32,7 +43,7 @@
   --app-button-text: var(--tg-theme-button-text-color, #ffffff);
   --app-surface: var(--tg-theme-secondary-bg-color, #172331);
   --app-state: var(--tg-theme-secondary-bg-color, #172331);
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: ui-rounded, "SF Pro Rounded", "Nunito Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -61,6 +72,15 @@ button {
   color: var(--dashboard-text);
   background: var(--dashboard-surface);
   font-weight: 750;
+  line-height: 1.18;
+  letter-spacing: -.012em;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform .18s var(--control-ease),
+    color .18s var(--control-ease),
+    border-color .18s var(--control-ease),
+    background-color .18s var(--control-ease),
+    filter .18s var(--control-ease);
 }
 button:focus-visible,
 select:focus-visible,
@@ -69,6 +89,7 @@ summary:focus-visible {
   outline-offset: 2px;
 }
 button:disabled { opacity: .5; cursor: not-allowed; }
+button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 
 .app-shell {
   width: min(100%, 720px);
@@ -559,6 +580,182 @@ html[dir="rtl"] .interface-locale-select { padding-right: 9px; padding-left: 30p
 .bottom-nav button[aria-selected="true"]::after { position: absolute; inset: auto 30% 0; height: 2px; border-radius: 999px; background: var(--dashboard-accent); content: ""; }
 .bottom-nav button[aria-selected="true"] .nav-icon { border-color: color-mix(in srgb, var(--dashboard-accent) 25%, transparent); background: var(--dashboard-soft-accent); transform: translateY(-1px); }
 .bottom-nav button:active .nav-icon { transform: scale(.96); }
+
+/* Lexi control system: one friendly shape language, five purposeful colors. */
+.dashboard-action { --control-accent: var(--lexi-orange); }
+.dashboard-action:focus-visible,
+.bottom-nav button:focus-visible,
+.calendar-header button:focus-visible {
+  outline-color: var(--control-accent, var(--dashboard-accent));
+}
+
+.primary-action,
+.daily-quest .primary-action {
+  --control-accent: var(--lexi-orange);
+  border-color: transparent;
+  color: var(--lexi-orange-ink);
+  background: var(--lexi-orange);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), 0 3px 0 color-mix(in srgb, var(--lexi-orange) 68%, #4a1b00);
+}
+.primary-action:not(:disabled):active,
+.daily-quest .primary-action:not(:disabled):active {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 1px 0 color-mix(in srgb, var(--lexi-orange) 68%, #4a1b00);
+}
+.secondary-action {
+  --control-accent: var(--lexi-teal);
+  border-color: color-mix(in srgb, var(--lexi-teal) 42%, var(--dashboard-line));
+  color: color-mix(in srgb, var(--lexi-teal) 72%, var(--dashboard-text));
+  background: color-mix(in srgb, var(--lexi-teal) 13%, var(--dashboard-surface));
+}
+
+.dictionary-shortcut {
+  --control-accent: var(--lexi-teal);
+  min-height: 78px;
+  border-color: color-mix(in srgb, var(--lexi-teal) 38%, var(--dashboard-line));
+  border-radius: 15px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--lexi-teal) 9%, var(--dashboard-surface));
+}
+.dictionary-shortcut > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  color: var(--lexi-teal-ink);
+  background: var(--lexi-teal);
+  font-size: 1.25rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4);
+}
+.dictionary-shortcut strong { font-size: .96rem; letter-spacing: -.018em; }
+.dictionary-shortcut small { color: color-mix(in srgb, var(--dashboard-muted) 82%, var(--lexi-teal)); line-height: 1.3; }
+.dictionary-shortcut > span:last-child {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  color: var(--lexi-teal-ink);
+  background: var(--lexi-teal);
+  font-size: 1rem;
+}
+
+.profile-game-progress {
+  border-color: color-mix(in srgb, var(--lexi-gold) 32%, var(--dashboard-line));
+  background: color-mix(in srgb, var(--lexi-gold) 7%, var(--dashboard-surface));
+}
+.game-icon {
+  color: var(--lexi-gold-ink);
+  background: var(--lexi-gold);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .48);
+}
+.profile-xp-copy strong { color: color-mix(in srgb, var(--lexi-gold) 70%, var(--dashboard-text)); }
+
+.profile-achievement { background: var(--dashboard-surface); }
+.profile-achievement:nth-child(1) { background: color-mix(in srgb, var(--lexi-orange) 8%, var(--dashboard-surface)); }
+.profile-achievement:nth-child(2) { background: color-mix(in srgb, var(--lexi-teal) 8%, var(--dashboard-surface)); }
+.profile-achievement:nth-child(3) { background: color-mix(in srgb, var(--lexi-gold) 8%, var(--dashboard-surface)); }
+.achievement-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.daily-quest {
+  border-color: color-mix(in srgb, var(--lexi-orange) 38%, var(--dashboard-line));
+  background: color-mix(in srgb, var(--lexi-orange) 8%, var(--dashboard-surface));
+}
+.quest-icon {
+  border-radius: 12px;
+  color: var(--lexi-orange-ink);
+  background: var(--lexi-orange);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4);
+}
+
+.calendar-header button {
+  --control-accent: var(--lexi-gold);
+  border-radius: 12px;
+  color: color-mix(in srgb, var(--lexi-gold) 72%, var(--dashboard-text));
+  background: color-mix(in srgb, var(--lexi-gold) 10%, var(--dashboard-surface));
+}
+.calendar-day.active {
+  color: var(--lexi-orange-ink);
+  background: var(--lexi-orange);
+}
+.calendar-day.today { outline-color: var(--lexi-gold); }
+
+.dictionary-entry .primary-action {
+  --control-accent: var(--lexi-teal);
+  color: var(--lexi-teal-ink);
+  background: var(--lexi-teal);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), 0 3px 0 color-mix(in srgb, var(--lexi-teal) 66%, #003d30);
+}
+.dictionary-entry [data-download-dictionary] {
+  --control-accent: var(--lexi-blue);
+  border-color: color-mix(in srgb, var(--lexi-blue) 38%, var(--dashboard-line));
+  color: color-mix(in srgb, var(--lexi-blue) 72%, var(--dashboard-text));
+  background: color-mix(in srgb, var(--lexi-blue) 11%, var(--dashboard-surface));
+}
+.ai-entry,
+.settings-credit-cta,
+.referral-invite-button {
+  --control-accent: var(--lexi-violet);
+  color: var(--lexi-violet-ink);
+  background: var(--lexi-violet);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), 0 3px 0 color-mix(in srgb, var(--lexi-violet) 62%, #2b1559);
+}
+.settings-credit-cta small {
+  color: color-mix(in srgb, var(--lexi-violet-ink) 78%, transparent);
+}
+.settings-credit-cta .settings-cta-chevron {
+  color: color-mix(in srgb, var(--lexi-violet-ink) 72%, transparent);
+}
+.language-action {
+  --control-accent: var(--lexi-blue);
+  color: var(--lexi-blue-ink);
+  background: var(--lexi-blue);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), 0 3px 0 color-mix(in srgb, var(--lexi-blue) 62%, #073874);
+}
+
+#tab-profile { --nav-color: var(--lexi-orange); --nav-ink: var(--lexi-orange-ink); }
+#tab-words { --nav-color: var(--lexi-teal); --nav-ink: var(--lexi-teal-ink); }
+#tab-credits { --nav-color: var(--lexi-gold); --nav-ink: var(--lexi-gold-ink); }
+#tab-languages { --nav-color: var(--lexi-blue); --nav-ink: var(--lexi-blue-ink); }
+#tab-settings { --nav-color: var(--lexi-violet); --nav-ink: var(--lexi-violet-ink); }
+.bottom-nav {
+  background: color-mix(in srgb, var(--dashboard-surface) 94%, #08273c);
+}
+.bottom-nav button {
+  --control-accent: var(--nav-color);
+  font-weight: 760;
+  letter-spacing: -.018em;
+}
+.bottom-nav .nav-icon {
+  border-color: transparent;
+  color: color-mix(in srgb, var(--nav-color) 78%, var(--dashboard-text));
+  background: color-mix(in srgb, var(--nav-color) 12%, var(--dashboard-surface));
+  box-shadow: none;
+}
+.bottom-nav button[aria-selected="true"] {
+  color: color-mix(in srgb, var(--nav-color) 76%, var(--dashboard-text));
+}
+.bottom-nav button[aria-selected="true"]::after { background: var(--nav-color); }
+.bottom-nav button[aria-selected="true"] .nav-icon {
+  border-color: transparent;
+  color: var(--nav-ink);
+  background: var(--nav-color);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38);
+}
+
+@media (hover: hover) {
+  button:not(:disabled):hover { filter: brightness(1.055); }
+  .dictionary-shortcut:not(:disabled):hover {
+    background: color-mix(in srgb, var(--lexi-teal) 14%, var(--dashboard-surface));
+  }
+}
 
 [dir="rtl"] .language-switch-error,
 [dir="rtl"] .word-attempts { text-align: start; }
