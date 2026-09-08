@@ -60,7 +60,7 @@ MIRROR_ADMIN_DEFAULTS = {
 MIRROR_RESPONSE_MODES = frozenset({"text", "voice", "both"})
 MIRROR_DIALOGUE_KEY = "mirror_recent_dialogue"
 MIRROR_DIALOGUE_LIMIT = 20
-MIRROR_PROVIDER_DIALOGUE_LIMIT = 8
+MIRROR_PROVIDER_DIALOGUE_LIMIT = 16
 MIRROR_TURN_TEXT_LIMIT = 500
 MIRROR_COMPACT_REPLY_POLICY = MappingProxyType(
     {
@@ -216,6 +216,34 @@ _PROGRESS_PATTERNS = (
 )
 _CONTINUATION_PATTERNS = frozenset(
     {
+        "why",
+        "why so",
+        "why is that",
+        "what do you mean",
+        "pourquoi",
+        "pourquoi ça",
+        "comment ça",
+        "warum",
+        "wieso",
+        "was meinst du",
+        "なぜ",
+        "どうして",
+        "どういう意味",
+        "لماذا",
+        "كيف ذلك",
+        "ماذا تقصد",
+        "为什么",
+        "怎么会",
+        "你是什么意思",
+        "почему",
+        "почему так",
+        "как так",
+        "в смысле",
+        "что ты имеешь в виду",
+        "por qué",
+        "por qué eso",
+        "cómo así",
+        "qué quieres decir",
         "what next",
         "and what next",
         "et ensuite",
@@ -761,8 +789,14 @@ def render_mirror_daily_plan(snapshot: Mapping[str, Any], *, locale: str) -> str
     ))
 
 
-def classify_ai_response_route(text: str) -> str:
+def classify_ai_response_route(
+    text: str,
+    *,
+    recent_dialogue: Sequence[Mapping[str, Any]] | None = None,
+) -> str:
     """Choose a bounded provider response tier without reading mutable state."""
+    if is_mirror_continuation(text, recent_dialogue=recent_dialogue):
+        return "deep"
     normalized = " ".join(str(text).casefold().strip().split())
     words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
     if words_only in _FAST_TRANSLATION_PHRASES:
@@ -1098,7 +1132,10 @@ def build_mirror_provider_payload(
             clean_question,
             recent_dialogue=normalized_dialogue,
         ),
-        "complexity_route": classify_ai_response_route(clean_question),
+        "complexity_route": classify_ai_response_route(
+            clean_question,
+            recent_dialogue=normalized_dialogue,
+        ),
     }
     if normalized_learner_context is not None:
         payload.update(
@@ -1129,6 +1166,10 @@ def build_mirror_provider_payload(
         )
     while True:
         payload["is_continuation"] = is_mirror_continuation(
+            clean_question,
+            recent_dialogue=payload["recent_dialogue"],
+        )
+        payload["complexity_route"] = classify_ai_response_route(
             clean_question,
             recent_dialogue=payload["recent_dialogue"],
         )

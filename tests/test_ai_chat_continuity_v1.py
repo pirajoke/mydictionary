@@ -22,6 +22,16 @@ PERSONA = "Answer directly as a careful language teacher using grounded facts."
 
 
 class AIChatContinuityRoutingTest(unittest.TestCase):
+    CONTEXTUAL_WHY_FOLLOWUPS = {
+        "en": "why?",
+        "fr": "pourquoi ?",
+        "de": "warum?",
+        "ja": "なぜ？",
+        "ar": "لماذا؟",
+        "zh": "为什么？",
+        "ru": "Почему?",
+        "es": "¿por qué?",
+    }
     NATURAL_CONTEXT_FOLLOWUPS = {
         "en": "what's the issue?",
         "fr": "où est le problème ?",
@@ -196,7 +206,7 @@ class AIChatContinuityRoutingTest(unittest.TestCase):
                     interface_locale=locale,
                 )
                 self.assertIs(payload["is_continuation"], True)
-                self.assertEqual(payload["recent_dialogue"], history[-8:])
+                self.assertEqual(payload["recent_dialogue"], history[-16:])
                 self.assertEqual(payload["learner_context"], learner_context)
                 self.assertLessEqual(
                     len(json.dumps(payload, ensure_ascii=False)), 12000
@@ -235,7 +245,7 @@ class AIChatContinuityRoutingTest(unittest.TestCase):
                         interface_locale=locale,
                     )
                     self.assertIs(payload["is_continuation"], True)
-                    self.assertEqual(payload["recent_dialogue"], history[-8:])
+                    self.assertEqual(payload["recent_dialogue"], history[-16:])
 
                 with self.subTest(locale=locale, history="empty", question=question):
                     empty = companion.build_mirror_provider_payload(
@@ -270,7 +280,7 @@ class AIChatContinuityRoutingTest(unittest.TestCase):
                 )
                 self.assertIs(payload["is_continuation"], True)
                 self.assertEqual(payload["task_kind"], "general_conversation")
-                self.assertEqual(payload["recent_dialogue"], history[-8:])
+                self.assertEqual(payload["recent_dialogue"], history[-16:])
 
             with self.subTest(locale=locale, history="empty"):
                 payload = companion.build_mirror_provider_payload(
@@ -297,6 +307,43 @@ class AIChatContinuityRoutingTest(unittest.TestCase):
                     "translation_nuance",
                 )
 
+    def test_regression_short_why_uses_the_previous_answer_and_deep_reasoning(self):
+        history = [
+            {
+                "role": "user",
+                "text": "Привет, что я делал позавчера?",
+            },
+            {
+                "role": "assistant",
+                "text": (
+                    "Точные задания той сессии не записаны, поэтому я вижу "
+                    "только общую статистику."
+                ),
+            },
+        ]
+        self.assertEqual(
+            set(self.CONTEXTUAL_WHY_FOLLOWUPS), set(bot.INTERFACE_LOCALES)
+        )
+
+        for locale, question in self.CONTEXTUAL_WHY_FOLLOWUPS.items():
+            with self.subTest(locale=locale):
+                payload = companion.build_mirror_provider_payload(
+                    question=question,
+                    admin_guidance=PERSONA,
+                    grounded_snapshot={"has_progress": True},
+                    recent_dialogue=history,
+                    response_style="conversation",
+                    task_kind="general_conversation",
+                    communication_mode="conversation",
+                    answer_depth="balanced",
+                    learner_level="adaptive",
+                    interface_locale=locale,
+                )
+
+                self.assertIs(payload["is_continuation"], True)
+                self.assertEqual(payload["complexity_route"], "deep")
+                self.assertEqual(payload["recent_dialogue"][-1], history[-1])
+
 
 class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
     def fixture(self, *, locale, question, credits=3, enabled=True):
@@ -313,7 +360,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
 
         async def reply(text, *args, **kwargs):
             del args, kwargs
-            return temporary if text == "⚡" else SimpleNamespace()
+            return temporary if text == "🦊⚡" else SimpleNamespace()
 
         message.reply_text = AsyncMock(side_effect=reply)
         return temporary
@@ -346,7 +393,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
 
                 service.ask.assert_awaited_once()
                 status = message.reply_text.await_args_list[0].args[0]
-                self.assertEqual(status, "⚡")
+                self.assertEqual(status, "🦊⚡")
                 context.bot.send_chat_action.assert_awaited_once_with(
                     chat_id=901, action="typing"
                 )
@@ -378,7 +425,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
                     service.ask.assert_awaited_once()
                     self.assertEqual(
                         message.reply_text.await_args_list[0].args[0],
-                        "⚡",
+                        "🦊⚡",
                     )
                     temporary.delete.assert_awaited_once()
 
@@ -409,20 +456,20 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
                 temporary.delete.assert_awaited_once()
                 self.assertEqual(
                     {
-                        "text_lightning_status": rendered[0] == "⚡",
+                        "fox_lightning_status": rendered[0] == "🦊⚡",
                         "no_charge_copy": rendered[-1]
                         == translate("ai_unavailable_no_charge", locale),
                         "private_detail_leaked": "private" in " ".join(rendered).casefold(),
                         "provider_detail_leaked": "provider" in " ".join(rendered).casefold(),
                     },
                     {
-                        "text_lightning_status": True,
+                        "fox_lightning_status": True,
                         "no_charge_copy": True,
                         "private_detail_leaked": False,
                         "provider_detail_leaked": False,
                     },
                 )
-        self.assertEqual(set(statuses.values()), {"⚡"})
+        self.assertEqual(set(statuses.values()), {"🦊⚡"})
 
     async def test_ec1_free_capability_route_has_no_indicator_or_metering(self):
         update, context, message, store, service, patches = self.fixture(
@@ -446,7 +493,7 @@ class AIChatContinuityHandlerTest(unittest.IsolatedAsyncioTestCase):
         store.reserve_ai_usage.assert_not_called()
         context.bot.send_chat_action.assert_not_awaited()
         rendered = [item.args[0] for item in message.reply_text.await_args_list]
-        self.assertNotIn("⚡", rendered)
+        self.assertNotIn("🦊⚡", rendered)
 
 
 class AIChatContinuityEconomicsTest(unittest.IsolatedAsyncioTestCase):

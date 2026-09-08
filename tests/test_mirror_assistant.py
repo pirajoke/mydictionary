@@ -330,7 +330,7 @@ class MirrorRoutingTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             [item.args[0] for item in message.reply_text.await_args_list],
-            ["⚡", response],
+            ["🦊⚡", response],
         )
         message.reply_text.return_value.delete.assert_awaited_once()
 
