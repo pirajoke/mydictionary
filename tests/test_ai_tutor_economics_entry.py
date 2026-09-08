@@ -29,6 +29,8 @@ ECONOMICS_COPY_KEYS = (
     "ai_tutor_economics_balance_unavailable",
     "ai_tutor_economics_policy",
     "ai_tutor_economics_purchase_unavailable",
+    "ai_tutor_action_credits",
+    "ai_tutor_action_back",
     "ai_tutor_action_start_lesson",
     "ai_tutor_general_ask_prompt",
     "ai_tutor_starter_today",
@@ -181,7 +183,7 @@ def buttons(markup):
 
 
 class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
-    async def _open(
+    async def _open_tutor(
         self,
         surface,
         *,
@@ -222,22 +224,65 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
             await bot.cmd_ai.__wrapped__(surface.update, surface.context)
         return store, service, provider, mirror
 
-    async def test_ac1_no_block_shows_localized_balance_policy_read_only_packs_and_actions(self):
+    async def _open_credits(
+        self,
+        surface,
+        *,
+        checkout_enabled,
+        balance=17,
+        balance_error=None,
+        products=ONE_TIME_PRODUCTS + HIDDEN_PRODUCTS,
+        catalog_error=None,
+    ):
+        store = MagicMock()
+        if balance_error is None:
+            store.ai_usage_summary.return_value = {"available_credits": balance}
+        else:
+            store.ai_usage_summary.side_effect = balance_error
+        service = MagicMock()
+        if catalog_error is None:
+            service.active_products.return_value = list(products)
+        else:
+            service.active_products.side_effect = catalog_error
+        provider = MagicMock()
+        surface.use_callback("aitutor:credits")
+        with (
+            patch.object(bot, "AI_SETTINGS", ai_settings()),
+            patch.object(
+                bot,
+                "BILLING_SETTINGS",
+                billing_settings(enabled=checkout_enabled),
+            ),
+            patch.object(
+                bot,
+                "STARS_PRODUCTION_CANARY_SETTINGS",
+                canary_settings(),
+            ),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_billing_service", return_value=service),
+            patch.object(bot, "get_ai_tutor_service", return_value=provider),
+            patch.object(bot, "handle_mirror_question", new=AsyncMock()) as mirror,
+        ):
+            await bot.ai_tutor_entry_cb.__wrapped__(
+                surface.update,
+                surface.context,
+            )
+        return store, service, provider, mirror
+
+    async def test_ac1_ac2_ac6_tutor_without_block_is_learning_only(self):
         surface = TutorEconomicsSurface(locale="fr")
-        store, service, provider, mirror = await self._open(
+        store, service, provider, mirror = await self._open_tutor(
             surface,
             checkout_enabled=False,
         )
 
         self.assertEqual(surface.message.reply_text.await_count, 1)
         text, markup = reply_payload(surface)
-        self.assertIn(
+        self.assertEqual(text, translate("ai_tutor_menu_intro", "fr"))
+        self.assertNotIn(
             translate("ai_tutor_economics_balance", "fr", balance=17), text
         )
-        self.assertIn(translate("ai_tutor_economics_policy", "fr"), text)
-        self.assertIn(
-            translate("ai_tutor_economics_purchase_unavailable", "fr"), text
-        )
+        self.assertNotIn(translate("ai_tutor_economics_policy", "fr"), text)
         for product in ONE_TIME_PRODUCTS:
             title, _description = billing_product_display_copy(
                 product["product_id"],
@@ -246,14 +291,20 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
                 description=product["description"],
                 credits=product["credits"],
             )
-            self.assertIn(title, text)
-            self.assertIn(str(product["credits"]), text)
-            self.assertIn(str(product["price_xtr"]), text)
+            self.assertNotIn(title, text)
+            self.assertNotIn(str(product["price_xtr"]), text)
         self.assertNotIn("Mensuel", text)
         self.assertNotIn("Draft package", text)
 
         callback_data = [button.callback_data for button in buttons(markup)]
-        self.assertEqual(callback_data, ["aitutor:ask", "aitutor:start"])
+        self.assertEqual(
+            callback_data,
+            ["aitutor:ask", "aitutor:start", "aitutor:credits"],
+        )
+        self.assertEqual(
+            buttons(markup)[-1].text,
+            translate("ai_tutor_action_credits", "fr"),
+        )
         self.assertFalse(any(data.startswith("buy:") for data in callback_data))
         self.assertNotIn(str(surface.update.effective_user.id), text)
         self.assertTrue(
@@ -261,26 +312,32 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertTrue(all(len(data.encode("utf-8")) <= 64 for data in callback_data))
 
-        store.ai_usage_summary.assert_called_once_with(
-            surface.update.effective_user.id,
-            initial_credits=40,
-        )
+        store.ai_usage_summary.assert_not_called()
         store.has_consent.assert_not_called()
         store.grant_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
         store.append_mirror_exchange.assert_not_called()
-        service.active_products.assert_called_once()
+        service.active_products.assert_not_called()
         service.create_order.assert_not_called()
         provider.assert_not_called()
         mirror.assert_not_awaited()
         self.assertNotIn("pending_ai_consent", surface.user_data)
         self.assertNotIn(bot.PENDING_AI_TUTOR_KEY, surface.user_data)
 
-    async def test_ac2_checkout_enabled_uses_exact_existing_buy_callbacks_and_economics(self):
+    async def test_ac3_credits_screen_has_economics_and_existing_buy_callbacks_only(self):
         surface = TutorEconomicsSurface(locale="en")
-        await self._open(surface, checkout_enabled=True)
+        store, service, provider, mirror = await self._open_credits(
+            surface,
+            checkout_enabled=True,
+        )
 
         text, markup = reply_payload(surface)
+        self.assertIn(translate("ai_tutor_economics_intro", "en"), text)
+        self.assertIn(
+            translate("ai_tutor_economics_balance", "en", balance=17),
+            text,
+        )
+        self.assertIn(translate("ai_tutor_economics_policy", "en"), text)
         rendered_buttons = buttons(markup)
         product_buttons = [
             button for button in rendered_buttons if button.callback_data.startswith("buy:")
@@ -305,8 +362,24 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("Monthly", text)
         self.assertFalse(any(button.callback_data == "buy:ai-monthly" for button in rendered_buttons))
         self.assertFalse(any(button.callback_data == "buy:ai-draft" for button in rendered_buttons))
+        self.assertFalse(
+            any(
+                button.callback_data in {"aitutor:ask", "aitutor:start"}
+                or button.callback_data.startswith("bait:")
+                for button in rendered_buttons
+            )
+        )
+        self.assertEqual(rendered_buttons[-1].callback_data, "aitutor:menu")
+        store.ai_usage_summary.assert_called_once_with(
+            surface.update.effective_user.id,
+            initial_credits=40,
+        )
+        service.active_products.assert_called_once_with()
+        service.create_order.assert_not_called()
+        provider.assert_not_called()
+        mirror.assert_not_awaited()
 
-    async def test_ac2_group_chat_uses_effective_learner_identity_not_chat_id(self):
+    async def test_ac3_credits_group_chat_uses_effective_learner_identity(self):
         learner_id = 7001
         group_chat_id = -1009876543210
         surface = TutorEconomicsSurface(locale="en", user_id=learner_id)
@@ -333,7 +406,8 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "get_billing_service", return_value=service),
             patch.object(bot, "get_ai_tutor_service", return_value=provider),
         ):
-            await bot.cmd_ai.__wrapped__(surface.update, surface.context)
+            surface.use_callback("aitutor:credits")
+            await bot.ai_tutor_entry_cb.__wrapped__(surface.update, surface.context)
 
         store.ai_usage_summary.assert_called_once_with(
             learner_id,
@@ -350,7 +424,7 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
         rendered_buttons = buttons(markup)
         self.assertEqual(
             [button.callback_data for button in rendered_buttons],
-            ["aitutor:ask", "aitutor:start", "buy:ai-mini"],
+            ["buy:ai-mini", "aitutor:menu"],
         )
         rendered_surface = "\n".join(
             [text, *[button.text for button in rendered_buttons]]
@@ -362,7 +436,7 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(private_identifier, rendered_surface)
             self.assertNotIn(private_identifier, callback_surface)
 
-    async def test_ac1_malformed_balance_is_unavailable_not_invented(self):
+    async def test_err1_credits_screen_malformed_balance_is_unavailable(self):
         for balance, balance_error in (
             (None, None),
             ("not-a-number", None),
@@ -371,7 +445,7 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
         ):
             with self.subTest(balance=balance, balance_error=balance_error):
                 surface = TutorEconomicsSurface(locale="de")
-                await self._open(
+                await self._open_credits(
                     surface,
                     checkout_enabled=False,
                     balance=balance,
@@ -388,9 +462,9 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
                     text,
                 )
 
-    async def test_ac5_catalog_failure_keeps_free_screen_and_never_shows_buy_callback(self):
+    async def test_err2_catalog_failure_keeps_credits_screen_usable_without_buy(self):
         surface = TutorEconomicsSurface(locale="ja")
-        store, service, provider, mirror = await self._open(
+        store, service, provider, mirror = await self._open_credits(
             surface,
             checkout_enabled=True,
             catalog_error=RuntimeError("catalog unavailable"),
@@ -403,7 +477,7 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
             translate("ai_tutor_economics_purchase_unavailable", "ja"), text
         )
         callback_data = [button.callback_data for button in buttons(markup)]
-        self.assertEqual(callback_data, ["aitutor:ask", "aitutor:start"])
+        self.assertEqual(callback_data, ["aitutor:menu"])
         store.reserve_ai_usage.assert_not_called()
         service.create_order.assert_not_called()
         provider.assert_not_called()
@@ -425,10 +499,10 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
         store.ai_usage_summary.assert_not_called()
         service.active_products.assert_not_called()
 
-    async def test_ac4_active_block_keeps_four_session_bound_lesson_actions(self):
+    async def test_ac2_ac5_active_block_keeps_context_actions_plus_credits(self):
         surface = TutorEconomicsSurface(locale="ru", active_block=True)
         self.assertIsNotNone(bot.active_tutor_context(surface.user_data))
-        await self._open(
+        store, service, _provider, _mirror = await self._open_tutor(
             surface,
             checkout_enabled=False,
             products=(),
@@ -438,10 +512,13 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
         callback_data = [button.callback_data for button in buttons(markup)]
         for action in ("vocabulary", "mistakes", "progress", "ask"):
             self.assertIn(f"bait:{session}:{action}", callback_data)
+        self.assertEqual(callback_data[-1], "aitutor:credits")
         self.assertNotIn("aitutor:start", callback_data)
         self.assertNotIn("aitutor:ask", callback_data)
+        store.ai_usage_summary.assert_not_called()
+        service.active_products.assert_not_called()
 
-    async def test_ac4_stale_malformed_or_incomplete_session_shows_only_general_actions(self):
+    async def test_ac6_invalid_session_shows_general_actions_plus_credits(self):
         invalid_states = (
             {
                 "block_session": "stale-session",
@@ -468,7 +545,7 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
                 surface.user_data.update(invalid_state)
                 self.assertIsNone(bot.active_tutor_context(surface.user_data))
 
-                await self._open(
+                await self._open_tutor(
                     surface,
                     checkout_enabled=False,
                     products=(),
@@ -480,11 +557,62 @@ class AITutorEconomicsScreenTest(unittest.IsolatedAsyncioTestCase):
                 ]
                 self.assertEqual(
                     callback_data,
-                    ["aitutor:ask", "aitutor:start"],
+                    ["aitutor:ask", "aitutor:start", "aitutor:credits"],
                 )
                 self.assertFalse(
                     any(data.startswith("bait:") for data in callback_data)
                 )
+
+    async def test_ec1_checkout_unavailable_keeps_readable_credits_screen(self):
+        surface = TutorEconomicsSurface(locale="fr")
+        store, service, provider, mirror = await self._open_credits(
+            surface,
+            checkout_enabled=False,
+        )
+
+        text, markup = reply_payload(surface)
+        self.assertIn(
+            translate("ai_tutor_economics_balance", "fr", balance=17), text
+        )
+        self.assertIn(translate("ai_tutor_economics_policy", "fr"), text)
+        self.assertIn(
+            translate("ai_tutor_economics_purchase_unavailable", "fr"), text
+        )
+        callback_data = [button.callback_data for button in buttons(markup)]
+        self.assertEqual(callback_data, ["aitutor:menu"])
+        store.ai_usage_summary.assert_called_once_with(
+            surface.update.effective_user.id,
+            initial_credits=40,
+        )
+        service.active_products.assert_called_once_with()
+        service.create_order.assert_not_called()
+        provider.assert_not_called()
+        mirror.assert_not_awaited()
+
+    async def test_ac4_back_action_returns_to_tutor_without_commerce_reads(self):
+        surface = TutorEconomicsSurface(locale="de")
+        surface.use_callback("aitutor:menu")
+        store = MagicMock()
+        service = MagicMock()
+        with (
+            patch.object(bot, "AI_SETTINGS", ai_settings()),
+            patch.object(bot, "get_store", return_value=store),
+            patch.object(bot, "get_billing_service", return_value=service),
+        ):
+            await bot.ai_tutor_entry_cb.__wrapped__(
+                surface.update,
+                surface.context,
+            )
+
+        surface.query.answer.assert_awaited_once_with()
+        text, markup = reply_payload(surface)
+        self.assertEqual(text, translate("ai_tutor_menu_intro", "de"))
+        self.assertEqual(
+            [button.callback_data for button in buttons(markup)],
+            ["aitutor:ask", "aitutor:start", "aitutor:credits"],
+        )
+        store.ai_usage_summary.assert_not_called()
+        service.active_products.assert_not_called()
 
 
 class AITutorGeneralChatTest(unittest.IsolatedAsyncioTestCase):
@@ -852,7 +980,7 @@ class AITutorGeneralChatTest(unittest.IsolatedAsyncioTestCase):
 
 
 class AITutorEconomicsContractTest(unittest.TestCase):
-    def test_ac6_localization_registration_and_callback_privacy_contract(self):
+    def test_ac7_localization_registration_and_callback_privacy_contract(self):
         self.assertEqual(
             set(INTERFACE_LOCALES),
             {"en", "fr", "de", "ja", "ar", "zh", "ru", "es"},
@@ -869,6 +997,8 @@ class AITutorEconomicsContractTest(unittest.TestCase):
                     for key in ECONOMICS_COPY_KEYS
                 }
                 self.assertTrue(all(value.strip() for value in rendered.values()))
+                for key, value in rendered.items():
+                    self.assertNotEqual(value, key)
                 self.assertNotIn("provider token", " ".join(rendered.values()).lower())
 
         source = inspect.getsource(bot.manual_polling)
@@ -879,6 +1009,8 @@ class AITutorEconomicsContractTest(unittest.TestCase):
         for callback in (
             "aitutor:ask",
             "aitutor:start",
+            "aitutor:credits",
+            "aitutor:menu",
             "buy:ai-mini",
             "buy:ai-value",
         ):

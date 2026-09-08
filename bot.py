@@ -6856,12 +6856,65 @@ async def send_ai_tutor_menu(
     user_id: int,
     locale: str,
 ) -> None:
-    """Show the read-only Tutor economy and contextual entry actions."""
+    """Show learning-only Tutor actions for the current learner context."""
     session_id = (
         str(context.user_data.get("block_session") or "").strip()
         if active_tutor_context(context.user_data) is not None
         else ""
     )
+    if session_id:
+        rows = [
+            [
+                InlineKeyboardButton(
+                    translate("ai_tutor_action_vocabulary", locale),
+                    callback_data=f"bait:{session_id}:vocabulary",
+                ),
+                InlineKeyboardButton(
+                    translate("ai_tutor_action_mistakes", locale),
+                    callback_data=f"bait:{session_id}:mistakes",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    translate("ai_tutor_action_progress", locale),
+                    callback_data=f"bait:{session_id}:progress",
+                ),
+                InlineKeyboardButton(
+                    translate("ai_tutor_action_ask", locale),
+                    callback_data=f"bait:{session_id}:ask",
+                ),
+            ],
+        ]
+    else:
+        rows = [[
+            InlineKeyboardButton(
+                translate("ai_tutor_action_ask", locale),
+                callback_data="aitutor:ask",
+            ),
+            InlineKeyboardButton(
+                translate("ai_tutor_action_start_lesson", locale),
+                callback_data="aitutor:start",
+            ),
+        ]]
+    rows.append([
+        InlineKeyboardButton(
+            translate("ai_tutor_action_credits", locale),
+            callback_data="aitutor:credits",
+        )
+    ])
+    await message.reply_text(
+        translate("ai_tutor_menu_intro", locale),
+        reply_markup=InlineKeyboardMarkup(rows),
+    )
+
+
+async def send_ai_tutor_credits_menu(
+    message,
+    *,
+    user_id: int,
+    locale: str,
+) -> None:
+    """Show AI-credit balance, policy and checkout separately from Tutor actions."""
     user_id = int(user_id)
     try:
         summary = get_store().ai_usage_summary(
@@ -6960,45 +7013,18 @@ async def send_ai_tutor_menu(
             translate("ai_tutor_economics_purchase_unavailable", locale)
         )
 
-    if session_id:
-        rows = [
-            [
-                InlineKeyboardButton(
-                    translate("ai_tutor_action_vocabulary", locale),
-                    callback_data=f"bait:{session_id}:vocabulary",
-                ),
-                InlineKeyboardButton(
-                    translate("ai_tutor_action_mistakes", locale),
-                    callback_data=f"bait:{session_id}:mistakes",
-                ),
-            ],
-            [
-                InlineKeyboardButton(
-                    translate("ai_tutor_action_progress", locale),
-                    callback_data=f"bait:{session_id}:progress",
-                ),
-                InlineKeyboardButton(
-                    translate("ai_tutor_action_ask", locale),
-                    callback_data=f"bait:{session_id}:ask",
-                ),
-            ],
-        ]
-    else:
-        rows = [[
-            InlineKeyboardButton(
-                translate("ai_tutor_action_ask", locale),
-                callback_data="aitutor:ask",
-            ),
-            InlineKeyboardButton(
-                translate("ai_tutor_action_start_lesson", locale),
-                callback_data="aitutor:start",
-            ),
-        ]]
+    rows = []
     if checkout_available:
         rows.extend(
             [[InlineKeyboardButton(label, callback_data=f"buy:{product['product_id']}")]
              for product, label in localized_products]
         )
+    rows.append([
+        InlineKeyboardButton(
+            translate("ai_tutor_action_back", locale),
+            callback_data="aitutor:menu",
+        )
+    ])
     await message.reply_text(
         "\n\n".join(text_parts),
         reply_markup=InlineKeyboardMarkup(rows),
@@ -7325,7 +7351,7 @@ async def block_ai_action_cb(
 async def ai_tutor_entry_cb(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
-    """Handle no-block Tutor chat and lesson entry without paid work."""
+    """Handle Tutor navigation, questions and lesson entry without AI generation."""
     query = update.callback_query
     locale = interface_locale_for_update(update)
     parts = str(query.data or "").split(":", 1)
@@ -7333,6 +7359,8 @@ async def ai_tutor_entry_cb(
     if action not in {
         "ask",
         "start",
+        "credits",
+        "menu",
         *AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS,
     }:
         await query.answer(
@@ -7347,6 +7375,21 @@ async def ai_tutor_entry_cb(
         )
         return
     await query.answer()
+    if action == "credits":
+        await send_ai_tutor_credits_menu(
+            query.message,
+            user_id=int(update.effective_user.id),
+            locale=locale,
+        )
+        return
+    if action == "menu":
+        await send_ai_tutor_menu(
+            query.message,
+            context,
+            user_id=int(update.effective_user.id),
+            locale=locale,
+        )
+        return
     if action == "ask":
         context.user_data[PENDING_AI_TUTOR_KEY] = {
             "request_kind": "mirror_chat",

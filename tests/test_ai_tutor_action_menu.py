@@ -29,6 +29,7 @@ TUTOR_COPY_KEYS = (
     "ai_tutor_action_mistakes",
     "ai_tutor_action_progress",
     "ai_tutor_action_ask",
+    "ai_tutor_action_credits",
     "ai_tutor_ask_prompt",
     "ai_tutor_question_vocabulary",
     "ai_tutor_question_mistakes",
@@ -155,7 +156,7 @@ def flattened_buttons(markup):
 
 
 class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
-    async def test_ac1_block_button_opens_short_four_action_menu_for_free(self):
+    async def test_ac1_ac2_ac5_block_button_opens_learning_only_menu(self):
         surface = TutorSurface(locale="fr")
         store = MagicMock()
         store.ai_usage_summary.side_effect = RuntimeError("balance unavailable")
@@ -176,12 +177,8 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
 
         surface.query.answer.assert_awaited_once_with()
         text, markup = menu_payload(surface)
-        self.assertIn(translate("ai_tutor_economics_intro", "fr"), text)
-        self.assertIn(
-            translate("ai_tutor_economics_balance_unavailable", "fr"),
-            text,
-        )
-        self.assertIn(translate("ai_tutor_economics_policy", "fr"), text)
+        self.assertEqual(text, translate("ai_tutor_menu_intro", "fr"))
+        self.assertNotIn(translate("ai_tutor_economics_policy", "fr"), text)
         buttons = flattened_buttons(markup)
         self.assertEqual(
             [button.text for button in buttons],
@@ -190,9 +187,10 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
                 translate("ai_tutor_action_mistakes", "fr"),
                 translate("ai_tutor_action_progress", "fr"),
                 translate("ai_tutor_action_ask", "fr"),
+                translate("ai_tutor_action_credits", "fr"),
             ],
         )
-        self.assertEqual(len(buttons), 4)
+        self.assertEqual(len(buttons), 5)
         self.assertEqual(
             [button.callback_data for button in buttons],
             [
@@ -200,22 +198,20 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
                 f"bait:{surface.session}:mistakes",
                 f"bait:{surface.session}:progress",
                 f"bait:{surface.session}:ask",
+                "aitutor:credits",
             ],
         )
         self.assertTrue(all(len(button.callback_data.encode("utf-8")) <= 64 for button in buttons))
         self.assertTrue(all(str(surface.update.effective_user.id) not in button.callback_data for button in buttons))
-        store.ai_usage_summary.assert_called_once_with(
-            surface.update.effective_user.id,
-            initial_credits=40,
-        )
+        store.ai_usage_summary.assert_not_called()
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
-        billing_service.active_products.assert_called_once_with()
+        billing_service.active_products.assert_not_called()
         service.assert_not_called()
         legacy.assert_not_awaited()
         companion.assert_not_awaited()
 
-    async def test_ac1_ai_command_without_arguments_opens_the_same_free_menu(self):
+    async def test_ac1_ac2_ac5_ai_command_opens_same_learning_only_menu(self):
         surface = TutorSurface(locale="ru")
         surface.update.callback_query = None
         service = MagicMock()
@@ -236,13 +232,10 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
             await bot.cmd_ai.__wrapped__(surface.update, surface.context)
 
         text, markup = menu_payload(surface)
-        self.assertIn(translate("ai_tutor_economics_intro", "ru"), text)
-        self.assertIn(
-            translate("ai_tutor_economics_balance", "ru", balance=12), text
-        )
-        self.assertIn(translate("ai_tutor_economics_policy", "ru"), text)
+        self.assertEqual(text, translate("ai_tutor_menu_intro", "ru"))
+        self.assertNotIn(translate("ai_tutor_economics_policy", "ru"), text)
         menu_buttons = flattened_buttons(markup)
-        self.assertEqual(len(menu_buttons), 4)
+        self.assertEqual(len(menu_buttons), 5)
         self.assertEqual(
             [button.callback_data for button in menu_buttons],
             [
@@ -250,15 +243,13 @@ class AITutorFreeMenuTest(unittest.IsolatedAsyncioTestCase):
                 f"bait:{surface.session}:mistakes",
                 f"bait:{surface.session}:progress",
                 f"bait:{surface.session}:ask",
+                "aitutor:credits",
             ],
         )
-        store.ai_usage_summary.assert_called_once_with(
-            surface.update.effective_user.id,
-            initial_credits=40,
-        )
+        store.ai_usage_summary.assert_not_called()
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
-        billing_service.active_products.assert_called_once_with()
+        billing_service.active_products.assert_not_called()
         service.assert_not_called()
         legacy.assert_not_awaited()
         companion.assert_not_awaited()
@@ -713,7 +704,7 @@ class AITutorLocalizationContractTest(unittest.TestCase):
             source,
         )
 
-    def test_ac5_new_copy_is_complete_for_all_eight_interface_locales(self):
+    def test_ac7_tutor_copy_is_complete_for_all_eight_interface_locales(self):
         self.assertEqual(
             set(INTERFACE_LOCALES),
             {"en", "fr", "de", "ja", "ar", "zh", "ru", "es"},
@@ -723,6 +714,8 @@ class AITutorLocalizationContractTest(unittest.TestCase):
             with self.subTest(locale=locale):
                 copy = {key: translate(key, locale) for key in TUTOR_COPY_KEYS}
                 self.assertTrue(all(value.strip() for value in copy.values()))
+                for key, value in copy.items():
+                    self.assertNotEqual(value, key)
                 self.assertLessEqual(len(copy["ai_tutor_menu_intro"]), 420)
                 self.assertEqual(
                     len(
