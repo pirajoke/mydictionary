@@ -310,16 +310,160 @@ PENDING_DICTIONARY_LOOKUP_KEY = "pending_dictionary_lookup"
 DICTIONARY_LOOKUP_TTL_SECONDS = 10 * 60
 AI_THINKING_EMOJI_INDEX_KEY = "ai_thinking_emoji_index"
 AI_THINKING_EMOJIS = ("⚡", "🦊")
-AI_TUTOR_ACTION_QUESTION_KEYS = {
-    "vocabulary": "ai_tutor_question_vocabulary",
-    "mistakes": "ai_tutor_question_mistakes",
-    "progress": "ai_tutor_question_progress",
-}
 AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS = {
     "today": "ai_tutor_starter_today_question",
     "review": "ai_tutor_starter_review_question",
     "quiz": "ai_tutor_starter_quiz_question",
 }
+
+_LEARNING_STATS_PRESENTATION = {
+    "vocabulary": ("learning_stats_vocabulary_heading", "📚"),
+    "mistakes": ("learning_stats_mistakes_heading", "🎯"),
+    "progress": ("learning_stats_progress_heading", "📈"),
+}
+DETERMINISTIC_STATS_ACTIONS = frozenset(_LEARNING_STATS_PRESENTATION)
+
+
+def _safe_learning_count(value: Any) -> int:
+    """Normalize an untrusted snapshot count without inventing progress."""
+    if isinstance(value, bool):
+        return 0
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def _safe_learning_percent(value: Any) -> int | None:
+    """Return one display-safe percentage or a placeholder sentinel."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return min(100, max(0, int(value)))
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _learning_progress_bar(
+    *,
+    value: int,
+    total: int | None = None,
+    filled_cell: str = "🟩",
+) -> str:
+    """Render the stable ten-cell bar used by all free learning-stat cards."""
+    if total is None:
+        ratio = min(100, max(0, value)) / 100
+    elif total > 0:
+        ratio = min(1.0, max(0.0, value / total))
+    else:
+        ratio = 0.0
+    filled = min(10, max(0, int(ratio * 10 + 0.5)))
+    return filled_cell * filled + "⬛" * (10 - filled)
+
+
+def _learning_weak_terms(snapshot: Mapping[str, Any]) -> list[str]:
+    terms: list[str] = []
+    raw_terms = snapshot.get("weak_terms")
+    if not isinstance(raw_terms, (list, tuple)):
+        return terms
+    for item in raw_terms:
+        raw_term = item.get("term") if isinstance(item, Mapping) else item
+        if not isinstance(raw_term, str):
+            continue
+        term = " ".join(raw_term.split())[:24]
+        if term and term not in terms:
+            terms.append(term)
+        if len(terms) == 3:
+            break
+    return terms
+
+
+def render_learning_stats_card(
+    action: str,
+    snapshot: Mapping[str, Any],
+    *,
+    locale: str,
+) -> str:
+    """Build a compact, localized card exclusively from stored learning facts."""
+    heading_key, icon = _LEARNING_STATS_PRESENTATION[action]
+    heading = f"{icon} {translate(heading_key, locale)}"
+    if snapshot.get("has_progress") is not True:
+        return f"{heading}\n\n{translate('learning_stats_empty', locale)}"
+
+    tracked = _safe_learning_count(snapshot.get("tracked_words"))
+    mastered = _safe_learning_count(snapshot.get("learned_words"))
+    due = _safe_learning_count(
+        snapshot.get("due_reviews", snapshot.get("due_count"))
+    )
+    correct = _safe_learning_count(snapshot.get("lifetime_correct"))
+    wrong = _safe_learning_count(snapshot.get("lifetime_wrong"))
+    accuracy = _safe_learning_percent(
+        snapshot.get("accuracy_percent", snapshot.get("lifetime_accuracy_percent"))
+    )
+    streak = _safe_learning_count(
+        snapshot.get("streak_days", snapshot.get("streak"))
+    )
+    weak_terms = _learning_weak_terms(snapshot)
+    accuracy_text = f"{accuracy}%" if accuracy is not None else "—"
+    weak_line = (
+        f"\n🧠 {translate('learning_stats_weak', locale, terms=' · '.join(weak_terms))}"
+        if weak_terms
+        else ""
+    )
+
+    if action == "vocabulary":
+        bar = _learning_progress_bar(
+            value=mastered,
+            total=tracked,
+            filled_cell="🟧",
+        )
+        return (
+            f"{heading}\n{bar}  {mastered}/{tracked}\n\n"
+            f"⏰ {translate('learning_stats_due', locale, count=due)}"
+            f"{weak_line}"
+        )
+
+    if action == "mistakes":
+        bar = _learning_progress_bar(value=accuracy or 0)
+        return (
+            f"{heading}\n{bar}  {accuracy_text}\n\n"
+            f"✅ {translate('learning_stats_correct', locale, count=correct)}\n"
+            f"❌ {translate('learning_stats_wrong', locale, count=wrong)}"
+            f"{weak_line}"
+        )
+
+    bar = _learning_progress_bar(value=accuracy or 0)
+    if due:
+        focus = translate("learning_stats_focus_due", locale, count=due)
+    elif weak_terms:
+        focus = translate("learning_stats_focus_weak", locale)
+    else:
+        focus = translate("learning_stats_focus_daily", locale)
+    return (
+        f"{heading}\n{bar}  {accuracy_text}\n\n"
+        f"📚 {translate('learning_stats_tracked', locale, count=tracked)} · "
+        f"{translate('learning_stats_mastered', locale, count=mastered)}\n"
+        f"⏰ {translate('learning_stats_due', locale, count=due)}\n"
+        f"🔥 {translate('learning_stats_streak', locale, count=streak)}\n"
+        f"👉 {translate('learning_stats_focus', locale, focus=focus)}"
+    )
+
+
+def learning_stats_keyboard(locale: str, *, has_progress: bool) -> InlineKeyboardMarkup:
+    """Keep the strongest next action first; Telegram owns button styling."""
+    rows = []
+    if has_progress:
+        rows.append([
+            InlineKeyboardButton(
+                translate("start_review", locale), callback_data="start:review"
+            )
+        ])
+    rows.append([
+        InlineKeyboardButton(
+            translate("start_daily", locale), callback_data="start:daily"
+        )
+    ])
+    return InlineKeyboardMarkup(rows)
 
 
 def next_ai_thinking_emoji(user_data: MutableMapping[str, Any]) -> str:
@@ -7419,14 +7563,12 @@ async def block_ai_action_cb(
     """Run one explicit tutor action bound to the active learning block."""
     query = update.callback_query
     parts = str(query.data).split(":")
-    if len(parts) != 3 or parts[2] not in {
-        *AI_TUTOR_ACTION_QUESTION_KEYS,
-        "ask",
-    }:
+    if len(parts) != 3 or parts[2] not in {*DETERMINISTIC_STATS_ACTIONS, "ask"}:
         await reject_block_callback(query)
         return
     locale = interface_locale_for_update(update)
-    if not AI_SETTINGS.enabled:
+    action = parts[2]
+    if action == "ask" and not AI_SETTINGS.enabled:
         await query.answer(
             translate("ai_disabled", locale),
             show_alert=True,
@@ -7435,7 +7577,6 @@ async def block_ai_action_cb(
     if not await validate_block_callback(query, context.user_data, parts[1]):
         return
     activate_block_language(context.user_data)
-    action = parts[2]
     if action == "ask":
         context.user_data[PENDING_AI_TUTOR_KEY] = {
             "block_session": parts[1],
@@ -7443,12 +7584,17 @@ async def block_ai_action_cb(
         }
         await query.message.reply_text(translate("ai_tutor_ask_prompt", locale))
         return
-    await request_compact_learning_companion(
-        update,
-        context,
-        question=translate(AI_TUTOR_ACTION_QUESTION_KEYS[action], locale),
-        locale=locale,
-        task_kind="progress_review",
+    snapshot = grounded_progress_snapshot(
+        get_store(),
+        int(update.effective_user.id),
+    )
+    has_progress = snapshot.get("has_progress") is True
+    await query.message.reply_text(
+        render_learning_stats_card(action, snapshot, locale=locale),
+        reply_markup=learning_stats_keyboard(
+            locale,
+            has_progress=has_progress,
+        ),
     )
 
 
