@@ -101,7 +101,7 @@ class CompactProgressAnswerContractTest(unittest.IsolatedAsyncioTestCase):
             ),
             "action_missing": not (
                 paragraphs
-                and paragraphs[-1].startswith("👉 ")
+                and paragraphs[-1].startswith("🎯 ")
                 and "16 révisions" in paragraphs[-1]
             ),
         }

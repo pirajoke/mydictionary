@@ -1084,9 +1084,9 @@ class LearningCompanionServiceHardeningTest(unittest.IsolatedAsyncioTestCase):
 
 
 class LearningCompanionPromptContractTest(unittest.TestCase):
-    def test_ac_7_runtime_uses_exact_mirror_v8_contract_and_preserves_schema(self):
-        path = ROOT / "prompts/mirror-v8.txt"
-        self.assertTrue(path.is_file(), "missing reviewed Lexi V8 prompt contract")
+    def test_ac_07_runtime_uses_exact_mirror_v9_contract_and_preserves_schema(self):
+        path = ROOT / "prompts/mirror-v9.txt"
+        self.assertTrue(path.is_file(), "missing reviewed Lexi V9 prompt contract")
         reviewed = path.read_text(encoding="utf-8")
         if reviewed.endswith("\n"):
             reviewed = reviewed[:-1]
@@ -1107,9 +1107,15 @@ class LearningCompanionPromptContractTest(unittest.TestCase):
             "at most one next step",
             "direct",
             "friendly",
-            "💡",
-            "📌",
-            "👉",
+            "task-specific",
+            "translation_nuance",
+            "correction",
+            "grammar",
+            "pronunciation",
+            "practice",
+            "progress_review",
+            "🌍",
+            "🗣️",
             "internal analysis",
             "use relevant recent dialogue naturally",
             "answer the current question directly",

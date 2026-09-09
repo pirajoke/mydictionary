@@ -44,7 +44,7 @@ class MirrorNaturalReplyContractTest(unittest.TestCase):
 
         rendered = ai_tutor.render_mirror_answer(answer, available_credits=39)
 
-        self.assertEqual(rendered, f"💡 {answer.answer_ru}")
+        self.assertEqual(rendered, answer.answer_ru)
         self.assertNotIn("AI-кредиты", rendered)
         self.assertNotIn("🇷🇺", rendered)
         self.assertNotIn("Следующий шаг:", rendered)
@@ -72,11 +72,14 @@ class MirrorNaturalReplyContractTest(unittest.TestCase):
             }
         )
 
-        rendered = ai_tutor.render_mirror_answer(answer, available_credits=39)
+        rendered = ai_tutor.render_mirror_answer(
+            answer,
+            available_credits=39,
+            task_kind="translation_nuance",
+        )
 
-        self.assertTrue(rendered.startswith("💡 Bonjour зависит"))
-        self.assertIn("\n\n📌 ", rendered)
-        self.assertIn("\n\n👉 ", rendered)
+        self.assertTrue(rendered.startswith("🌍 Bonjour зависит"))
+        self.assertIn("\n\n🗣️ ", rendered)
         self.assertIn("bonjour /bɔ̃.ʒuʁ/ — здравствуйте; добрый день", rendered)
         self.assertIn("Нейтральное дневное приветствие.", rendered)
         self.assertIn("Bonjour, Marie ! /bɔ̃.ʒuʁ ma.ʁi/ — Добрый день, Мари!", rendered)

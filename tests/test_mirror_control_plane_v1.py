@@ -449,7 +449,7 @@ class MirrorGroundingContractTest(StoreTestCase):
             ["dull", "slit"],
         )
 
-    def test_ac_04_ec_01_provider_payload_contains_bounded_control_context(self):
+    def test_ac_04_ec_01_err_02_provider_payload_contains_bounded_control_context(self):
         builder = mirror_assistant.build_mirror_provider_payload
         signature = python_inspect.signature(builder)
         expected_parameters = {
@@ -504,10 +504,13 @@ class MirrorGroundingContractTest(StoreTestCase):
             self.fail(f"Mirror v1 response contract rejected valid deep answer: {exc}")
         self.assertEqual(len(answer.evidence_ru), 2)
         self.assertTrue(answer.interpretation_ru)
-        rendered = ai_tutor.render_mirror_answer(answer, available_credits=39)
-        self.assertTrue(rendered.startswith("💡 Точность сейчас"))
-        self.assertIn("\n\n📌 ", rendered)
-        self.assertIn("\n\n👉 ", rendered)
+        rendered = ai_tutor.render_mirror_answer(
+            answer,
+            available_credits=39,
+            task_kind="progress_review",
+        )
+        self.assertTrue(rendered.startswith("📈 Точность сейчас"))
+        self.assertIn("\n\n🎯 ", rendered)
         self.assertNotRegex(rendered.casefold(), r"^(привет|молодец|отличн)")
         self.assertIn("Повтори пять", rendered)
 

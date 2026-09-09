@@ -151,9 +151,39 @@ MIRROR_RESPONSE_SCHEMA = {
     ],
 }
 
+_MIRROR_TASK_SECTION_MARKERS = {
+    "translation_nuance": ("🌍", "🗣️", "🔁"),
+    "correction": ("✏️", "🔎", "✅"),
+    "grammar": ("🧩", "📖", "✅"),
+    "pronunciation": ("🎧", "👄", "🔁"),
+    "practice": ("🎯", "📝", "▶️"),
+    "progress_review": ("📈", "🔎", "🎯"),
+}
+_MIRROR_APPLICATION_SECTION_MARKER_PATTERN = re.compile(
+    "(?:"
+    + "|".join(
+        re.escape(marker)
+        for marker in sorted(
+            {
+                "💡",
+                "📌",
+                "👉",
+                *(
+                    marker.removesuffix("\ufe0f")
+                    for markers in _MIRROR_TASK_SECTION_MARKERS.values()
+                    for marker in markers
+                ),
+            },
+            key=len,
+            reverse=True,
+        )
+    )
+    + r")\ufe0f?"
+)
+
 _PROMPT_ROOT = Path(__file__).resolve().parents[1] / "prompts"
 TUTOR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v2.txt")
-MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v8.txt")
+MIRROR_INSTRUCTIONS = load_prompt_contract(_PROMPT_ROOT / "mirror-v9.txt")
 # Responses counts hidden reasoning in this ceiling too. Deep answers need room
 # for both reasoning and the complete strict JSON, within the approved cap.
 MIRROR_OUTPUT_TOKEN_CEILINGS = {"fast": 320, "deep": 1000}
@@ -998,7 +1028,7 @@ def render_mirror_answer(
 
     def clean(value: str) -> str:
         plain = re.sub(r"```[A-Za-z0-9_-]*", "", str(value))
-        plain = re.sub(r"[💡📌👉]", "", plain)
+        plain = _MIRROR_APPLICATION_SECTION_MARKER_PATTERN.sub("", plain)
         field_names = tuple(MIRROR_RESPONSE_SCHEMA["required"])
         for field_name in field_names:
             plain = re.sub(
@@ -1158,17 +1188,33 @@ def render_mirror_answer(
                 candidate = candidate[:word_boundary].rstrip()
             return candidate.rstrip(" ,;:-") + "."
 
+        summary_marker, _, action_marker = _MIRROR_TASK_SECTION_MARKERS[
+            "progress_review"
+        ]
         compact_action = clip(compact_next_step or ".", 220)
-        summary_limit = max(1, 500 - len(compact_action) - len("💡 \n\n👉 "))
+        response_chrome = f"{summary_marker} \n\n{action_marker} "
+        summary_limit = max(1, 500 - len(compact_action) - len(response_chrome))
         compact_summary = clip(summary, summary_limit)
-        return f"💡 {compact_summary}\n\n👉 {compact_action}"
+        if compact_next_step:
+            return (
+                f"{summary_marker} {compact_summary}\n\n"
+                f"{action_marker} {compact_action}"
+            )
+        return f"{summary_marker} {compact_summary}"
 
-    lead = f"💡 {answer_text or '.'}"
-    paragraphs = [lead]
-    if support:
-        paragraphs.append(f"📌 {' '.join(support)}")
-    if next_step:
-        paragraphs.append(f"👉 {next_step}")
+    markers = _MIRROR_TASK_SECTION_MARKERS.get(task_kind)
+    if markers is None:
+        paragraphs = [answer_text or "."]
+        if support:
+            paragraphs.append(" ".join(support))
+        if next_step:
+            paragraphs.append(next_step)
+    else:
+        paragraphs = [f"{markers[0]} {answer_text or '.'}"]
+        if support:
+            paragraphs.append(f"{markers[1]} {' '.join(support)}")
+        if next_step:
+            paragraphs.append(f"{markers[2]} {next_step}")
     rendered = "\n\n".join(value for value in paragraphs if value)
     if len(rendered) <= 900:
         return rendered or "."
