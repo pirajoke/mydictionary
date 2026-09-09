@@ -14,6 +14,9 @@ deployment automation.
   Russian, and Spanish, plus the existing Vietnamese pack.
 - Topic-based 10-word learning blocks, flashcards, written and multiple-choice
   tests, XP, streaks, and scheduled review.
+- Learner-owned vocabulary imports from pasted lists, photos, PDFs, and voice
+  notes, with a confirmation preview and a separate spaced-repetition practice
+  mode that never mixes imported words into curated packs.
 - Curated meaning languages selected during onboarding, target-language
   spelling, Latin transcription, and text-to-speech pronunciation. Legacy
   packs without a curated pair keep an explicit Russian fallback.
@@ -99,6 +102,7 @@ migrations, isolated persistence, and concurrent credit reservations.
 | `docs/mirror-control-plane-v1.md` | Mirror modes, quality analytics, and voice translation gates |
 | `docs/telegram-miniapp.md` | Mini App security, product surface, configuration, and rollback contract |
 | `docs/offline-dictionary.md` | Offline dictionary capabilities, local data, verification and update contract |
+| `docs/custom-vocabulary.md` | Personal vocabulary import, confirmation, AI/voice costs, privacy, and practice contract |
 | `docs/research/lexi-market-product-2026-09-06.md` | Market evidence, adult/child positioning and staged product priorities |
 | `docs/runbooks/ovh-deployment.md` | Canonical production deployment and rollback runbook |
 | `docs/runbooks/mac-mini-deployment.md` | Historical Mac mini release contract |

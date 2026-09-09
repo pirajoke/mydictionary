@@ -17,6 +17,12 @@ from typing import Any, Mapping, Protocol
 from uuid import uuid4
 
 from .ai_metering import AIMeteringJournal
+from .custom_vocabulary import (
+    CUSTOM_VOCABULARY_INSTRUCTIONS,
+    CUSTOM_VOCABULARY_RESPONSE_SCHEMA,
+    CustomVocabularyCandidate,
+    validate_extracted_vocabulary,
+)
 from .economics import (
     AIEconomicsContract,
     EconomicsSnapshotError,
@@ -1413,6 +1419,65 @@ class OpenAIResponsesProvider:
             output_text=str(_attr(response, "output_text", "")).strip(),
         )
 
+    async def generate_custom_vocabulary(
+        self,
+        *,
+        request_id: str,
+        user_id: int,
+        input_content: list[Mapping[str, Any]],
+    ) -> ProviderResult:
+        """Extract learner-supplied vocabulary without retaining provider state."""
+        response = await self.client.responses.create(
+            model=self.model,
+            instructions=CUSTOM_VOCABULARY_INSTRUCTIONS,
+            input=[
+                {
+                    "role": "user",
+                    "content": [dict(item) for item in input_content],
+                }
+            ],
+            max_output_tokens=min(self.max_output_tokens, 1000),
+            service_tier=self.service_tier,
+            reasoning={"effort": "low"},
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "my_dictionary_custom_vocabulary_v1",
+                    "strict": True,
+                    "schema": CUSTOM_VOCABULARY_RESPONSE_SCHEMA,
+                },
+                "verbosity": "low",
+            },
+            metadata={"request_id": request_id},
+            safety_identifier=self._safety_identifier(user_id),
+            store=False,
+        )
+        usage = _attr(response, "usage", None)
+        input_details = _attr(usage, "input_tokens_details", None)
+        output_details = _attr(usage, "output_tokens_details", None)
+        return ProviderResult(
+            answer=None,
+            response_id=str(_attr(response, "id", "")) or None,
+            model=str(_attr(response, "model", "")),
+            usage=ProviderUsage(
+                input_tokens=_non_negative_int_attr(usage, "input_tokens"),
+                cached_input_tokens=_non_negative_int_attr(
+                    input_details, "cached_tokens"
+                ),
+                cache_write_tokens=_non_negative_int_attr(
+                    input_details, "cache_write_tokens"
+                ),
+                output_tokens=_non_negative_int_attr(usage, "output_tokens"),
+                reasoning_tokens=_non_negative_int_attr(
+                    output_details, "reasoning_tokens"
+                ),
+                total_tokens=_non_negative_int_attr(usage, "total_tokens"),
+            ),
+            service_tier=str(_attr(response, "service_tier", "")),
+            status=str(_attr(response, "status", "")),
+            output_text=str(_attr(response, "output_text", "")).strip(),
+        )
+
 
 class AITutorService:
     def __init__(
@@ -1629,6 +1694,187 @@ class AITutorService:
             if not released:
                 raise AIUsageRecoveryError(
                     "AI request failed and its reservation state is unknown"
+                ) from exc
+            raise
+
+    async def import_custom_vocabulary(
+        self,
+        *,
+        user_id: int,
+        input_content: list[Mapping[str, Any]],
+        source_kind: str,
+        on_provider_start: Callable[[], Awaitable[None]] | None = None,
+    ) -> tuple[CustomVocabularyCandidate, ...]:
+        """Run one confirmed extraction through the standard AI ledger."""
+        if source_kind not in {"text", "photo", "pdf", "voice"}:
+            raise ValueError("Unsupported custom vocabulary source")
+        if not input_content:
+            raise ValueError("Custom vocabulary input is empty")
+        contract = self.settings.assert_runtime_ready()
+        if self.metering_journal.pending_count():
+            raise AIUsageRecoveryError(
+                "Unreconciled AI metering journal blocks provider calls"
+            )
+        output_ceiling = min(self.settings.max_output_tokens, 1000)
+        # The configured provider accepts low-detail binary inputs. Keep a fixed
+        # cost ceiling that stays within the approved single-request breaker;
+        # actual usage is recorded and remains protected retrospectively.
+        budget = ProviderBudget(
+            input_tokens_upper_bound=15000,
+            output_tokens_upper_bound=output_ceiling,
+            projected_cost_micro_usd=self.settings.pricing.worst_case_cost_micro_usd(
+                input_tokens=15000,
+                output_tokens=output_ceiling,
+            ),
+        )
+        if budget.projected_cost_micro_usd > self.settings.max_preflight_cost_micro_usd_per_request:
+            raise AIQuotaExceeded("AI preflight request cost budget exceeded")
+        try:
+            self.store.recover_stale_ai_usage(
+                timeout_seconds=self.settings.reservation_timeout_seconds,
+                user_id=user_id,
+            )
+        except Exception as exc:
+            raise AIUsageRecoveryError(
+                "Stale AI reservation recovery failed before a new request"
+            ) from exc
+        charge_credits = self.store.ai_charge_credits(
+            user_id, self.settings.credits_per_request
+        )
+        fingerprint = hashlib.sha256(
+            json.dumps(input_content, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        request_id = self.store.reserve_ai_usage(
+            user_id,
+            action="custom_vocabulary_import",
+            provider=self.settings.provider,
+            model=self.settings.model,
+            credits=charge_credits,
+            initial_credits=self.settings.initial_credits,
+            context_fingerprint=fingerprint,
+            max_daily_requests=None,
+            requested_service_tier=self.settings.service_tier,
+            economics_snapshot_id=contract.snapshot_id,
+            economics_snapshot_sha256=contract.snapshot_sha256,
+            projected_cost_micro_usd=budget.projected_cost_micro_usd,
+            max_project_cost_micro_usd_per_day=self.settings.max_project_cost_micro_usd_per_day,
+            max_project_cost_micro_usd_per_month=self.settings.max_project_cost_micro_usd_per_month,
+            max_in_flight_cost_micro_usd=self.settings.max_in_flight_cost_micro_usd,
+            request_id=str(uuid4()),
+        )
+        started = perf_counter()
+        provider_attempt_started = False
+        provider_result: ProviderResult | None = None
+        settlement_started = False
+        try:
+            generator = getattr(self.provider, "generate_custom_vocabulary", None)
+            if not callable(generator):
+                raise AIConfigurationError(
+                    "Configured AI provider does not support vocabulary extraction"
+                )
+            if on_provider_start is not None:
+                try:
+                    await on_provider_start()
+                except Exception:
+                    pass
+            self.store.mark_ai_provider_attempt_started(request_id)
+            provider_attempt_started = True
+            provider_result = await generator(
+                request_id=request_id,
+                user_id=int(user_id),
+                input_content=input_content,
+            )
+            latency_ms = int((perf_counter() - started) * 1000)
+            response_cost = self.settings.pricing.cost_micro_usd(provider_result.usage)
+            telemetry = {
+                "request_id": request_id,
+                "provider_response_id": provider_result.response_id,
+                "model": provider_result.model,
+                "service_tier": provider_result.service_tier,
+                "provider_status": provider_result.status,
+                **provider_result.usage.as_dict(),
+                "cost_micro_usd": response_cost,
+                "latency_ms": latency_ms,
+            }
+            try:
+                self.store.record_ai_provider_response(
+                    request_id,
+                    provider_response_id=provider_result.response_id,
+                    model=provider_result.model,
+                    service_tier=provider_result.service_tier,
+                    provider_status=provider_result.status,
+                    usage=provider_result.usage.as_dict(),
+                    cost_micro_usd=response_cost,
+                    latency_ms=latency_ms,
+                    expected_model=self.settings.model,
+                    expected_service_tier=self.settings.service_tier,
+                    retrospective_breaker_micro_usd=self.settings.retrospective_breaker_micro_usd_per_response,
+                )
+            except Exception as storage_error:
+                self.metering_journal.append(
+                    {**telemetry, "error_code": "provider_telemetry_storage_failure"}
+                )
+                try:
+                    self.store.open_ai_breaker(
+                        reason="provider_telemetry_storage_failure"
+                    )
+                except Exception:
+                    pass
+                raise AIUsageRecoveryError(
+                    "Provider telemetry was journaled after database failure"
+                ) from storage_error
+            if provider_result.model != self.settings.model:
+                raise AIProviderError("OpenAI returned an unapproved model")
+            if provider_result.service_tier != self.settings.service_tier:
+                raise AIProviderError("OpenAI returned an unapproved service tier")
+            if provider_result.status != "completed" or not provider_result.output_text:
+                raise AIProviderError("OpenAI vocabulary extraction did not complete")
+            try:
+                payload = json.loads(provider_result.output_text)
+            except json.JSONDecodeError as exc:
+                raise AIProviderError("OpenAI returned invalid vocabulary JSON") from exc
+            try:
+                entries = validate_extracted_vocabulary(
+                    payload, source_kind=source_kind
+                )
+            except ValueError as exc:
+                raise AIProviderError("OpenAI returned invalid vocabulary entries") from exc
+            settlement_started = True
+            self.store.complete_ai_usage(
+                request_id,
+                billed_credits=charge_credits,
+                provider_response_id=provider_result.response_id,
+                model=provider_result.model,
+                usage=provider_result.usage.as_dict(),
+                cost_micro_usd=response_cost,
+                latency_ms=latency_ms,
+                returned_service_tier=provider_result.service_tier,
+                provider_status=provider_result.status,
+            )
+            return entries
+        except BaseException as exc:
+            if settlement_started:
+                try:
+                    self.store.open_ai_breaker(reason="ai_settlement_storage_failure")
+                except Exception:
+                    pass
+            try:
+                released = self.store.fail_ai_usage(
+                    request_id,
+                    error_code=type(exc).__name__,
+                    open_breaker_reason=(
+                        "provider_attempt_outcome_unknown"
+                        if provider_attempt_started and provider_result is None
+                        else None
+                    ),
+                )
+            except Exception as recovery_error:
+                raise AIUsageRecoveryError(
+                    "AI vocabulary request reservation could not be released"
+                ) from recovery_error
+            if not released:
+                raise AIUsageRecoveryError(
+                    "AI vocabulary request reservation state is unknown"
                 ) from exc
             raise
 

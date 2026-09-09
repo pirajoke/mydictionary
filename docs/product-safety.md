@@ -58,8 +58,10 @@ limited to 20 turns per learner, cleared when AI consent is revoked, and require
 a current AI-processing consent version.
 
 The `/privacy` flow erases learning progress, product analytics, detailed AI
-usage, optional Mirror dialogue turns, imports, rate-limit state, and Telegram
-profile fields. It also resets the learner's Mirror style. It blocks the account
+usage, optional Mirror dialogue turns, learner-owned vocabulary entries,
+imports, rate-limit state, and Telegram profile fields. Uploaded photos, PDFs,
+audio, and extracted previews are never persisted by the custom-vocabulary
+flow. The privacy flow also resets the learner's Mirror style. It blocks the account
 and records a pseudonymous operation reference. Billing, credit ledger, refund,
 subscription, and administrator audit records remain available for financial
 reconciliation, refunds, and fraud review. This behavior is a product contract,

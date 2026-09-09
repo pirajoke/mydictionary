@@ -86,6 +86,14 @@ from mydictionary.content import (
     speech_text,
     target_text,
 )
+from mydictionary.custom_vocabulary import (
+    MAX_UPLOAD_BYTES as CUSTOM_VOCABULARY_MAX_UPLOAD_BYTES,
+    CustomVocabularyCandidate,
+    build_multimodal_input,
+    parse_pasted_vocabulary,
+    spoken_vocabulary_payload,
+    text_enrichment_payload,
+)
 from mydictionary.dictionary import REDISTRIBUTABLE_PACK_IDS
 from mydictionary.config import mirror_voice_output_enabled
 from mydictionary.legacy import import_legacy_user
@@ -308,6 +316,10 @@ PENDING_AI_TUTOR_KEY = "pending_ai_tutor"
 PENDING_AI_TUTOR_TTL_SECONDS = 10 * 60
 PENDING_DICTIONARY_LOOKUP_KEY = "pending_dictionary_lookup"
 DICTIONARY_LOOKUP_TTL_SECONDS = 10 * 60
+PENDING_CUSTOM_VOCABULARY_KEY = "pending_custom_vocabulary"
+CUSTOM_VOCABULARY_PREVIEW_KEY = "custom_vocabulary_preview"
+CUSTOM_VOCABULARY_PRACTICE_KEY = "custom_vocabulary_practice"
+CUSTOM_VOCABULARY_TTL_SECONDS = 10 * 60
 AI_THINKING_EMOJI_INDEX_KEY = "ai_thinking_emoji_index"
 AI_THINKING_EMOJIS = ("⚡", "🦊")
 AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS = {
@@ -1731,6 +1743,8 @@ def miniapp_start_action(payload: str | None) -> str | None:
         "settings",
         "privacy",
         "help",
+        "add_words",
+        "practice_custom",
     }:
         return action
     if action.startswith("buy_"):
@@ -1782,6 +1796,8 @@ async def route_miniapp_start_action(
         "settings": cmd_settings,
         "privacy": cmd_privacy,
         "help": cmd_help,
+        "add_words": cmd_add_words,
+        "practice_custom": cmd_custom_practice,
     }
     selected_product = action.split(":", 1)[1] if action.startswith("buy:") else None
     handler_action = "buy" if selected_product is not None else action
@@ -4012,6 +4028,638 @@ async def process_voice_translation(
     )
 
 
+def _active_custom_vocabulary_state(
+    context: ContextTypes.DEFAULT_TYPE,
+) -> MutableMapping[str, Any] | None:
+    user_data = getattr(context, "user_data", None)
+    if not isinstance(user_data, MutableMapping):
+        return None
+    state = user_data.get(PENDING_CUSTOM_VOCABULARY_KEY)
+    if not isinstance(state, MutableMapping):
+        return None
+    try:
+        expires_at = int(state.get("expires_at", 0))
+    except (TypeError, ValueError):
+        expires_at = 0
+    if expires_at < int(time.time()):
+        user_data.pop(PENDING_CUSTOM_VOCABULARY_KEY, None)
+        user_data.pop(CUSTOM_VOCABULARY_PREVIEW_KEY, None)
+        return None
+    return state
+
+
+def _custom_vocabulary_preview_text(
+    entries: tuple[CustomVocabularyCandidate, ...], *, locale: str
+) -> str:
+    header = translate("custom_vocab_preview_title", locale, count=len(entries))
+    lines = [header, ""]
+    for index, entry in enumerate(entries, 1):
+        transcription = f" {entry.transcription}" if entry.transcription else ""
+        row = f"{index}. {entry.target}{transcription} — {entry.meaning}"
+        if len("\n".join(lines + [row])) > 3500:
+            lines.append(translate("custom_vocab_preview_more", locale, count=len(entries) - index + 1))
+            break
+        lines.append(row)
+    lines.extend(["", translate("custom_vocab_preview_confirm", locale)])
+    return "\n".join(lines)
+
+
+async def _show_custom_vocabulary_preview(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    entries: tuple[CustomVocabularyCandidate, ...],
+    source_kind: str,
+    locale: str,
+) -> None:
+    state = _active_custom_vocabulary_state(context)
+    if state is None:
+        await message.reply_text(translate("custom_vocab_stale", locale))
+        return
+    token = secrets.token_urlsafe(6)
+    preview = {
+        "token": token,
+        "expires_at": int(time.time()) + CUSTOM_VOCABULARY_TTL_SECONDS,
+        "target_language": str(state["target_language"]),
+        "meaning_language": str(state["meaning_language"]),
+        "entries": [
+            {
+                "target": entry.target,
+                "meaning": entry.meaning,
+                "transcription": entry.transcription,
+                "source_kind": source_kind,
+            }
+            for entry in entries
+        ],
+    }
+    context.user_data[CUSTOM_VOCABULARY_PREVIEW_KEY] = preview
+    await message.reply_text(
+        _custom_vocabulary_preview_text(entries, locale=locale),
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        translate("custom_vocab_save", locale, count=len(entries)),
+                        callback_data=f"custom-import:save:{token}",
+                        style=KeyboardButtonStyle.SUCCESS,
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        translate("custom_vocab_cancel", locale),
+                        callback_data="custom-import:cancel",
+                    )
+                ],
+            ]
+        ),
+    )
+
+
+async def _download_custom_vocabulary_file(
+    context: ContextTypes.DEFAULT_TYPE, descriptor: Mapping[str, Any]
+) -> bytes:
+    telegram_file = await context.bot.get_file(str(descriptor["file_id"]))
+    downloaded = await telegram_file.download_as_bytearray()
+    if not downloaded or len(downloaded) > CUSTOM_VOCABULARY_MAX_UPLOAD_BYTES:
+        raise ValueError("Custom vocabulary upload is outside allowed limits")
+    return bytes(downloaded)
+
+
+async def _process_custom_vocabulary_source(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    user_id: int,
+    locale: str,
+) -> None:
+    state = _active_custom_vocabulary_state(context)
+    if state is None:
+        await message.reply_text(translate("custom_vocab_stale", locale))
+        return
+    descriptor = state.get("pending_source")
+    if not isinstance(descriptor, Mapping):
+        await message.reply_text(translate("custom_vocab_stale", locale))
+        return
+    source_kind = str(descriptor.get("kind") or "")
+    if source_kind not in {"text", "photo", "pdf", "voice"}:
+        await message.reply_text(translate("custom_vocab_media_invalid", locale))
+        return
+    target_language = str(state["target_language"])
+    meaning_language = str(state["meaning_language"])
+
+    parsed: tuple[CustomVocabularyCandidate, ...] | None = None
+    if source_kind == "text":
+        parsed = parse_pasted_vocabulary(str(descriptor.get("text") or ""))
+        if all(entry.meaning for entry in parsed):
+            state.pop("pending_source", None)
+            await _show_custom_vocabulary_preview(
+                message,
+                context,
+                entries=parsed,
+                source_kind="text",
+                locale=locale,
+            )
+            return
+
+    if not AI_SETTINGS.enabled:
+        await message.reply_text(translate("custom_vocab_ai_needed", locale))
+        return
+    consent_version = str(AI_SETTINGS.consent_version or "")
+    if not consent_version or not get_store().has_consent(
+        user_id,
+        consent_type="ai_processing",
+        document_version=consent_version,
+    ):
+        await request_ai_processing_consent(
+            message,
+            context,
+            request_kind="custom_vocabulary",
+            locale=locale,
+        )
+        return
+
+    if source_kind == "voice":
+        if not VOICE_SETTINGS.enabled:
+            await message.reply_text(translate("custom_vocab_voice_unavailable", locale))
+            return
+        if not get_store().has_consent(
+            user_id,
+            consent_type="voice_processing",
+            document_version=VOICE_SETTINGS.consent_version,
+        ):
+            await request_voice_processing_consent(
+                message, context, mode="assistant", locale=locale
+            )
+            return
+
+    thinking_message = None
+
+    async def start_thinking() -> None:
+        nonlocal thinking_message
+        if thinking_message is None:
+            thinking_message = await message.reply_text(
+                next_ai_thinking_emoji(context.user_data)
+            )
+
+    try:
+        if source_kind == "text":
+            input_content = text_enrichment_payload(
+                parsed or (),
+                target_language=target_language,
+                meaning_language=meaning_language,
+            )
+        elif source_kind == "voice":
+            audio = await _download_custom_vocabulary_file(context, descriptor)
+            transcribed = await get_voice_tutor_service().transcribe_message(
+                user_id=user_id,
+                audio=audio,
+                duration_seconds=int(descriptor.get("duration") or 0),
+            )
+            input_content = spoken_vocabulary_payload(
+                transcribed.transcript,
+                target_language=target_language,
+                meaning_language=meaning_language,
+            )
+        else:
+            content = await _download_custom_vocabulary_file(context, descriptor)
+            input_content = build_multimodal_input(
+                source_kind=source_kind,
+                content=content,
+                mime_type=str(descriptor.get("mime_type") or ""),
+                filename=str(descriptor.get("filename") or ""),
+                target_language=target_language,
+                meaning_language=meaning_language,
+            )
+        entries = await get_ai_tutor_service().import_custom_vocabulary(
+            user_id=user_id,
+            input_content=input_content,
+            source_kind=source_kind,
+            on_provider_start=start_thinking,
+        )
+    except AICreditExhausted:
+        await send_ai_credit_paywall(
+            message, context, user_id=user_id, locale=locale
+        )
+        return
+    except AIQuotaExceeded:
+        await message.reply_text(translate("ai_unavailable_no_charge", locale))
+        return
+    except (AIConfigurationError, AIProviderError, AIUsageRecoveryError):
+        logger.warning("Custom vocabulary AI unavailable", exc_info=True)
+        await message.reply_text(translate("custom_vocab_failed", locale))
+        return
+    except (TelegramError, VoiceProviderError, VoiceConfigurationError, ValueError) as exc:
+        logger.warning(
+            "Custom vocabulary input rejected: error_type=%s", type(exc).__name__
+        )
+        await message.reply_text(translate("custom_vocab_media_invalid", locale))
+        return
+    finally:
+        delete_thinking = getattr(thinking_message, "delete", None)
+        if callable(delete_thinking):
+            try:
+                await delete_thinking()
+            except Exception:
+                pass
+    state.pop("pending_source", None)
+    await _show_custom_vocabulary_preview(
+        message,
+        context,
+        entries=entries,
+        source_kind=source_kind,
+        locale=locale,
+    )
+
+
+@auth
+async def cmd_add_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    runtime = _ACTIVE_RUNTIME.get()
+    profile = runtime.store.product_profile(runtime.user_id)
+    target_language = str(profile.get("active_lang") or "en")
+    meaning_language = str(profile.get("native_language") or "ru")
+    context.user_data.pop(PENDING_DICTIONARY_LOOKUP_KEY, None)
+    context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
+    context.user_data[PENDING_CUSTOM_VOCABULARY_KEY] = {
+        "target_language": target_language,
+        "meaning_language": meaning_language,
+        "expires_at": int(time.time()) + CUSTOM_VOCABULARY_TTL_SECONDS,
+    }
+    context.user_data.pop(CUSTOM_VOCABULARY_PREVIEW_KEY, None)
+    record_product_event(
+        "custom_vocabulary_started",
+        properties={"language": target_language},
+    )
+    await update.effective_message.reply_text(
+        translate(
+            "custom_vocab_prompt",
+            interface_locale_for_update(update),
+            language=language_name(target_language, interface_locale_for_update(update)),
+        ),
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton(
+                translate("custom_vocab_cancel", interface_locale_for_update(update)),
+                callback_data="custom-import:cancel",
+            )]]
+        ),
+    )
+
+
+async def _handle_custom_vocabulary_text(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    locale = interface_locale_for_update(update)
+    state = _active_custom_vocabulary_state(context)
+    if state is None:
+        await update.message.reply_text(translate("custom_vocab_stale", locale))
+        return
+    try:
+        parse_pasted_vocabulary(str(update.message.text or ""))
+    except ValueError:
+        await update.message.reply_text(translate("custom_vocab_invalid_text", locale))
+        return
+    state["pending_source"] = {
+        "kind": "text",
+        "text": str(update.message.text or ""),
+    }
+    await _process_custom_vocabulary_source(
+        update.message,
+        context,
+        user_id=int(update.effective_user.id),
+        locale=locale,
+    )
+
+
+@auth
+async def custom_vocabulary_media_handler(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    state = _active_custom_vocabulary_state(context)
+    locale = interface_locale_for_update(update)
+    if state is None:
+        return
+    message = update.message
+    descriptor: dict[str, Any]
+    photos = getattr(message, "photo", None)
+    document = getattr(message, "document", None)
+    if photos:
+        photo = photos[-1]
+        descriptor = {
+            "kind": "photo",
+            "file_id": photo.file_id,
+            "file_size": int(getattr(photo, "file_size", 0) or 0),
+            "mime_type": "image/jpeg",
+            "filename": "vocabulary.jpg",
+        }
+    elif document is not None and str(getattr(document, "mime_type", "")) == "application/pdf":
+        descriptor = {
+            "kind": "pdf",
+            "file_id": document.file_id,
+            "file_size": int(getattr(document, "file_size", 0) or 0),
+            "mime_type": "application/pdf",
+            "filename": str(getattr(document, "file_name", "") or "words.pdf"),
+        }
+    else:
+        await message.reply_text(translate("custom_vocab_media_invalid", locale))
+        return
+    if descriptor["file_size"] > CUSTOM_VOCABULARY_MAX_UPLOAD_BYTES:
+        await message.reply_text(translate("custom_vocab_media_invalid", locale))
+        return
+    state["pending_source"] = descriptor
+    await _process_custom_vocabulary_source(
+        message,
+        context,
+        user_id=int(update.effective_user.id),
+        locale=locale,
+    )
+
+
+async def _handle_custom_vocabulary_voice(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> bool:
+    state = _active_custom_vocabulary_state(context)
+    if state is None:
+        return False
+    locale = interface_locale_for_update(update)
+    voice = update.message.voice
+    if not VOICE_SETTINGS.enabled or not voice_note_within_limits(voice, VOICE_SETTINGS):
+        await update.message.reply_text(translate("custom_vocab_voice_unavailable", locale))
+        return True
+    state["pending_source"] = {
+        "kind": "voice",
+        "file_id": voice.file_id,
+        "file_size": int(getattr(voice, "file_size", 0) or 0),
+        "duration": int(getattr(voice, "duration", 0) or 0),
+        "mime_type": "audio/ogg",
+        "filename": "vocabulary.ogg",
+    }
+    await _process_custom_vocabulary_source(
+        update.message,
+        context,
+        user_id=int(update.effective_user.id),
+        locale=locale,
+    )
+    return True
+
+
+@auth
+async def custom_import_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    locale = interface_locale_for_update(update)
+    parts = str(query.data or "").split(":")
+    if len(parts) >= 2 and parts[1] == "cancel":
+        context.user_data.pop(PENDING_CUSTOM_VOCABULARY_KEY, None)
+        context.user_data.pop(CUSTOM_VOCABULARY_PREVIEW_KEY, None)
+        await query.answer(translate("custom_vocab_cancelled", locale))
+        await query.edit_message_reply_markup(reply_markup=None)
+        return
+    preview = context.user_data.get(CUSTOM_VOCABULARY_PREVIEW_KEY)
+    state = _active_custom_vocabulary_state(context)
+    try:
+        valid = (
+            len(parts) == 3
+            and parts[1] == "save"
+            and isinstance(preview, Mapping)
+            and secrets.compare_digest(str(preview.get("token") or ""), parts[2])
+            and int(preview.get("expires_at", 0)) >= int(time.time())
+            and state is not None
+        )
+    except (TypeError, ValueError):
+        valid = False
+    if not valid:
+        await query.answer(translate("custom_vocab_stale", locale), show_alert=True)
+        return
+    profile = get_store().product_profile(int(update.effective_user.id))
+    if (
+        str(profile.get("active_lang") or "") != str(preview["target_language"])
+        or str(profile.get("native_language") or "") != str(preview["meaning_language"])
+    ):
+        context.user_data.pop(CUSTOM_VOCABULARY_PREVIEW_KEY, None)
+        await query.answer(
+            translate("custom_vocab_language_changed", locale), show_alert=True
+        )
+        return
+    entries = tuple(
+        CustomVocabularyCandidate(
+            str(raw["target"]),
+            str(raw["meaning"]),
+            str(raw.get("transcription") or ""),
+            str(raw["source_kind"]),
+        )
+        for raw in preview["entries"]
+    )
+    result = get_store().upsert_custom_vocabulary(
+        int(update.effective_user.id),
+        target_language=str(preview["target_language"]),
+        meaning_language=str(preview["meaning_language"]),
+        entries=entries,
+    )
+    context.user_data.pop(CUSTOM_VOCABULARY_PREVIEW_KEY, None)
+    context.user_data.pop(PENDING_CUSTOM_VOCABULARY_KEY, None)
+    record_product_event(
+        "custom_vocabulary_saved",
+        properties={
+            "language": str(preview["target_language"]),
+            "word_count": len(entries),
+        },
+    )
+    await query.answer(translate("custom_vocab_saved_short", locale))
+    await query.edit_message_reply_markup(reply_markup=None)
+    await query.message.reply_text(
+        translate(
+            "custom_vocab_saved",
+            locale,
+            inserted=result["inserted"],
+            updated=result["updated"],
+            total=result["total"],
+        ),
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton(
+                translate("custom_vocab_practice", locale),
+                callback_data="custom-practice:start",
+                style=KeyboardButtonStyle.SUCCESS,
+            )]],
+        ),
+    )
+
+
+async def _send_custom_vocabulary_card(
+    message, context: ContextTypes.DEFAULT_TYPE, *, locale: str
+) -> None:
+    state = context.user_data.get(CUSTOM_VOCABULARY_PRACTICE_KEY)
+    if not isinstance(state, Mapping):
+        await message.reply_text(translate("custom_vocab_stale", locale))
+        return
+    entries = state.get("entries")
+    position = int(state.get("position", 0))
+    if not isinstance(entries, list) or position >= len(entries):
+        context.user_data.pop(CUSTOM_VOCABULARY_PRACTICE_KEY, None)
+        await message.reply_text(translate("custom_vocab_practice_done", locale))
+        return
+    word = entries[position]
+    transcription = f"\n{word['transcription']}" if word.get("transcription") else ""
+    await message.reply_text(
+        translate(
+            "custom_vocab_card_front",
+            locale,
+            position=position + 1,
+            total=len(entries),
+            target=word["target"],
+            transcription=transcription,
+        ),
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(
+                    translate("custom_vocab_reveal", locale),
+                    callback_data=f"custom-practice:show:{word['entry_id']}",
+                )],
+                [InlineKeyboardButton(
+                    translate("custom_vocab_stop", locale),
+                    callback_data="custom-practice:stop",
+                )],
+            ]
+        ),
+    )
+
+
+@auth
+async def cmd_custom_practice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    runtime = _ACTIVE_RUNTIME.get()
+    profile = runtime.store.product_profile(runtime.user_id)
+    language = str(profile.get("active_lang") or "en")
+    meaning_language = str(profile.get("native_language") or "ru")
+    entries = runtime.store.custom_vocabulary_practice(
+        runtime.user_id,
+        target_language=language,
+        meaning_language=meaning_language,
+        limit=max(1, int(profile.get("daily_word_goal") or 10)),
+    )
+    locale = interface_locale_for_update(update)
+    if not entries:
+        await update.effective_message.reply_text(
+            translate("custom_vocab_none", locale),
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton(
+                    translate("custom_vocab_add", locale),
+                    callback_data="custom-practice:add",
+                )]]
+            ),
+        )
+        return
+    context.user_data[CUSTOM_VOCABULARY_PRACTICE_KEY] = {
+        "entries": entries,
+        "position": 0,
+        "target_language": language,
+        "meaning_language": meaning_language,
+        "expires_at": int(time.time()) + 30 * 60,
+    }
+    record_product_event(
+        "custom_vocabulary_practice_started",
+        properties={"language": language, "word_count": len(entries)},
+    )
+    await _send_custom_vocabulary_card(
+        update.effective_message, context, locale=locale
+    )
+
+
+@auth
+async def custom_practice_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    locale = interface_locale_for_update(update)
+    parts = str(query.data or "").split(":")
+    action = parts[1] if len(parts) > 1 else ""
+    if action == "add":
+        await query.answer()
+        await query.edit_message_reply_markup(reply_markup=None)
+        await cmd_add_words.__wrapped__(update, context)
+        return
+    if action == "start":
+        await query.answer()
+        await query.edit_message_reply_markup(reply_markup=None)
+        await cmd_custom_practice.__wrapped__(update, context)
+        return
+    if action == "stop":
+        context.user_data.pop(CUSTOM_VOCABULARY_PRACTICE_KEY, None)
+        await query.answer(translate("custom_vocab_cancelled", locale))
+        await query.edit_message_reply_markup(reply_markup=None)
+        return
+    state = context.user_data.get(CUSTOM_VOCABULARY_PRACTICE_KEY)
+    if (
+        not isinstance(state, MutableMapping)
+        or int(state.get("expires_at", 0) or 0) < int(time.time())
+    ):
+        context.user_data.pop(CUSTOM_VOCABULARY_PRACTICE_KEY, None)
+        await query.answer(translate("custom_vocab_stale", locale), show_alert=True)
+        return
+    store = get_store()
+    profile = store.product_profile(int(update.effective_user.id))
+    if (
+        str(profile.get("active_lang") or "") != str(state.get("target_language") or "")
+        or str(profile.get("native_language") or "")
+        != str(state.get("meaning_language") or "")
+    ):
+        context.user_data.pop(CUSTOM_VOCABULARY_PRACTICE_KEY, None)
+        await query.answer(
+            translate("custom_vocab_language_changed", locale), show_alert=True
+        )
+        return
+    try:
+        entries = state["entries"]
+        position = int(state["position"])
+        word = entries[position]
+    except (IndexError, KeyError, TypeError, ValueError):
+        await query.answer(translate("custom_vocab_stale", locale), show_alert=True)
+        return
+    if len(parts) != 3 or parts[2] != str(word["entry_id"]):
+        await query.answer(translate("custom_vocab_stale", locale), show_alert=True)
+        return
+    if action == "show":
+        encoded = quote(str(word["target"]).replace(" ", "_"), safe="")
+        await query.answer()
+        await query.edit_message_text(
+            translate(
+                "custom_vocab_card_back",
+                locale,
+                position=position + 1,
+                total=len(entries),
+                target=word["target"],
+                transcription=(f"\n{word['transcription']}" if word.get("transcription") else ""),
+                meaning=word["meaning"],
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            translate("custom_vocab_dont_know", locale),
+                            callback_data=f"custom-practice:wrong:{word['entry_id']}",
+                        ),
+                        InlineKeyboardButton(
+                            translate("custom_vocab_know", locale),
+                            callback_data=f"custom-practice:known:{word['entry_id']}",
+                            style=KeyboardButtonStyle.SUCCESS,
+                        ),
+                    ],
+                    [InlineKeyboardButton(
+                        translate("learning_native_pronunciation", locale),
+                        url=f"https://forvo.com/word/{encoded}/#{state['target_language']}",
+                    )],
+                ]
+            ),
+        )
+        return
+    if action not in {"known", "wrong"}:
+        await query.answer(translate("custom_vocab_stale", locale), show_alert=True)
+        return
+    store.rate_custom_vocabulary(
+        int(update.effective_user.id),
+        entry_id=str(word["entry_id"]),
+        knew=action == "known",
+    )
+    state["position"] = position + 1
+    await query.answer()
+    await query.edit_message_reply_markup(reply_markup=None)
+    await _send_custom_vocabulary_card(query.message, context, locale=locale)
+
+
 @auth
 async def voice_message_handler(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -4025,6 +4673,9 @@ async def voice_message_handler(
         await update.message.reply_text(
             translate("voice_access_unavailable", locale)
         )
+        return
+
+    if await _handle_custom_vocabulary_voice(update, context):
         return
 
     voice = update.message.voice
@@ -4641,6 +5292,10 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
             await _reply_dictionary_lookup(update.message, question, locale=locale)
             return
 
+    if _active_custom_vocabulary_state(context) is not None and question:
+        await _handle_custom_vocabulary_text(update, context)
+        return
+
     pending = context.user_data.get(PENDING_AI_TUTOR_KEY)
     if isinstance(pending, Mapping) and question:
         context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
@@ -5151,6 +5806,7 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "learning_companion",
             "mirror_chat",
             "voice_assistant",
+            "custom_vocabulary",
         }
         or pending.get("task_kind") not in {None, "progress_review"}
         or (
@@ -5176,6 +5832,14 @@ async def ai_consent_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if pending["request_kind"] == "voice_assistant":
         await query.message.reply_text(
             translate("ai_voice_resend", locale)
+        )
+        return
+    if pending["request_kind"] == "custom_vocabulary":
+        await _process_custom_vocabulary_source(
+            query.message,
+            context,
+            user_id=user_id,
+            locale=locale,
         )
         return
     question = str(pending.get("question") or "").strip()
@@ -8556,6 +9220,7 @@ async def manual_polling():
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("learn", cmd_learn))
     app.add_handler(CommandHandler("dictionary", cmd_dictionary))
+    app.add_handler(CommandHandler("mywords", cmd_add_words))
     app.add_handler(CommandHandler("smart", cmd_smart))
     app.add_handler(CommandHandler("poll", cmd_poll))
     app.add_handler(CommandHandler("lang", cmd_lang))
@@ -8575,6 +9240,9 @@ async def manual_polling():
     app.add_handler(
         MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler)
     )
+    app.add_handler(MessageHandler(filters.PHOTO, custom_vocabulary_media_handler))
+    app.add_handler(MessageHandler(filters.Document.PDF, custom_vocabulary_media_handler))
+    app.add_handler(MessageHandler(filters.Document.ALL, custom_vocabulary_media_handler))
     app.add_handler(MessageHandler(filters.VOICE, voice_message_handler))
 
     # Welcome menu callbacks
@@ -8612,6 +9280,8 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(privacy_cb, pattern=r"^privacy:"))
     app.add_handler(CallbackQueryHandler(settings_cb, pattern=r"^settings:"))
     app.add_handler(CallbackQueryHandler(mirror_feedback_cb, pattern=r"^mirrorfb:"))
+    app.add_handler(CallbackQueryHandler(custom_import_cb, pattern=r"^custom-import:"))
+    app.add_handler(CallbackQueryHandler(custom_practice_cb, pattern=r"^custom-practice:"))
 
     # Language switch callback
     app.add_handler(CallbackQueryHandler(lang_switch_cb, pattern=r"^lang:"))
