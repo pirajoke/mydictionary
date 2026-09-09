@@ -550,6 +550,23 @@ for _locale, (_words, _open, _hint, _download, _tracked) in _DICTIONARY_COMPANIO
         dictionary_tracked=_tracked,
     )
 
+_CUSTOM_VOCABULARY_COPY = {
+    "en": ("Your vocabulary", "Learn the words you actually need", "Paste a list, send a photo or PDF, or dictate it to Lexi.", "Add my words", "Practice my words", "My saved words", "No custom words yet. Add a list and Lexi will prepare it for practice.", "No transcription"),
+    "fr": ("Votre vocabulaire", "Apprenez les mots dont vous avez besoin", "Collez une liste, envoyez une photo ou un PDF, ou dictez-la à Lexi.", "Ajouter mes mots", "Étudier mes mots", "Mes mots enregistrés", "Aucun mot personnel. Ajoutez une liste et Lexi la préparera.", "Sans transcription"),
+    "de": ("Dein Wortschatz", "Lerne die Wörter, die du wirklich brauchst", "Füge eine Liste ein, sende ein Foto oder PDF oder diktiere sie Lexi.", "Eigene Wörter", "Eigene Wörter üben", "Gespeicherte Wörter", "Noch keine eigenen Wörter. Füge eine Liste hinzu.", "Keine Transkription"),
+    "ja": ("自分の単語", "本当に必要な単語を学ぶ", "リスト、写真、PDF、または音声をLexiに送れます。", "単語を追加", "自分の単語を練習", "保存した単語", "自分の単語はまだありません。リストを追加してください。", "発音表記なし"),
+    "ar": ("مفرداتك", "تعلّم الكلمات التي تحتاجها فعلاً", "الصق قائمة أو أرسل صورة أو PDF أو أمْلِها على Lexi.", "إضافة كلماتي", "تدريب كلماتي", "كلماتي المحفوظة", "لا توجد كلمات خاصة بعد. أضف قائمة ليجهزها Lexi.", "دون كتابة صوتية"),
+    "zh": ("你的词汇", "只学你真正需要的单词", "粘贴词表、发送照片或 PDF，也可以口述给 Lexi。", "添加我的单词", "练习我的单词", "已保存的单词", "还没有自定义单词。添加列表后 Lexi 会整理好。", "无音标"),
+    "ru": ("Твой словарь", "Учи именно те слова, которые нужны тебе", "Вставь список, пришли фото или PDF либо надиктуй его Lexi.", "Добавить мои слова", "Учить мои слова", "Мои сохранённые слова", "Своих слов пока нет. Добавь список — Lexi подготовит его к изучению.", "Без транскрипции"),
+    "es": ("Tu vocabulario", "Aprende las palabras que de verdad necesitas", "Pega una lista, envía una foto o PDF, o díctasela a Lexi.", "Añadir mis palabras", "Practicar mis palabras", "Mis palabras guardadas", "Aún no hay palabras propias. Añade una lista y Lexi la preparará.", "Sin transcripción"),
+}
+for _locale, _values in _CUSTOM_VOCABULARY_COPY.items():
+    MINIAPP_COPY[_locale].update(zip((
+        "custom_words_kicker", "custom_words_title", "custom_words_hint",
+        "custom_words_add", "custom_words_practice", "custom_words_saved",
+        "custom_words_empty", "custom_words_no_transcription",
+    ), _values))
+
 _LANGUAGE_SWITCH_COPY = {
     "en": ("Switching dictionary…", "Could not switch dictionary.", "Try again"),
     "fr": ("Changement de dictionnaire…", "Impossible de changer de dictionnaire.", "Réessayer"),
@@ -1062,6 +1079,30 @@ def build_bootstrap(
     seen_languages: set[str] = set()
     role = str(access.get("role") or product.get("role") or "learner")
     meaning_language = str(product.get("native_language") or "ru")
+    custom_words: list[dict[str, Any]] = []
+    custom_loader = getattr(store, "list_custom_vocabulary", None)
+    if callable(custom_loader):
+        try:
+            candidate = custom_loader(
+                int(user_id),
+                target_language=active_language,
+                meaning_language=meaning_language,
+                limit=60,
+            )
+        except (AttributeError, PermissionError, TypeError, ValueError):
+            candidate = []
+        if isinstance(candidate, list):
+            custom_words = [
+                {
+                    "target": _bounded_text(word.get("target"), 120),
+                    "meaning": _bounded_text(word.get("meaning"), 240),
+                    "transcription": _bounded_text(word.get("transcription"), 160),
+                    "learned": bool(word.get("learned")),
+                    "due": bool(word.get("due")),
+                }
+                for word in candidate
+                if isinstance(word, Mapping)
+            ][:60]
     for pack in catalog.compatible_packs(meaning_language, role):
         if pack.target_language in seen_languages:
             continue
@@ -1160,6 +1201,7 @@ def build_bootstrap(
             "calendar": calendar,
         },
         "words": words,
+        "custom_words": custom_words,
         "credits": {
             "available": max(0, int(usage.get("available_credits") or 0)),
             "reserved": max(0, int(usage.get("reserved_credits") or 0)),
@@ -1202,5 +1244,7 @@ def build_bootstrap(
             "privacy": "miniapp_privacy",
             "help": "miniapp_help",
             "share": "share",
+            "add_words": "miniapp_add_words",
+            "practice_custom": "miniapp_practice_custom",
         },
     }

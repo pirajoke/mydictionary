@@ -325,7 +325,19 @@ class MiniAppBootstrapContractTest(unittest.TestCase):
         self.assertFalse(payload["features"]["stars_checkout"])
         self.assertEqual(
             set(payload["actions"]),
-            {"learn", "continue", "ai", "buy", "lang", "settings", "privacy", "help", "share"},
+            {
+                "learn",
+                "continue",
+                "ai",
+                "buy",
+                "lang",
+                "settings",
+                "privacy",
+                "help",
+                "share",
+                "add_words",
+                "practice_custom",
+            },
         )
         for key in SENSITIVE_KEYS:
             with self.subTest(key=key):

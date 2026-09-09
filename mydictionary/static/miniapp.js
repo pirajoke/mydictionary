@@ -231,6 +231,31 @@
     node("word-list").append(card);
   }
 
+  function addCustomWord(word, copy) {
+    const card = document.createElement("article");
+    card.className = "word-card custom-word-card dashboard-row";
+    const main = document.createElement("div");
+    main.className = "word-card-main";
+    const header = document.createElement("header");
+    const title = document.createElement("h2");
+    text(title, word.target);
+    header.append(title);
+    if (word.due || word.learned) {
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      text(badge, word.due ? copy.word_review : copy.word_learned);
+      header.append(badge);
+    }
+    const transcription = document.createElement("small");
+    transcription.className = "custom-word-transcription";
+    text(transcription, word.transcription || copy.custom_words_no_transcription);
+    const meaning = document.createElement("p");
+    text(meaning, word.meaning);
+    main.append(header, transcription, meaning);
+    card.append(main);
+    node("custom-word-list").append(card);
+  }
+
   function addInterfaceLocaleSetting(container, data, copy) {
     const select = document.createElement("select");
     const status = document.createElement("span");
@@ -581,6 +606,12 @@
     );
     data.words.forEach((word) => addWord(word, copy));
     node("empty-words").hidden = data.words.length !== 0;
+
+    node("custom-word-list").replaceChildren();
+    const customWords = Array.isArray(data.custom_words) ? data.custom_words : [];
+    text(node("custom-word-count"), customWords.length);
+    customWords.forEach((word) => addCustomWord(word, copy));
+    node("empty-custom-words").hidden = customWords.length !== 0;
 
     text(node("wallet-available"), data.credits.available);
     node("credit-summary").replaceChildren(

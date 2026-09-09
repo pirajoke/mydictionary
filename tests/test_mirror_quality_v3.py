@@ -285,7 +285,7 @@ class MirrorPersistentContextContractTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0020_onboarding_version_v2")
+        self.assertEqual(revision, "0021_custom_vocabulary_v1")
 
     def test_ac_07_migration_upgrade_downgrade_roundtrip(self):
         self.store.close()

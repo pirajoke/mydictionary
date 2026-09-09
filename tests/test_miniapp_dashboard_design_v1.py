@@ -242,7 +242,10 @@ class MiniAppDashboardDesignV1ContractTest(unittest.TestCase):
 
         self.assertEqual(
             set(re.findall(r'data-action=["\']([^"\']+)["\']', self.html)),
-            {"continue", "share", "ai", "lang", "settings", "privacy"},
+            {
+                "continue", "share", "ai", "lang", "settings", "privacy",
+                "add_words", "practice_custom",
+            },
         )
         self.assertIn('aria-live="polite"', self.html)
         for key in ('"ArrowLeft"', '"ArrowRight"', '"Home"', '"End"'):

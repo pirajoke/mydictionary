@@ -117,6 +117,22 @@
           <h1 id="words-heading" data-i18n="words"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/lexi-section-words-v1.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
         </header>
+        <section id="custom-vocabulary-actions" class="custom-vocabulary-actions dashboard-section" aria-labelledby="custom-vocabulary-title">
+          <div class="custom-vocabulary-copy">
+            <span class="custom-vocabulary-kicker" data-i18n="custom_words_kicker"></span>
+            <h2 id="custom-vocabulary-title" data-i18n="custom_words_title"></h2>
+            <p data-i18n="custom_words_hint"></p>
+          </div>
+          <div class="custom-vocabulary-controls">
+            <button class="custom-vocabulary-add dashboard-action" type="button" data-action="add_words"><span aria-hidden="true">＋</span><span data-i18n="custom_words_add"></span></button>
+            <button class="custom-vocabulary-practice dashboard-action" type="button" data-action="practice_custom"><span aria-hidden="true">▶</span><span data-i18n="custom_words_practice"></span></button>
+          </div>
+        </section>
+        <section class="custom-vocabulary-library" aria-labelledby="custom-word-list-title">
+          <div class="custom-word-list-heading"><h2 id="custom-word-list-title" data-i18n="custom_words_saved"></h2><strong id="custom-word-count">0</strong></div>
+          <div id="custom-word-list" class="word-list dashboard-list"></div>
+          <p id="empty-custom-words" class="custom-words-empty" data-i18n="custom_words_empty"></p>
+        </section>
         <div class="dictionary-entry">
           <button class="primary-action dashboard-action" type="button" data-open-dictionary data-i18n="dictionary_open"></button>
           <button class="dashboard-action" type="button" data-download-dictionary data-i18n="dictionary_download"></button>

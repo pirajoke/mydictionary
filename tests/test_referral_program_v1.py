@@ -175,7 +175,7 @@ class ReferralProgramV1ContractTest(unittest.IsolatedAsyncioTestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0020_onboarding_version_v2")
+        self.assertEqual(revision, "0021_custom_vocabulary_v1")
 
         first_url, first_code = self.issue_invite()
         second_url, second_code = self.issue_invite()

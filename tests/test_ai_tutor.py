@@ -372,6 +372,36 @@ class StaticProvider:
             output_text=self.output_text,
         )
 
+    async def generate_custom_vocabulary(self, **_kwargs):
+        self.calls += 1
+        return ProviderResult(
+            answer=None,
+            response_id="provider-custom-vocabulary",
+            model=self.model,
+            usage=ProviderUsage(
+                input_tokens=100,
+                cached_input_tokens=0,
+                cache_write_tokens=0,
+                output_tokens=30,
+                reasoning_tokens=0,
+                total_tokens=130,
+            ),
+            service_tier=self.service_tier,
+            status=self.status,
+            output_text=json.dumps(
+                {
+                    "entries": [
+                        {
+                            "target": "viaje",
+                            "meaning": "поездка",
+                            "transcription": "/ˈbjaxe/",
+                        }
+                    ]
+                },
+                ensure_ascii=False,
+            ),
+        )
+
 
 class FailingProvider:
     async def generate(self, request):
@@ -445,6 +475,47 @@ class AITutorServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(usage["cost_is_estimate"])
         self.assertTrue(usage["provider_response_received"])
         self.assertTrue(usage["economics_snapshot_id"].startswith("test-ai-"))
+
+    async def test_custom_vocabulary_import_uses_same_credit_ledger(self):
+        service = AITutorService(
+            store=self.store,
+            provider=StaticProvider(),
+            settings=settings(self.temp_dir.name),
+        )
+
+        entries = await service.import_custom_vocabulary(
+            user_id=109,
+            input_content=[{"type": "input_text", "text": "viaje"}],
+            source_kind="text",
+        )
+
+        self.assertEqual(entries[0].target, "viaje")
+        summary = self.store.ai_usage_summary(109)
+        self.assertEqual(summary["spent_credits"], 1)
+        self.assertEqual(summary["reserved_credits"], 0)
+        with self.store.Session() as session:
+            usage = session.scalars(select(AIUsage)).one()
+        self.assertEqual(usage.action, "custom_vocabulary_import")
+        self.assertEqual(usage.status, "completed")
+
+    async def test_failed_custom_vocabulary_import_releases_credit(self):
+        service = AITutorService(
+            store=self.store,
+            provider=FailingProvider(),
+            settings=settings(self.temp_dir.name),
+        )
+
+        with self.assertRaises(AIConfigurationError):
+            await service.import_custom_vocabulary(
+                user_id=110,
+                input_content=[{"type": "input_text", "text": "viaje"}],
+                source_kind="text",
+            )
+
+        summary = self.store.ai_usage_summary(110)
+        self.assertEqual(summary["spent_credits"], 0)
+        self.assertEqual(summary["reserved_credits"], 0)
+        self.assertEqual(summary["failed_requests"], 1)
 
     async def test_admin_request_is_metered_without_changing_wallet(self):
         user_id = 199

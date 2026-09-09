@@ -37,6 +37,10 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from mydictionary.catalog import PACK_ID_RE
 from mydictionary.content import target_text, vocabulary_progress_id
+from mydictionary.custom_vocabulary import (
+    MAX_CUSTOM_WORDS_PER_LANGUAGE,
+    normalize_target,
+)
 
 
 PROFILE_FIELDS = (
@@ -69,6 +73,7 @@ WORD_PROGRESS_DEFAULTS = {
 }
 METERED_PROVIDER_ACTIONS = (
     "block_tutor",
+    "custom_vocabulary_import",
     "voice_transcription",
     "voice_translation",
 )
@@ -170,6 +175,46 @@ class WordProgress(Base):
     last_seen: Mapped[str | None] = mapped_column(String(64), nullable=True)
     interval: Mapped[int] = mapped_column(Integer, default=1)
     next_review: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class CustomVocabularyEntry(Base):
+    __tablename__ = "custom_vocabulary_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "telegram_user_id",
+            "target_language",
+            "meaning_language",
+            "normalized_target",
+            name="uq_custom_vocabulary_owner_language_target",
+        ),
+        CheckConstraint(
+            "source_kind IN ('text', 'photo', 'pdf', 'voice')",
+            name="ck_custom_vocabulary_source_kind",
+        ),
+    )
+
+    entry_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    target_language: Mapped[str] = mapped_column(String(16), nullable=False)
+    meaning_language: Mapped[str] = mapped_column(String(16), nullable=False)
+    normalized_target: Mapped[str] = mapped_column(String(120), nullable=False)
+    target: Mapped[str] = mapped_column(String(120), nullable=False)
+    meaning: Mapped[str] = mapped_column(String(240), nullable=False)
+    transcription: Mapped[str] = mapped_column(String(160), default="")
+    source_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    correct_count: Mapped[int] = mapped_column(Integer, default=0)
+    wrong_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_seen: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    interval: Mapped[int] = mapped_column(Integer, default=1)
+    next_review: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -2325,6 +2370,236 @@ class DatabaseStore:
                 }
                 for row in rows
             }
+
+    @staticmethod
+    def _custom_vocabulary_payload(
+        row: CustomVocabularyEntry, *, now: datetime | None = None
+    ) -> dict[str, Any]:
+        observed_at = now or utcnow()
+        due = False
+        if row.next_review:
+            try:
+                review_at = datetime.fromisoformat(row.next_review.replace("Z", "+00:00"))
+                if review_at.tzinfo is None:
+                    review_at = review_at.replace(tzinfo=timezone.utc)
+                due = review_at <= observed_at
+            except ValueError:
+                due = True
+        return {
+            "entry_id": row.entry_id,
+            "target_language": row.target_language,
+            "meaning_language": row.meaning_language,
+            "target": row.target,
+            "meaning": row.meaning,
+            "transcription": row.transcription,
+            "source_kind": row.source_kind,
+            "correct_count": int(row.correct_count or 0),
+            "wrong_count": int(row.wrong_count or 0),
+            "interval": max(1, int(row.interval or 1)),
+            "last_seen": row.last_seen,
+            "next_review": row.next_review,
+            "learned": int(row.correct_count or 0) >= 3,
+            "due": due,
+        }
+
+    def upsert_custom_vocabulary(
+        self,
+        user_id: int,
+        *,
+        target_language: str,
+        meaning_language: str,
+        entries: Any,
+    ) -> dict[str, int]:
+        """Persist one confirmed, bounded learner-owned vocabulary preview."""
+        target_language = str(target_language).strip().lower()
+        meaning_language = str(meaning_language).strip().lower()
+        if not target_language or len(target_language) > 16:
+            raise ValueError("Invalid target language")
+        if not meaning_language or len(meaning_language) > 16:
+            raise ValueError("Invalid meaning language")
+        candidates = tuple(entries)
+        if not 1 <= len(candidates) <= 40:
+            raise ValueError("Custom vocabulary import must contain 1-40 entries")
+        inserted = 0
+        updated = 0
+        with self.Session.begin() as session:
+            user = session.execute(
+                select(User)
+                .where(User.telegram_user_id == int(user_id))
+                .with_for_update()
+            ).scalar_one_or_none()
+            if (
+                user is None
+                or user.access_status != "active"
+                or user.privacy_status != "active"
+            ):
+                raise PermissionError("Custom vocabulary is unavailable")
+            existing_count = int(
+                session.scalar(
+                    select(func.count())
+                    .select_from(CustomVocabularyEntry)
+                    .where(
+                        CustomVocabularyEntry.telegram_user_id == int(user_id),
+                        CustomVocabularyEntry.target_language == target_language,
+                    )
+                )
+                or 0
+            )
+            seen_batch: set[str] = set()
+            for candidate in candidates:
+                target = " ".join(str(candidate.target).split())
+                meaning = " ".join(str(candidate.meaning).split())
+                transcription = " ".join(str(candidate.transcription).split())
+                source_kind = str(candidate.source_kind)
+                normalized = normalize_target(target)
+                if normalized in seen_batch:
+                    continue
+                seen_batch.add(normalized)
+                if not meaning or len(meaning) > 240 or len(transcription) > 160:
+                    raise ValueError("Custom vocabulary entry is incomplete")
+                if source_kind not in {"text", "photo", "pdf", "voice"}:
+                    raise ValueError("Invalid custom vocabulary source")
+                row = session.execute(
+                    select(CustomVocabularyEntry)
+                    .where(
+                        CustomVocabularyEntry.telegram_user_id == int(user_id),
+                        CustomVocabularyEntry.target_language == target_language,
+                        CustomVocabularyEntry.meaning_language == meaning_language,
+                        CustomVocabularyEntry.normalized_target == normalized,
+                    )
+                    .with_for_update()
+                ).scalar_one_or_none()
+                if row is None:
+                    if existing_count + inserted >= MAX_CUSTOM_WORDS_PER_LANGUAGE:
+                        raise ValueError("Custom vocabulary language limit reached")
+                    row = CustomVocabularyEntry(
+                        entry_id=str(uuid4()),
+                        telegram_user_id=int(user_id),
+                        target_language=target_language,
+                        meaning_language=meaning_language,
+                        normalized_target=normalized,
+                        target=target,
+                        meaning=meaning,
+                        transcription=transcription,
+                        source_kind=source_kind,
+                    )
+                    session.add(row)
+                    inserted += 1
+                else:
+                    row.meaning = meaning
+                    row.transcription = transcription
+                    row.source_kind = source_kind
+                    row.updated_at = utcnow()
+                    updated += 1
+            total = int(
+                session.scalar(
+                    select(func.count())
+                    .select_from(CustomVocabularyEntry)
+                    .where(
+                        CustomVocabularyEntry.telegram_user_id == int(user_id),
+                        CustomVocabularyEntry.target_language == target_language,
+                        CustomVocabularyEntry.meaning_language == meaning_language,
+                    )
+                )
+                or 0
+            )
+        return {"inserted": inserted, "updated": updated, "total": total}
+
+    def list_custom_vocabulary(
+        self,
+        user_id: int,
+        *,
+        target_language: str,
+        meaning_language: str,
+        limit: int = 500,
+        now: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        safe_limit = min(MAX_CUSTOM_WORDS_PER_LANGUAGE, max(1, int(limit)))
+        with self.Session() as session:
+            rows = session.scalars(
+                select(CustomVocabularyEntry)
+                .where(
+                    CustomVocabularyEntry.telegram_user_id == int(user_id),
+                    CustomVocabularyEntry.target_language == str(target_language),
+                    CustomVocabularyEntry.meaning_language == str(meaning_language),
+                )
+                .order_by(CustomVocabularyEntry.normalized_target.asc())
+                .limit(safe_limit)
+            ).all()
+        return [self._custom_vocabulary_payload(row, now=now) for row in rows]
+
+    def custom_vocabulary_practice(
+        self,
+        user_id: int,
+        *,
+        target_language: str,
+        meaning_language: str,
+        limit: int,
+        now: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        observed_at = now or utcnow()
+        rows = self.list_custom_vocabulary(
+            user_id,
+            target_language=target_language,
+            meaning_language=meaning_language,
+            now=observed_at,
+        )
+        rows.sort(
+            key=lambda row: (
+                0 if row["due"] else (1 if row["last_seen"] is None else 2),
+                row["next_review"] or "",
+                row["last_seen"] or "",
+                normalize_target(row["target"]),
+            )
+        )
+        return rows[: min(40, max(1, int(limit)))]
+
+    def rate_custom_vocabulary(
+        self,
+        user_id: int,
+        *,
+        entry_id: str,
+        knew: bool,
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        if type(knew) is not bool:
+            raise ValueError("Custom vocabulary rating must be boolean")
+        observed_at = now or utcnow()
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=timezone.utc)
+        with self.Session.begin() as session:
+            row = session.execute(
+                select(CustomVocabularyEntry)
+                .where(
+                    CustomVocabularyEntry.entry_id == str(entry_id),
+                    CustomVocabularyEntry.telegram_user_id == int(user_id),
+                )
+                .with_for_update()
+            ).scalar_one_or_none()
+            if row is None:
+                raise PermissionError("Custom vocabulary entry is unavailable")
+            profile = session.get(UserProgress, int(user_id))
+            if profile is None:
+                profile = UserProgress(telegram_user_id=int(user_id))
+                session.add(profile)
+            row.last_seen = observed_at.isoformat()
+            if knew:
+                row.correct_count = int(row.correct_count or 0) + 1
+                row.interval = min(365, max(1, 2 ** (row.correct_count - 1)))
+                row.next_review = (observed_at + timedelta(days=row.interval)).isoformat()
+                profile.total_correct = int(profile.total_correct or 0) + 1
+                profile.xp = int(profile.xp or 0) + 10
+            else:
+                row.wrong_count = int(row.wrong_count or 0) + 1
+                row.interval = 1
+                row.next_review = observed_at.isoformat()
+                profile.total_wrong = int(profile.total_wrong or 0) + 1
+                profile.xp = int(profile.xp or 0) + 2
+            profile.level = max(1, int(profile.xp or 0) // 100 + 1)
+            row.updated_at = observed_at
+            profile.updated_at = observed_at
+            payload = self._custom_vocabulary_payload(row, now=observed_at)
+        return payload
 
     def _upsert_word(
         self,
