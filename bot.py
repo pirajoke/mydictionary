@@ -4566,8 +4566,98 @@ async def custom_import_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+def _custom_vocabulary_progress(position: int, total: int) -> str:
+    filled = max(1, min(5, (position * 5 + total - 1) // max(1, total)))
+    return f"{'▰' * filled}{'▱' * (5 - filled)}"
+
+
+def _custom_vocabulary_word_label(
+    word: Mapping[str, Any], *, language: str
+) -> str:
+    flag = CATALOG.flag_for_language(language, "learner") or "🏳️"
+    transcription = str(word.get("transcription") or "").strip()
+    label = str(word.get("target") or "").strip()
+    if transcription:
+        label = f"{label} {transcription}"
+    return f"{flag} *{escape_markdown(label)}*"
+
+
+def _custom_vocabulary_card_front(
+    state: Mapping[str, Any], word: Mapping[str, Any], *, locale: str
+) -> str:
+    entries = state["entries"]
+    position = int(state["position"]) + 1
+    total = len(entries)
+    return (
+        "📚\n\n"
+        f"*{translate('learning_card_position', locale, position=position, total=total)}*"
+        f"  ·  {_custom_vocabulary_progress(position, total)}\n\n"
+        f"{_custom_vocabulary_word_label(word, language=str(state['target_language']))}"
+        f"\n\n{translate('learning_card_hint', locale)}"
+    )
+
+
+def _custom_vocabulary_card_back(
+    state: Mapping[str, Any], word: Mapping[str, Any], *, locale: str
+) -> str:
+    entries = state["entries"]
+    position = int(state["position"]) + 1
+    total = len(entries)
+    meaning_flag = (
+        CATALOG.flag_for_language(str(state["meaning_language"]), "learner")
+        or "🏳️"
+    )
+    return (
+        "📚\n\n"
+        f"*{translate('learning_card_position', locale, position=position, total=total)}*"
+        f"  ·  {_custom_vocabulary_progress(position, total)}\n\n"
+        f"{meaning_flag} *{escape_markdown(str(word.get('meaning') or ''))}*\n"
+        f"{_custom_vocabulary_word_label(word, language=str(state['target_language']))}"
+    )
+
+
+async def _pronounce_custom_vocabulary_word(
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    word: Mapping[str, Any],
+    target_language: str,
+) -> None:
+    if not callable(getattr(context.bot, "send_voice", None)):
+        return
+    pack = CATALOG.pack_for_language(target_language, "learner")
+    if pack is None:
+        return
+    target = str(word.get("target") or "").strip()
+    if not target:
+        return
+    try:
+        audio = await get_audio(
+            target,
+            voice=pack.pronunciation.tts_voice,
+            rate=pack.pronunciation.tts_rate,
+            cache_namespace=(
+                f"custom-vocabulary:{pack.pack_id}:v{pack.content_version}"
+            ),
+        )
+        await send_pronunciation_audio(
+            chat_id=int(message.chat_id),
+            audio=audio,
+            title=target,
+            context=context,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Custom vocabulary TTS failed: error_type=%s", type(exc).__name__
+        )
+
+
 async def _send_custom_vocabulary_card(
-    message, context: ContextTypes.DEFAULT_TYPE, *, locale: str
+    message,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    locale: str,
+    edit_message_text=None,
 ) -> None:
     state = context.user_data.get(CUSTOM_VOCABULARY_PRACTICE_KEY)
     if not isinstance(state, Mapping):
@@ -4577,31 +4667,39 @@ async def _send_custom_vocabulary_card(
     position = int(state.get("position", 0))
     if not isinstance(entries, list) or position >= len(entries):
         context.user_data.pop(CUSTOM_VOCABULARY_PRACTICE_KEY, None)
-        await message.reply_text(translate("custom_vocab_practice_done", locale))
+        done = translate("custom_vocab_practice_done", locale)
+        if callable(edit_message_text):
+            await edit_message_text(done)
+        else:
+            await message.reply_text(done)
         return
     word = entries[position]
-    transcription = f"\n{word['transcription']}" if word.get("transcription") else ""
-    await message.reply_text(
-        translate(
-            "custom_vocab_card_front",
-            locale,
-            position=position + 1,
-            total=len(entries),
-            target=word["target"],
-            transcription=transcription,
-        ),
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton(
-                    translate("custom_vocab_reveal", locale),
-                    callback_data=f"custom-practice:show:{word['entry_id']}",
-                )],
-                [InlineKeyboardButton(
-                    translate("custom_vocab_stop", locale),
-                    callback_data="custom-practice:stop",
-                )],
-            ]
-        ),
+    reply_markup = InlineKeyboardMarkup(
+        [
+            [InlineKeyboardButton(
+                translate("learning_show_meaning", locale),
+                callback_data=f"custom-practice:show:{word['entry_id']}",
+            )],
+            [InlineKeyboardButton(
+                translate("custom_vocab_stop", locale),
+                callback_data="custom-practice:stop",
+            )],
+        ]
+    )
+    front = _custom_vocabulary_card_front(state, word, locale=locale)
+    if callable(edit_message_text):
+        await edit_message_text(
+            front, reply_markup=reply_markup, parse_mode="Markdown"
+        )
+    else:
+        await message.reply_text(
+            front, reply_markup=reply_markup, parse_mode="Markdown"
+        )
+    await _pronounce_custom_vocabulary_word(
+        message,
+        context,
+        word=word,
+        target_language=str(state["target_language"]),
     )
 
 
@@ -4708,26 +4806,17 @@ async def custom_practice_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
         encoded = quote(str(word["target"]).replace(" ", "_"), safe="")
         await query.answer()
         await query.edit_message_text(
-            translate(
-                "custom_vocab_card_back",
-                locale,
-                position=position + 1,
-                total=len(entries),
-                target=word["target"],
-                transcription=(f"\n{word['transcription']}" if word.get("transcription") else ""),
-                meaning=word["meaning"],
-            ),
+            _custom_vocabulary_card_back(state, word, locale=locale),
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
                         InlineKeyboardButton(
-                            translate("custom_vocab_dont_know", locale),
+                            translate("learning_dont_know", locale),
                             callback_data=f"custom-practice:wrong:{word['entry_id']}",
                         ),
                         InlineKeyboardButton(
-                            translate("custom_vocab_know", locale),
+                            translate("learning_know", locale),
                             callback_data=f"custom-practice:known:{word['entry_id']}",
-                            style=KeyboardButtonStyle.SUCCESS,
                         ),
                     ],
                     [InlineKeyboardButton(
@@ -4736,6 +4825,7 @@ async def custom_practice_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     )],
                 ]
             ),
+            parse_mode="Markdown",
         )
         return
     if action not in {"known", "wrong"}:
@@ -4748,8 +4838,15 @@ async def custom_practice_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
     state["position"] = position + 1
     await query.answer()
-    await query.edit_message_reply_markup(reply_markup=None)
-    await _send_custom_vocabulary_card(query.message, context, locale=locale)
+    edit_message_text = getattr(query, "edit_message_text", None)
+    if not callable(edit_message_text):
+        await query.edit_message_reply_markup(reply_markup=None)
+    await _send_custom_vocabulary_card(
+        query.message,
+        context,
+        locale=locale,
+        edit_message_text=edit_message_text,
+    )
 
 
 @auth

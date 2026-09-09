@@ -570,6 +570,248 @@ class CustomVocabularyProviderTest(unittest.IsolatedAsyncioTestCase):
             limit=10,
         )
 
+    async def test_custom_practice_cards_use_standard_visual_hierarchy_and_labels(self):
+        entries = [
+            {
+                "entry_id": "custom-1",
+                "target": "bonjour",
+                "meaning": "привет",
+                "transcription": "/bɔ̃.ʒuʁ/",
+            },
+            {
+                "entry_id": "custom-2",
+                "target": "merci",
+                "meaning": "спасибо",
+                "transcription": "/mɛʁ.si/",
+            },
+        ]
+        state = {
+            "entries": entries,
+            "position": 0,
+            "target_language": "fr",
+            "meaning_language": "ru",
+            "expires_at": 4_000_000_000,
+        }
+        message = SimpleNamespace(chat_id=123, reply_text=AsyncMock())
+        context = SimpleNamespace(
+            user_data={
+                "interface_locale": "ru",
+                bot.CUSTOM_VOCABULARY_PRACTICE_KEY: state,
+            },
+            bot=SimpleNamespace(send_voice=AsyncMock()),
+        )
+
+        await bot._send_custom_vocabulary_card(message, context, locale="ru")
+
+        store = SimpleNamespace(
+            product_profile=lambda _user_id: {
+                "active_lang": "fr",
+                "native_language": "en",
+                "custom_vocabulary_meaning_language": "ru",
+            }
+        )
+        query = SimpleNamespace(
+            data="custom-practice:show:custom-1",
+            answer=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=42),
+        )
+        with patch.object(bot, "get_store", return_value=store):
+            await bot.custom_practice_cb.__wrapped__(update, context)
+
+        front = message.reply_text.await_args.args[0]
+        self.assertIn("*Карточка 1 из 2*", front)
+        self.assertIn("▰▰▰▱▱", front)
+        self.assertIn("🇫🇷 *bonjour /bɔ̃.ʒuʁ/*", front)
+        self.assertIn(localization.translate("learning_card_hint", "ru"), front)
+        self.assertNotIn("привет", front)
+        self.assertEqual(
+            message.reply_text.await_args.kwargs["parse_mode"],
+            "Markdown",
+        )
+        front_button = message.reply_text.await_args.kwargs[
+            "reply_markup"
+        ].inline_keyboard[0][0]
+        self.assertEqual(
+            front_button.text,
+            localization.translate("learning_show_meaning", "ru"),
+        )
+
+        back = query.edit_message_text.await_args.args[0]
+        self.assertIn("*Карточка 1 из 2*", back)
+        self.assertIn("▰▰▰▱▱", back)
+        self.assertIn("🇷🇺 *привет*", back)
+        self.assertIn("🇫🇷 *bonjour /bɔ̃.ʒuʁ/*", back)
+        self.assertEqual(
+            query.edit_message_text.await_args.kwargs["parse_mode"],
+            "Markdown",
+        )
+        rating_labels = [
+            button.text
+            for button in query.edit_message_text.await_args.kwargs[
+                "reply_markup"
+            ].inline_keyboard[0]
+        ]
+        self.assertEqual(
+            rating_labels,
+            [
+                localization.translate("learning_dont_know", "ru"),
+                localization.translate("learning_know", "ru"),
+            ],
+        )
+
+    async def test_custom_practice_automatically_pronounces_each_front_card(self):
+        entries = [
+            {
+                "entry_id": "custom-1",
+                "target": "bonjour",
+                "meaning": "привет",
+                "transcription": "/bɔ̃.ʒuʁ/",
+            },
+            {
+                "entry_id": "custom-2",
+                "target": "merci",
+                "meaning": "спасибо",
+                "transcription": "/mɛʁ.si/",
+            },
+        ]
+        state = {
+            "entries": entries,
+            "position": 0,
+            "target_language": "fr",
+            "meaning_language": "ru",
+            "expires_at": 4_000_000_000,
+        }
+        message = SimpleNamespace(chat_id=123, reply_text=AsyncMock())
+        context = SimpleNamespace(
+            user_data={
+                "interface_locale": "ru",
+                bot.CUSTOM_VOCABULARY_PRACTICE_KEY: state,
+            },
+            bot=SimpleNamespace(send_voice=AsyncMock()),
+        )
+        store = SimpleNamespace(
+            product_profile=lambda _user_id: {
+                "active_lang": "fr",
+                "native_language": "en",
+                "custom_vocabulary_meaning_language": "ru",
+            },
+            rate_custom_vocabulary=MagicMock(),
+        )
+        query = SimpleNamespace(
+            data="custom-practice:known:custom-1",
+            answer=AsyncMock(),
+            edit_message_reply_markup=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=42),
+        )
+        pack = bot.CATALOG.require("fr-basics-100")
+
+        with (
+            patch.object(
+                bot,
+                "get_audio",
+                new=AsyncMock(side_effect=[b"bonjour-audio", b"merci-audio"]),
+            ) as get_audio,
+            patch.object(
+                bot,
+                "send_pronunciation_audio",
+                new=AsyncMock(),
+            ) as send_audio,
+            patch.object(bot, "get_store", return_value=store),
+        ):
+            await bot._send_custom_vocabulary_card(message, context, locale="ru")
+            await bot.custom_practice_cb.__wrapped__(update, context)
+
+        self.assertEqual(
+            [call.args[0] for call in get_audio.await_args_list],
+            ["bonjour", "merci"],
+        )
+        for call in get_audio.await_args_list:
+            self.assertEqual(call.kwargs["voice"], pack.pronunciation.tts_voice)
+            self.assertEqual(call.kwargs["rate"], pack.pronunciation.tts_rate)
+        self.assertEqual(send_audio.await_count, 2)
+        self.assertEqual(
+            [call.kwargs["chat_id"] for call in send_audio.await_args_list],
+            [123, 123],
+        )
+        self.assertEqual(
+            [call.kwargs["title"] for call in send_audio.await_args_list],
+            ["bonjour", "merci"],
+        )
+
+    async def test_custom_practice_rating_edits_the_same_card_for_next_word(self):
+        state = {
+            "entries": [
+                {
+                    "entry_id": "custom-1",
+                    "target": "bonjour",
+                    "meaning": "привет",
+                    "transcription": "/bɔ̃.ʒuʁ/",
+                },
+                {
+                    "entry_id": "custom-2",
+                    "target": "merci",
+                    "meaning": "спасибо",
+                    "transcription": "/mɛʁ.si/",
+                },
+            ],
+            "position": 0,
+            "target_language": "fr",
+            "meaning_language": "ru",
+            "expires_at": 4_000_000_000,
+        }
+        message = SimpleNamespace(chat_id=123, reply_text=AsyncMock())
+        context = SimpleNamespace(
+            user_data={
+                "interface_locale": "ru",
+                bot.CUSTOM_VOCABULARY_PRACTICE_KEY: state,
+            },
+            bot=SimpleNamespace(send_voice=AsyncMock()),
+        )
+        store = SimpleNamespace(
+            product_profile=lambda _user_id: {
+                "active_lang": "fr",
+                "native_language": "en",
+                "custom_vocabulary_meaning_language": "ru",
+            },
+            rate_custom_vocabulary=MagicMock(),
+        )
+        query = SimpleNamespace(
+            data="custom-practice:known:custom-1",
+            answer=AsyncMock(),
+            edit_message_reply_markup=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=message,
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=42),
+        )
+
+        with (
+            patch.object(bot, "get_audio", new=AsyncMock(return_value=b"audio")),
+            patch.object(bot, "send_pronunciation_audio", new=AsyncMock()),
+            patch.object(bot, "get_store", return_value=store),
+        ):
+            await bot._send_custom_vocabulary_card(message, context, locale="ru")
+            message.reply_text.reset_mock()
+            await bot.custom_practice_cb.__wrapped__(update, context)
+
+        message.reply_text.assert_not_awaited()
+        query.edit_message_text.assert_awaited_once()
+        next_front = query.edit_message_text.await_args.args[0]
+        self.assertIn("*Карточка 2 из 2*", next_front)
+        self.assertIn("▰▰▰▰▰", next_front)
+        self.assertIn("🇫🇷 *merci /mɛʁ.si/*", next_front)
+
     async def test_complete_text_list_previews_then_saves_without_ai(self):
         runtime_store = SimpleNamespace(
             product_profile=lambda _user_id: {
