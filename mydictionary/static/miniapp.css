@@ -338,8 +338,8 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 .section-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  min-height: 168px;
-  height: clamp(168px, 45vw, 240px);
+  min-height: 148px;
+  height: clamp(148px, 38vw, 208px);
   margin-bottom: 12px;
   overflow: hidden;
   isolation: isolate;
