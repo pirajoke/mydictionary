@@ -404,6 +404,14 @@ class MiniAppProfileReorderV1ContractTest(unittest.TestCase):
         self.assertIsNotNone(reduced)
         self.assertRegex(reduced.group(1), r"transition-duration\s*:\s*\.001ms\s*!important")
 
+    def test_regression_profile_long_press_cannot_be_taken_over_by_native_selection(self):
+        reorderable = css_rule(self.css, "[data-profile-section]")
+        images = css_rule(self.css, "[data-profile-section] img")
+
+        self.assertRegex(reorderable, r"-webkit-user-select\s*:\s*none")
+        self.assertRegex(reorderable, r"(?<!-)user-select\s*:\s*none")
+        self.assertRegex(images, r"-webkit-user-drag\s*:\s*none")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -195,6 +195,8 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 [data-profile-section] {
   position: relative;
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   transition: transform .2s var(--control-ease), box-shadow .2s var(--control-ease), filter .2s var(--control-ease);
 }
 [data-profile-section] img { -webkit-user-drag: none; }
