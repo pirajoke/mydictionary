@@ -30,6 +30,20 @@
           <h1 id="profile-label" data-i18n="profile"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/lexi-section-profile-v1.webp') }}" alt="" decoding="async" width="1200" height="600">
         </header>
+
+        <section class="streak-card dashboard-section" aria-labelledby="calendar-title">
+          <div class="calendar-header">
+            <button id="calendar-previous" type="button" data-i18n-aria-label="previous_month"><span aria-hidden="true">‹</span></button>
+            <h2 id="calendar-title" class="visually-hidden" data-i18n="calendar_activity"></h2>
+            <strong id="calendar-month"></strong>
+            <button id="calendar-next" type="button" data-i18n-aria-label="next_month"><span aria-hidden="true">›</span></button>
+          </div>
+          <div id="calendar-grid" class="calendar-grid" role="grid" aria-labelledby="calendar-title"></div>
+          <span id="streak-count" hidden>0</span>
+          <span data-i18n="streak_days" hidden></span>
+          <span data-i18n="best_streak_short" hidden></span>
+        </section>
+
         <div class="profile-identity dashboard-section">
           <div class="avatar-shell">
             <img id="profile-photo" alt="" hidden>
@@ -90,19 +104,6 @@
             <strong id="achievement-learned-value">0</strong>
             <span data-i18n="metric_learned_words"></span>
           </div>
-        </section>
-
-        <section class="streak-card dashboard-section" aria-labelledby="calendar-title">
-          <div class="calendar-header">
-            <button id="calendar-previous" type="button" data-i18n-aria-label="previous_month"><span aria-hidden="true">‹</span></button>
-            <h2 id="calendar-title" class="visually-hidden" data-i18n="calendar_activity"></h2>
-            <strong id="calendar-month"></strong>
-            <button id="calendar-next" type="button" data-i18n-aria-label="next_month"><span aria-hidden="true">›</span></button>
-          </div>
-          <div id="calendar-grid" class="calendar-grid" role="grid" aria-labelledby="calendar-title"></div>
-          <span id="streak-count" hidden>0</span>
-          <span data-i18n="streak_days" hidden></span>
-          <span data-i18n="best_streak_short" hidden></span>
         </section>
 
         <details class="progress-details dashboard-section">
