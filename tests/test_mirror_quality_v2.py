@@ -86,10 +86,12 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
                 )
                 self.assertTrue(answer.language_items[0].transcription)
                 rendered = ai_tutor.render_mirror_answer(
-                    answer, available_credits=40
+                    answer,
+                    available_credits=40,
+                    task_kind="translation_nuance",
                 )
-                self.assertTrue(rendered.startswith(f"💡 {answer.answer_ru}"))
-                self.assertIn("\n\n📌 ", rendered)
+                self.assertTrue(rendered.startswith(f"🌍 {answer.answer_ru}"))
+                self.assertIn("\n\n🗣️ ", rendered)
                 self.assertIn(answer.language_items[0].transcription, rendered)
 
     def test_ac_01_russian_first_response_supports_translation_variants(self):
@@ -118,10 +120,13 @@ class MirrorQualityV2ContractTest(unittest.IsolatedAsyncioTestCase):
                 "next_step_ru": "Сравни bonjour и salut.",
             }
         )
-        rendered = render(answer, available_credits=39)
-        self.assertTrue(rendered.startswith(f"💡 {answer.answer_ru}"))
-        self.assertIn("\n\n📌 ", rendered)
-        self.assertIn("\n\n👉 ", rendered)
+        rendered = render(
+            answer,
+            available_credits=39,
+            task_kind="translation_nuance",
+        )
+        self.assertTrue(rendered.startswith(f"🌍 {answer.answer_ru}"))
+        self.assertIn("\n\n🗣️ ", rendered)
         self.assertIn("bonjour", rendered)
         self.assertIn("bonjour /bɔ̃.ʒuʁ/ — здравствуйте; добрый день", rendered)
         self.assertNotIn("AI-кредиты", rendered)

@@ -155,12 +155,12 @@ class LexiFullBrandContractTest(unittest.TestCase):
     def test_active_ai_personas_use_lexi_and_preserve_previous_contracts(self) -> None:
         ai_source = (ROOT / "mydictionary/ai_tutor.py").read_text(encoding="utf-8")
         tutor = ROOT / "prompts/ai-tutor-v2.txt"
-        mirror = ROOT / "prompts/mirror-v8.txt"
+        mirror = ROOT / "prompts/mirror-v9.txt"
 
         self.assertTrue(tutor.is_file())
         self.assertTrue(mirror.is_file())
         self.assertIn('load_prompt_contract(_PROMPT_ROOT / "ai-tutor-v2.txt")', ai_source)
-        self.assertIn('load_prompt_contract(_PROMPT_ROOT / "mirror-v8.txt")', ai_source)
+        self.assertIn('load_prompt_contract(_PROMPT_ROOT / "mirror-v9.txt")', ai_source)
         for contract in (tutor, mirror):
             text = contract.read_text(encoding="utf-8")
             with self.subTest(contract=contract.name):
@@ -168,7 +168,7 @@ class LexiFullBrandContractTest(unittest.TestCase):
                 self.assertNotIn("MY DICTIONARY", text)
 
         self.assertTrue((ROOT / "prompts/ai-tutor-v1.txt").is_file())
-        self.assertTrue((ROOT / "prompts/mirror-v7.txt").is_file())
+        self.assertTrue((ROOT / "prompts/mirror-v8.txt").is_file())
 
 
 if __name__ == "__main__":

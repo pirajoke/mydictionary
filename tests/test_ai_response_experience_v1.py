@@ -85,14 +85,18 @@ class AIResponseRendererContractTest(unittest.TestCase):
             }
         )
 
-        rendered = ai_tutor.render_mirror_answer(answer, available_credits=9)
+        rendered = ai_tutor.render_mirror_answer(
+            answer,
+            available_credits=9,
+            task_kind="translation_nuance",
+        )
         paragraphs = rendered.split("\n\n")
 
         self.assertLessEqual(len(rendered), 900)
         self.assertTrue(1 <= len(paragraphs) <= 3)
-        self.assertTrue(paragraphs[0].startswith("💡"))
-        self.assertTrue(paragraphs[1].startswith("📌"))
-        self.assertTrue(paragraphs[-1].startswith("👉"))
+        self.assertTrue(paragraphs[0].startswith("🌍"))
+        self.assertTrue(paragraphs[1].startswith("🗣️"))
+        self.assertTrue(paragraphs[-1].startswith("🔁"))
         self.assertEqual(rendered.count("Точность 75%."), 1)
         self.assertEqual(rendered.count("Слово 猫 пока слабое."), 1)
         self.assertIn("猫が好きです。", rendered)
@@ -132,7 +136,11 @@ class AIResponseRendererContractTest(unittest.TestCase):
             }
         )
 
-        rendered = ai_tutor.render_mirror_answer(answer, available_credits=4)
+        rendered = ai_tutor.render_mirror_answer(
+            answer,
+            available_credits=4,
+            task_kind="translation_nuance",
+        )
 
         self.assertTrue(rendered.strip())
         self.assertLessEqual(len(rendered), 900)
@@ -153,9 +161,12 @@ class AIResponseRendererContractTest(unittest.TestCase):
                 if label.casefold() in rendered.casefold()
             ],
             "emoji_contract_violations": {
-                "💡": rendered.count("💡") != 1,
-                "📌": rendered.count("📌") > 1,
-                "👉": rendered.count("👉") > 1,
+                "🌍": rendered.count("🌍") != 1,
+                "🗣️": rendered.count("🗣️") != 1,
+                "🔁": rendered.count("🔁") != 1,
+                "legacy": any(
+                    marker in rendered for marker in ("💡", "📌", "👉")
+                ),
             },
         }
         self.assertEqual(
@@ -163,9 +174,10 @@ class AIResponseRendererContractTest(unittest.TestCase):
             {
                 "schema_tokens": [],
                 "emoji_contract_violations": {
-                    "💡": False,
-                    "📌": False,
-                    "👉": False,
+                    "🌍": False,
+                    "🗣️": False,
+                    "🔁": False,
+                    "legacy": False,
                 },
             },
         )

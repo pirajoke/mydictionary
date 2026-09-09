@@ -133,7 +133,9 @@ class RuntimePromptContractTest(unittest.IsolatedAsyncioTestCase):
             normalized_reviewed_prompt(ROOT / "prompts/ai-tutor-v2.txt"),
         )
 
-    async def test_ac_2_mirror_runtime_uses_exact_reviewed_v8_contract_and_token_cap(self):
+    async def test_ac_2_mirror_runtime_uses_exact_reviewed_v9_contract_and_token_cap(self):
+        prompt_path = ROOT / "prompts/mirror-v9.txt"
+        self.assertTrue(prompt_path.is_file(), "missing reviewed Lexi V9 contract")
         responses = CaptureResponses()
         payload = bot.build_mirror_provider_payload(
             question="Comment employer bonjour ?",
@@ -159,7 +161,7 @@ class RuntimePromptContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             responses.kwargs["instructions"],
-            normalized_reviewed_prompt(ROOT / "prompts/mirror-v8.txt"),
+            normalized_reviewed_prompt(prompt_path),
         )
         self.assertEqual(responses.kwargs["max_output_tokens"], 1000)
 
@@ -257,7 +259,7 @@ class PromptLibraryDocumentationTest(unittest.TestCase):
                 "tests/fixtures/ai_tutor_eval.json",
             ),
             (
-                "mirror-v8.txt",
+                "mirror-v9.txt",
                 "openairesponsesprovider.generate_mirror",
                 "tests/fixtures/mirror_quality_v2.json",
             ),
@@ -268,10 +270,10 @@ class PromptLibraryDocumentationTest(unittest.TestCase):
                 self.assertIn(consumer, normalized)
                 self.assertIn(evaluation, normalized)
 
-        self.assertTrue((ROOT / "prompts/mirror-v7.txt").is_file())
-        self.assertIn("mirror-v7.txt", normalized)
-        self.assertIn("historical", normalized)
+        self.assertTrue((ROOT / "prompts/mirror-v8.txt").is_file())
         self.assertIn("mirror-v8.txt", normalized)
+        self.assertIn("historical", normalized)
+        self.assertIn("mirror-v9.txt", normalized)
         self.assertIn("active", normalized)
 
         self.assertIn("change procedure", normalized)
