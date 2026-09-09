@@ -6,9 +6,9 @@
   <meta name="color-scheme" content="light dark">
   <title>Lexi — языковой тренер</title>
   <link rel="icon" href="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}">
-  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260909-compact-hero-v2">
+  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260909-compact-hero-v2-profile-reorder-v1">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260909-profile-reorder-v1"></script>
 </head>
 <body data-bot-username="{{ bot_username }}">
   <main class="app-shell" aria-live="polite">
@@ -26,12 +26,15 @@
 
     <div id="app-content" class="dashboard" hidden>
       <section id="panel-profile" class="panel dashboard-panel active" role="tabpanel" data-panel="profile" aria-labelledby="tab-profile">
-        <header class="section-heading dashboard-header section-hero">
+        <p id="profile-reorder-instructions" class="visually-hidden" data-i18n="profile_reorder_instructions"></p>
+        <div id="profile-reorder-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+        <div id="profile-layout" data-profile-layout>
+        <header class="section-heading dashboard-header section-hero" data-profile-section="hero" tabindex="0" aria-describedby="profile-reorder-instructions">
           <h1 id="profile-label" data-i18n="profile"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/lexi-section-profile-v1.webp') }}" alt="" decoding="async" width="1200" height="600">
         </header>
 
-        <section class="streak-card dashboard-section" aria-labelledby="calendar-title">
+        <section class="streak-card dashboard-section" aria-labelledby="calendar-title" data-profile-section="calendar" tabindex="0" aria-describedby="profile-reorder-instructions">
           <div class="calendar-header">
             <button id="calendar-previous" type="button" data-i18n-aria-label="previous_month"><span aria-hidden="true">‹</span></button>
             <h2 id="calendar-title" class="visually-hidden" data-i18n="calendar_activity"></h2>
@@ -44,7 +47,7 @@
           <span data-i18n="best_streak_short" hidden></span>
         </section>
 
-        <div class="profile-identity dashboard-section">
+        <div class="profile-identity dashboard-section" data-profile-section="identity" tabindex="0" aria-describedby="profile-reorder-instructions">
           <div class="avatar-shell">
             <img id="profile-photo" alt="" hidden>
             <span id="profile-avatar-fallback" aria-hidden="true"></span>
@@ -59,7 +62,7 @@
           </button>
         </div>
 
-        <section id="daily-quest" class="daily-quest dashboard-section" aria-labelledby="daily-quest-title">
+        <section id="daily-quest" class="daily-quest dashboard-section" aria-labelledby="daily-quest-title" data-profile-section="daily-quest" tabindex="0" aria-describedby="profile-reorder-instructions">
           <span class="quest-icon" aria-hidden="true">🎯</span>
           <div class="daily-quest-copy">
             <h2 id="daily-quest-title" data-i18n="daily_quest"></h2>
@@ -72,11 +75,11 @@
           <button id="daily-quest-action" class="primary-action dashboard-action" type="button" data-action="continue" data-i18n="continue_lesson"></button>
         </section>
 
-        <button class="dictionary-shortcut dashboard-action" type="button" data-open-dictionary>
+        <button class="dictionary-shortcut dashboard-action" type="button" data-open-dictionary data-profile-section="dictionary" tabindex="0" aria-describedby="profile-reorder-instructions">
           <span aria-hidden="true">📖</span><span><strong data-i18n="dictionary_open"></strong><small data-i18n="dictionary_hint"></small></span><span aria-hidden="true">↗</span>
         </button>
 
-        <section id="profile-game-progress" class="profile-game-progress dashboard-section" aria-labelledby="profile-game-title">
+        <section id="profile-game-progress" class="profile-game-progress dashboard-section" aria-labelledby="profile-game-title" data-profile-section="game-progress" tabindex="0" aria-describedby="profile-reorder-instructions">
           <span class="game-icon" aria-hidden="true">🏆</span>
           <div class="profile-level-copy">
             <span id="profile-game-title" data-i18n="metric_level"></span>
@@ -88,7 +91,7 @@
           </div>
         </section>
 
-        <section id="profile-achievements" class="profile-achievements" role="list" data-i18n-aria-label="profile">
+        <section id="profile-achievements" class="profile-achievements" role="list" data-i18n-aria-label="profile" data-profile-section="achievements" tabindex="0" aria-describedby="profile-reorder-instructions">
           <div class="profile-achievement" role="listitem">
             <span class="achievement-icon" aria-hidden="true">🔥</span>
             <strong id="achievement-streak-value">0</strong>
@@ -106,11 +109,12 @@
           </div>
         </section>
 
-        <details class="progress-details dashboard-section">
+        <details class="progress-details dashboard-section" data-profile-section="more-stats" tabindex="0" aria-describedby="profile-reorder-instructions">
           <summary data-i18n="more_stats"></summary>
           <span id="best-streak" hidden>0</span>
           <div class="metric-grid" id="profile-metrics"></div>
         </details>
+        </div>
       </section>
 
       <section id="panel-words" class="panel dashboard-panel" role="tabpanel" data-panel="words" aria-labelledby="tab-words" hidden>

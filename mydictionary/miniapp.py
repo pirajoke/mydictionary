@@ -550,6 +550,22 @@ for _locale, (_words, _open, _hint, _download, _tracked) in _DICTIONARY_COMPANIO
         dictionary_tracked=_tracked,
     )
 
+_PROFILE_REORDER_COPY = {
+    "en": ("Hold and drag to reorder. Keyboard: Alt + Up or Down.", "Moved to position {position} of {total}."),
+    "fr": ("Maintenez et faites glisser pour réorganiser. Clavier : Alt + Haut ou Bas.", "Déplacé à la position {position} sur {total}."),
+    "de": ("Gedrückt halten und zum Sortieren ziehen. Tastatur: Alt + Hoch oder Runter.", "An Position {position} von {total} verschoben."),
+    "ja": ("長押ししてドラッグすると並べ替えられます。キーボード：Alt＋上／下。", "{total} 個中 {position} 番目に移動しました。"),
+    "ar": ("اضغط مطولاً واسحب لإعادة الترتيب. لوحة المفاتيح: Alt مع السهم لأعلى أو لأسفل.", "تم النقل إلى الموضع {position} من {total}."),
+    "zh": ("长按并拖动即可重新排序。键盘：Alt + 上箭头或下箭头。", "已移至第 {position} 项，共 {total} 项。"),
+    "ru": ("Зажмите и перетащите, чтобы изменить порядок. Клавиатура: Alt + вверх или вниз.", "Перемещено на позицию {position} из {total}."),
+    "es": ("Mantén pulsado y arrastra para reordenar. Teclado: Alt + arriba o abajo.", "Movido a la posición {position} de {total}."),
+}
+for _locale, (_instructions, _moved) in _PROFILE_REORDER_COPY.items():
+    MINIAPP_COPY[_locale].update(
+        profile_reorder_instructions=_instructions,
+        profile_reorder_moved=_moved,
+    )
+
 _CUSTOM_VOCABULARY_COPY = {
     "en": ("Your vocabulary", "Learn the words you actually need", "Paste a list, send a photo or PDF, or dictate it to Lexi.", "Add my words", "Practice my words", "My saved words", "No custom words yet. Add a list and Lexi will prepare it for practice.", "No transcription"),
     "fr": ("Votre vocabulaire", "Apprenez les mots dont vous avez besoin", "Collez une liste, envoyez une photo ou un PDF, ou dictez-la à Lexi.", "Ajouter mes mots", "Étudier mes mots", "Mes mots enregistrés", "Aucun mot personnel. Ajoutez une liste et Lexi la préparera.", "Sans transcription"),
