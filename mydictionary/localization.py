@@ -3333,8 +3333,8 @@ for _locale, _messages in _SERVICE_COPY.items():
 _AI_TUTOR_ACTION_COPY = {
     "en": {
         "ai_tutor_menu_intro": (
-            "✨ AI Tutor\n\nI use your current lesson and progress. "
-            "Choose a quick analysis or ask me a question."
+            "✨ Lexi Tutor\n\nThe statistics below come directly from your "
+            "saved progress and use no AI credits. Only Ask Tutor uses AI."
         ),
         "ai_tutor_action_vocabulary": "📚 Vocabulary",
         "ai_tutor_action_mistakes": "🎯 Mistakes",
@@ -3364,8 +3364,9 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "fr": {
         "ai_tutor_menu_intro": (
-            "✨ Tuteur IA\n\nJe m’appuie sur votre leçon et vos progrès actuels. "
-            "Choisissez une analyse rapide ou posez-moi une question."
+            "✨ Tuteur Lexi\n\nLes statistiques ci-dessous viennent directement "
+            "de vos progrès et n’utilisent aucun crédit IA. Seule la question au "
+            "tuteur utilise l’IA."
         ),
         "ai_tutor_action_vocabulary": "📚 Vocabulaire",
         "ai_tutor_action_mistakes": "🎯 Erreurs",
@@ -3394,8 +3395,9 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "de": {
         "ai_tutor_menu_intro": (
-            "✨ KI-Tutor\n\nIch nutze deine aktuelle Lektion und deinen Fortschritt. "
-            "Wähle eine kurze Analyse oder stelle mir eine Frage."
+            "✨ Lexi-Tutor\n\nDie Statistiken unten kommen direkt aus deinem "
+            "gespeicherten Fortschritt und kosten keine KI-Credits. Nur eine Frage "
+            "an den Tutor nutzt KI."
         ),
         "ai_tutor_action_vocabulary": "📚 Wortschatz",
         "ai_tutor_action_mistakes": "🎯 Fehler",
@@ -3424,12 +3426,12 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "ja": {
         "ai_tutor_menu_intro": (
-            "✨ AIチューター\n\n現在のレッスンと進捗を参考にします。"
-            "短い分析を選ぶか、質問してください。"
+            "✨ Lexiチューター\n\n下の統計は保存済みの学習記録から直接表示され、"
+            "AIクレジットを使いません。AIを使うのは質問だけです。"
         ),
-        "ai_tutor_action_vocabulary": "📚 単語を分析",
-        "ai_tutor_action_mistakes": "🎯 間違いを分析",
-        "ai_tutor_action_progress": "📊 進捗を分析",
+        "ai_tutor_action_vocabulary": "📚 単語",
+        "ai_tutor_action_mistakes": "🎯 間違い",
+        "ai_tutor_action_progress": "📊 進捗",
         "ai_tutor_action_ask": "💬 質問する",
         "ai_tutor_ask_prompt": (
             "このレッスンや進捗について質問を1つ送ってください。短く答えます。"
@@ -3452,8 +3454,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "ar": {
         "ai_tutor_menu_intro": (
-            "✨ مدرس AI\n\nأستخدم درسك الحالي وتقدمك. "
-            "اختر تحليلاً سريعاً أو اطرح عليّ سؤالاً."
+            "✨ مدرّس Lexi\n\nتأتي الإحصاءات أدناه مباشرة من تقدمك المحفوظ ولا "
+            "تستهلك رصيد AI. السؤال الموجّه إلى المدرّس فقط يستخدم AI."
         ),
         "ai_tutor_action_vocabulary": "📚 المفردات",
         "ai_tutor_action_mistakes": "🎯 الأخطاء",
@@ -3480,12 +3482,12 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "zh": {
         "ai_tutor_menu_intro": (
-            "✨ AI 导师\n\n我会参考你当前的课程和进度。"
-            "请选择一项快速分析，或向我提问。"
+            "✨ Lexi 导师\n\n下方统计直接来自已保存的学习进度，不消耗 AI 点数。"
+            "只有向导师提问时才会使用 AI。"
         ),
-        "ai_tutor_action_vocabulary": "📚 分析词汇",
-        "ai_tutor_action_mistakes": "🎯 分析错误",
-        "ai_tutor_action_progress": "📊 分析进度",
+        "ai_tutor_action_vocabulary": "📚 词汇",
+        "ai_tutor_action_mistakes": "🎯 错题",
+        "ai_tutor_action_progress": "📊 进度",
         "ai_tutor_action_ask": "💬 提问",
         "ai_tutor_ask_prompt": (
             "请发送一个关于本课或学习进度的问题。我会简短回答。"
@@ -3508,8 +3510,9 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "ru": {
         "ai_tutor_menu_intro": (
-            "✨ AI-тьютор\n\nЯ учитываю текущий урок и твой прогресс. "
-            "Выбери быстрый анализ или задай мне вопрос."
+            "✨ Тьютор Lexi\n\nСтатистика ниже берётся напрямую из твоего "
+            "прогресса и не тратит AI-кредиты. AI используется только в кнопке "
+            "«Спросить тьютора»."
         ),
         "ai_tutor_action_vocabulary": "📚 Словарь",
         "ai_tutor_action_mistakes": "🎯 Ошибки",
@@ -3539,8 +3542,8 @@ _AI_TUTOR_ACTION_COPY = {
     },
     "es": {
         "ai_tutor_menu_intro": (
-            "✨ Tutor de IA\n\nUso tu lección y progreso actuales. "
-            "Elige un análisis rápido o hazme una pregunta."
+            "✨ Tutor Lexi\n\nLas estadísticas de abajo vienen directamente de tu "
+            "progreso guardado y no gastan créditos de IA. Solo Preguntar utiliza IA."
         ),
         "ai_tutor_action_vocabulary": "📚 Vocabulario",
         "ai_tutor_action_mistakes": "🎯 Errores",
@@ -3570,6 +3573,173 @@ _AI_TUTOR_ACTION_COPY = {
 }
 
 for _locale, _messages in _AI_TUTOR_ACTION_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
+
+_DETERMINISTIC_LEARNING_STATS_COPY = {
+    "en": {
+        "learning_stats_vocabulary_heading": "Vocabulary",
+        "learning_stats_mistakes_heading": "Mistakes",
+        "learning_stats_progress_heading": "Progress",
+        "learning_stats_tracked": "Tracked: {count}",
+        "learning_stats_mastered": "Mastered: {count}",
+        "learning_stats_due": "Due for review: {count}",
+        "learning_stats_correct": "Correct: {count}",
+        "learning_stats_wrong": "Mistakes: {count}",
+        "learning_stats_accuracy": "Accuracy: {value}",
+        "learning_stats_streak": "Streak: {count}",
+        "learning_stats_weak": "To strengthen: {terms}",
+        "learning_stats_focus": "Next: {focus}",
+        "learning_stats_focus_due": "Review {count} due words",
+        "learning_stats_focus_weak": "Practise the weak words above",
+        "learning_stats_focus_daily": "Continue with today's lesson",
+        "learning_stats_empty": (
+            "No learning stats yet. Start your first lesson to fill this card."
+        ),
+    },
+    "fr": {
+        "learning_stats_vocabulary_heading": "Vocabulaire",
+        "learning_stats_mistakes_heading": "Erreurs",
+        "learning_stats_progress_heading": "Progrès",
+        "learning_stats_tracked": "Suivis : {count}",
+        "learning_stats_mastered": "Maîtrisés : {count}",
+        "learning_stats_due": "À réviser : {count}",
+        "learning_stats_correct": "Bonnes réponses : {count}",
+        "learning_stats_wrong": "Erreurs : {count}",
+        "learning_stats_accuracy": "Précision : {value}",
+        "learning_stats_streak": "Série : {count} j",
+        "learning_stats_weak": "À renforcer : {terms}",
+        "learning_stats_focus": "Prochaine étape : {focus}",
+        "learning_stats_focus_due": "Réviser les {count} mots prévus",
+        "learning_stats_focus_weak": "Travailler les mots fragiles ci-dessus",
+        "learning_stats_focus_daily": "Continuer avec la leçon du jour",
+        "learning_stats_empty": (
+            "Pas encore de statistiques. Commencez la première leçon pour remplir cette carte."
+        ),
+    },
+    "de": {
+        "learning_stats_vocabulary_heading": "Wortschatz",
+        "learning_stats_mistakes_heading": "Fehler",
+        "learning_stats_progress_heading": "Fortschritt",
+        "learning_stats_tracked": "Erfasst: {count}",
+        "learning_stats_mastered": "Gelernt: {count}",
+        "learning_stats_due": "Zur Wiederholung: {count}",
+        "learning_stats_correct": "Richtig: {count}",
+        "learning_stats_wrong": "Fehler: {count}",
+        "learning_stats_accuracy": "Genauigkeit: {value}",
+        "learning_stats_streak": "Serie: {count} Tg.",
+        "learning_stats_weak": "Weiter üben: {terms}",
+        "learning_stats_focus": "Als Nächstes: {focus}",
+        "learning_stats_focus_due": "{count} fällige Wörter wiederholen",
+        "learning_stats_focus_weak": "Die schwachen Wörter oben üben",
+        "learning_stats_focus_daily": "Mit der heutigen Lektion fortfahren",
+        "learning_stats_empty": (
+            "Noch keine Lernstatistik. Starte die erste Lektion, um diese Karte zu füllen."
+        ),
+    },
+    "ja": {
+        "learning_stats_vocabulary_heading": "単語",
+        "learning_stats_mistakes_heading": "間違い",
+        "learning_stats_progress_heading": "進捗",
+        "learning_stats_tracked": "学習中：{count}",
+        "learning_stats_mastered": "習得済み：{count}",
+        "learning_stats_due": "復習待ち：{count}",
+        "learning_stats_correct": "正解：{count}",
+        "learning_stats_wrong": "間違い：{count}",
+        "learning_stats_accuracy": "正答率：{value}",
+        "learning_stats_streak": "連続学習：{count}日",
+        "learning_stats_weak": "強化する単語：{terms}",
+        "learning_stats_focus": "次の一歩：{focus}",
+        "learning_stats_focus_due": "復習待ちの{count}語に取り組む",
+        "learning_stats_focus_weak": "上の苦手な単語を練習する",
+        "learning_stats_focus_daily": "今日のレッスンを続ける",
+        "learning_stats_empty": (
+            "学習データはまだありません。最初のレッスンを始めると記録されます。"
+        ),
+    },
+    "ar": {
+        "learning_stats_vocabulary_heading": "المفردات",
+        "learning_stats_mistakes_heading": "الأخطاء",
+        "learning_stats_progress_heading": "التقدم",
+        "learning_stats_tracked": "قيد التعلم: {count}",
+        "learning_stats_mastered": "تم إتقانها: {count}",
+        "learning_stats_due": "بانتظار المراجعة: {count}",
+        "learning_stats_correct": "إجابات صحيحة: {count}",
+        "learning_stats_wrong": "أخطاء: {count}",
+        "learning_stats_accuracy": "الدقة: {value}",
+        "learning_stats_streak": "السلسلة: {count}",
+        "learning_stats_weak": "تحتاج إلى تعزيز: {terms}",
+        "learning_stats_focus": "الخطوة التالية: {focus}",
+        "learning_stats_focus_due": "راجع {count} كلمات مستحقة",
+        "learning_stats_focus_weak": "تدرّب على الكلمات الضعيفة أعلاه",
+        "learning_stats_focus_daily": "تابع درس اليوم",
+        "learning_stats_empty": (
+            "لا توجد إحصاءات تعلم بعد. ابدأ الدرس الأول لملء هذه البطاقة."
+        ),
+    },
+    "zh": {
+        "learning_stats_vocabulary_heading": "词汇",
+        "learning_stats_mistakes_heading": "错题",
+        "learning_stats_progress_heading": "进度",
+        "learning_stats_tracked": "学习中：{count}",
+        "learning_stats_mastered": "已掌握：{count}",
+        "learning_stats_due": "待复习：{count}",
+        "learning_stats_correct": "正确：{count}",
+        "learning_stats_wrong": "错误：{count}",
+        "learning_stats_accuracy": "正确率：{value}",
+        "learning_stats_streak": "连续学习：{count}天",
+        "learning_stats_weak": "需要加强：{terms}",
+        "learning_stats_focus": "下一步：{focus}",
+        "learning_stats_focus_due": "复习{count}个到期词汇",
+        "learning_stats_focus_weak": "练习上方薄弱词汇",
+        "learning_stats_focus_daily": "继续今日课程",
+        "learning_stats_empty": (
+            "还没有学习统计。开始第一课后，这里会显示你的进度。"
+        ),
+    },
+    "ru": {
+        "learning_stats_vocabulary_heading": "Словарь",
+        "learning_stats_mistakes_heading": "Ошибки",
+        "learning_stats_progress_heading": "Прогресс",
+        "learning_stats_tracked": "В работе: {count}",
+        "learning_stats_mastered": "Освоено: {count}",
+        "learning_stats_due": "К повторению: {count}",
+        "learning_stats_correct": "Верно: {count}",
+        "learning_stats_wrong": "Ошибок: {count}",
+        "learning_stats_accuracy": "Точность: {value}",
+        "learning_stats_streak": "Серия: {count} дн.",
+        "learning_stats_weak": "Стоит закрепить: {terms}",
+        "learning_stats_focus": "Следующий шаг: {focus}",
+        "learning_stats_focus_due": "Повторить {count} слов",
+        "learning_stats_focus_weak": "Потренировать слабые слова выше",
+        "learning_stats_focus_daily": "Продолжить урок на сегодня",
+        "learning_stats_empty": (
+            "Статистики пока нет. Начни первый урок — здесь появится прогресс."
+        ),
+    },
+    "es": {
+        "learning_stats_vocabulary_heading": "Vocabulario",
+        "learning_stats_mistakes_heading": "Errores",
+        "learning_stats_progress_heading": "Progreso",
+        "learning_stats_tracked": "En aprendizaje: {count}",
+        "learning_stats_mastered": "Dominadas: {count}",
+        "learning_stats_due": "Para repasar: {count}",
+        "learning_stats_correct": "Correctas: {count}",
+        "learning_stats_wrong": "Errores: {count}",
+        "learning_stats_accuracy": "Precisión: {value}",
+        "learning_stats_streak": "Racha: {count} d",
+        "learning_stats_weak": "Para reforzar: {terms}",
+        "learning_stats_focus": "Siguiente paso: {focus}",
+        "learning_stats_focus_due": "Repasar {count} palabras pendientes",
+        "learning_stats_focus_weak": "Practicar las palabras débiles de arriba",
+        "learning_stats_focus_daily": "Continuar con la lección de hoy",
+        "learning_stats_empty": (
+            "Aún no hay estadísticas. Empieza la primera lección para llenar esta tarjeta."
+        ),
+    },
+}
+
+for _locale, _messages in _DETERMINISTIC_LEARNING_STATS_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 

@@ -300,24 +300,41 @@ class AITutorActionTest(unittest.IsolatedAsyncioTestCase):
         surface.query.answer.reset_mock()
         return flattened_buttons(markup)
 
-    async def test_ac2_three_analyses_use_exact_localized_question_once_and_compact_path(self):
+    async def test_ac2_three_stats_actions_use_grounded_snapshot_without_ai(self):
         surface = TutorSurface(locale="es")
         buttons = await self._menu_buttons(surface)
-        expected = (
-            (buttons[0], translate("ai_tutor_question_vocabulary", "es")),
-            (buttons[1], translate("ai_tutor_question_mistakes", "es")),
-            (buttons[2], translate("ai_tutor_question_progress", "es")),
-        )
-        for button, question in expected:
-            with self.subTest(question=question):
+        snapshot = {
+            "has_progress": True,
+            "accuracy_percent": 80,
+            "lifetime_correct": 8,
+            "lifetime_wrong": 2,
+            "tracked_words": 10,
+            "learned_words": 4,
+            "due_count": 3,
+            "streak": 2,
+            "weak_terms": [{"term": "猫"}],
+        }
+        for button, action in zip(buttons[:3], ("vocabulary", "mistakes", "progress")):
+            with self.subTest(action=action):
                 surface.set_callback(button.callback_data)
                 surface.query.answer.reset_mock()
+                surface.reset_reply()
                 store = MagicMock()
-                store.has_consent.return_value = True
                 companion = AsyncMock()
+                snapshot_reader = Mock(return_value=snapshot)
                 with (
-                    patch.object(bot, "AI_SETTINGS", enabled_settings()),
+                    patch.object(bot, "AI_SETTINGS", disabled_settings()),
                     patch.object(bot, "get_store", return_value=store),
+                    patch.object(
+                        bot,
+                        "grounded_progress_snapshot",
+                        new=snapshot_reader,
+                    ),
+                    patch.object(
+                        bot,
+                        "request_compact_learning_companion",
+                        new=companion,
+                    ),
                     patch.object(bot, "handle_mirror_question", new=companion),
                     patch.object(bot, "get_ai_tutor_service") as service,
                 ):
@@ -326,19 +343,13 @@ class AITutorActionTest(unittest.IsolatedAsyncioTestCase):
                     )
 
                 surface.query.answer.assert_awaited_once_with()
-                store.has_consent.assert_called_once_with(
-                    surface.update.effective_user.id,
-                    consent_type="ai_processing",
-                    document_version=AI_CONSENT_VERSION,
+                snapshot_reader.assert_called_once_with(
+                    store, surface.update.effective_user.id
                 )
-                companion.assert_awaited_once_with(
-                    surface.update,
-                    surface.context,
-                    question=question,
-                    communication_mode="brief",
-                    answer_depth="compact",
-                    task_kind="progress_review",
-                )
+                surface.message.reply_text.assert_awaited_once()
+                store.has_consent.assert_not_called()
+                store.reserve_ai_usage.assert_not_called()
+                companion.assert_not_awaited()
                 service.assert_not_called()
                 self.assertNotIn("pending_ai_consent", surface.user_data)
 
@@ -401,52 +412,38 @@ class AITutorActionTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("grounded_snapshot", payload)
         self.assertIn("compact_reply_policy", payload)
 
-    async def test_ac4_analysis_without_consent_prompts_then_acceptance_resumes_compact(self):
+    async def test_ac4_stats_action_never_requests_ai_consent(self):
         surface = TutorSurface(locale="en")
         buttons = await self._menu_buttons(surface)
         surface.set_callback(buttons[1].callback_data)
         store = MagicMock()
         store.has_consent.return_value = False
         companion = AsyncMock()
+        snapshot_reader = Mock(return_value={"has_progress": False})
         with (
             patch.object(bot, "AI_SETTINGS", enabled_settings()),
             patch.object(bot, "get_store", return_value=store),
+            patch.object(
+                bot,
+                "grounded_progress_snapshot",
+                new=snapshot_reader,
+            ),
+            patch.object(
+                bot,
+                "request_compact_learning_companion",
+                new=companion,
+            ),
             patch.object(bot, "handle_mirror_question", new=companion),
         ):
             await bot.block_ai_action_cb.__wrapped__(surface.update, surface.context)
 
+        snapshot_reader.assert_called_once_with(
+            store, surface.update.effective_user.id
+        )
+        surface.message.reply_text.assert_awaited_once()
+        store.has_consent.assert_not_called()
         companion.assert_not_awaited()
         store.reserve_ai_usage.assert_not_called()
-        pending = surface.user_data["pending_ai_consent"]
-        self.assertEqual(pending["request_kind"], "learning_companion")
-        self.assertEqual(pending["block_session"], surface.session)
-        self.assertEqual(
-            pending["question"],
-            translate("ai_tutor_question_mistakes", "en"),
-        )
-        self.assertEqual(pending["task_kind"], "progress_review")
-        self.assertIn("AI", surface.message.reply_text.await_args.args[0])
-
-        surface.set_callback("aiconsent:accept")
-        surface.query.answer.reset_mock()
-        surface.reset_reply()
-        store.grant_consent.return_value = True
-        with (
-            patch.object(bot, "AI_SETTINGS", enabled_settings()),
-            patch.object(bot, "get_store", return_value=store),
-            patch.object(bot, "handle_mirror_question", new=companion),
-        ):
-            await bot.ai_consent_cb.__wrapped__(surface.update, surface.context)
-
-        store.grant_consent.assert_called_once()
-        companion.assert_awaited_once_with(
-            surface.update,
-            surface.context,
-            question=translate("ai_tutor_question_mistakes", "en"),
-            communication_mode="brief",
-            answer_depth="compact",
-            task_kind="progress_review",
-        )
         self.assertNotIn("pending_ai_consent", surface.user_data)
 
     async def test_edge_stale_and_malformed_action_callbacks_never_reach_paid_path(self):
@@ -484,21 +481,32 @@ class AITutorActionTest(unittest.IsolatedAsyncioTestCase):
         store = MagicMock()
         companion = AsyncMock()
         service = MagicMock()
+        snapshot_reader = Mock(return_value={"has_progress": False})
         with (
             patch.object(bot, "AI_SETTINGS", disabled_settings()),
             patch.object(bot, "get_store", return_value=store),
+            patch.object(
+                bot,
+                "grounded_progress_snapshot",
+                new=snapshot_reader,
+            ),
             patch.object(bot, "get_ai_tutor_service", return_value=service),
+            patch.object(
+                bot,
+                "request_compact_learning_companion",
+                new=companion,
+            ),
             patch.object(bot, "handle_mirror_question", new=companion),
         ):
             await bot.block_ai_action_cb.__wrapped__(
                 surface.update, surface.context
             )
 
-        surface.query.answer.assert_awaited_once_with(
-            translate("ai_disabled", "fr"),
-            show_alert=True,
+        surface.query.answer.assert_awaited_once_with()
+        snapshot_reader.assert_called_once_with(
+            store, surface.update.effective_user.id
         )
-        surface.message.reply_text.assert_not_awaited()
+        surface.message.reply_text.assert_awaited_once()
         store.has_consent.assert_not_called()
         store.reserve_ai_usage.assert_not_called()
         companion.assert_not_awaited()
