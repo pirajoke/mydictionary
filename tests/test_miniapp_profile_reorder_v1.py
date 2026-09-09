@@ -18,7 +18,6 @@ EXPECTED_PROFILE_BLOCKS = (
     ("section", None, "streak-card", None),
     ("div", None, "profile-identity", None),
     ("section", "daily-quest", "daily-quest", None),
-    ("button", None, "dictionary-shortcut", None),
     ("section", "profile-game-progress", "profile-game-progress", None),
     ("section", "profile-achievements", "profile-achievements", None),
     ("details", None, "progress-details", None),
@@ -170,13 +169,26 @@ class MiniAppProfileReorderV1ContractTest(unittest.TestCase):
             (items[1], "calendar-grid"),
             (items[2], "profile-photo"),
             (items[3], "daily-quest-action"),
-            (items[5], "profile-level"),
-            (items[6], "achievement-streak-value"),
-            (items[7], "profile-metrics"),
+            (items[4], "profile-level"),
+            (items[5], "achievement-streak-value"),
+            (items[6], "profile-metrics"),
         ):
             self.assertEqual(find_descendant(item, element_id=required_id).attrs.get("id"), required_id)
-        self.assertIn("data-open-dictionary", items[4].attrs)
         self.assertEqual(find_descendant(items[2], class_name="profile-share").attrs.get("data-action"), "share")
+
+    def test_regression_dictionary_shortcut_exists_only_in_words_tab(self):
+        profile = find_by_id(self.dom, "panel-profile")
+        words = find_by_id(self.dom, "panel-words")
+
+        profile_dictionary_controls = [
+            element for element in profile.descendants() if "data-open-dictionary" in element.attrs
+        ]
+        words_dictionary_controls = [
+            element for element in words.descendants() if "data-open-dictionary" in element.attrs
+        ]
+
+        self.assertEqual(profile_dictionary_controls, [], "the profile must not duplicate dictionary access")
+        self.assertEqual(len(words_dictionary_controls), 1, "dictionary access must remain in the Words tab")
 
     def test_ac2_primary_pointer_long_press_lifts_one_block_and_reorders_by_position(self):
         self.assertIsNotNone(
