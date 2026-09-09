@@ -192,6 +192,25 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 .dashboard-state.disabled { color: var(--dashboard-muted); }
 .dashboard-state.pending { color: var(--dashboard-muted); }
 
+[data-profile-section] {
+  position: relative;
+  -webkit-touch-callout: none;
+  transition: transform .2s var(--control-ease), box-shadow .2s var(--control-ease), filter .2s var(--control-ease);
+}
+[data-profile-section] img { -webkit-user-drag: none; }
+[data-profile-section]:focus-visible {
+  outline: 3px solid var(--lexi-orange);
+  outline-offset: 3px;
+}
+.profile-reorder-dragging {
+  z-index: 5;
+  transform: translateY(-3px) scale(1.012);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .32), 0 0 0 2px color-mix(in srgb, var(--lexi-orange) 74%, transparent);
+  filter: saturate(1.08) brightness(1.04);
+  touch-action: none;
+  cursor: grabbing;
+}
+
 .profile-identity {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) 44px;

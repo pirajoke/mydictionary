@@ -36,9 +36,218 @@
   const BOOTSTRAP_TIMEOUT_MS = 5000;
   const BOOTSTRAP_RETRY_DELAY_MS = 400;
   const BOOTSTRAP_MAX_ATTEMPTS = 2;
+  const PROFILE_SECTION_KEYS = Object.freeze([
+    "hero", "calendar", "identity", "daily-quest", "dictionary",
+    "game-progress", "achievements", "more-stats"
+  ]);
+  const PROFILE_ORDER_STORAGE_KEY = "lexi:profile-order:v1";
+  const PROFILE_REORDER_HOLD_MS = 420;
+  const PROFILE_REORDER_MOVE_TOLERANCE_PX = 10;
+  const PROFILE_REORDER_NATIVE_CONTROL_SELECTOR = "button, a, input, select, textarea, summary";
+  let profileReorderState = null;
+  let profileReorderSuppressClick = false;
 
   const node = (id) => document.getElementById(id);
   const text = (element, value) => { element.textContent = String(value ?? ""); };
+
+  function currentProfileSectionOrder() {
+    return Array.from(node("profile-layout").children)
+      .map((item) => item.dataset.profileSection)
+      .filter((key) => PROFILE_SECTION_KEYS.includes(key));
+  }
+
+  function normalizeProfileSectionOrder(value) {
+    const normalized = [];
+    const seen = new Set();
+    if (Array.isArray(value)) {
+      value.forEach((key) => {
+        if (PROFILE_SECTION_KEYS.includes(key) && !seen.has(key)) {
+          seen.add(key);
+          normalized.push(key);
+        }
+      });
+    }
+    PROFILE_SECTION_KEYS.forEach((key) => {
+      if (!seen.has(key)) normalized.push(key);
+    });
+    return normalized;
+  }
+
+  function applyProfileSectionOrder(value) {
+    const layout = node("profile-layout");
+    if (!layout) return;
+    const items = new Map(
+      Array.from(layout.children).map((item) => [item.dataset.profileSection, item])
+    );
+    normalizeProfileSectionOrder(value).forEach((key) => {
+      const item = items.get(key);
+      if (item) layout.append(item);
+    });
+  }
+
+  function saveProfileSectionOrder() {
+    const order = Array.from(node("profile-layout").children)
+      .map((item) => item.dataset.profileSection)
+      .filter((key) => PROFILE_SECTION_KEYS.includes(key));
+    if (order.length !== PROFILE_SECTION_KEYS.length) return;
+    try {
+      localStorage.setItem(PROFILE_ORDER_STORAGE_KEY, JSON.stringify(order));
+    } catch (_) {
+      // Personalization stays optional when browser storage is unavailable.
+    }
+  }
+
+  function restoreProfileSectionOrder() {
+    try {
+      const stored = localStorage.getItem(PROFILE_ORDER_STORAGE_KEY);
+      if (!stored) {
+        applyProfileSectionOrder(PROFILE_SECTION_KEYS);
+        return;
+      }
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) throw new Error("invalid_profile_order");
+      applyProfileSectionOrder(normalizeProfileSectionOrder(parsed));
+    } catch (_) {
+      applyProfileSectionOrder(PROFILE_SECTION_KEYS);
+    }
+  }
+
+  function announceProfileSectionPosition(item) {
+    if (!payload || !payload.copy || !item) return;
+    const items = Array.from(node("profile-layout").children);
+    const position = items.indexOf(item) + 1;
+    const total = items.length;
+    const message = String(payload.copy.profile_reorder_moved || "")
+      .replace("{position}", String(position))
+      .replace("{total}", String(total));
+    text(node("profile-reorder-status"), message);
+  }
+
+  function startProfileReorder() {
+    const state = profileReorderState;
+    if (!state || state.cancelled) return;
+    state.active = true;
+    state.item.classList.add("profile-reorder-dragging");
+    try {
+      state.item.setPointerCapture(state.pointerId);
+    } catch (_) {
+      // Pointer capture is an enhancement; the delegated listeners still work.
+    }
+    profileReorderSuppressClick = true;
+    if (webApp && webApp.HapticFeedback && typeof webApp.HapticFeedback.impactOccurred === "function") {
+      webApp.HapticFeedback.impactOccurred("light");
+    }
+  }
+
+  function handleProfilePointerDown(event) {
+    if (!event.isPrimary || event.button !== 0 || profileReorderState) return;
+    const item = event.target.closest("[data-profile-section]");
+    if (!item || item.parentElement !== node("profile-layout")) return;
+    const nativeControl = event.target.closest(PROFILE_REORDER_NATIVE_CONTROL_SELECTOR);
+    if (nativeControl && nativeControl !== item) return;
+    profileReorderState = {
+      item,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+      cancelled: false,
+      originalOrder: currentProfileSectionOrder(),
+      timer: setTimeout(startProfileReorder, PROFILE_REORDER_HOLD_MS)
+    };
+  }
+
+  function handleProfilePointerMove(event) {
+    const state = profileReorderState;
+    if (!state || event.pointerId !== state.pointerId) return;
+    if (!state.active) {
+      const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
+      if (distance > PROFILE_REORDER_MOVE_TOLERANCE_PX) {
+        clearTimeout(state.timer);
+        state.cancelled = true;
+        profileReorderState = null;
+      }
+      return;
+    }
+    event.preventDefault();
+    const layout = node("profile-layout");
+    const candidates = Array.from(layout.children).filter((item) => item !== state.item);
+    const target = candidates.find((item) => {
+      const bounds = item.getBoundingClientRect();
+      return event.clientY >= bounds.top && event.clientY <= bounds.bottom;
+    });
+    if (!target) return;
+    const bounds = target.getBoundingClientRect();
+    if (event.clientY < bounds.top + bounds.height / 2) {
+      layout.insertBefore(state.item, target);
+    } else {
+      layout.insertBefore(state.item, target.nextElementSibling);
+    }
+  }
+
+  function preventProfileScrollDuringReorder(event) {
+    if (profileReorderState && profileReorderState.active) event.preventDefault();
+  }
+
+  function finishProfileReorder() {
+    const state = profileReorderState;
+    if (!state) return;
+    clearTimeout(state.timer);
+    state.item.classList.remove("profile-reorder-dragging");
+    profileReorderState = null;
+    try {
+      if (state.item.hasPointerCapture(state.pointerId)) state.item.releasePointerCapture(state.pointerId);
+    } catch (_) {
+      // Capture may already have been released by the browser.
+    }
+    if (state.active) {
+      saveProfileSectionOrder();
+      announceProfileSectionPosition(state.item);
+      setTimeout(() => { profileReorderSuppressClick = false; }, 0);
+    }
+  }
+
+  function handleProfilePointerEnd(event) {
+    if (!profileReorderState || event.pointerId !== profileReorderState.pointerId) return;
+    finishProfileReorder();
+  }
+
+  function cancelProfileReorder() {
+    const state = profileReorderState;
+    if (!state) return;
+    clearTimeout(state.timer);
+    state.item.classList.remove("profile-reorder-dragging");
+    profileReorderState = null;
+    try {
+      if (state.item.hasPointerCapture(state.pointerId)) state.item.releasePointerCapture(state.pointerId);
+    } catch (_) {
+      // Capture may already have been released by the browser.
+    }
+    applyProfileSectionOrder(state.originalOrder || PROFILE_SECTION_KEYS);
+    profileReorderSuppressClick = false;
+  }
+
+  function suppressProfileClickAfterReorder(event) {
+    if (!profileReorderSuppressClick) return;
+    profileReorderSuppressClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function moveProfileSectionByKeyboard(event) {
+    if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+    const item = event.target.closest("[data-profile-section]");
+    const layout = node("profile-layout");
+    if (!item || item.parentElement !== layout || event.target !== item) return;
+    const sibling = event.key === "ArrowUp" ? item.previousElementSibling : item.nextElementSibling;
+    if (!sibling) return;
+    event.preventDefault();
+    if (event.key === "ArrowUp") layout.insertBefore(item, sibling);
+    if (event.key === "ArrowDown") layout.insertBefore(item, sibling.nextElementSibling);
+    saveProfileSectionOrder();
+    announceProfileSectionPosition(item);
+    item.focus();
+  }
   const metric = (label, value) => {
     const item = document.createElement("div");
     item.className = "metric";
@@ -543,6 +752,7 @@
     payload = data;
     const copy = data.copy;
     applyCopy(copy);
+    restoreProfileSectionOrder();
     document.querySelector(".bottom-nav").hidden = false;
     document.documentElement.lang = data.locale;
     if (data.direction === "rtl") {
@@ -767,6 +977,7 @@
 
   const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
   function activateTab(tab, focus = false) {
+    cancelProfileReorder();
     tabs.forEach((candidate) => {
       const active = candidate === tab;
       candidate.setAttribute("aria-selected", String(active));
@@ -813,6 +1024,17 @@
   node("retry-button").addEventListener("click", load);
   node("calendar-previous").addEventListener("click", () => moveCalendar(-1));
   node("calendar-next").addEventListener("click", () => moveCalendar(1));
+  const profileLayout = node("profile-layout");
+  profileLayout.addEventListener("pointerdown", handleProfilePointerDown);
+  profileLayout.addEventListener("pointermove", handleProfilePointerMove);
+  profileLayout.addEventListener("pointerup", handleProfilePointerEnd);
+  profileLayout.addEventListener("pointercancel", cancelProfileReorder);
+  profileLayout.addEventListener("lostpointercapture", cancelProfileReorder);
+  profileLayout.addEventListener("touchmove", preventProfileScrollDuringReorder, {passive: false});
+  profileLayout.addEventListener("click", suppressProfileClickAfterReorder, true);
+  profileLayout.addEventListener("keydown", moveProfileSectionByKeyboard);
+  window.addEventListener("pagehide", cancelProfileReorder);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) cancelProfileReorder() });
   document.querySelectorAll("[data-referral-invite]").forEach((button) => button.addEventListener("click", issueReferralInvite));
   load();
 })();
