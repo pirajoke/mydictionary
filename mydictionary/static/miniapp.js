@@ -129,7 +129,7 @@
     state.active = true;
     state.item.classList.add("profile-reorder-dragging");
     try {
-      state.item.setPointerCapture(state.pointerId);
+      profileLayout.setPointerCapture(state.pointerId);
     } catch (_) {
       // Pointer capture is an enhancement; the delegated listeners still work.
     }
@@ -196,7 +196,7 @@
     state.item.classList.remove("profile-reorder-dragging");
     profileReorderState = null;
     try {
-      if (state.item.hasPointerCapture(state.pointerId)) state.item.releasePointerCapture(state.pointerId);
+      if (profileLayout.hasPointerCapture(state.pointerId)) profileLayout.releasePointerCapture(state.pointerId);
     } catch (_) {
       // Capture may already have been released by the browser.
     }
@@ -219,7 +219,7 @@
     state.item.classList.remove("profile-reorder-dragging");
     profileReorderState = null;
     try {
-      if (state.item.hasPointerCapture(state.pointerId)) state.item.releasePointerCapture(state.pointerId);
+      if (profileLayout.hasPointerCapture(state.pointerId)) profileLayout.releasePointerCapture(state.pointerId);
     } catch (_) {
       // Capture may already have been released by the browser.
     }

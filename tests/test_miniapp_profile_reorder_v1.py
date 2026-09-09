@@ -412,6 +412,23 @@ class MiniAppProfileReorderV1ContractTest(unittest.TestCase):
         self.assertRegex(reorderable, r"(?<!-)user-select\s*:\s*none")
         self.assertRegex(images, r"-webkit-user-drag\s*:\s*none")
 
+    def test_regression_pointer_capture_survives_moving_the_dragged_block(self):
+        begin = javascript_function(self.js, "startProfileReorder")
+        finish = javascript_function(self.js, "finishProfileReorder")
+        cancel = javascript_function(self.js, "cancelProfileReorder")
+
+        self.assertIn("profileLayout.setPointerCapture(state.pointerId)", begin)
+        self.assertNotIn("state.item.setPointerCapture", begin)
+        for cleanup in (finish, cancel):
+            self.assertIn("profileLayout.hasPointerCapture(state.pointerId)", cleanup)
+            self.assertIn("profileLayout.releasePointerCapture(state.pointerId)", cleanup)
+            self.assertNotIn("state.item.hasPointerCapture", cleanup)
+            self.assertNotIn("state.item.releasePointerCapture", cleanup)
+        self.assertIn(
+            'profileLayout.addEventListener("lostpointercapture", cancelProfileReorder)',
+            self.js,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
