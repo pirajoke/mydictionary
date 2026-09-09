@@ -4,7 +4,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0022_custom_vocabulary_translation_language"
+revision = "0022_custom_vocab_translation"
 down_revision = "0021_custom_vocabulary_v1"
 branch_labels = None
 depends_on = None
