@@ -234,6 +234,17 @@ class MiniAppProfileFrontendContractTest(unittest.TestCase):
                 violations.append(f"unbound:{behavior}")
         self.assertEqual(violations, [])
 
+    def test_profile_calendar_sits_immediately_after_the_hero_photo(self):
+        profile = self.html[
+            self.html.index('id="panel-profile"') : self.html.index('id="panel-words"')
+        ]
+        hero_photo = profile.index("lexi-section-profile-v1.webp")
+        calendar = profile.index('class="streak-card dashboard-section"')
+        identity = profile.index('class="profile-identity dashboard-section"')
+
+        self.assertLess(hero_photo, calendar)
+        self.assertLess(calendar, identity)
+
     def test_ac2_err2_calendar_renders_42_cells_with_localized_bounded_navigation(self):
         violations = []
         for token in (
