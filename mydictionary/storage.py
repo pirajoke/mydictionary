@@ -1830,7 +1830,8 @@ class DatabaseStore:
             progress = session.get(UserProgress, int(user_id))
             interface_settings = session.execute(
                 text(
-                    "SELECT interface_locale, onboarding_version FROM users "
+                    "SELECT interface_locale, onboarding_version, "
+                    "custom_vocabulary_meaning_language FROM users "
                     "WHERE telegram_user_id = :user_id"
                 ),
                 {"user_id": int(user_id)},
@@ -1838,6 +1839,9 @@ class DatabaseStore:
             return {
                 "role": user.role,
                 "native_language": user.native_language,
+                "custom_vocabulary_meaning_language": interface_settings[
+                    "custom_vocabulary_meaning_language"
+                ],
                 "learning_goal": user.learning_goal,
                 "daily_word_goal": user.daily_word_goal,
                 "onboarding_completed_at": user.onboarding_completed_at,
@@ -1850,6 +1854,42 @@ class DatabaseStore:
                 "mirror_style": self.get_mirror_style(user_id),
                 "interface_locale": interface_settings["interface_locale"],
             }
+
+    def set_custom_vocabulary_meaning_language(
+        self, user_id: int, language: str
+    ) -> str:
+        """Persist the translation language used only by custom vocabulary."""
+        normalized = str(language or "").strip().lower()
+        if normalized not in INTERFACE_LOCALES:
+            raise ValueError("Unsupported custom vocabulary meaning language")
+        with self.engine.begin() as connection:
+            user = connection.execute(
+                text(
+                    "SELECT privacy_status, access_status FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": int(user_id)},
+            ).mappings().one_or_none()
+            if (
+                user is None
+                or user["access_status"] != "active"
+                or user["privacy_status"] != "active"
+            ):
+                raise PermissionError(
+                    "Learner cannot change custom vocabulary preferences"
+                )
+            connection.execute(
+                text(
+                    "UPDATE users SET custom_vocabulary_meaning_language = :language, "
+                    "updated_at = :updated_at WHERE telegram_user_id = :user_id"
+                ),
+                {
+                    "language": normalized,
+                    "updated_at": utcnow(),
+                    "user_id": int(user_id),
+                },
+            )
+        return normalized
 
     def access_profile(self, user_id: int) -> dict[str, Any] | None:
         """Return access state without creating a record for denied traffic."""

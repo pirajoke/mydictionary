@@ -4136,6 +4136,10 @@ async def _process_custom_vocabulary_source(
     if state is None:
         await message.reply_text(translate("custom_vocab_stale", locale))
         return
+    if not state.get("meaning_language"):
+        state.pop("pending_source", None)
+        await message.reply_text(translate("custom_vocab_choose_first", locale))
+        return
     descriptor = state.get("pending_source")
     if not isinstance(descriptor, Mapping):
         await message.reply_text(translate("custom_vocab_stale", locale))
@@ -4276,12 +4280,15 @@ async def cmd_add_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
     runtime = _ACTIVE_RUNTIME.get()
     profile = runtime.store.product_profile(runtime.user_id)
     target_language = str(profile.get("active_lang") or "en")
-    meaning_language = str(profile.get("native_language") or "ru")
+    remembered_language = str(
+        profile.get("custom_vocabulary_meaning_language")
+        or profile.get("native_language")
+        or "ru"
+    )
     context.user_data.pop(PENDING_DICTIONARY_LOOKUP_KEY, None)
     context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
     context.user_data[PENDING_CUSTOM_VOCABULARY_KEY] = {
         "target_language": target_language,
-        "meaning_language": meaning_language,
         "expires_at": int(time.time()) + CUSTOM_VOCABULARY_TTL_SECONDS,
     }
     context.user_data.pop(CUSTOM_VOCABULARY_PREVIEW_KEY, None)
@@ -4289,18 +4296,37 @@ async def cmd_add_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "custom_vocabulary_started",
         properties={"language": target_language},
     )
+    locale = interface_locale_for_update(update)
+    candidates = [
+        language
+        for language in INTERFACE_LOCALES
+        if language != target_language
+    ]
+    candidates.sort(key=lambda language: (language != remembered_language, language))
+    buttons = [
+        InlineKeyboardButton(
+            f"{CATALOG.flag_for_language(language, 'learner') or '🏳️'} "
+            f"{language_name(language, locale)}",
+            callback_data=f"custom-import:language:{language}",
+        )
+        for language in candidates
+    ]
+    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                translate("custom_vocab_cancel", locale),
+                callback_data="custom-import:cancel",
+            )
+        ]
+    )
     await update.effective_message.reply_text(
         translate(
-            "custom_vocab_prompt",
-            interface_locale_for_update(update),
-            language=language_name(target_language, interface_locale_for_update(update)),
+            "custom_vocab_choose_translation",
+            locale,
+            language=language_name(target_language, locale),
         ),
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton(
-                translate("custom_vocab_cancel", interface_locale_for_update(update)),
-                callback_data="custom-import:cancel",
-            )]]
-        ),
+        reply_markup=InlineKeyboardMarkup(rows),
     )
 
 
@@ -4311,6 +4337,9 @@ async def _handle_custom_vocabulary_text(
     state = _active_custom_vocabulary_state(context)
     if state is None:
         await update.message.reply_text(translate("custom_vocab_stale", locale))
+        return
+    if not state.get("meaning_language"):
+        await update.message.reply_text(translate("custom_vocab_choose_first", locale))
         return
     try:
         parse_pasted_vocabulary(str(update.message.text or ""))
@@ -4338,6 +4367,9 @@ async def custom_vocabulary_media_handler(
     if state is None:
         return
     message = update.message
+    if not state.get("meaning_language"):
+        await message.reply_text(translate("custom_vocab_choose_first", locale))
+        return
     descriptor: dict[str, Any]
     photos = getattr(message, "photo", None)
     document = getattr(message, "document", None)
@@ -4380,6 +4412,9 @@ async def _handle_custom_vocabulary_voice(
     if state is None:
         return False
     locale = interface_locale_for_update(update)
+    if not state.get("meaning_language"):
+        await update.message.reply_text(translate("custom_vocab_choose_first", locale))
+        return True
     voice = update.message.voice
     if not VOICE_SETTINGS.enabled or not voice_note_within_limits(voice, VOICE_SETTINGS):
         await update.message.reply_text(translate("custom_vocab_voice_unavailable", locale))
@@ -4412,8 +4447,52 @@ async def custom_import_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer(translate("custom_vocab_cancelled", locale))
         await query.edit_message_reply_markup(reply_markup=None)
         return
-    preview = context.user_data.get(CUSTOM_VOCABULARY_PREVIEW_KEY)
     state = _active_custom_vocabulary_state(context)
+    if len(parts) == 3 and parts[1] == "language":
+        language = str(parts[2]).strip().lower()
+        if (
+            state is None
+            or language not in INTERFACE_LOCALES
+            or language == str(state.get("target_language") or "")
+        ):
+            await query.answer(translate("custom_vocab_stale", locale), show_alert=True)
+            return
+        store = get_store()
+        try:
+            chosen = store.set_custom_vocabulary_meaning_language(
+                int(update.effective_user.id), language
+            )
+        except (PermissionError, ValueError):
+            await query.answer(translate("custom_vocab_stale", locale), show_alert=True)
+            return
+        state["meaning_language"] = chosen
+        await query.answer()
+        await query.edit_message_text(
+            "\n\n".join(
+                (
+                    translate(
+                        "custom_vocab_translation_selected",
+                        locale,
+                        language=language_name(chosen, locale),
+                    ),
+                    translate(
+                        "custom_vocab_prompt",
+                        locale,
+                        language=language_name(
+                            str(state["target_language"]), locale
+                        ),
+                    ),
+                )
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton(
+                    translate("custom_vocab_cancel", locale),
+                    callback_data="custom-import:cancel",
+                )]]
+            ),
+        )
+        return
+    preview = context.user_data.get(CUSTOM_VOCABULARY_PREVIEW_KEY)
     try:
         valid = (
             len(parts) == 3
@@ -4429,9 +4508,14 @@ async def custom_import_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer(translate("custom_vocab_stale", locale), show_alert=True)
         return
     profile = get_store().product_profile(int(update.effective_user.id))
+    durable_meaning_language = str(
+        profile.get("custom_vocabulary_meaning_language")
+        or profile.get("native_language")
+        or "ru"
+    )
     if (
         str(profile.get("active_lang") or "") != str(preview["target_language"])
-        or str(profile.get("native_language") or "") != str(preview["meaning_language"])
+        or durable_meaning_language != str(preview["meaning_language"])
     ):
         context.user_data.pop(CUSTOM_VOCABULARY_PREVIEW_KEY, None)
         await query.answer(
@@ -4526,7 +4610,11 @@ async def cmd_custom_practice(update: Update, context: ContextTypes.DEFAULT_TYPE
     runtime = _ACTIVE_RUNTIME.get()
     profile = runtime.store.product_profile(runtime.user_id)
     language = str(profile.get("active_lang") or "en")
-    meaning_language = str(profile.get("native_language") or "ru")
+    meaning_language = str(
+        profile.get("custom_vocabulary_meaning_language")
+        or profile.get("native_language")
+        or "ru"
+    )
     entries = runtime.store.custom_vocabulary_practice(
         runtime.user_id,
         target_language=language,
@@ -4592,10 +4680,14 @@ async def custom_practice_cb(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     store = get_store()
     profile = store.product_profile(int(update.effective_user.id))
+    durable_meaning_language = str(
+        profile.get("custom_vocabulary_meaning_language")
+        or profile.get("native_language")
+        or "ru"
+    )
     if (
         str(profile.get("active_lang") or "") != str(state.get("target_language") or "")
-        or str(profile.get("native_language") or "")
-        != str(state.get("meaning_language") or "")
+        or durable_meaning_language != str(state.get("meaning_language") or "")
     ):
         context.user_data.pop(CUSTOM_VOCABULARY_PRACTICE_KEY, None)
         await query.answer(

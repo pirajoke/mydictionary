@@ -88,7 +88,7 @@ class MiniAppInterfaceLanguageContractTest(unittest.TestCase):
         self.assertIn("interface_locale", columns)
         with self.store.engine.connect() as connection:
             revision = connection.execute(text("select version_num from alembic_version")).scalar_one()
-        self.assertEqual(revision, "0021_custom_vocabulary_v1")
+        self.assertEqual(revision, "0022_custom_vocabulary_translation_language")
 
         self.assertEqual(self.store.set_interface_locale(USER_ID, "es"), "es")
         with self.store.Session() as session:

@@ -874,7 +874,9 @@ def _read_only_database_snapshot(
         progress_row = session.get(UserProgress, int(user_id))
         mirror_row = session.execute(
             text(
-                "SELECT interface_locale, mirror_response_mode, mirror_style, mirror_depth, mirror_level FROM users "
+                "SELECT interface_locale, mirror_response_mode, mirror_style, "
+                "mirror_depth, mirror_level, custom_vocabulary_meaning_language "
+                "FROM users "
                 "WHERE telegram_user_id = :user_id"
             ),
             {"user_id": int(user_id)},
@@ -882,6 +884,9 @@ def _read_only_database_snapshot(
         product = {
             "role": learner.role,
             "native_language": learner.native_language,
+            "custom_vocabulary_meaning_language": mirror_row[
+                "custom_vocabulary_meaning_language"
+            ],
             "learning_goal": learner.learning_goal,
             "daily_word_goal": learner.daily_word_goal,
             "active_pack_id": progress_row.active_pack_id if progress_row else None,
@@ -1079,6 +1084,11 @@ def build_bootstrap(
     seen_languages: set[str] = set()
     role = str(access.get("role") or product.get("role") or "learner")
     meaning_language = str(product.get("native_language") or "ru")
+    custom_meaning_language = str(
+        product.get("custom_vocabulary_meaning_language")
+        or meaning_language
+        or "ru"
+    )
     custom_words: list[dict[str, Any]] = []
     custom_loader = getattr(store, "list_custom_vocabulary", None)
     if callable(custom_loader):
@@ -1086,7 +1096,7 @@ def build_bootstrap(
             candidate = custom_loader(
                 int(user_id),
                 target_language=active_language,
-                meaning_language=meaning_language,
+                meaning_language=custom_meaning_language,
                 limit=60,
             )
         except (AttributeError, PermissionError, TypeError, ValueError):
