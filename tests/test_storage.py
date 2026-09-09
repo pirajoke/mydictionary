@@ -114,7 +114,8 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0021_custom_vocabulary_v1")
+        self.assertEqual(revision, "0022_custom_vocab_translation")
+        self.assertLessEqual(len(revision), 32)
 
         ai_usage_columns = {
             column["name"] for column in inspector.get_columns("ai_usage")

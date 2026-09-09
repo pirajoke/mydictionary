@@ -4279,6 +4279,60 @@ for _locale, _localized in _CUSTOM_VOCABULARY_FALLBACK_LOCALES.items():
 for _locale, _copy in _CUSTOM_VOCABULARY_COPY.items():
     _CATALOG[_locale].update(_copy)
 
+_CUSTOM_VOCABULARY_LANGUAGE_COPY = {
+    "en": (
+        "🌍 You are adding {language} words. Which language should I translate them into?",
+        "Choose the translation language first 👆",
+        "✅ Translations: {language}",
+    ),
+    "fr": (
+        "🌍 Vous ajoutez des mots en {language}. Dans quelle langue dois-je les traduire ?",
+        "Choisissez d’abord la langue de traduction 👆",
+        "✅ Traduction : {language}",
+    ),
+    "de": (
+        "🌍 Du fügst Wörter auf {language} hinzu. In welche Sprache soll ich sie übersetzen?",
+        "Wähle zuerst die Übersetzungssprache 👆",
+        "✅ Übersetzung: {language}",
+    ),
+    "ja": (
+        "🌍 {language}の単語を追加します。どの言語に翻訳しますか？",
+        "先に翻訳言語を選んでください 👆",
+        "✅ 翻訳先：{language}",
+    ),
+    "ar": (
+        "🌍 أنت تضيف كلمات باللغة {language}. إلى أي لغة أترجمها؟",
+        "اختر لغة الترجمة أولاً 👆",
+        "✅ لغة الترجمة: {language}",
+    ),
+    "zh": (
+        "🌍 你正在添加{language}单词。要翻译成哪种语言？",
+        "请先选择翻译语言 👆",
+        "✅ 翻译语言：{language}",
+    ),
+    "ru": (
+        "🌍 Ты добавляешь слова на языке: {language}. На какой язык их переводить?",
+        "Сначала выбери язык перевода 👆",
+        "✅ Перевод: {language}",
+    ),
+    "es": (
+        "🌍 Estás añadiendo palabras en {language}. ¿A qué idioma quieres traducirlas?",
+        "Primero elige el idioma de traducción 👆",
+        "✅ Traducción: {language}",
+    ),
+}
+for _locale, _messages in _CUSTOM_VOCABULARY_LANGUAGE_COPY.items():
+    _CATALOG[_locale].update(
+        zip(
+            (
+                "custom_vocab_choose_translation",
+                "custom_vocab_choose_first",
+                "custom_vocab_translation_selected",
+            ),
+            _messages,
+        )
+    )
+
 
 def normalize_locale(value: str | None, *, fallback: str = DEFAULT_INTERFACE_LOCALE) -> str:
     """Normalize Telegram language_code without guessing unsupported locales."""

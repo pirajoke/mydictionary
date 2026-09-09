@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select, text
 
 import bot
 from mydictionary import localization
@@ -203,6 +203,74 @@ class CustomVocabularyStorageTest(unittest.TestCase):
             count = session.scalar(select(func.count()).select_from(CustomVocabularyEntry))
         self.assertEqual(count, 0)
 
+    def test_translation_language_preference_is_durable_and_separate(self):
+        self.store.update_product_profile(self.user_id, native_language="fr")
+
+        columns = {
+            column["name"]
+            for column in inspect(self.store.engine).get_columns("users")
+        }
+        self.assertIn("custom_vocabulary_meaning_language", columns)
+        self.assertEqual(
+            self.store.set_custom_vocabulary_meaning_language(self.user_id, "ru"),
+            "ru",
+        )
+
+        profile = self.store.product_profile(self.user_id)
+        self.assertEqual(profile["custom_vocabulary_meaning_language"], "ru")
+        self.assertEqual(profile["native_language"], "fr")
+        self.assertEqual(profile["active_lang"], "en")
+
+        erase_user_learning_data(self.store, self.user_id)
+        with self.store.engine.connect() as connection:
+            preference = connection.execute(
+                text(
+                    "SELECT custom_vocabulary_meaning_language FROM users "
+                    "WHERE telegram_user_id = :user_id"
+                ),
+                {"user_id": self.user_id},
+            ).scalar_one()
+        self.assertIsNone(preference)
+
+    def test_miniapp_custom_word_list_uses_durable_translation_language(self):
+        self.store.update_product_profile(self.user_id, native_language="fr")
+        self.store.set_custom_vocabulary_meaning_language(self.user_id, "ru")
+        self.store.upsert_custom_vocabulary(
+            self.user_id,
+            target_language="en",
+            meaning_language="ru",
+            entries=(
+                CustomVocabularyCandidate(
+                    "journey", "поездка", "/ˈdʒɜːni/", "text"
+                ),
+            ),
+        )
+        self.store.upsert_custom_vocabulary(
+            self.user_id,
+            target_language="en",
+            meaning_language="fr",
+            entries=(
+                CustomVocabularyCandidate(
+                    "journey", "voyage", "/ˈdʒɜːni/", "text"
+                ),
+            ),
+        )
+
+        payload = miniapp.build_bootstrap(
+            self.store,
+            user_id=self.user_id,
+            display_name="Learner",
+            locale="ru",
+            catalog=bot.CATALOG,
+            products=[],
+            checkout_enabled=False,
+            ai_enabled=True,
+            voice_enabled=True,
+        )
+
+        self.assertEqual(len(payload["custom_words"]), 1)
+        self.assertEqual(payload["custom_words"][0]["meaning"], "поездка")
+
     def test_miniapp_bootstrap_exposes_only_bounded_custom_word_fields(self):
         self.store.upsert_custom_vocabulary(
             self.user_id,
@@ -357,6 +425,151 @@ class CustomVocabularyProviderTest(unittest.IsolatedAsyncioTestCase):
         add_call.assert_awaited_once_with(update, context)
         practice_call.assert_awaited_once_with(update, context)
 
+    async def test_add_words_first_asks_for_translation_language(self):
+        runtime_store = SimpleNamespace(
+            product_profile=lambda _user_id: {
+                "active_lang": "fr",
+                "native_language": "en",
+                "custom_vocabulary_meaning_language": "ru",
+            }
+        )
+        message = SimpleNamespace(reply_text=AsyncMock())
+        update = SimpleNamespace(effective_message=message)
+        context = SimpleNamespace(user_data={"interface_locale": "ru"})
+        runtime = SimpleNamespace(role="learner", user_id=42, store=runtime_store)
+        token = bot._ACTIVE_RUNTIME.set(runtime)
+        try:
+            with patch.object(bot, "record_product_event"):
+                await bot.cmd_add_words.__wrapped__(update, context)
+        finally:
+            bot._ACTIVE_RUNTIME.reset(token)
+
+        state = context.user_data[bot.PENDING_CUSTOM_VOCABULARY_KEY]
+        self.assertEqual(state["target_language"], "fr")
+        self.assertNotIn("meaning_language", state)
+        callbacks = {
+            button.callback_data
+            for row in message.reply_text.await_args.kwargs[
+                "reply_markup"
+            ].inline_keyboard
+            for button in row
+        }
+        expected = {
+            f"custom-import:language:{language}"
+            for language in localization.INTERFACE_LOCALES
+            if language != "fr"
+        }
+        self.assertTrue(expected.issubset(callbacks))
+        self.assertNotIn("custom-import:language:fr", callbacks)
+
+        labels = {
+            button.text
+            for row in message.reply_text.await_args.kwargs[
+                "reply_markup"
+            ].inline_keyboard
+            for button in row
+        }
+        self.assertIn(
+            f"{bot.CATALOG.flag_for_language('ru', 'learner')} "
+            f"{localization.language_name('ru', 'ru')}",
+            labels,
+        )
+
+    async def test_translation_language_selection_is_persisted_without_changing_profile(self):
+        store = SimpleNamespace(
+            product_profile=MagicMock(
+                return_value={
+                    "active_lang": "fr",
+                    "native_language": "en",
+                    "custom_vocabulary_meaning_language": None,
+                }
+            ),
+            set_custom_vocabulary_meaning_language=MagicMock(return_value="ru"),
+            update_product_profile=MagicMock(),
+        )
+        context = SimpleNamespace(
+            user_data={
+                "interface_locale": "ru",
+                bot.PENDING_CUSTOM_VOCABULARY_KEY: {
+                    "target_language": "fr",
+                    "expires_at": 4_000_000_000,
+                },
+            }
+        )
+        query = SimpleNamespace(
+            data="custom-import:language:ru",
+            answer=AsyncMock(),
+            edit_message_reply_markup=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=SimpleNamespace(reply_text=AsyncMock()),
+        )
+        update = SimpleNamespace(
+            callback_query=query,
+            effective_user=SimpleNamespace(id=42),
+        )
+
+        with patch.object(bot, "get_store", return_value=store):
+            await bot.custom_import_cb.__wrapped__(update, context)
+
+        store.set_custom_vocabulary_meaning_language.assert_called_once_with(42, "ru")
+        store.update_product_profile.assert_not_called()
+        state = context.user_data[bot.PENDING_CUSTOM_VOCABULARY_KEY]
+        self.assertEqual(state["target_language"], "fr")
+        self.assertEqual(state["meaning_language"], "ru")
+
+    async def test_custom_vocabulary_input_is_rejected_until_language_is_chosen(self):
+        context = SimpleNamespace(
+            user_data={
+                "interface_locale": "ru",
+                bot.PENDING_CUSTOM_VOCABULARY_KEY: {
+                    "target_language": "fr",
+                    "expires_at": 4_000_000_000,
+                },
+            }
+        )
+        message = SimpleNamespace(
+            text="bonjour — привет",
+            reply_text=AsyncMock(),
+        )
+        update = SimpleNamespace(
+            message=message,
+            effective_user=SimpleNamespace(id=42),
+        )
+
+        await bot._handle_custom_vocabulary_text(update, context)
+
+        state = context.user_data[bot.PENDING_CUSTOM_VOCABULARY_KEY]
+        self.assertNotIn("pending_source", state)
+        self.assertNotIn(bot.CUSTOM_VOCABULARY_PREVIEW_KEY, context.user_data)
+        message.reply_text.assert_awaited_once()
+
+    async def test_custom_practice_uses_durable_translation_language(self):
+        store = SimpleNamespace(
+            product_profile=lambda _user_id: {
+                "active_lang": "fr",
+                "native_language": "en",
+                "custom_vocabulary_meaning_language": "ru",
+                "daily_word_goal": 10,
+            },
+            custom_vocabulary_practice=MagicMock(return_value=[]),
+        )
+        message = SimpleNamespace(reply_text=AsyncMock())
+        update = SimpleNamespace(effective_message=message)
+        context = SimpleNamespace(user_data={"interface_locale": "ru"})
+        runtime = SimpleNamespace(role="learner", user_id=42, store=store)
+        token = bot._ACTIVE_RUNTIME.set(runtime)
+        try:
+            await bot.cmd_custom_practice.__wrapped__(update, context)
+        finally:
+            bot._ACTIVE_RUNTIME.reset(token)
+
+        store.custom_vocabulary_practice.assert_called_once_with(
+            42,
+            target_language="fr",
+            meaning_language="ru",
+            limit=10,
+        )
+
     async def test_complete_text_list_previews_then_saves_without_ai(self):
         runtime_store = SimpleNamespace(
             product_profile=lambda _user_id: {
@@ -379,6 +592,29 @@ class CustomVocabularyProviderTest(unittest.IsolatedAsyncioTestCase):
                 await bot.cmd_add_words.__wrapped__(start_update, context)
         finally:
             bot._ACTIVE_RUNTIME.reset(token)
+
+        selection_store = SimpleNamespace(
+            product_profile=lambda _user_id: {
+                "active_lang": "es",
+                "native_language": "ru",
+                "custom_vocabulary_meaning_language": None,
+            },
+            set_custom_vocabulary_meaning_language=MagicMock(return_value="ru"),
+            update_product_profile=MagicMock(),
+        )
+        selection_query = SimpleNamespace(
+            data="custom-import:language:ru",
+            answer=AsyncMock(),
+            edit_message_reply_markup=AsyncMock(),
+            edit_message_text=AsyncMock(),
+            message=SimpleNamespace(reply_text=AsyncMock()),
+        )
+        selection_update = SimpleNamespace(
+            callback_query=selection_query,
+            effective_user=SimpleNamespace(id=42),
+        )
+        with patch.object(bot, "get_store", return_value=selection_store):
+            await bot.custom_import_cb.__wrapped__(selection_update, context)
 
         self.assertNotIn(bot.PENDING_DICTIONARY_LOOKUP_KEY, context.user_data)
         self.assertNotIn(bot.PENDING_AI_TUTOR_KEY, context.user_data)

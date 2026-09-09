@@ -1,0 +1,25 @@
+"""Persist the custom-vocabulary translation language."""
+
+from alembic import op
+import sqlalchemy as sa
+
+
+revision = "0022_custom_vocab_translation"
+down_revision = "0021_custom_vocabulary_v1"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    op.add_column(
+        "users",
+        sa.Column(
+            "custom_vocabulary_meaning_language",
+            sa.String(length=16),
+            nullable=True,
+        ),
+    )
+
+
+def downgrade() -> None:
+    op.drop_column("users", "custom_vocabulary_meaning_language")

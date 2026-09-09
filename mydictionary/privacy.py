@@ -360,6 +360,7 @@ def erase_user_learning_data(
         session.execute(
             text(
                 "UPDATE users SET interface_locale = NULL, onboarding_version = NULL, "
+                "custom_vocabulary_meaning_language = NULL, "
                 "mirror_response_mode = NULL, "
                 "mirror_style = 'teacher', mirror_depth = 'balanced', "
                 "mirror_level = 'adaptive' "
