@@ -37,7 +37,7 @@
   const BOOTSTRAP_RETRY_DELAY_MS = 400;
   const BOOTSTRAP_MAX_ATTEMPTS = 2;
   const PROFILE_SECTION_KEYS = Object.freeze([
-    "hero", "calendar", "identity", "daily-quest", "dictionary",
+    "hero", "calendar", "identity", "daily-quest",
     "game-progress", "achievements", "more-stats"
   ]);
   const PROFILE_ORDER_STORAGE_KEY = "lexi:profile-order:v1";
