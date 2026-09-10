@@ -1008,17 +1008,27 @@ def format_target_word(
         return f"{target} {transcription}"
     return target
 
-def format_word_label(idx: int) -> str:
+def _ipa_guidance(transcription: str, locale: str | None) -> str | None:
+    if locale is not None and "ʁ" in transcription:
+        return translate("learning_ipa_throat_r", locale)
+    return None
+
+
+def format_word_label(idx: int, locale: str | None = None) -> str:
     """Format a question prompt without exposing the Russian answer."""
     w = W()[idx]
     pack = active_content_pack()
     transcription = transcription_for(w, pack.target_language)
     if transcription and pack.pronunciation.transcription_system == "ipa":
         target = _directional_text(target_text(w), pack.direction)
-        return (
-            f"{pack.flag} *{escape_markdown(target)}*\n"
-            f"`{transcription.replace('`', "'")}`"
-        )
+        lines = [
+            f"{pack.flag} *{escape_markdown(target)}*",
+            f"`{transcription.replace('`', "'")}`",
+        ]
+        guidance = _ipa_guidance(transcription, locale)
+        if guidance is not None:
+            lines.append(guidance)
+        return "\n".join(lines)
     return f"{pack.flag} *{escape_markdown(format_target_word(w, pack))}*"
 
 
@@ -1076,21 +1086,23 @@ def active_meaning_flag() -> str:
     return CATALOG.flag_for_language(active_meaning_language(), role) or "🏳️"
 
 
-def format_word_details(idx: int) -> str:
+def format_word_details(idx: int, locale: str | None = None) -> str:
     """Format a revealed card: meaning first, then target and transcription."""
     word = W()[idx]
     pack = active_content_pack()
     transcription = transcription_for(word, pack.target_language)
     if transcription and pack.pronunciation.transcription_system == "ipa":
         target = _directional_text(target_text(word), pack.direction)
-        return "\n".join(
-            [
-                f"{active_meaning_flag()} "
-                f"*{escape_markdown(meaning_display_for_word(word))}*",
-                f"{pack.flag} *{escape_markdown(target)}*",
-                f"`{transcription.replace('`', "'")}`",
-            ]
-        )
+        lines = [
+            f"{active_meaning_flag()} "
+            f"*{escape_markdown(meaning_display_for_word(word))}*",
+            f"{pack.flag} *{escape_markdown(target)}*",
+            f"`{transcription.replace('`', "'")}`",
+        ]
+        guidance = _ipa_guidance(transcription, locale)
+        if guidance is not None:
+            lines.append(guidance)
+        return "\n".join(lines)
     lines = [
         f"{active_meaning_flag()} "
         f"*{escape_markdown(meaning_display_for_word(word))}*",
@@ -1126,7 +1138,7 @@ def format_learning_card_front(user_data: dict, idx: int) -> str:
         f"{card_topic_visual(idx)}\n\n"
         f"*{translate('learning_card_position', locale, position=position, total=total)}*"
         f"  ·  {card_progress_text(user_data)}\n\n"
-        f"{format_word_label(idx)}\n\n"
+        f"{format_word_label(idx, locale)}\n\n"
         f"{translate('learning_card_hint', locale)}"
     )
 
@@ -1139,7 +1151,7 @@ def format_learning_card_back(user_data: dict, idx: int) -> str:
         f"{card_topic_visual(idx)}\n\n"
         f"*{translate('learning_card_position', locale, position=position, total=total)}*"
         f"  ·  {card_progress_text(user_data)}\n\n"
-        f"{format_word_details(idx)}{get_example(idx)}"
+        f"{format_word_details(idx, locale)}{get_example(idx)}"
     )
 
 

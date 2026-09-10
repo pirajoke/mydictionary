@@ -476,6 +476,7 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
     "en": {
         "learning_card_position": "Card {position} of {total}",
         "learning_card_hint": "First, try to recall the meaning.",
+        "learning_ipa_throat_r": "ʁ = “r” pronounced in the throat",
         "learning_show_meaning": "👁 Show meaning",
         "learning_listen_again": "🔊 Listen again",
         "learning_native_pronunciation": "🔊 Pronunciation",
@@ -485,6 +486,7 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
     "fr": {
         "learning_card_position": "Carte {position} sur {total}",
         "learning_card_hint": "Essayez d’abord de vous rappeler le sens.",
+        "learning_ipa_throat_r": "ʁ = le « r » prononcé dans la gorge",
         "learning_show_meaning": "👁 Afficher le sens",
         "learning_listen_again": "🔊 Réécouter",
         "learning_native_pronunciation": "🔊 Prononciation",
@@ -494,6 +496,7 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
     "de": {
         "learning_card_position": "Karte {position} von {total}",
         "learning_card_hint": "Versuche zuerst, dich an die Bedeutung zu erinnern.",
+        "learning_ipa_throat_r": "ʁ = ein im Rachen gesprochenes „r“",
         "learning_show_meaning": "👁 Bedeutung anzeigen",
         "learning_listen_again": "🔊 Noch einmal anhören",
         "learning_native_pronunciation": "🔊 Aussprache",
@@ -503,6 +506,7 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
     "ja": {
         "learning_card_position": "カード {position}/{total}",
         "learning_card_hint": "まず意味を思い出してみましょう。",
+        "learning_ipa_throat_r": "ʁ = 喉で発音する「r」の音",
         "learning_show_meaning": "👁 意味を表示",
         "learning_listen_again": "🔊 もう一度聞く",
         "learning_native_pronunciation": "🔊 ネイティブ発音",
@@ -512,6 +516,7 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
     "ar": {
         "learning_card_position": "البطاقة {position} من {total}",
         "learning_card_hint": "حاول أولاً تذكّر المعنى.",
+        "learning_ipa_throat_r": "ʁ = صوت «r» يُنطق من الحلق",
         "learning_show_meaning": "👁 إظهار المعنى",
         "learning_listen_again": "🔊 الاستماع مجدداً",
         "learning_native_pronunciation": "🔊 النطق",
@@ -521,6 +526,7 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
     "zh": {
         "learning_card_position": "卡片 {position}/{total}",
         "learning_card_hint": "先试着回想它的意思。",
+        "learning_ipa_throat_r": "ʁ = 在喉部发出的“r”音",
         "learning_show_meaning": "👁 显示释义",
         "learning_listen_again": "🔊 再听一次",
         "learning_native_pronunciation": "🔊 真人发音",
@@ -530,6 +536,7 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
     "ru": {
         "learning_card_position": "Карточка {position} из {total}",
         "learning_card_hint": "Сначала вспомни значение.",
+        "learning_ipa_throat_r": "ʁ = гортанный звук «р»",
         "learning_show_meaning": "👁 Показать значение",
         "learning_listen_again": "🔊 Слушать ещё",
         "learning_native_pronunciation": "🔊 Произношение",
@@ -539,6 +546,7 @@ _LEARNING_CARD_COPY: dict[str, dict[str, str]] = {
     "es": {
         "learning_card_position": "Tarjeta {position} de {total}",
         "learning_card_hint": "Primero intenta recordar el significado.",
+        "learning_ipa_throat_r": "ʁ = la «r» pronunciada en la garganta",
         "learning_show_meaning": "👁 Mostrar significado",
         "learning_listen_again": "🔊 Escuchar de nuevo",
         "learning_native_pronunciation": "🔊 Pronunciación",
