@@ -1260,7 +1260,7 @@ class AdminStore:
             eligible = {
                 user_id
                 for user_id, joined in joined_at.items()
-                if joined <= now - timedelta(days=day)
+                if joined <= now - timedelta(days=day + 1)
             }
             retained = {
                 user_id
@@ -1504,7 +1504,7 @@ class AdminStore:
             eligible = {
                 user_id
                 for user_id, started_at in cohort_started_at.items()
-                if started_at <= now - timedelta(days=day)
+                if started_at <= now - timedelta(days=day + 1)
             }
             retained = {
                 user_id
