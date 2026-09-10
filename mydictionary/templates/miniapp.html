@@ -6,9 +6,9 @@
   <meta name="color-scheme" content="light dark">
   <title>Lexi — языковой тренер</title>
   <link rel="icon" href="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}">
-  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260909-compact-hero-v2-profile-reorder-v2">
+  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260909-compact-hero-v2-profile-reorder-v2-help-privacy-v1">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260909-profile-dictionary-cleanup-v3"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260909-profile-dictionary-cleanup-v3-help-privacy-v1"></script>
 </head>
 <body data-bot-username="{{ bot_username }}">
   <main class="app-shell" aria-live="polite">
@@ -256,12 +256,12 @@
         <section id="settings-support-group" class="settings-group">
           <h2 data-i18n="settings_group_support"></h2>
           <div class="settings-hub-list dashboard-section">
-            <button id="settings-help" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="help">
+            <button id="settings-help" class="settings-hub-row dashboard-row dashboard-action" type="button" data-detail-view="help">
               <span class="settings-icon-tile settings-tile--cyan" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8"></circle><path d="M9.8 9.2a2.4 2.4 0 0 1 4.6 1c0 1.8-2.4 2.1-2.4 3.8M12 17.5h.01"></path></svg></span>
               <span class="settings-row-copy"><strong data-i18n="settings_help"></strong></span>
               <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
             </button>
-            <button id="settings-privacy" class="settings-hub-row dashboard-row dashboard-action" type="button" data-settings-action="privacy">
+            <button id="settings-privacy" class="settings-hub-row dashboard-row dashboard-action" type="button" data-detail-view="privacy">
               <span class="settings-icon-tile settings-tile--slate" aria-hidden="true"><svg class="settings-row-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3.5 19 6v5.2c0 4.4-2.8 7.6-7 9.3-4.2-1.7-7-4.9-7-9.3V6l7-2.5Z"></path><path d="m9.2 12 1.8 1.8 3.8-4"></path></svg></span>
               <span class="settings-row-copy"><strong data-i18n="privacy"></strong></span>
               <svg class="settings-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5 7 7-7 7"></path></svg>
@@ -271,6 +271,53 @@
         <span data-action="settings" hidden></span><span data-action="privacy" hidden></span>
       </section>
     </div>
+
+    <aside id="detail-view" class="detail-view" role="dialog" aria-modal="true" aria-labelledby="detail-title" hidden>
+      <header class="detail-header">
+        <button id="detail-back" class="detail-back secondary-action" type="button" data-i18n-aria-label="detail_back">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m15 5-7 7 7 7"></path></svg>
+          <span data-i18n="detail_back"></span>
+        </button>
+        <h1 id="detail-title" tabindex="-1"></h1>
+      </header>
+
+      <article id="help-detail" class="detail-content help-detail" aria-labelledby="detail-title" hidden>
+        <p class="detail-intro" data-i18n="help_intro"></p>
+        <ol class="help-steps">
+          <li data-i18n="help_step_choose_language"></li>
+          <li data-i18n="help_step_start_lesson"></li>
+          <li data-i18n="help_step_reveal_rate"></li>
+          <li data-i18n="help_step_review"></li>
+          <li data-i18n="help_step_personal_words"></li>
+        </ol>
+        <footer class="detail-actions">
+          <button class="primary-action" type="button" data-detail-tab="profile" data-i18n="help_profile_cta"></button>
+          <button class="secondary-action" type="button" data-detail-tab="words" data-i18n="help_dictionary_cta"></button>
+        </footer>
+      </article>
+
+      <article id="privacy-detail" class="detail-content privacy-detail" aria-labelledby="detail-title" hidden>
+        <ul class="privacy-explainer">
+          <li data-i18n="privacy_learning_data"></li>
+          <li data-i18n="privacy_voice_transcripts"></li>
+          <li data-i18n="privacy_ai_memory"></li>
+          <li data-i18n="privacy_billing_audit"></li>
+          <li data-i18n="privacy_erasure_effect"></li>
+        </ul>
+        <dl class="privacy-state">
+          <dt data-i18n="privacy_ai_consent"></dt><dd id="privacy-ai-consent"></dd>
+          <dt data-i18n="privacy_voice_consent"></dt><dd id="privacy-voice-consent"></dd>
+          <dt data-i18n="privacy_mirror_memory"></dt><dd id="privacy-mirror-memory"></dd>
+        </dl>
+        <p id="privacy-retention" class="privacy-retention"></p>
+        <footer class="detail-actions privacy-actions">
+          <button class="secondary-action" type="button" data-privacy-action="revoke_ai" data-i18n="privacy_revoke_ai"></button>
+          <button class="secondary-action" type="button" data-privacy-action="revoke_voice" data-i18n="privacy_revoke_voice"></button>
+          <button class="danger-action" type="button" data-privacy-action="erase_learning_data" data-i18n="privacy_erase_learning"></button>
+        </footer>
+        <p id="privacy-action-status" class="privacy-action-status" role="status" aria-live="polite"></p>
+      </article>
+    </aside>
   </main>
 
   <nav class="bottom-nav" role="tablist" data-i18n-aria-label="navigation_label" hidden>

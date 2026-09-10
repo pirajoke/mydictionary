@@ -607,6 +607,96 @@ html[dir="rtl"] .settings-cta-chevron { transform: scaleX(-1); }
 .interface-locale-status button { min-height: 32px; padding: 4px 8px; color: var(--dashboard-accent-text); background: var(--dashboard-accent); }
 html[dir="rtl"] .interface-locale-select { padding-right: 9px; padding-left: 30px; text-align: start; }
 
+/* Internal Help and Privacy detail screens. */
+.detail-view {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  color: var(--dashboard-text);
+}
+.detail-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+.detail-header h1 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: clamp(1.3rem, 6vw, 1.8rem);
+  line-height: 1.08;
+  letter-spacing: -.035em;
+}
+.detail-header h1:focus { outline: none; }
+.detail-back {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 11px;
+}
+.detail-back svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.detail-content {
+  border: 1px solid var(--dashboard-line);
+  border-radius: calc(var(--dashboard-radius) + 3px);
+  padding: clamp(15px, 5vw, 24px);
+  background: var(--dashboard-surface);
+  box-shadow: 0 14px 32px color-mix(in srgb, #000 14%, transparent);
+}
+.detail-intro { margin: 0 0 15px; color: var(--dashboard-muted); }
+.help-steps,
+.privacy-explainer {
+  display: grid;
+  gap: 11px;
+  margin: 0;
+  padding-inline-start: 1.4rem;
+}
+.help-steps li::marker { color: var(--lexi-orange); font-weight: 850; }
+.privacy-explainer li::marker { color: var(--lexi-teal); }
+.detail-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 20px;
+}
+.detail-actions button { min-height: 44px; }
+.privacy-state {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  margin: 20px 0 10px;
+  border: 1px solid var(--dashboard-line);
+  border-radius: 14px;
+  padding: 13px;
+  background: color-mix(in srgb, var(--lexi-teal) 7%, var(--dashboard-surface));
+}
+.privacy-state dt { color: var(--dashboard-muted); }
+.privacy-state dd { margin: 0; font-weight: 800; text-align: end; }
+.privacy-retention { margin: 0; color: var(--dashboard-muted); font-size: .78rem; }
+.privacy-actions { grid-template-columns: 1fr; }
+.danger-action {
+  border-color: color-mix(in srgb, var(--dashboard-danger) 46%, var(--dashboard-line));
+  color: var(--dashboard-danger);
+  background: color-mix(in srgb, var(--dashboard-danger) 10%, var(--dashboard-surface));
+}
+.privacy-action-status {
+  min-height: 1.3em;
+  margin: 11px 0 0;
+  color: var(--dashboard-muted);
+  font-size: .78rem;
+}
+html[dir="rtl"] .detail-back svg { transform: scaleX(-1); }
+html[dir="rtl"] .privacy-state dd { text-align: start; }
+
 /* Legacy content surfaces kept readable in every Telegram theme. */
 .hero-card, .paper-card, .state-card { border-radius: var(--dashboard-radius); padding: 16px; }
 .hero-card { color: var(--paper-ink); background: var(--paper); }
@@ -853,6 +943,9 @@ html[dir="rtl"] .interface-locale-select { padding-right: 9px; padding-left: 30p
   .bottom-nav { left: 50%; width: min(720px, 100%); transform: translateX(-50%); }
 }
 @media (max-width: 359px) {
+  .detail-header { grid-template-columns: 1fr; }
+  .detail-back { justify-self: start; }
+  .detail-actions { grid-template-columns: 1fr; }
   .custom-vocabulary-controls { grid-template-columns: 1fr; }
   .app-shell { padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); }
   .bottom-nav button { font-size: .56rem; }

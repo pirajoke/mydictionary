@@ -32,6 +32,11 @@
   let interfaceLocaleSequence = 0;
   let interfaceLocalePending = false;
   let referralInvitePending = false;
+  let privacyActionPending = false;
+  let detailReturnFocus = null;
+  let requestedDetailOpened = false;
+  const requestedView = new URLSearchParams(window.location.search).get("view");
+  const allowedDetailViews = new Set(["help", "privacy"]);
   const referralInviteEndpoint = "/miniapp/api/referral-invite";
   const BOOTSTRAP_TIMEOUT_MS = 5000;
   const BOOTSTRAP_RETRY_DELAY_MS = 400;
@@ -335,6 +340,128 @@
     const url = new URL(`/dictionary/${download ? "download" : ""}?${params}`, location.origin).href;
     if (webApp && typeof webApp.openLink === "function") webApp.openLink(url);
     else window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function privacyStatusLabel(value, copy) {
+    const labels = {
+      granted: copy.privacy_status_granted,
+      not_granted: copy.privacy_status_not_granted,
+      enabled: copy.feature_enabled,
+      disabled: copy.privacy_status_disabled,
+      unavailable: copy.privacy_status_unavailable
+    };
+    return labels[value] || copy.privacy_status_unavailable;
+  }
+
+  function renderPrivacyState(privacy) {
+    if (!payload || !payload.copy) return;
+    const state = privacy && typeof privacy === "object" ? privacy : {};
+    const retention = state.retention_days && typeof state.retention_days === "object"
+      ? state.retention_days
+      : {};
+    text(node("privacy-ai-consent"), privacyStatusLabel(state.ai_consent, payload.copy));
+    text(node("privacy-voice-consent"), privacyStatusLabel(state.voice_consent, payload.copy));
+    text(node("privacy-mirror-memory"), privacyStatusLabel(state.mirror_memory, payload.copy));
+    text(
+      node("privacy-retention"),
+      String(payload.copy.privacy_retention || "")
+        .replace("{mirror_days}", String(retention.mirror_dialogue ?? "—"))
+        .replace("{voice_days}", String(retention.voice_transcripts ?? "—"))
+    );
+    const aiButton = document.querySelector('[data-privacy-action="revoke_ai"]');
+    const voiceButton = document.querySelector('[data-privacy-action="revoke_voice"]');
+    const eraseButton = document.querySelector('[data-privacy-action="erase_learning_data"]');
+    const backButton = node("detail-back");
+    const accessErased = state.access_erased === true;
+    if (backButton) backButton.disabled = accessErased;
+    if (aiButton) {
+      aiButton.disabled = privacyActionPending || accessErased || state.ai_consent !== "granted";
+    }
+    if (voiceButton) {
+      voiceButton.disabled = privacyActionPending || accessErased || state.voice_consent !== "granted";
+    }
+    if (eraseButton) eraseButton.disabled = privacyActionPending || accessErased;
+  }
+
+  function openDetailView(view, returnFocus = null) {
+    if (!payload || !allowedDetailViews.has(view)) return;
+    detailReturnFocus = returnFocus || document.activeElement;
+    node("help-detail").hidden = view !== "help";
+    node("privacy-detail").hidden = view !== "privacy";
+    text(node("detail-title"), payload.copy[`${view}_title`]);
+    text(node("privacy-action-status"), "");
+    renderPrivacyState(payload.privacy);
+    node("app-content").hidden = true;
+    document.querySelector(".bottom-nav").hidden = true;
+    node("detail-view").hidden = false;
+    node("detail-title").focus();
+  }
+
+  function closeDetailView(restoreFocus = true) {
+    if (node("detail-view").hidden) return;
+    const accessErased = payload && payload.privacy && payload.privacy.access_erased === true;
+    if (accessErased) {
+      node("detail-view").hidden = false;
+      node("app-content").hidden = true;
+      document.querySelector(".bottom-nav").hidden = true;
+      return;
+    }
+    node("detail-view").hidden = true;
+    node("app-content").hidden = false;
+    document.querySelector(".bottom-nav").hidden = false;
+    const focusTarget = detailReturnFocus;
+    detailReturnFocus = null;
+    if (restoreFocus && focusTarget && typeof focusTarget.focus === "function") {
+      focusTarget.focus();
+    }
+  }
+
+  function openRequestedDetailView() {
+    if (requestedDetailOpened || !allowedDetailViews.has(requestedView)) return;
+    requestedDetailOpened = true;
+    openDetailView(requestedView);
+  }
+
+  async function runPrivacyAction(action) {
+    if (privacyActionPending || !webApp || !webApp.initData || !payload) return;
+    const controls = Array.from(document.querySelectorAll("[data-privacy-action]"));
+    const status = node("privacy-action-status");
+    const requestBody = {action: action};
+    if (action === "erase_learning_data") requestBody.confirm = true;
+    privacyActionPending = true;
+    controls.forEach((control) => { control.disabled = true; });
+    text(status, payload.copy.privacy_action_pending);
+    try {
+      const response = await fetch("/miniapp/api/privacy-action", {
+        method: "POST",
+        headers: {
+          "X-Telegram-Init-Data": webApp.initData,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody),
+        cache: "no-store",
+        credentials: "omit"
+      });
+      if (!response.ok) throw new Error("privacy_action_failed");
+      const result = await response.json();
+      if (!result || result.ok !== true) throw new Error("privacy_action_failed");
+      if (action === "revoke_ai") payload.privacy.ai_consent = "not_granted";
+      if (action === "revoke_voice") payload.privacy.voice_consent = "not_granted";
+      if (action === "erase_learning_data") {
+        payload.privacy.ai_consent = "not_granted";
+        payload.privacy.voice_consent = "not_granted";
+        payload.privacy.mirror_memory = "disabled";
+        payload.privacy.access_erased = true;
+      }
+      text(status, payload.copy.privacy_action_success);
+    } catch (_) {
+      node("detail-view").hidden = false;
+      text(status, `${payload.copy.privacy_action_error} ${payload.copy.privacy_action_retry}`);
+    } finally {
+      privacyActionPending = false;
+      controls.forEach((control) => { control.disabled = false; });
+      renderPrivacyState(payload.privacy);
+    }
   }
 
   function validReferralInviteUrl(value) {
@@ -924,6 +1051,8 @@
     node("loading-state").hidden = true;
     node("error-state").hidden = true;
     node("app-content").hidden = false;
+    renderPrivacyState(data.privacy);
+    openRequestedDetailView();
   }
 
   function showError() {
@@ -1018,6 +1147,30 @@
   document.querySelectorAll("[data-settings-action]").forEach((button) => {
     if (button.dataset.settingsAction !== "invite") {
       button.addEventListener("click", () => openAction(button.dataset.settingsAction));
+    }
+  });
+  document.querySelectorAll("[data-detail-view]").forEach((button) => {
+    button.addEventListener("click", () => openDetailView(button.dataset.detailView, button));
+  });
+  document.querySelectorAll("[data-detail-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tab = node(`tab-${button.dataset.detailTab}`);
+      closeDetailView(false);
+      if (tab) activateTab(tab, true);
+    });
+  });
+  document.querySelectorAll("[data-privacy-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.privacyAction;
+      if (action === "erase_learning_data" && !window.confirm(payload.copy.privacy_confirm_erase)) return;
+      runPrivacyAction(action);
+    });
+  });
+  node("detail-back").addEventListener("click", () => closeDetailView());
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !node("detail-view").hidden) {
+      event.preventDefault();
+      closeDetailView();
     }
   });
   node("settings-credit-cta").addEventListener("click", () => activateTab(node("tab-credits")));

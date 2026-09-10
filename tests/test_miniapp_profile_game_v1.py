@@ -295,6 +295,7 @@ class MiniAppProfileGameV1ContractTest(unittest.TestCase):
                 "/miniapp/api/bootstrap",
                 "/miniapp/api/active-pack",
                 "/miniapp/api/interface-locale",
+                "/miniapp/api/privacy-action",
             },
         )
 
