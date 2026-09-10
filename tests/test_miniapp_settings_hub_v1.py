@@ -34,9 +34,12 @@ SETTINGS_ACTIONS = {
     "settings-learning-plan": "settings",
     "settings-ai-tutor": "ai",
     "settings-tutor-preferences": "settings",
+}
+SETTINGS_DETAIL_VIEWS = {
     "settings-help": "help",
     "settings-privacy": "privacy",
 }
+SETTINGS_ROW_IDS = (*SETTINGS_ACTIONS, *SETTINGS_DETAIL_VIEWS)
 
 
 def opening_tag(source: str, element_id: str) -> str:
@@ -98,6 +101,14 @@ class MiniAppSettingsHubV1SurfaceContractTest(unittest.TestCase):
                 self.assertRegex(tag, r"<button\b")
                 self.assertIn('type="button"', tag)
                 self.assertIn(f'data-settings-action="{action}"', tag)
+
+        for element_id, view in SETTINGS_DETAIL_VIEWS.items():
+            with self.subTest(element_id=element_id):
+                tag = opening_tag(self.settings_panel, element_id)
+                self.assertRegex(tag, r"<button\b")
+                self.assertIn('type="button"', tag)
+                self.assertIn(f'data-detail-view="{view}"', tag)
+                self.assertNotIn("data-settings-action", tag)
 
         for group_id in (
             "settings-account-group",
@@ -239,7 +250,7 @@ class MiniAppSettingsHubV1SurfaceContractTest(unittest.TestCase):
     def test_ac6_reference_inspired_icons_targets_themes_rtl_and_motion_are_local(self):
         row_tags = [
             opening_tag(self.settings_panel, element_id)
-            for element_id in SETTINGS_ACTIONS
+            for element_id in SETTINGS_ROW_IDS
         ]
         self.assertTrue(all('class="settings-hub-row' in tag for tag in row_tags))
         icons = re.findall(
@@ -252,8 +263,8 @@ class MiniAppSettingsHubV1SurfaceContractTest(unittest.TestCase):
             self.settings_panel,
             re.IGNORECASE,
         )
-        self.assertGreaterEqual(len(icons), len(SETTINGS_ACTIONS))
-        self.assertEqual(len(chevrons), len(SETTINGS_ACTIONS))
+        self.assertGreaterEqual(len(icons), len(SETTINGS_ROW_IDS))
+        self.assertEqual(len(chevrons), len(SETTINGS_ROW_IDS))
         self.assertTrue(
             all('aria-hidden="true"' in tag and 'focusable="false"' in tag for tag in icons + chevrons)
         )
@@ -292,7 +303,10 @@ class MiniAppSettingsHubV1SurfaceContractTest(unittest.TestCase):
         )
         self.assertIn("const url = actionLink(action);", open_action)
         self.assertIn("webApp.openTelegramLink(url);", open_action)
-        self.assertNotIn("window.location", self.js)
+        location_uses = re.findall(r"window\.location(?:\.[A-Za-z]+)?", self.js)
+        self.assertEqual(set(location_uses), {"window.location.search"})
+        self.assertIn('const allowedDetailViews = new Set(["help", "privacy"]);', self.js)
+        self.assertIn("allowedDetailViews.has(requestedView)", self.js)
 
     def test_ac7_non_share_action_closes_mini_app_after_opening_telegram_link(self):
         """AC-MINIAPP-1: Telegram deep links hand control back to the bot."""

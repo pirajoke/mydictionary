@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import unittest
 
 from mydictionary.miniapp import MINIAPP_COPY
@@ -46,7 +47,10 @@ class MiniAppSecondaryTabsV2ContractTest(unittest.TestCase):
         ):
             with self.subTest(token=token):
                 self.assertIn(token, f"{self.html}\n{self.js}")
-        self.assertNotIn("window.location", self.js)
+        location_uses = re.findall(r"window\.location(?:\.[A-Za-z]+)?", self.js)
+        self.assertEqual(set(location_uses), {"window.location.search"})
+        self.assertIn('const allowedDetailViews = new Set(["help", "privacy"]);', self.js)
+        self.assertIn("allowedDetailViews.has(requestedView)", self.js)
 
     def test_ac4_current_language_is_spotlighted_without_losing_direction_or_count(self):
         for token in (

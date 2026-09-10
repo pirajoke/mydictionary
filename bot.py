@@ -130,7 +130,11 @@ from mydictionary.mirror_assistant import (
     render_mirror_daily_plan,
     render_mirror_progress_focus,
 )
-from mydictionary.miniapp import MiniAppSettings, build_telegram_command_payload
+from mydictionary.miniapp import (
+    MINIAPP_COPY,
+    MiniAppSettings,
+    build_telegram_command_payload,
+)
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.runtime_secrets import load_runtime_secret_files
 from mydictionary.privacy import erase_user_learning_data
@@ -2459,11 +2463,57 @@ async def send_start_message(
     await message.reply_text(text, reply_markup=quick_actions)
 
 
+def _miniapp_detail_entry(
+    update: Update,
+    *,
+    view: str,
+    locale: str,
+) -> tuple[str, InlineKeyboardMarkup] | None:
+    if (
+        view not in {"help", "privacy"}
+        or not getattr(MINIAPP_SETTINGS, "enabled", False)
+        or getattr(getattr(update, "effective_chat", None), "type", "") != "private"
+    ):
+        return None
+    try:
+        parsed = urlsplit(str(getattr(MINIAPP_SETTINGS, "public_url", "") or ""))
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.path != "/miniapp"
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+    copy = MINIAPP_COPY[normalize_locale(locale)]
+    target = urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, urlencode({"view": view}), "")
+    )
+    return (
+        copy[f"{view}_command_intro"],
+        InlineKeyboardMarkup(
+            [[InlineKeyboardButton(
+                copy[f"{view}_open"],
+                web_app=WebAppInfo(url=target),
+            )]]
+        ),
+    )
+
+
 @auth
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        translate("bot_help", interface_locale_for_update(update))
-    )
+    locale = interface_locale_for_update(update)
+    miniapp_entry = _miniapp_detail_entry(update, view="help", locale=locale)
+    message = getattr(update, "effective_message", None) or update.message
+    if miniapp_entry is not None:
+        body, markup = miniapp_entry
+        await message.reply_text(body, reply_markup=markup)
+        return
+    await message.reply_text(translate("bot_help", locale))
 
 
 def _normalized_dictionary_query(value: str) -> str | None:
@@ -2749,8 +2799,13 @@ async def cmd_invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @auth
 async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    store = get_store()
     locale = interface_locale_for_update(update)
+    miniapp_entry = _miniapp_detail_entry(update, view="privacy", locale=locale)
+    if miniapp_entry is not None:
+        body, markup = miniapp_entry
+        await update.effective_message.reply_text(body, reply_markup=markup)
+        return
+    store = get_store()
     voice_consent = store.has_consent(
         int(update.effective_user.id),
         consent_type="voice_processing",
@@ -2772,6 +2827,34 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         mirror_memory_text = translate("privacy_mirror_disabled", locale)
+    reply_options = {}
+    if not hasattr(update, "effective_chat"):
+        reply_options["reply_markup"] = InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(
+                    translate("privacy_delete_learning", locale),
+                    callback_data="privacy:request",
+                )],
+                [InlineKeyboardButton(
+                    translate(
+                        "privacy_voice_revoke" if voice_consent else "privacy_voice_missing",
+                        locale,
+                    ),
+                    callback_data=(
+                        "privacy:voice_revoke" if voice_consent else "privacy:voice_status"
+                    ),
+                )],
+                [InlineKeyboardButton(
+                    translate(
+                        "privacy_ai_revoke" if ai_consent else "privacy_ai_missing_action",
+                        locale,
+                    ),
+                    callback_data=(
+                        "privacy:ai_revoke" if ai_consent else "privacy:ai_status"
+                    ),
+                )],
+            ]
+        )
     await update.effective_message.reply_text(
         translate(
             "privacy_overview",
@@ -2782,50 +2865,7 @@ async def cmd_privacy(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ),
             mirror_memory=mirror_memory_text,
         ),
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        translate("privacy_delete_learning", locale),
-                        callback_data="privacy:request",
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        translate(
-                            (
-                                "privacy_voice_revoke"
-                                if voice_consent
-                                else "privacy_voice_missing"
-                            ),
-                            locale,
-                        ),
-                        callback_data=(
-                            "privacy:voice_revoke"
-                            if voice_consent
-                            else "privacy:voice_status"
-                        ),
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        translate(
-                            (
-                                "privacy_ai_revoke"
-                                if ai_consent
-                                else "privacy_ai_missing_action"
-                            ),
-                            locale,
-                        ),
-                        callback_data=(
-                            "privacy:ai_revoke"
-                            if ai_consent
-                            else "privacy:ai_status"
-                        ),
-                    )
-                ],
-            ]
-        ),
+        **reply_options,
     )
 
 

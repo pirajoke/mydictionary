@@ -79,7 +79,7 @@ from mydictionary.readiness import (
     heartbeat_path,
     inspect_bot_heartbeat,
 )
-from mydictionary.privacy import RetentionPolicy
+from mydictionary.privacy import RetentionPolicy, erase_user_learning_data
 from mydictionary.secret_enrollment import (
     SecretEnrollmentError,
     SecretEnrollmentSettings,
@@ -101,6 +101,11 @@ _MINIAPP_SWITCH_RATE_POLICY = RateLimitPolicy(
     limit=8,
     window_seconds=60,
     block_seconds=120,
+)
+_MINIAPP_PRIVACY_RATE_POLICY = RateLimitPolicy(
+    limit=4,
+    window_seconds=60,
+    block_seconds=300,
 )
 
 
@@ -127,6 +132,54 @@ def _strict_miniapp_string_body(field_name: str) -> str | None:
     ):
         return None
     return pairs[0][1]
+
+
+def _strict_miniapp_privacy_body() -> str | None:
+    """Parse one allowlisted privacy action without accepting extra fields."""
+    if request.mimetype != "application/json":
+        return None
+    raw = request.get_data(cache=False)
+    if not raw or len(raw) > 192:
+        return None
+    try:
+        pairs = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=lambda values: values,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if (
+        not isinstance(pairs, list)
+        or any(not isinstance(pair, tuple) or len(pair) != 2 for pair in pairs)
+        or len({pair[0] for pair in pairs}) != len(pairs)
+    ):
+        return None
+    body = dict(pairs)
+    action = body.get("action")
+    if not isinstance(action, str):
+        return None
+    if action in {"revoke_ai", "revoke_voice"}:
+        return action if set(body) == {"action"} else None
+    if action == "erase_learning_data":
+        return (
+            action
+            if set(body) == {"action", "confirm"} and body["confirm"] is True
+            else None
+        )
+    return None
+
+
+def _miniapp_erasure_is_complete(store: DatabaseStore, user_id: int) -> bool:
+    """Recognize only the terminal learner state used for idempotent erasure."""
+    with store.Session() as database_session:
+        learner = database_session.get(User, int(user_id))
+        return bool(
+            learner is not None
+            and learner.role == "learner"
+            and learner.privacy_status == "erased"
+        )
+
+
 LANG_LABELS = {
     pack.target_language: pack.label for pack in CATALOG.packs
 }
@@ -433,8 +486,17 @@ def create_app(
         ),
         BOT_TOKEN_FILE=os.environ.get("BOT_TOKEN_FILE", ""),
         AI_TUTOR_ENABLED=os.environ.get("AI_TUTOR_ENABLED", "false"),
+        AI_CONSENT_VERSION=os.environ.get("AI_CONSENT_VERSION", ""),
         AI_INITIAL_CREDITS=os.environ.get("AI_INITIAL_CREDITS", "0"),
         VOICE_TUTOR_ENABLED=os.environ.get("VOICE_TUTOR_ENABLED", "false"),
+        VOICE_CONSENT_VERSION=os.environ.get("VOICE_CONSENT_VERSION", ""),
+        MIRROR_MEMORY_ENABLED=os.environ.get("MIRROR_MEMORY_ENABLED", "false"),
+        MIRROR_DIALOGUE_RETENTION_DAYS=os.environ.get(
+            "MIRROR_DIALOGUE_RETENTION_DAYS", "7"
+        ),
+        VOICE_TRANSCRIPT_RETENTION_DAYS=os.environ.get(
+            "VOICE_TRANSCRIPT_RETENTION_DAYS", "30"
+        ),
         ADMIN_HOST=os.environ.get("ADMIN_HOST", "127.0.0.1").strip(),
         ADMIN_PORT=int(os.environ.get("ADMIN_PORT", "8787")),
         DATA_DIR=str(data_dir),
@@ -510,6 +572,39 @@ def create_app(
         app.config,
         validate_token_file=not bool(app.testing),
     )
+    try:
+        miniapp_memory_settings = MirrorMemorySettings.from_env(
+            app.config,
+            ai_consent_version=str(app.config.get("AI_CONSENT_VERSION") or ""),
+        )
+        miniapp_retention_policy = RetentionPolicy.from_env(app.config)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("Mini App privacy settings are invalid") from exc
+
+    def miniapp_bootstrap_options() -> dict[str, Any]:
+        enabled_values = {"1", "true", "yes", "on"}
+        return {
+            "ai_enabled": str(app.config.get("AI_TUTOR_ENABLED") or "")
+            .strip()
+            .lower()
+            in enabled_values,
+            "voice_enabled": str(app.config.get("VOICE_TUTOR_ENABLED") or "")
+            .strip()
+            .lower()
+            in enabled_values,
+            "ai_consent_version": str(
+                app.config.get("AI_CONSENT_VERSION") or ""
+            ),
+            "voice_consent_version": str(
+                app.config.get("VOICE_CONSENT_VERSION") or ""
+            ),
+            "mirror_memory_enabled": miniapp_memory_settings.enabled,
+            "mirror_retention_days": miniapp_memory_settings.retention_days,
+            "voice_transcript_retention_days": (
+                miniapp_retention_policy.voice_transcript_days
+            ),
+            "initial_credits": miniapp_initial_credits,
+        }
 
     store = database_store or DatabaseStore(database_url_from_env())
     admin_store = AdminStore(store)
@@ -678,6 +773,7 @@ def create_app(
         if request.path in {
             "/miniapp/api/active-pack",
             "/miniapp/api/interface-locale",
+            "/miniapp/api/privacy-action",
             "/miniapp/api/referral-invite",
         }:
             return None
@@ -833,11 +929,7 @@ def create_app(
                 catalog=CATALOG,
                 products=admin_store.billing_products(),
                 checkout_enabled=admin_store.billing_settings.enabled,
-                ai_enabled=str(app.config.get("AI_TUTOR_ENABLED") or "").strip().lower()
-                in {"1", "true", "yes", "on"},
-                voice_enabled=str(app.config.get("VOICE_TUTOR_ENABLED") or "").strip().lower()
-                in {"1", "true", "yes", "on"},
-                initial_credits=miniapp_initial_credits,
+                **miniapp_bootstrap_options(),
             )
         except MiniAppAccessDenied:
             return jsonify(error="access_denied"), 403
@@ -875,6 +967,72 @@ def create_app(
                 f"https://t.me/{miniapp_settings.bot_username}?start=ref_{code}"
             )
         )
+
+    @app.post("/miniapp/api/privacy-action")
+    def miniapp_privacy_action():
+        if not miniapp_settings.enabled:
+            abort(404)
+        init_data = str(request.headers.get("X-Telegram-Init-Data") or "")
+        if not init_data or len(init_data.encode("utf-8")) > 8192:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            identity = miniapp_runtime.verify_init_data(
+                init_data,
+                bot_token=miniapp_settings.bot_token,
+                max_age_seconds=miniapp_settings.auth_max_age_seconds,
+            )
+        except MiniAppAuthenticationError:
+            return jsonify(error="authentication_failed"), 401
+
+        action = _strict_miniapp_privacy_body()
+        if action is None:
+            return jsonify(error="invalid_request"), 400
+        user_id = int(identity["user_id"])
+        try:
+            miniapp_runtime.require_active_learner(store, user_id)
+        except MiniAppAccessDenied:
+            try:
+                already_erased = (
+                    action == "erase_learning_data"
+                    and _miniapp_erasure_is_complete(store, user_id)
+                )
+            except Exception:
+                return jsonify(error="temporarily_unavailable"), 503
+            if already_erased:
+                return jsonify(ok=True)
+            return jsonify(error="access_denied"), 403
+        try:
+            rate_decision = PersistentRateLimiter(store).consume(
+                user_id=user_id,
+                scope="miniapp_privacy_action",
+                policy=_MINIAPP_PRIVACY_RATE_POLICY,
+            )
+        except Exception:
+            return jsonify(error="temporarily_unavailable"), 503
+        if not rate_decision.allowed:
+            response = jsonify(error="rate_limited")
+            response.status_code = 429
+            response.headers["Retry-After"] = str(
+                max(1, int(rate_decision.retry_after_seconds))
+            )
+            return response
+
+        try:
+            if action == "revoke_ai":
+                store.revoke_consent(user_id, consent_type="ai_processing")
+            elif action == "revoke_voice":
+                store.revoke_consent(user_id, consent_type="voice_processing")
+            else:
+                erase_user_learning_data(
+                    store,
+                    user_id=user_id,
+                    actor="miniapp-self-service",
+                )
+        except PermissionError:
+            return jsonify(error="access_denied"), 403
+        except Exception:
+            return jsonify(error="temporarily_unavailable"), 503
+        return jsonify(ok=True)
 
     @app.post("/miniapp/api/active-pack")
     def miniapp_active_pack():
@@ -956,15 +1114,7 @@ def create_app(
                     catalog=CATALOG,
                     products=admin_store.billing_products(),
                     checkout_enabled=admin_store.billing_settings.enabled,
-                    ai_enabled=str(app.config.get("AI_TUTOR_ENABLED") or "")
-                    .strip()
-                    .lower()
-                    in {"1", "true", "yes", "on"},
-                    voice_enabled=str(app.config.get("VOICE_TUTOR_ENABLED") or "")
-                    .strip()
-                    .lower()
-                    in {"1", "true", "yes", "on"},
-                    initial_credits=miniapp_initial_credits,
+                    **miniapp_bootstrap_options(),
                     active_pack_id_override=pack.pack_id,
                     active_language_override=pack.target_language,
                 )
@@ -1034,15 +1184,7 @@ def create_app(
                     catalog=CATALOG,
                     products=admin_store.billing_products(),
                     checkout_enabled=admin_store.billing_settings.enabled,
-                    ai_enabled=str(app.config.get("AI_TUTOR_ENABLED") or "")
-                    .strip()
-                    .lower()
-                    in {"1", "true", "yes", "on"},
-                    voice_enabled=str(app.config.get("VOICE_TUTOR_ENABLED") or "")
-                    .strip()
-                    .lower()
-                    in {"1", "true", "yes", "on"},
-                    initial_credits=miniapp_initial_credits,
+                    **miniapp_bootstrap_options(),
                     interface_locale_override=locale,
                 )
                 serialized_payload = app.json.dumps(payload)

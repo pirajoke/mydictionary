@@ -549,7 +549,8 @@ class ReferralMiniAppSurfaceContractTest(unittest.TestCase):
             self.js,
             r"https://t\.me/share/url\?url=\$\{encodeURIComponent\([^)]*invite_url",
         )
-        self.assertNotIn("window.location", self.js)
+        location_uses = re.findall(r"window\.location(?:\.[A-Za-z]+)?", self.js)
+        self.assertEqual(set(location_uses), {"window.location.search"})
 
 
 if __name__ == "__main__":
