@@ -78,9 +78,8 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
             [
                 bot.quick_action_label("continue", "ru"),
                 bot.quick_action_label("review", "ru"),
-                bot.quick_action_label("ai", "ru"),
-                bot.quick_action_label("audit", "ru"),
-                bot.quick_action_label("dictionary", "ru"),
+                bot.quick_action_label("mode", "ru"),
+                bot.quick_action_label("words", "ru"),
                 bot.quick_action_label("lang", "ru"),
             ],
         )

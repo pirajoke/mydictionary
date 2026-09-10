@@ -95,14 +95,21 @@ class DictionaryCompanionRecoveryTest(unittest.IsolatedAsyncioTestCase):
         store.fail_ai_usage.assert_called_once()
         store.record_ai_provider_response.assert_called_once()
 
-    async def test_ac2_dictionary_and_language_are_localized_persistent_actions(self):
+    async def test_ac2_dictionary_remains_routable_while_language_stays_visible(self):
         for locale in INTERFACE_LOCALES:
             label = f"📖 {translate('command_dictionary', locale)}"
             language_label = f"🌍 {translate('command_lang', locale)}"
             keyboard = bot.get_quick_actions_keyboard(locale)
-            self.assertEqual(len([button for row in keyboard.keyboard for button in row]), 6)
-            self.assertEqual(keyboard.keyboard[-1][0].text, label)
+            self.assertEqual(len([button for row in keyboard.keyboard for button in row]), 5)
+            self.assertEqual(
+                keyboard.keyboard[-1][0].text,
+                bot.quick_action_label("words", locale),
+            )
             self.assertEqual(keyboard.keyboard[-1][1].text, language_label)
+            self.assertNotIn(
+                label,
+                [button.text for row in keyboard.keyboard for button in row],
+            )
             self.assertEqual(bot.quick_action_for_text(label), "dictionary")
             self.assertEqual(bot.quick_action_for_text(language_label), "lang")
         update, context, _message = dictionary_tests.command_update([])
