@@ -1012,6 +1012,13 @@ def format_word_label(idx: int) -> str:
     """Format a question prompt without exposing the Russian answer."""
     w = W()[idx]
     pack = active_content_pack()
+    transcription = transcription_for(w, pack.target_language)
+    if transcription and pack.pronunciation.transcription_system == "ipa":
+        target = _directional_text(target_text(w), pack.direction)
+        return (
+            f"{pack.flag} *{escape_markdown(target)}*\n"
+            f"`{transcription.replace('`', "'")}`"
+        )
     return f"{pack.flag} *{escape_markdown(format_target_word(w, pack))}*"
 
 
@@ -1073,6 +1080,17 @@ def format_word_details(idx: int) -> str:
     """Format a revealed card: meaning first, then target and transcription."""
     word = W()[idx]
     pack = active_content_pack()
+    transcription = transcription_for(word, pack.target_language)
+    if transcription and pack.pronunciation.transcription_system == "ipa":
+        target = _directional_text(target_text(word), pack.direction)
+        return "\n".join(
+            [
+                f"{active_meaning_flag()} "
+                f"*{escape_markdown(meaning_display_for_word(word))}*",
+                f"{pack.flag} *{escape_markdown(target)}*",
+                f"`{transcription.replace('`', "'")}`",
+            ]
+        )
     lines = [
         f"{active_meaning_flag()} "
         f"*{escape_markdown(meaning_display_for_word(word))}*",
@@ -1148,6 +1166,7 @@ QUICK_ACTION_KEYS = {
     "ai": "command_ai",
     "audit": "command_stats",
     "dictionary": "command_dictionary",
+    "lang": "command_lang",
 }
 
 
@@ -1161,6 +1180,8 @@ def quick_action_label(action: str, locale: str | None = None) -> str:
         return f"📊 {label}"
     if action == "dictionary":
         return f"📖 {label}"
+    if action == "lang":
+        return f"🌍 {label}"
     return label
 
 
@@ -1172,9 +1193,10 @@ def get_quick_actions_keyboard(locale: str | None = None) -> ReplyKeyboardMarkup
         quick_action_label("ai", locale),
         quick_action_label("audit", locale),
         quick_action_label("dictionary", locale),
+        quick_action_label("lang", locale),
     ]
     return ReplyKeyboardMarkup(
-        [labels[:2], labels[2:4], labels[4:]],
+        [labels[:2], labels[2:4], labels[4:6]],
         resize_keyboard=True,
         one_time_keyboard=False,
         is_persistent=True,
@@ -8294,6 +8316,9 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     if action == "dictionary":
         await cmd_dictionary.__wrapped__(update, context)
+        return
+    if action == "lang":
+        await cmd_lang.__wrapped__(update, context)
         return
     if not AI_SETTINGS.enabled:
         await update.message.reply_text(translate("ai_disabled", locale))

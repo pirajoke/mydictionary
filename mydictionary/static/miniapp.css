@@ -425,7 +425,7 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 .custom-word-list-heading h2 { margin: 0; font-size: .82rem; }
 .custom-word-list-heading strong { display: grid; place-items: center; min-width: 28px; min-height: 28px; border-radius: 999px; color: var(--dashboard-warning); background: color-mix(in srgb, var(--dashboard-warning) 14%, var(--dashboard-surface)); font-size: .72rem; }
 .custom-word-card { border-inline-start: 3px solid var(--lexi-orange); }
-.custom-word-transcription { display: block; margin-top: 2px; color: var(--dashboard-accent); font-size: .68rem; }
+.custom-word-transcription { display: block; margin-top: 4px; color: var(--dashboard-accent); font-family: "Noto Sans", "DejaVu Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-size: .8rem; line-height: 1.35; }
 .custom-words-empty { margin: 0; padding: 12px; border: 1px dashed var(--dashboard-line); border-radius: 12px; color: var(--dashboard-muted); background: var(--dashboard-surface); font-size: .72rem; line-height: 1.4; }
 .word-overview {
   display: grid;
