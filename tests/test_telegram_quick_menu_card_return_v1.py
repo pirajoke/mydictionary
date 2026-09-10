@@ -21,8 +21,18 @@ def _inline_buttons(markup):
     return [button for row in markup.inline_keyboard for button in row]
 
 
+def _quick_labels(locale):
+    return [
+        bot.quick_action_label("continue", locale),
+        bot.quick_action_label("review", locale),
+        bot.quick_action_label("mode", locale),
+        bot.quick_action_label("words", locale),
+        bot.quick_action_label("lang", locale),
+    ]
+
+
 class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
-    def test_ac1_quick_keyboard_has_six_localized_actions_including_language(self):
+    def test_ac1_quick_keyboard_has_five_learning_first_actions(self):
         factory = getattr(bot, "get_quick_actions_keyboard", None)
         self.assertTrue(callable(factory), "quick-action keyboard is missing")
         pack_labels = {pack.label for pack in bot.CATALOG.packs}
@@ -32,14 +42,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                 labels = [button.text for button in _buttons(factory(locale))]
                 self.assertEqual(
                     labels,
-                    [
-                        translate("start_daily", locale),
-                        translate("start_review", locale),
-                        f"✨ {translate('command_ai', locale)}",
-                        f"📊 {translate('command_stats', locale)}",
-                        f"📖 {translate('command_dictionary', locale)}",
-                        f"🌍 {translate('command_lang', locale)}",
-                    ],
+                    _quick_labels(locale),
                 )
                 self.assertTrue(pack_labels.isdisjoint(labels))
                 self.assertTrue(all(len(label) <= 64 for label in labels))
@@ -107,14 +110,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
         labels = [button.text for button in _buttons(markup)]
         self.assertEqual(
             labels,
-            [
-                translate("start_daily", "fr"),
-                translate("start_review", "fr"),
-                f"✨ {translate('command_ai', 'fr')}",
-                f"📊 {translate('command_stats', 'fr')}",
-                f"📖 {translate('command_dictionary', 'fr')}",
-                f"🌍 {translate('command_lang', 'fr')}",
-            ],
+            _quick_labels("fr"),
         )
         self.assertNotIn(pack.label, labels)
 
@@ -138,14 +134,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
         markup = message.reply_text.await_args.kwargs["reply_markup"]
         self.assertEqual(
             [button.text for button in _buttons(markup)],
-            [
-                translate("start_daily", "ru"),
-                translate("start_review", "ru"),
-                f"✨ {translate('command_ai', 'ru')}",
-                f"📊 {translate('command_stats', 'ru')}",
-                f"📖 {translate('command_dictionary', 'ru')}",
-                f"🌍 {translate('command_lang', 'ru')}",
-            ],
+            _quick_labels("ru"),
         )
 
     def test_ac4_quick_label_router_is_exact_and_registered_before_mirror(self):
@@ -153,8 +142,11 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(callable(resolver), "quick-action resolver is missing")
         for locale in sorted(INTERFACE_LOCALES):
             cases = {
+                bot.quick_action_label("continue", locale): "continue",
                 translate("start_daily", locale): "continue",
                 translate("start_review", locale): "review",
+                bot.quick_action_label("mode", locale): "mode",
+                bot.quick_action_label("words", locale): "words",
                 f"✨ {translate('command_ai', locale)}": "ai",
                 f"📊 {translate('command_stats', locale)}": "audit",
                 f"📖 {translate('command_dictionary', locale)}": "dictionary",

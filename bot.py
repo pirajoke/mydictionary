@@ -1173,19 +1173,37 @@ def get_lang_keyboard():
 
 
 QUICK_ACTION_KEYS = {
-    "continue": "start_daily",
+    "continue": "quick_continue",
     "review": "start_review",
+    "mode": "quick_practice_mode",
+    "words": "quick_choose_words",
+    "lang": "command_lang",
+}
+
+# Exact labels from keyboards already delivered before the learning-first
+# redesign remain routable, although they are no longer rendered.
+LEGACY_QUICK_ACTION_KEYS = {
     "ai": "command_ai",
     "audit": "command_stats",
     "dictionary": "command_dictionary",
-    "lang": "command_lang",
 }
+
+
+def legacy_continue_label(locale: str | None = None) -> str:
+    """Return the former daily label for already-delivered keyboards."""
+    return translate("start_daily", locale)
 
 
 def quick_action_label(action: str, locale: str | None = None) -> str:
     """Return one bounded localized label for the persistent action keyboard."""
-    key = QUICK_ACTION_KEYS[action]
+    key = (QUICK_ACTION_KEYS | LEGACY_QUICK_ACTION_KEYS)[action]
     label = translate(key, locale)
+    if action == "continue":
+        return f"▶️ {label}"
+    if action == "mode":
+        return f"🎯 {label}"
+    if action == "words":
+        return f"📚 {label}"
     if action == "ai":
         return f"✨ {label}"
     if action == "audit":
@@ -1198,17 +1216,19 @@ def quick_action_label(action: str, locale: str | None = None) -> str:
 
 
 def get_quick_actions_keyboard(locale: str | None = None) -> ReplyKeyboardMarkup:
-    """Return frequent learning actions without duplicated languages."""
-    labels = [
-        quick_action_label("continue", locale),
-        quick_action_label("review", locale),
-        quick_action_label("ai", locale),
-        quick_action_label("audit", locale),
-        quick_action_label("dictionary", locale),
-        quick_action_label("lang", locale),
-    ]
+    """Return a learning-first hierarchy instead of secondary navigation."""
     return ReplyKeyboardMarkup(
-        [labels[:2], labels[2:4], labels[4:6]],
+        [
+            [quick_action_label("continue", locale)],
+            [
+                quick_action_label("review", locale),
+                quick_action_label("mode", locale),
+            ],
+            [
+                quick_action_label("words", locale),
+                quick_action_label("lang", locale),
+            ],
+        ],
         resize_keyboard=True,
         one_time_keyboard=False,
         is_persistent=True,
@@ -1219,7 +1239,9 @@ def quick_action_for_text(text: str | None) -> str | None:
     """Resolve only an exact localized quick-action label."""
     candidate = str(text or "")
     for locale in INTERFACE_LOCALES:
-        for action in QUICK_ACTION_KEYS:
+        if candidate == legacy_continue_label(locale):
+            return "continue"
+        for action in QUICK_ACTION_KEYS | LEGACY_QUICK_ACTION_KEYS:
             if candidate == quick_action_label(action, locale):
                 return action
     return None
@@ -1228,8 +1250,11 @@ def quick_action_for_text(text: str | None) -> str | None:
 QUICK_ACTION_TEXTS = {
     quick_action_label(action, locale)
     for locale in INTERFACE_LOCALES
-    for action in QUICK_ACTION_KEYS
+    for action in QUICK_ACTION_KEYS | LEGACY_QUICK_ACTION_KEYS
 }
+QUICK_ACTION_TEXTS.update(
+    legacy_continue_label(locale) for locale in INTERFACE_LOCALES
+)
 QUICK_ACTION_PATTERN = r"^(?:" + "|".join(
     re.escape(label) for label in sorted(QUICK_ACTION_TEXTS)
 ) + r")$"
@@ -7807,6 +7832,7 @@ def invalidate_block_session(user_data: dict):
     user_data["block_typing"] = False
     user_data["type_idx"] = None
     user_data["smart_mode"] = False
+    user_data.pop("quick_mode_pending_start", None)
 
 
 def reset_block_state(
@@ -8306,6 +8332,61 @@ async def cmd_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+def practice_mode_keyboard(user_data: dict) -> InlineKeyboardMarkup:
+    """Offer familiar practice modes for one session-bound word set."""
+    locale = learning_card_locale(user_data)
+    session_id = user_data["block_session"]
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(
+            f"🃏 {translate('practice_mode_cards', locale)}",
+            callback_data=f"bmode:{session_id}:flash",
+        )],
+        [
+            InlineKeyboardButton(
+                translate("block_quiz_mode", locale),
+                callback_data=f"bmode:{session_id}:quiz",
+            ),
+            InlineKeyboardButton(
+                translate("block_written_mode", locale),
+                callback_data=f"bmode:{session_id}:type",
+            ),
+        ],
+    ])
+
+
+async def open_practice_mode_picker(message, context) -> None:
+    """Choose a mode for the current words, or prepare an SR-prioritized set."""
+    user_data = context.user_data
+    locale = learning_card_locale(user_data)
+    reusable = (
+        active_tutor_context(user_data) is not None
+        and not block_is_complete(user_data)
+    )
+    if reusable:
+        user_data.pop("quick_mode_pending_start", None)
+        indices = list(user_data["block_all_indices"])
+    else:
+        invalidate_block_session(user_data)
+        pack = active_content_pack()
+        indices = pick_block(size=daily_lesson_size())
+        if not indices:
+            await message.reply_text(translate("learning_no_words", locale))
+            return
+        reset_block_state(
+            user_data,
+            indices,
+            pack.target_language,
+            None,
+            pack.pack_id,
+            lesson_kind="practice",
+        )
+        user_data["quick_mode_pending_start"] = True
+    await message.reply_text(
+        translate("practice_mode_prompt", locale, count=len(indices)),
+        reply_markup=practice_mode_keyboard(user_data),
+    )
+
+
 @auth
 async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Dispatch one exact persistent-keyboard action before Mirror free text."""
@@ -8322,6 +8403,12 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             context,
             lesson_kind="review",
         )
+        return
+    if action == "mode":
+        await open_practice_mode_picker(update.message, context)
+        return
+    if action == "words":
+        await cmd_learn.__wrapped__(update, context)
         return
     if action == "audit":
         await cmd_stats.__wrapped__(update, context)
@@ -8662,7 +8749,27 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     ud["interface_locale"] = interface_locale_for_update(update)
     activate_block_language(ud)
+    quick_start = bool(ud.pop("quick_mode_pending_start", False))
     start_block_attempt(ud, mode)
+    if quick_start:
+        event_properties = {
+            "pack_id": active_content_pack().pack_id,
+            "language": PROGRESS["active_lang"],
+            "lesson_kind": ud.get("lesson_kind") or "practice",
+            "word_count": len(ud["block_indices"]),
+        }
+        record_product_event(
+            "lesson_started",
+            properties=event_properties,
+            session_id=ud["block_session"],
+            source="reply_keyboard",
+        )
+        record_product_event(
+            "block_started",
+            properties={**event_properties, "topic": "all"},
+            session_id=ud["block_session"],
+            source="reply_keyboard",
+        )
     record_product_event(
         "block_mode_started",
         properties={
