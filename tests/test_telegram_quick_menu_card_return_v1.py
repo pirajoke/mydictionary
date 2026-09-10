@@ -22,7 +22,7 @@ def _inline_buttons(markup):
 
 
 class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
-    def test_ac1_quick_keyboard_has_five_localized_actions_and_no_languages(self):
+    def test_ac1_quick_keyboard_has_six_localized_actions_including_language(self):
         factory = getattr(bot, "get_quick_actions_keyboard", None)
         self.assertTrue(callable(factory), "quick-action keyboard is missing")
         pack_labels = {pack.label for pack in bot.CATALOG.packs}
@@ -38,6 +38,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                         f"✨ {translate('command_ai', locale)}",
                         f"📊 {translate('command_stats', locale)}",
                         f"📖 {translate('command_dictionary', locale)}",
+                        f"🌍 {translate('command_lang', locale)}",
                     ],
                 )
                 self.assertTrue(pack_labels.isdisjoint(labels))
@@ -112,6 +113,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                 f"✨ {translate('command_ai', 'fr')}",
                 f"📊 {translate('command_stats', 'fr')}",
                 f"📖 {translate('command_dictionary', 'fr')}",
+                f"🌍 {translate('command_lang', 'fr')}",
             ],
         )
         self.assertNotIn(pack.label, labels)
@@ -142,6 +144,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                 f"✨ {translate('command_ai', 'ru')}",
                 f"📊 {translate('command_stats', 'ru')}",
                 f"📖 {translate('command_dictionary', 'ru')}",
+                f"🌍 {translate('command_lang', 'ru')}",
             ],
         )
 
@@ -155,6 +158,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                 f"✨ {translate('command_ai', locale)}": "ai",
                 f"📊 {translate('command_stats', locale)}": "audit",
                 f"📖 {translate('command_dictionary', locale)}": "dictionary",
+                f"🌍 {translate('command_lang', locale)}": "lang",
             }
             for label, expected in cases.items():
                 with self.subTest(locale=locale, action=expected):
