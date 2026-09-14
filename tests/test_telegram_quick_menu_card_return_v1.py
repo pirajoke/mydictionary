@@ -225,7 +225,10 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
         start.assert_awaited_once()
         self.assertIs(start.await_args.args[0].message, message)
         self.assertIs(start.await_args.args[1], context)
-        self.assertEqual(start.await_args.kwargs, {"lesson_kind": "review"})
+        self.assertEqual(
+            start.await_args.kwargs,
+            {"lesson_kind": "review", "source": "reply_keyboard"},
+        )
 
         with patch.object(bot, "format_stats_text", return_value="safe audit"):
             _update, _context, message = await invoke(
@@ -292,7 +295,10 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
 
         resume.assert_not_awaited()
         start.assert_awaited_once()
-        self.assertEqual(start.await_args.kwargs, {"lesson_kind": "daily"})
+        self.assertEqual(
+            start.await_args.kwargs,
+            {"lesson_kind": "daily", "source": "reply_keyboard"},
+        )
 
 
 class PersistentBlockCardsContractTest(unittest.IsolatedAsyncioTestCase):
