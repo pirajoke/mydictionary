@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from copy import deepcopy
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -147,7 +148,7 @@ class ContentCatalog:
         )
 
     def words(self, pack: ContentPack) -> list[dict[str, Any]]:
-        return [dict(entry) for entry in self._entries[pack.pack_id]]
+        return [deepcopy(entry) for entry in self._entries[pack.pack_id]]
 
     def aligned_pack_for_language(
         self, language: str, role: str
@@ -366,7 +367,7 @@ def _v2_entry(
         "topics",
         "example",
     }
-    optional = {"legacy_progress_id", "accepted_meanings"}
+    optional = {"legacy_progress_id", "accepted_meanings", "part_of_speech", "grammar"}
     if (
         not isinstance(raw, dict)
         or not required.issubset(raw)
@@ -416,6 +417,21 @@ def _v2_entry(
         not isinstance(example, dict) or set(example) != {"target", "meaning"}
     ):
         raise CatalogError(f"{owner} has invalid example")
+    editorial = {}
+    if "part_of_speech" in raw or "grammar" in raw:
+        pos = _required_text(raw, "part_of_speech", owner, maximum=32)
+        if pos not in {"noun", "verb", "adjective", "adverb", "phrase", "interjection", "particle"}:
+            raise CatalogError(f"{owner} has invalid part_of_speech")
+        grammar = raw.get("grammar")
+        if not isinstance(grammar, dict) or set(grammar) - {"article", "plural", "present", "preterite", "perfect", "note"}:
+            raise CatalogError(f"{owner} has invalid grammar")
+        grammar = {field: _required_text(grammar, field, f"{owner} grammar", maximum=180)
+                   for field in grammar}
+        if pos == "noun" and (grammar.get("article") not in {"der", "die", "das"} or not grammar.get("plural")):
+            raise CatalogError(f"{owner} has invalid noun grammar")
+        if pos == "verb" and not any(grammar.get(field) for field in ("present", "preterite", "perfect")):
+            raise CatalogError(f"{owner} has invalid verb grammar")
+        editorial = {"part_of_speech": pos, "grammar": grammar}
     progress_id = str(raw.get("legacy_progress_id") or "").strip()
     if progress_id and not PROGRESS_ID_RE.fullmatch(progress_id):
         raise CatalogError(f"{owner} has invalid legacy_progress_id")
@@ -438,6 +454,7 @@ def _v2_entry(
             if example is not None
             else ""
         ),
+        **editorial,
     }
 
 

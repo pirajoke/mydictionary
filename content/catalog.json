@@ -138,7 +138,7 @@
       "is_free": true,
       "status": "published",
       "content_schema": 2,
-      "content_version": 1,
+      "content_version": 2,
       "entry_count": 100,
       "pronunciation": {
         "transcription_system": "ipa",
