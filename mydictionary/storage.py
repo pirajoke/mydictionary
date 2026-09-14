@@ -180,6 +180,28 @@ class WordProgress(Base):
     )
 
 
+class MiniAppSwipeSession(Base):
+    """Short-lived curated practice state; never stores vocabulary text."""
+
+    __tablename__ = "miniapp_swipe_sessions"
+
+    session_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    pack_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    language: Mapped[str] = mapped_column(String(16), nullable=False)
+    initial_indices_json: Mapped[str] = mapped_column(Text, nullable=False)
+    state_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False, index=True
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
 class CustomVocabularyEntry(Base):
     __tablename__ = "custom_vocabulary_entries"
     __table_args__ = (

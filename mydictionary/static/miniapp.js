@@ -373,6 +373,7 @@
     const eraseButton = document.querySelector('[data-privacy-action="erase_learning_data"]');
     const backButton = node("detail-back");
     const accessErased = state.access_erased === true;
+    if (accessErased && window.LexiSwipe) window.LexiSwipe.configure({...payload, privacy: state});
     if (backButton) backButton.disabled = accessErased;
     if (aiButton) {
       aiButton.disabled = privacyActionPending || accessErased || state.ai_consent !== "granted";
@@ -1052,6 +1053,7 @@
     node("error-state").hidden = true;
     node("app-content").hidden = false;
     renderPrivacyState(data.privacy);
+    if (window.LexiSwipe) window.LexiSwipe.configure(data);
     openRequestedDetailView();
   }
 
@@ -1143,6 +1145,15 @@
     button.addEventListener("click", () => openAction(button.dataset.action));
   });
   document.querySelectorAll("[data-open-dictionary]").forEach((button) => button.addEventListener("click", () => openDictionary()));
+  node("swipe-trainer")?.addEventListener("lexi:practice-completed", async () => {
+    const expectedSwitch = languageSwitchSequence;
+    try {
+      const data = await fetchBootstrap();
+      if (!languageSwitchPending && expectedSwitch === languageSwitchSequence) render(data);
+    } catch (_) {
+      // Saved practice and its summary remain usable if refresh is offline.
+    }
+  });
   document.querySelectorAll("[data-download-dictionary]").forEach((button) => button.addEventListener("click", () => openDictionary(true)));
   document.querySelectorAll("[data-settings-action]").forEach((button) => {
     if (button.dataset.settingsAction !== "invite") {

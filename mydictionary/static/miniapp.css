@@ -46,6 +46,59 @@
   font-family: ui-rounded, "SF Pro Rounded", "Nunito Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+/* Lexi Swipe: a focused study surface, not another navigation system. */
+.swipe-trainer { --surface: var(--dashboard-surface); --radius: var(--dashboard-radius); --danger: var(--dashboard-danger); --muted: var(--dashboard-muted); --line: var(--dashboard-line); min-width: 0; padding: 16px 0 22px; border-bottom: 1px solid var(--line); }
+#panel-words:has(.swipe-trainer[data-active="true"]) > header[class~="section-hero"] { display: none; }
+.swipe-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.swipe-heading > div { min-width: 0; }
+.swipe-heading h2 { margin: 5px 0 0; font-size: 1.4rem; letter-spacing: -.025em; }
+.swipe-kicker { color: var(--lexi-teal); font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
+.swipe-language { flex-shrink: 0; max-width: 45%; border: 0; background: transparent; color: var(--lexi-blue); font-size: .8rem; padding: 10px 0 10px 8px; overflow-wrap: anywhere; }
+.swipe-hint, .swipe-keyboard-hint { color: var(--muted); font-size: .85rem; line-height: 1.5; }
+.swipe-hint { margin: 10px 0 16px; }
+.swipe-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: var(--surface); padding: 4px; border: 1px solid var(--line); border-radius: 12px; }
+.swipe-modes button { min-width: 0; min-height: 44px; padding: 8px 5px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: .8rem; font-weight: 750; overflow-wrap: anywhere; }
+.swipe-modes button[aria-pressed="true"] { background: var(--lexi-blue); color: var(--lexi-blue-ink); }
+.swipe-session-line { display: flex; align-items: center; gap: 12px; margin: 18px 0 12px; color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.swipe-session-line progress { flex: 1; min-width: 0; height: 5px; border: 0; border-radius: 5px; overflow: hidden; background: var(--line); accent-color: var(--lexi-blue); }
+.swipe-session-line progress::-webkit-progress-bar { background: var(--line); }
+.swipe-session-line progress::-webkit-progress-value { background: var(--lexi-blue); }
+.swipe-session-line progress::-moz-progress-bar { background: var(--lexi-blue); }
+.swipe-stage { position: relative; isolation: isolate; padding-bottom: 8px; }
+.swipe-stage::before { content: ""; position: absolute; z-index: -1; inset: 12px 10px 0; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); }
+.swipe-card { position: relative; display: flex; flex-direction: column; gap: 20px; min-width: 0; min-height: 330px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); background: color-mix(in srgb, var(--lexi-orange) 6%, var(--surface)); overflow-wrap: anywhere; touch-action: pan-y; cursor: grab; transition: transform 160ms ease; }
+.swipe-card::before { content: ""; position: absolute; inset: 0 16px auto; height: 4px; border-radius: 0 0 4px 4px; background: var(--lexi-orange); }
+.swipe-card[data-kind="new"] { background: color-mix(in srgb, var(--lexi-blue) 7%, var(--surface)); }
+.swipe-card[data-kind="new"]::before { background: var(--lexi-blue); }
+.swipe-card.is-dragging { transition: none; cursor: grabbing; }
+.swipe-kind { align-self: flex-start; color: var(--lexi-orange); font-size: .75rem; font-weight: 750; }
+.swipe-card[data-kind="new"] .swipe-kind { color: var(--lexi-blue); }
+.swipe-word-block { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; padding: 10px 0; text-align: center; min-width: 0; }
+.swipe-word-block h3 { width: 100%; margin: 0; font-size: clamp(1.8rem, 8vw, 3rem); line-height: 1.12; letter-spacing: -.025em; text-wrap: balance; overflow-wrap: anywhere; }
+.swipe-pronunciation { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.swipe-pronunciation button { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); color: var(--lexi-blue); font-size: .8rem; min-height: 44px; }
+#swipe-transcription { font-family: "Arial", "Noto Sans", "DejaVu Sans", sans-serif; font-size: 1.05rem; font-weight: 400; font-variant-ligatures: none; line-height: 1.55; color: var(--muted); overflow-wrap: anywhere; }
+.swipe-meaning { margin: 0; padding-top: 16px; border-top: 1px solid var(--line); font-size: 1.3rem; line-height: 1.4; text-align: center; }
+.swipe-reveal, .swipe-start { width: 100%; min-height: 48px; border: 0; border-radius: 12px; padding: 12px 16px; background: var(--lexi-blue); color: var(--lexi-blue-ink); font-weight: 800; }
+.swipe-start { margin-top: 16px; }
+.swipe-grades { display: grid; direction: ltr; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.swipe-grades button { min-width: 0; min-height: 52px; padding: 12px 8px; border-radius: 12px; font-weight: 800; overflow-wrap: anywhere; }
+.swipe-again { color: var(--danger); border: 1px solid var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
+.swipe-know { background: var(--lexi-teal); color: var(--lexi-teal-ink); border: 1px solid var(--lexi-teal); }
+.swipe-undo { display: block; min-height: 44px; margin: 5px auto 0; padding: 8px 16px; border: 0; background: transparent; color: var(--muted); font-size: .8rem; }
+.swipe-keyboard-hint { margin: 0; text-align: center; font-size: .75rem; }
+.swipe-status { min-height: 22px; margin: 12px 0 0; font-size: .85rem; line-height: 1.5; color: var(--muted); }
+.swipe-retry { min-height: 44px; margin-top: 6px; padding: 8px 14px; border: 1px solid var(--lexi-blue); color: var(--lexi-blue); background: var(--surface); border-radius: 10px; }
+.swipe-summary { margin: 18px 0 0; padding: 26px 16px; text-align: center; white-space: pre-line; font-size: 1.25rem; line-height: 1.8; color: var(--lexi-teal); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.swipe-trainer button:disabled { opacity: .45; cursor: default; }
+.swipe-trainer button:focus-visible, .swipe-card:focus-visible { outline: 3px solid var(--lexi-blue); outline-offset: 3px; }
+@media (max-width: 360px) {
+  .swipe-card { padding: 18px 14px; min-height: 300px; }
+  .swipe-heading h2 { font-size: 1.2rem; }
+  .swipe-modes button { font-size: .72rem; }
+}
+@media (prefers-reduced-motion: reduce) { .swipe-card { transition: none; } }
+
 * { box-sizing: border-box; }
 html {
   min-width: 320px;

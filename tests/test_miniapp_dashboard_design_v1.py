@@ -268,10 +268,46 @@ class MiniAppDashboardDesignV1ContractTest(unittest.TestCase):
             self.combined.casefold(),
             r"lottery|ticket exchange|daily reward|unlimited access|subscription",
         )
-        self.assertNotRegex(
-            self.html,
-            r'<script(?![^>]+(?:telegram-web-app\.js|miniapp\.js))[^>]+src=',
+        def script_sources(html):
+            return [source for _quote, source in re.findall(
+                r'<script\b[^>]*\bsrc=(["\'])(.*?)\1', html,
+            )]
+
+        def approved_script(source):
+            return source == "https://telegram.org/js/telegram-web-app.js" or bool(
+                re.fullmatch(
+                    r"\{\{\s*url_for\('miniapp_static',\s*filename='"
+                    r"(?:miniapp\.js|miniapp-swipe\.js)'\)\s*\}\}"
+                    r"(?:\?v=[A-Za-z0-9_-]+)?",
+                    source,
+                )
+            )
+
+        def assert_approved_scripts(html):
+            self.assertEqual(
+                [source for source in script_sources(html) if not approved_script(source)],
+                [],
+                "Only Telegram SDK and reviewed same-origin Mini App modules are allowed",
+            )
+
+        assert_approved_scripts(self.html)
+        swipe_sources = [source for source in script_sources(self.html) if "miniapp-swipe.js" in source]
+        self.assertEqual(len(swipe_sources), 1)
+        self.assertRegex(
+            swipe_sources[0],
+            r"^\{\{\s*url_for\('miniapp_static',\s*filename='miniapp-swipe\.js'\)\s*\}\}",
         )
+        # Prove the expanded allowlist still fails on external/unreviewed additions,
+        # including external URLs disguised with an approved module basename.
+        for source in (
+            "https://unreviewed.example/miniapp-swipe.js",
+            "https://unreviewed.example/miniapp.js",
+            "{{ url_for('miniapp_static', filename='unreviewed.js') }}",
+            "{{ url_for('static', filename='miniapp-swipe.js') }}",
+        ):
+            with self.subTest(unreviewed_script=source):
+                with self.assertRaises(AssertionError):
+                    assert_approved_scripts(f'{self.html}<script src="{source}"></script>')
 
 
 if __name__ == "__main__":
