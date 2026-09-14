@@ -7679,7 +7679,13 @@ def daily_lesson_size() -> int:
     return size if size in {5, 10, 20} else 5
 
 
-async def start_home_lesson(query, context, *, lesson_kind: str) -> None:
+async def start_home_lesson(
+    query,
+    context,
+    *,
+    lesson_kind: str,
+    source: str = "home",
+) -> None:
     """Start the primary daily or due-only lesson from the home screen."""
     invalidate_block_session(context.user_data)
     pack = active_content_pack()
@@ -7734,19 +7740,19 @@ async def start_home_lesson(query, context, *, lesson_kind: str) -> None:
         "lesson_started",
         properties=event_properties,
         session_id=context.user_data["block_session"],
-        source="home",
+        source=source,
     )
     record_product_event(
         "block_started",
         properties={**event_properties, "topic": "all"},
         session_id=context.user_data["block_session"],
-        source="home",
+        source=source,
     )
     record_product_event(
         "block_mode_started",
         properties={**event_properties, "mode": "flash"},
         session_id=context.user_data["block_session"],
-        source="home",
+        source=source,
     )
     await block_send_question_msg(query.message, context)
 
@@ -8288,7 +8294,12 @@ async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def continue_or_start_lesson(message, context) -> None:
+async def continue_or_start_lesson(
+    message,
+    context,
+    *,
+    source: str = "home",
+) -> None:
     """Resume a valid incomplete block, otherwise start today's lesson."""
     user_data = context.user_data
     if active_tutor_context(user_data) is not None and not block_is_complete(user_data):
@@ -8315,6 +8326,7 @@ async def continue_or_start_lesson(message, context) -> None:
         SimpleNamespace(message=message),
         context,
         lesson_kind="daily",
+        source=source,
     )
 
 
@@ -8394,14 +8406,20 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     if action is None:
         return
     locale = interface_locale_for_update(update)
+    record_product_event("quick_action_selected", source=action)
     if action == "continue":
-        await continue_or_start_lesson(update.message, context)
+        await continue_or_start_lesson(
+            update.message,
+            context,
+            source="reply_keyboard",
+        )
         return
     if action == "review":
         await start_home_lesson(
             SimpleNamespace(message=update.message),
             context,
             lesson_kind="review",
+            source="reply_keyboard",
         )
         return
     if action == "mode":
