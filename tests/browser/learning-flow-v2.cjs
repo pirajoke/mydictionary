@@ -39,7 +39,7 @@ function fixture() {
       await flush();
     }
   }
-  const names = "trainer card target meaning transcription reveal speak again know undo status retry summary start count progress kind controls modes title hint language examples grammar pronunciation-status ipa-toggle".split(" ");
+  const names = "trainer card target meaning transcription reveal speak again know undo status retry summary start count progress kind controls modes title hint language examples grammar pronunciation-status ipa-toggle resume pause".split(" ");
   const elements = Object.fromEntries(names.map(name => [`swipe-${name}`, new Element(`swipe-${name}`)]));
   const modes = ["mix", "forgotten", "new"].map(mode => {const node = new Element(); node.dataset.swipeMode = mode; return node;});
   const document = {documentElement: {lang: "en", dir: "ltr"}, getElementById: id => elements[id] || null,
@@ -171,3 +171,47 @@ for (const status of [404, 409]) {
     assert.equal(f.elements["swipe-target"].textContent, "first");
   });
 }
+
+test("AC2 choose words pauses the visible card and preserves its resumable server queue", async () => {
+  const f = fixture();
+  f.responses.push({counts: deck.counts, resume: null}); await f.api.refresh();
+  f.responses.push(deck); await f.api.enter();
+  const rated = {session_id: sessionId, queue: [7], reviewed: 1, known: 1, again: 0, undo_operation_id: operationId};
+  f.responses.push(rated); await f.elements["swipe-know"].click();
+  assert.equal(f.elements["swipe-target"].textContent, "second");
+  assert.equal(typeof f.api.choose, "function", "The native chooser must be available from profile and Telegram entry routes");
+
+  const beforeChoose = f.requests.length;
+  f.responses.push({counts: {new: 1, forgotten: 0, total: 1}, resume: {session_id: sessionId, mode: "new"}});
+  await f.api.choose(); await flush();
+  assert.deepEqual(f.requests.slice(beforeChoose).map(request => request.url), ["/miniapp/api/swipe/status"],
+    "Choosing words refreshes status without starting, grading, or completing a lesson");
+  assert.equal(f.elements["swipe-trainer"].dataset.active, "false");
+  assert.equal(f.elements["swipe-controls"].hidden, true);
+  assert.equal(f.elements["swipe-know"].disabled, true);
+  assert.equal(f.elements["swipe-resume"].hidden, false);
+  assert.equal(f.elements["swipe-resume"].disabled, false);
+
+  f.responses.push({...deck, ...rated});
+  await f.api.enter(); await flush();
+  assert.equal(f.requests.at(-1).url, "/miniapp/api/swipe/resume");
+  assert.deepEqual(f.requests.at(-1).body, {session_id: sessionId});
+  assert.equal(f.elements["swipe-target"].textContent, "second", "Resume returns to the saved queue head");
+  assert.equal(f.elements["swipe-undo"].disabled, false);
+});
+
+test("AC2 the Choose words action invokes the chooser even during an active lesson", () => {
+  const mainSource = fs.readFileSync(path.resolve(__dirname, "../../mydictionary/static/miniapp.js"), "utf8");
+  const start = mainSource.indexOf("  function openAction(action) {");
+  const end = mainSource.indexOf("\n  function openDictionary", start);
+  assert(start >= 0 && end > start, "The actual native action dispatcher must be present");
+  const calls = [];
+  const context = {
+    payload: {}, node: id => id,
+    activateTab: id => calls.push(["tab", id]),
+    window: {LexiSwipe: {choose: () => calls.push(["choose"]), enter: mode => calls.push(["enter", mode])}},
+  };
+  vm.runInNewContext(mainSource.slice(start, end) + '\nopenAction("words");', context);
+  assert.deepEqual(calls, [["tab", "tab-words"], ["choose"]],
+    "Selecting the Words tab alone leaves chooser controls hidden behind an active card");
+});

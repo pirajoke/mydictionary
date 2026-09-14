@@ -196,6 +196,11 @@
     if (busy || retryJob || fatal || !authenticated()) return;
     return perform("deck", {mode}, acceptDeck);
   }
+  function choose() {
+    if (busy || retryJob || fatal || !authenticated()) return;
+    clearSession(); draw();
+    return refresh();
+  }
   function grade(knew) {
     const card = currentCard();
     if (!card || busy || retryJob || fatal) return;
@@ -270,10 +275,7 @@
   });
   el("start").addEventListener("click", start);
   el("resume")?.addEventListener("click", () => enter());
-  el("pause")?.addEventListener("click", () => {
-    if (busy || retryJob) return;
-    clearSession(); draw(); refresh();
-  });
+  el("pause")?.addEventListener("click", choose);
   el("reveal").addEventListener("click", reveal);
   el("speak").addEventListener("click", speak);
   el("again").addEventListener("click", () => grade(false));
@@ -302,5 +304,5 @@
     if (el("language")) el("language").setAttribute("aria-label", copy.language);
     if (fatal) setText("status", copy.auth);
     draw();
-  }, refresh, enter});
+  }, refresh, enter, choose});
 })();

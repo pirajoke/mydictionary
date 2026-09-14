@@ -75,6 +75,34 @@ class LearningEntryV2Test(unittest.IsolatedAsyncioTestCase):
 
 
 class LearningControllerV2Test(unittest.TestCase):
+    def test_ac2_words_action_and_deep_link_open_chooser_without_entering_a_deck(self):
+        root = Path(__file__).resolve().parents[1]
+        script = (root / "mydictionary/static/miniapp.js").read_text(encoding="utf-8")
+        node_runtime = shutil.which("node") or "/Users/mark/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+        action_function = "function openAction(action)" + script.split("function openAction(action)", 1)[1].split("\n  function ", 1)[0]
+        requested_block_start = "    if (window.LexiSwipe) {\n      window.LexiSwipe.configure(data);"
+        requested_block = requested_block_start + script.split(requested_block_start, 1)[1].split("\n    openRequestedDetailView();", 1)[0]
+        # Run the actual route bodies with controller spies. An existing card
+        # must yield to the chooser, without silently entering another deck.
+        harness = '''
+const assert = require("node:assert/strict");
+const calls = [];
+const payload = {}, data = {}, requestedView = "words";
+let requestedPracticeOpened = false;
+const node = id => id;
+const activateTab = id => calls.push(["tab", id]);
+const window = {LexiSwipe: {
+  choose: () => calls.push(["choose"]),
+  enter: mode => calls.push(["enter", mode]),
+  configure() {}, refresh() {}
+}};
+'''
+        for route, code in (("words action", action_function + '\nopenAction("words");'), ("words deep link", requested_block)):
+            with self.subTest(route=route):
+                run = subprocess.run([node_runtime, "-e", harness + code + '\nassert.deepEqual(calls, [["tab", "tab-words"], ["choose"]]);'],
+                                     cwd=root, capture_output=True, text=True, timeout=10)
+                self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+
     def test_ac7_language_shortcut_is_hidden_until_bootstrap_and_on_auth_error(self):
         root = Path(__file__).resolve().parents[1]
         html = (root / "mydictionary/templates/miniapp.html").read_text(encoding="utf-8")

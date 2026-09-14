@@ -321,7 +321,8 @@
     if (payload && action === "lang") { activateTab(node("tab-languages"), true); return; }
     if (payload && ["continue", "review", "words"].includes(action) && window.LexiSwipe) {
       activateTab(node("tab-words"));
-      if (action !== "words") window.LexiSwipe.enter(action === "review" ? "forgotten" : "auto");
+      if (action === "words") window.LexiSwipe.choose();
+      else window.LexiSwipe.enter(action === "review" ? "forgotten" : "auto");
       return;
     }
     if (!webApp || !botUsername) return;
@@ -1071,7 +1072,8 @@
         if (requestedView === "languages") activateTab(node("tab-languages"));
         else {
           activateTab(node("tab-words"));
-          if (requestedView !== "words") window.LexiSwipe.enter?.(requestedView === "review" ? "forgotten" : "auto");
+          if (requestedView === "words") window.LexiSwipe.choose?.();
+          else window.LexiSwipe.enter?.(requestedView === "review" ? "forgotten" : "auto");
         }
       }
     }
