@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -539,10 +540,20 @@ class MiniAppSwipeV1ApiTest(unittest.TestCase):
 
 class MiniAppSwipeV1UiTest(unittest.TestCase):
     def test_ac6_existing_bottom_navigation_is_byte_for_byte_unchanged(self):
-        html = (ROOT / "mydictionary/templates/miniapp.html").read_text(encoding="utf-8")
-        base = subprocess.run(["git", "show", "d8d98a41b22f5fe236cd57991c5794fb28607c40:mydictionary/templates/miniapp.html"], cwd=ROOT, check=True, capture_output=True, text=True).stdout
-        nav = lambda source: re.search(r'<nav class="bottom-nav"[\s\S]*?</nav>', source).group(0)
-        self.assertEqual(nav(html), nav(base))
+        html = (ROOT / "mydictionary/templates/miniapp.html").read_bytes()
+        nav = re.search(rb'<nav class="bottom-nav"[\s\S]*?</nav>', html).group(0)
+        # Locked from the 3,386 raw navigation bytes in BASE, not the current
+        # template; remains verifiable under CI's history-free shallow checkout.
+        # BASE: d8d98a41b22f5fe236cd57991c5794fb28607c40
+        baseline_sha256 = "ee945fcfc4e0ccc7193c80953b3081448ae7b5bb32c82fe3d3b7e1bcbbe8a355"
+
+        def assert_baseline_bytes(candidate):
+            self.assertEqual(hashlib.sha256(candidate).hexdigest(), baseline_sha256)
+
+        assert_baseline_bytes(nav)
+        insertion = nav.index(b">") + 1
+        with self.assertRaises(AssertionError):
+            assert_baseline_bytes(nav[:insertion] + b" " + nav[insertion:])
 
     def test_ac6_ac7_semantic_surface_accessibility_and_no_content_injection(self):
         html = (ROOT / "mydictionary/templates/miniapp.html").read_text(encoding="utf-8")

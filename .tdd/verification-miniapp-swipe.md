@@ -37,12 +37,19 @@ external/unreviewed scripts still fail its assertion.
 - Python compilation, both JS syntax checks and staged diff whitespace: pass.
 - Secret-pattern scan: 26 staged source/test/document files, zero findings.
 - Real Chromium + Flask + synthetic learner, no production data/provider calls:
-  390×844 mobile and 1280×900 desktop, reveal and persisted grade/undo, zero page
+  390×844 mobile and 1280×900 desktop, reveal, real pointer swipe and persisted grade/undo, zero page
   errors and no horizontal overflow. Arabic/dark 320px check also passes, with
   physical left Again/right Know preserved.
 - Browser simulations: 400/401/403/404/409/429/503 UI branches pass. Retryable
   failures retain the card and block new ratings; auth failures close writes;
   stale sessions offer fresh practice without losing saved progress.
+- First PostgreSQL CI run: 1120/1121 checks passed; only the navigation fixture
+  failed because shallow checkout lacked historical git objects. The baseline
+  raw navigation (3386 bytes) is now locked as SHA256
+  `ee945fcfc4e0ccc7193c80953b3081448ae7b5bb32c82fe3d3b7e1bcbbe8a355`.
+  The byte-exact comparison is history-independent; a one-byte injection still
+  fails. Targeted 24/24 and interaction harness remain passing after this
+  fixture-only correction. The final green CI result is recorded in the release.
 
 ## Findings and release boundary
 
