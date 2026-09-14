@@ -13,6 +13,19 @@
     ar: ["لنعيد الكلمات إلى الذاكرة", "مراجعاتك وكلماتك الجديدة، بطاقة واحدة كل مرة.", "مزيج ذكي", "مراجعة", "جديد", "ابدأ البطاقات", "أظهر المعنى", "أخفِ المعنى", "← مرة أخرى", "أعرفها →", "تراجع عن الإجابة", "حاول مجددًا", "استمع", "اسحب لليسار للتكرار ولليمين إن عرفتها. المسافة لقلب البطاقة.", "جارٍ إعداد البطاقات…", "جارٍ الحفظ…", "تعذر الحفظ. البطاقة باقية هنا، حاول مجددًا.", "أعد فتح Lexi في Telegram للمتابعة.", "لا توجد كلمات في هذا الوضع. جرّب وضعًا أو لغة أخرى.", "اكتملت الجلسة!\n{known} معروفة · {again} للتدريب\n+{xp} XP", "جلسة أخرى", "تغير التقدم. ابدأ بطاقات جديدة؛ إجاباتك محفوظة.", "طلبات كثيرة. انتظر ثم حاول مجددًا.", "تغيير اللغة"]
   };
   const copies = Object.fromEntries(Object.entries(translations).map(([locale, values]) => [locale, Object.fromEntries(keys.map((key, i) => [key, values[i]]))]));
+  const additional = {
+    en: ["Continue remaining cards", "Pause · answers saved", "Audio is unavailable. Try listening again.", "Mix", "Start practice"],
+    ru: ["Продолжить оставшиеся карточки", "Пауза · ответы сохранены", "Звук недоступен. Попробуй послушать ещё раз.", "Смесь", "Начать занятие"],
+    fr: ["Continuer les cartes restantes", "Pause · réponses enregistrées", "Audio indisponible. Réessaie de l’écouter.", "Mélange", "Commencer"],
+    de: ["Verbleibende Karten fortsetzen", "Pause · Antworten gespeichert", "Audio nicht verfügbar. Versuche es erneut.", "Gemischt", "Übung starten"],
+    es: ["Continuar tarjetas pendientes", "Pausa · respuestas guardadas", "Audio no disponible. Intenta escucharlo de nuevo.", "Mezcla", "Empezar práctica"],
+    ja: ["残りのカードを続ける", "一時停止 · 回答は保存済み", "音声を再生できません。もう一度お試しください。", "ミックス", "練習を始める"],
+    zh: ["继续剩余卡片", "暂停 · 回答已保存", "暂时无法播放，请重试。", "混合", "开始练习"],
+    ar: ["تابع البطاقات المتبقية", "توقف مؤقت · الإجابات محفوظة", "الصوت غير متاح. حاول الاستماع مجددًا.", "مزيج", "ابدأ التدريب"]
+  };
+  Object.entries(additional).forEach(([locale, values]) => Object.assign(copies[locale], Object.fromEntries(["resume", "pause", "audio_error", "mix", "start"].map((key, index) => [key, values[index]]))));
+  const plurals = {en: "plural", ru: "мн. ч.", fr: "pluriel", de: "Plural", es: "plural", ja: "複数", zh: "复数", ar: "الجمع"};
+  Object.entries(plurals).forEach(([locale, label]) => { copies[locale].plural = label; });
   const root = document.getElementById("swipe-trainer");
   if (!root) return;
   const el = id => document.getElementById(`swipe-${id}`);
@@ -21,7 +34,7 @@
   let copy = copies.en;
   let mode = "mix", deck = null, state = null, activePack = null;
   let busy = false, retryJob = null, fatal = false, revealed = false, drag = null;
-  let sequence = 0, completed = null;
+  let sequence = 0, completed = null, overview = null, refreshJob = null;
   const webApp = () => window.Telegram && window.Telegram.WebApp;
   const authenticated = () => Boolean(webApp() && webApp().initData);
   const currentCard = () => deck && state && deck.cards.find(card => card.word_index === state.queue[0]);
@@ -49,7 +62,14 @@
     });
     ["reveal", "again", "know", "speak"].forEach(id => { el(id).disabled = blocked || !card; });
     el("speak").disabled = el("speak").disabled || !(window.speechSynthesis && typeof SpeechSynthesisUtterance !== "undefined");
-    el("undo").disabled = blocked || !state || !state.undo_operation_id || Boolean(completed);
+    el("undo").hidden = !state || !state.undo_operation_id;
+    el("undo").disabled = blocked || !state || !state.undo_operation_id;
+    if (el("resume")) {
+      el("resume").hidden = Boolean(card) || Boolean(completed) || !overview?.resume;
+      el("resume").disabled = blocked;
+      setText("resume", copy.resume);
+    }
+    if (el("pause")) { el("pause").hidden = !card; el("pause").disabled = blocked; setText("pause", copy.pause); }
     setText("start", completed ? copy.restart : copy.start);
     setText("reveal", revealed ? copy.hide : copy.reveal);
     el("reveal").setAttribute("aria-expanded", String(revealed));
@@ -60,6 +80,13 @@
       setText("target", card.target);
       setText("transcription", card.transcription);
       setText("meaning", card.meaning);
+      const grammar = card.grammar || {};
+      setText("grammar", grammar.article
+        ? `${grammar.article} ${card.target} · ${copy.plural}: ${grammar.plural}${grammar.note ? ` · ${grammar.note}` : ""}`
+        : Object.values(grammar).join(" · "));
+      setText("example", card.example?.target || "");
+      setText("example-meaning", card.example?.meaning || "");
+      if (el("context")) el("context").hidden = !revealed || !(card.example?.target || Object.keys(grammar).length);
       const remaining = new Set(state.queue).size;
       const finished = deck.cards.length - remaining;
       setText("count", `${finished} / ${deck.cards.length}`);
@@ -87,7 +114,7 @@
     if (busy || !authenticated() || fatal) return;
     const issued = sequence;
     busy = true;
-    setText("status", action === "deck" ? copy.loading : copy.saving);
+    setText("status", ["deck", "resume"].includes(action) ? copy.loading : copy.saving);
     draw();
     let accepted = false;
     try {
@@ -95,14 +122,14 @@
       if (issued !== sequence) return;
       accept(result);
       retryJob = null;
-      setText("status", action === "deck" && !result.cards.length ? copy.empty : "");
+      setText("status", ["deck", "resume"].includes(action) && !result.cards.length ? copy.empty : "");
       accepted = true;
     } catch (error) {
       if (issued !== sequence) return;
       if (error.status === 401 || error.status === 403) {
         fatal = true; retryJob = null; setText("status", copy.auth);
       } else if (error.status === 409 || error.status === 404 || error.status === 400) {
-        clearSession(); retryJob = null;
+        clearSession(); retryJob = null; overview = null;
         setText("status", copy.stale);
       } else {
         // A lost response can still mean the transaction committed. Replay it.
@@ -112,16 +139,62 @@
     } finally {
       if (issued === sequence) { busy = false; draw(); }
     }
-    if (accepted && action === "rate" && !state.queue.length) await complete();
+    if (accepted && ["rate", "resume"].includes(action) && !state.queue.length && deck.session_id) await complete();
+    if (accepted && ["deck", "resume", "undo"].includes(action) && currentCard()) el("card").focus?.();
+  }
+
+  function acceptDeck(result) {
+    deck = result;
+    mode = result.mode;
+    state = {reviewed: 0, known: 0, again: 0, undo_operation_id: null, ...result};
+    revealed = false; completed = null;
+  }
+
+  function publishOverview() {
+    if (typeof CustomEvent !== "undefined") root.dispatchEvent?.(new CustomEvent("lexi:practice-status", {bubbles: true, detail: overview}));
+  }
+
+  async function refresh() {
+    if (refreshJob) return refreshJob;
+    if (fatal || !authenticated()) return null;
+    const issued = sequence;
+    const job = (async () => {
+      try {
+        const result = await request("status", {});
+        if (issued !== sequence) return null;
+        overview = result;
+        if (!deck) deck = {counts: result.counts, cards: []};
+        publishOverview(); draw();
+        return result;
+      } catch (error) {
+        if (issued !== sequence) return null;
+        if ([401, 403].includes(error.status)) { fatal = true; setText("status", copy.auth); }
+        else setText("status", error.status === 409 ? copy.stale : copy.error);
+        draw(); return null;
+      }
+    })();
+    refreshJob = job;
+    try { return await job; } finally { if (refreshJob === job) refreshJob = null; }
+  }
+
+  async function enter(requested = "auto") {
+    if (busy || retryJob || fatal || !authenticated()) return;
+    if (!["auto", "mix", "forgotten", "new"].includes(requested)) return;
+    if (currentCard() && (requested === "auto" || requested === mode)) { draw(); el("card").focus?.(); return; }
+    const issued = sequence;
+    if (!overview && !await refresh()) return;
+    if (issued !== sequence || busy || fatal) return;
+    const resumable = overview?.resume;
+    if (resumable && (requested === "auto" || requested === resumable.mode)) {
+      return perform("resume", {session_id: resumable.session_id}, acceptDeck);
+    }
+    mode = requested === "auto" ? (overview.counts.forgotten > 0 ? "forgotten" : "new") : requested;
+    return start();
   }
 
   function start() {
     if (busy || retryJob || fatal || !authenticated()) return;
-    return perform("deck", {mode}, result => {
-      deck = result;
-      state = {...result, reviewed: 0, known: 0, again: 0, undo_operation_id: null};
-      revealed = false; completed = null;
-    });
+    return perform("deck", {mode}, acceptDeck);
   }
   function grade(knew) {
     const card = currentCard();
@@ -135,12 +208,17 @@
     });
   }
   function undo() {
-    if (!state || !state.undo_operation_id || completed || busy || retryJob) return;
-    return perform("undo", {session_id: deck.session_id, operation_id: state.undo_operation_id}, result => { state = result; revealed = false; });
+    if (!state || !state.undo_operation_id || busy || retryJob) return;
+    return perform("undo", {session_id: deck.session_id, operation_id: state.undo_operation_id}, result => {
+      state = result; revealed = false; completed = null;
+      root.dispatchEvent?.(new Event("lexi:practice-completed", {bubbles: true}));
+    });
   }
   function complete() {
     return perform("complete", {session_id: deck.session_id}, result => {
-      completed = result; state.undo_operation_id = null;
+      completed = result;
+      if (overview) overview.resume = null;
+      publishOverview();
       // Refresh neighboring progress without making another learner-data write.
       root.dispatchEvent?.(new Event("lexi:practice-completed", {bubbles: true}));
     });
@@ -151,7 +229,7 @@
     if (!card || !window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") return;
     const utterance = new SpeechSynthesisUtterance(card.target);
     utterance.lang = deck.tts_locale;
-    utterance.onerror = () => setText("status", copy.error);
+    utterance.onerror = () => setText("status", copy.audio_error);
     window.speechSynthesis.cancel(); window.speechSynthesis.speak(utterance);
   }
   function resetDrag() {
@@ -161,7 +239,7 @@
   }
   el("card").addEventListener("pointerdown", event => {
     if (busy || retryJob || fatal || !currentCard() || event.isPrimary === false || event.button > 0) return;
-    if (event.target.closest("button, a, input, select, textarea")) return;
+    if (event.target.closest("button, a, input, select, textarea, summary, details")) return;
     drag = {id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, dy: 0};
     try { el("card").setPointerCapture(event.pointerId); } catch (_) { /* Optional capture. */ }
   });
@@ -191,6 +269,11 @@
     }
   });
   el("start").addEventListener("click", start);
+  el("resume")?.addEventListener("click", () => enter());
+  el("pause")?.addEventListener("click", () => {
+    if (busy || retryJob) return;
+    clearSession(); draw(); refresh();
+  });
   el("reveal").addEventListener("click", reveal);
   el("speak").addEventListener("click", speak);
   el("again").addEventListener("click", () => grade(false));
@@ -208,7 +291,7 @@
     const current = (data.languages || []).find(language => language.current);
     const nextPack = current ? current.switch_value : data.settings && data.settings.active_pack_id;
     if (nextPack !== activePack || data.privacy?.access_erased) {
-      sequence += 1; busy = false; retryJob = null; clearSession(); resetDrag();
+      sequence += 1; busy = false; retryJob = null; overview = null; refreshJob = null; clearSession(); resetDrag();
     }
     activePack = nextPack;
     copy = copies[data.locale] || copies.en;
@@ -219,5 +302,5 @@
     if (el("language")) el("language").setAttribute("aria-label", copy.language);
     if (fatal) setText("status", copy.auth);
     draw();
-  }});
+  }, refresh, enter});
 })();

@@ -761,6 +761,39 @@ html[dir="rtl"] .privacy-state dd { text-align: start; }
 .spinner { display: inline-block; width: 18px; height: 18px; margin-inline-end: 9px; border: 2px solid var(--dashboard-muted); border-top-color: var(--dashboard-accent); border-radius: 50%; animation: spin .8s linear infinite; }
 
 /* Simple, stable bottom navigation. */
+.language-shortcut { margin-inline-start: auto; min-height: 44px; padding: 8px 12px; border: 1px solid var(--dashboard-line); border-radius: 10px; background: var(--dashboard-surface); color: var(--dashboard-text); font-size: .875rem; }
+.learn-now { padding: 12px 0 24px; border-bottom: 1px solid var(--dashboard-line); margin-bottom: 16px; }
+.learn-now h1 { font-size: 1.65rem; margin: 0 0 8px; text-wrap: balance; }
+.learn-now p { color: var(--dashboard-muted); font-size: .9375rem; line-height: 1.5; }
+.learn-now > button { width: 100%; min-height: 52px; font-size: 1rem; }
+.learn-now-secondary { display: flex; gap: 12px; margin-top: 12px; }
+.learn-now-secondary button { flex: 1; min-width: 0; min-height: 44px; background: transparent; border: 1px solid var(--dashboard-line); border-radius: 10px; color: var(--dashboard-text); font-size: .875rem; padding: 8px; }
+#panel-profile[data-first-lesson="true"] [data-profile-section="hero"],
+#panel-profile[data-first-lesson="true"] [data-profile-section="calendar"],
+#panel-profile[data-first-lesson="true"] #daily-quest { display: none; }
+.practice-source, .device-dictionary-note { font-size: .875rem; line-height: 1.5; color: var(--dashboard-muted); }
+.device-dictionary-note { margin: 0 0 12px; }
+#swipe-ipa summary { min-height: 44px; padding: 10px 4px; font-size: .875rem; cursor: pointer; color: var(--dashboard-muted); }
+#swipe-ipa p { max-width: 32ch; font-size: .875rem; line-height: 1.5; }
+.swipe-context { text-align: center; font-size: .9375rem; line-height: 1.45; }
+.swipe-context p { margin: 6px 0; }
+#swipe-example-meaning { color: var(--dashboard-muted); }
+#swipe-grammar { font-size: .875rem; color: var(--lexi-blue); }
+#panel-words:has(.swipe-trainer[data-active="true"]) > :not(.swipe-trainer) { display: none; }
+.swipe-trainer[data-active="true"] { padding-top: 0; border-bottom: 0; }
+.swipe-trainer[data-active="true"] .swipe-heading,
+.swipe-trainer[data-active="true"] .swipe-hint,
+.swipe-trainer[data-active="true"] .practice-source,
+.swipe-trainer[data-active="true"] .swipe-modes,
+.swipe-trainer[data-active="true"] .swipe-keyboard-hint { display: none; }
+.swipe-trainer[data-active="true"] .swipe-card { min-height: 210px; gap: 12px; padding: 14px; cursor: default; }
+.swipe-trainer[data-active="true"] .swipe-word-block { gap: 6px; padding: 0; }
+.swipe-trainer[data-active="true"] .swipe-word-block h3 { font-size: 2rem; }
+.swipe-trainer[data-active="true"] .swipe-session-line { margin: 4px 0 10px; }
+.swipe-trainer[data-active="true"] .swipe-meaning { padding-top: 8px; font-size: 1.125rem; }
+.swipe-trainer[data-active="true"] .swipe-grades { position: sticky; bottom: calc(82px + env(safe-area-inset-bottom)); padding: 8px 0; margin: 0; z-index: 2; background: var(--dashboard-bg); }
+.swipe-trainer[data-active="true"] .swipe-status:empty { display: none; }
+#reopen-telegram { display: inline-flex; align-items: center; min-height: 44px; color: var(--dashboard-text); }
 .bottom-nav {
   position: fixed;
   z-index: 5;
@@ -773,7 +806,7 @@ html[dir="rtl"] .privacy-state dd { text-align: start; }
   border-top: 1px solid var(--dashboard-line);
   background: var(--dashboard-surface);
 }
-.bottom-nav button { position: relative; min-width: 0; min-height: 58px; padding: 3px 1px; border: 0; border-radius: 9px; color: var(--dashboard-muted); background: transparent; font-size: .61rem; line-height: 1.08; overflow-wrap: anywhere; }
+.bottom-nav button { position: relative; min-width: 0; min-height: 62px; padding: 3px 1px; border: 0; border-radius: 9px; color: var(--dashboard-muted); background: transparent; font-size: .75rem; line-height: 1.2; overflow-wrap: anywhere; }
 .bottom-nav button > span:last-child { display: block; margin-top: 2px; }
 .nav-icon { display: grid; place-items: center; width: 32px; height: 32px; margin: 0 auto; border: 1px solid transparent; border-radius: 10px; color: currentColor; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .34); transition: color .16s ease, background-color .16s ease, transform .16s ease; }
 .nav-glyph { width: 19px; height: 19px; overflow: visible; fill: currentColor; }
@@ -1001,7 +1034,7 @@ html[dir="rtl"] .privacy-state dd { text-align: start; }
   .detail-actions { grid-template-columns: 1fr; }
   .custom-vocabulary-controls { grid-template-columns: 1fr; }
   .app-shell { padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); }
-  .bottom-nav button { font-size: .56rem; }
+  .bottom-nav button { font-size: .75rem; }
   .nav-icon { width: 30px; height: 30px; }
   .section-hero h1 { max-width: 86%; padding: 14px; }
   .profile-identity { grid-template-columns: 74px minmax(0, 1fr) 44px; gap: 9px; padding: 10px; }

@@ -782,6 +782,8 @@ def create_app(
             "/miniapp/api/privacy-action",
             "/miniapp/api/referral-invite",
             "/miniapp/api/swipe/deck",
+            "/miniapp/api/swipe/status",
+            "/miniapp/api/swipe/resume",
             "/miniapp/api/swipe/rate",
             "/miniapp/api/swipe/undo",
             "/miniapp/api/swipe/complete",
@@ -945,6 +947,10 @@ def create_app(
                 return response
             if action == "deck":
                 payload = swipe_runtime.deck(store, user_id=user_id, catalog=CATALOG, **body)
+            elif action == "status":
+                payload = swipe_runtime.status(store, user_id=user_id, catalog=CATALOG)
+            elif action == "resume":
+                payload = swipe_runtime.resume(store, user_id=user_id, catalog=CATALOG, **body)
             else:
                 payload = swipe_runtime.mutate(store, user_id=user_id, catalog=CATALOG, action=action, **body)
         except MiniAppAccessDenied:
@@ -958,6 +964,14 @@ def create_app(
     @app.post("/miniapp/api/swipe/deck")
     def miniapp_swipe_deck():
         return miniapp_swipe_request("deck")
+
+    @app.post("/miniapp/api/swipe/status")
+    def miniapp_swipe_status():
+        return miniapp_swipe_request("status")
+
+    @app.post("/miniapp/api/swipe/resume")
+    def miniapp_swipe_resume():
+        return miniapp_swipe_request("resume")
 
     @app.post("/miniapp/api/swipe/rate")
     def miniapp_swipe_rate():
