@@ -3,6 +3,7 @@ from contextlib import ExitStack
 from dataclasses import replace
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 from types import SimpleNamespace
@@ -74,6 +75,21 @@ class LearningEntryV2Test(unittest.IsolatedAsyncioTestCase):
 
 
 class LearningControllerV2Test(unittest.TestCase):
+    def test_ac7_language_shortcut_is_hidden_until_bootstrap_and_on_auth_error(self):
+        root = Path(__file__).resolve().parents[1]
+        html = (root / "mydictionary/templates/miniapp.html").read_text(encoding="utf-8")
+        script = (root / "mydictionary/static/miniapp.js").read_text(encoding="utf-8")
+        button = re.search(r'<button\b[^>]*\bid="change-learning-language"[^>]*>', html)
+        self.assertIsNotNone(button, "Authenticated learners retain a language shortcut")
+        with self.subTest(state="initial shell"):
+            self.assertRegex(button.group(), r"\shidden(?:\s|=|>)", "No blank actionable language shortcut before authentication")
+        render = script.split("function render(data)", 1)[1].split("\n  function ", 1)[0]
+        show_error = script.split("function showError(error)", 1)[1].split("\n  async function ", 1)[0]
+        for state, body, hidden in (("authenticated render", render, "false"), ("error recovery", show_error, "true")):
+            with self.subTest(state=state):
+                self.assertRegex(body, rf'node\(["\']change-learning-language["\']\)\.hidden\s*=\s*{hidden}\b')
+        self.assertIn("?start=miniapp_help", show_error)
+
     def test_ac1_ac3_ac5_ec1_err2_public_learning_controller(self):
         root = Path(__file__).resolve().parents[1]
         node = shutil.which("node") or "/Users/mark/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"

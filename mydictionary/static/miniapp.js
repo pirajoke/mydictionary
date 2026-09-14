@@ -1062,6 +1062,7 @@
     node("error-state").hidden = true;
     node("app-content").hidden = false;
     renderPrivacyState(data.privacy);
+    node("change-learning-language").hidden = false;
     if (window.LexiSwipe) {
       window.LexiSwipe.configure(data);
       window.LexiSwipe.refresh?.();
@@ -1088,6 +1089,7 @@
     ar: ["افتح Lexi من Telegram لتسجيل الدخول.", "افتح في Telegram", "تعذر الاتصال بـLexi. تحقق من الاتصال وحاول مجددًا."]
   };
   function showError(error) {
+    node("change-learning-language").hidden = true;
     node("loading-state").hidden = true;
     node("app-content").hidden = true;
     node("error-state").hidden = false;
