@@ -23,6 +23,10 @@ function fixture() {
       this.classList = {add: (...v) => v.forEach(x => classes.add(x)), remove: (...v) => v.forEach(x => classes.delete(x)), contains: v => classes.has(v), toggle: (v, force) => {const add = force === undefined ? !classes.has(v) : force; add ? classes.add(v) : classes.delete(v); return add;}};
     }
     addEventListener(type, listener) {(this.listeners[type] ||= []).push(listener);}
+    dispatchEvent(event) {
+      for (const listener of this.listeners[event.type] || []) listener(event);
+      return true;
+    }
     setAttribute(name, value) {this.attributes[name] = String(value);}
     getAttribute(name) {return this.attributes[name] ?? null;}
     removeAttribute(name) {delete this.attributes[name];}
@@ -53,7 +57,10 @@ function fixture() {
     return {ok: true, status: 200, json: async () => response};
   };
   const window = {Telegram: {WebApp: {initData: "signed"}}, matchMedia: () => ({matches: true}), addEventListener() {}, crypto, fetch};
-  const context = {window, document, fetch, crypto, console, setTimeout, clearTimeout, AbortController, Event, navigator: {onLine: true}, requestAnimationFrame: callback => callback()};
+  const CustomEvent = class extends Event {
+    constructor(type, options = {}) {super(type, options); this.detail = options.detail;}
+  };
+  const context = {window, document, fetch, crypto, console, setTimeout, clearTimeout, AbortController, Event, CustomEvent, navigator: {onLine: true}, requestAnimationFrame: callback => callback()};
   vm.createContext(context); vm.runInContext(source, context);
   window.LexiSwipe.configure(bootstrap);
   return {api: window.LexiSwipe, elements, requests, responses};
@@ -214,4 +221,25 @@ test("AC2 the Choose words action invokes the chooser even during an active less
   vm.runInNewContext(mainSource.slice(start, end) + '\nopenAction("words");', context);
   assert.deepEqual(calls, [["tab", "tab-words"], ["choose"]],
     "Selecting the Words tab alone leaves chooser controls hidden behind an active card");
+});
+
+test("AC1 accepting a fresh deck publishes resumable metadata for the profile action", async () => {
+  const f = fixture();
+  const updates = [];
+  f.elements["swipe-trainer"].addEventListener("lexi:practice-status", event => {
+    // Snapshot event payloads: mutating an earlier event's object is not a new
+    // notification to the profile label listener.
+    updates.push(JSON.parse(JSON.stringify(event.detail)));
+  });
+  f.responses.push({counts: deck.counts, resume: null});
+  await f.api.refresh();
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].resume, null);
+  f.responses.push(deck);
+  await f.api.enter(); await flush();
+  assert.equal(updates.length, 2, "Accepting a new deck must notify the profile that there is now a lesson to continue");
+  assert.equal(updates.at(-1).resume.session_id, sessionId);
+  assert.equal(updates.at(-1).resume.mode, "new");
+  assert.deepEqual(f.requests.map(request => request.url), ["/miniapp/api/swipe/status", "/miniapp/api/swipe/deck"],
+    "The profile notification reuses accepted deck metadata without extra reads or learner writes");
 });
