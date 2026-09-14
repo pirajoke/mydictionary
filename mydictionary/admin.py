@@ -830,7 +830,20 @@ def create_app(
             response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
-        response.headers["Cache-Control"] = "no-store"
+        if (
+            request.endpoint == "static"
+            and response.status_code in {200, 304}
+            and (request.view_args or {}).get("filename") in {
+                "miniapp/lexi-section-profile-v1.webp",
+                "miniapp/lexi-section-words-v1.webp",
+                "miniapp/lexi-section-credits-v1.webp",
+                "miniapp/lexi-section-languages-v1.webp",
+                "miniapp/lexi-section-settings-v1.webp",
+            }
+        ):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-store"
         return response
 
     @app.get("/dictionary/")

@@ -259,7 +259,7 @@ class MiniAppCompactIllustratedSectionsContractTest(unittest.TestCase):
                 self.assertGreater(len(data), 2_000)
                 self.assertEqual(data[:4], b"RIFF")
                 self.assertEqual(data[8:12], b"WEBP")
-        for contract in ('alt=""', 'loading="lazy"', 'decoding="async"'):
+        for contract in ('alt=""', 'loading="eager"', 'decoding="async"'):
             self.assertGreaterEqual(self.html.count(contract), 4)
 
 
