@@ -148,6 +148,10 @@
     mode = result.mode;
     state = {reviewed: 0, known: 0, again: 0, undo_operation_id: null, ...result};
     revealed = false; completed = null;
+    overview = {pack_id: result.pack_id, language: result.language, counts: result.counts,
+      resume: result.session_id ? {session_id: result.session_id, mode, remaining: state.queue.length,
+        reviewed: state.reviewed, known: state.known, again: state.again, word_count: result.cards.length} : null};
+    publishOverview();
   }
 
   function publishOverview() {
