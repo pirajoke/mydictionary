@@ -117,6 +117,19 @@ no query/fragment/userinfo, and path `/miniapp` without a trailing slash.
 6. Verify swipe know/again, undo, network retry, empty modes and signed-access
    failures. Answers must remain visible through the existing Telegram SRS.
 
+## Section image loading
+
+The shell preloads all five local WebP section banners before Telegram scripts
+run. Images load eagerly; the profile banner has high priority and other tabs
+have low priority so they do not compete with the initial interface.
+Only the five explicitly allowlisted `lexi-section-*-v1.webp` files receive
+`public, max-age=31536000, immutable` on successful static responses. Replace
+artwork under a new versioned filename and update the preload, image source and
+cache allowlist together; never overwrite an immutable asset in place.
+Shell, API, scripts, admin pages and other assets keep `no-store`.
+The rendered HTML and HTTP cache boundaries are covered by
+`tests/test_miniapp_image_loading_v1.py`.
+
 ## Rollback
 
 Set `MINIAPP_ENABLED=false` in bot and admin together and restart both services.
