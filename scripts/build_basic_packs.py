@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from copy import deepcopy
 import json
 from collections import Counter
 from dataclasses import dataclass
@@ -16,6 +17,7 @@ import unicodedata
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "content" / "basic_100.tsv"
+EDITORIAL = ROOT / "content" / "german_editorial.json"
 TOPICS = (
     "greetings",
     "people",
@@ -144,7 +146,67 @@ def load_rows(path: Path = SOURCE) -> list[dict[str, str]]:
     return rows
 
 
-def build_documents(path: Path = SOURCE) -> dict[str, dict[str, object]]:
+def load_editorial(path: Path, entries: list[dict[str, object]]) -> dict[str, dict[str, object]]:
+    """Validate the additive German overlay without allowing identity changes."""
+    try:
+        overlay = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, UnicodeError) as exc:
+        raise SourceError("invalid German editorial JSON") from exc
+    if (not isinstance(overlay, dict) or set(overlay) != {"schema_version", "entries"}
+            or type(overlay["schema_version"]) is not int or overlay["schema_version"] != 1
+            or not isinstance(overlay["entries"], dict)):
+        raise SourceError("invalid German editorial schema")
+    by_id = {entry["entry_id"]: entry for entry in entries}
+    additions = overlay["entries"]
+    unknown = set(additions) - set(by_id)
+    if unknown:
+        raise SourceError("unknown editorial entry_id: " + ", ".join(sorted(unknown)))
+
+    def clean(value: object, owner: str, maximum: int = 180) -> str:
+        if not isinstance(value, str) or len(value) > maximum:
+            raise SourceError(f"{owner}: invalid text")
+        normalized = _required(value, row=0, column=owner)
+        if value != normalized:
+            raise SourceError(f"{owner}: text must be trimmed and NFC-normalized")
+        return normalized
+
+    positions = {"noun", "verb", "adjective", "adverb", "phrase", "interjection", "particle"}
+    grammar_fields = {"article", "plural", "present", "preterite", "perfect", "note"}
+    for entry_id, addition in additions.items():
+        owner = f"editorial {entry_id}"
+        if (not isinstance(addition, dict)
+                or set(addition) != {"example", "part_of_speech", "grammar", "accepted_meanings"}):
+            raise SourceError(f"{owner}: invalid editorial fields")
+        pos = addition["part_of_speech"]
+        if not isinstance(pos, str) or pos not in positions:
+            raise SourceError(f"{owner}: invalid part_of_speech")
+        example = addition["example"]
+        if not isinstance(example, dict) or set(example) != {"target", "meaning"}:
+            raise SourceError(f"{owner}: invalid example")
+        for field, value in example.items():
+            clean(value, f"{owner} example.{field}")
+        if not re.search("[А-Яа-яЁё]", example["meaning"]):
+            raise SourceError(f"{owner}: example meaning must be Russian")
+        grammar = addition["grammar"]
+        if not isinstance(grammar, dict) or set(grammar) - grammar_fields:
+            raise SourceError(f"{owner}: invalid grammar")
+        for field, value in grammar.items():
+            clean(value, f"{owner} grammar.{field}")
+        if pos == "noun" and (grammar.get("article") not in {"der", "die", "das"}
+                              or not grammar.get("plural")):
+            raise SourceError(f"{owner}: noun grammar requires article and plural")
+        if pos == "verb" and not any(grammar.get(key) for key in ("present", "preterite", "perfect")):
+            raise SourceError(f"{owner}: verb grammar requires a useful form")
+        accepted = addition["accepted_meanings"]
+        if not isinstance(accepted, list) or not 1 <= len(accepted) <= 12:
+            raise SourceError(f"{owner}: invalid accepted_meanings")
+        normalized = [clean(value, f"{owner} accepted_meanings").casefold() for value in accepted]
+        if len(set(normalized)) != len(normalized) or by_id[entry_id]["meaning"] not in accepted:
+            raise SourceError(f"{owner}: accepted_meanings must retain primary and be unique")
+    return additions
+
+
+def build_documents(path: Path = SOURCE, *, editorial_path: Path = EDITORIAL) -> dict[str, dict[str, object]]:
     rows = load_rows(path)
     documents: dict[str, dict[str, object]] = {}
     for pack in PACKS:
@@ -172,6 +234,11 @@ def build_documents(path: Path = SOURCE) -> dict[str, dict[str, object]]:
                 entry["accepted_meanings"] = list(accepted_meanings)
             entries.append(entry)
         documents[pack.filename] = {"schema_version": 2, "entries": entries}
+    german = documents["words_de_basic.json"]["entries"]
+    additions = load_editorial(editorial_path, german)
+    for entry in german:
+        if entry["entry_id"] in additions:
+            entry.update(deepcopy(additions[entry["entry_id"]]))
     return documents
 
 

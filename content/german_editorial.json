@@ -1,15 +1,7 @@
 {
-  "schema_version": 2,
-  "entries": [
-    {
-      "entry_id": "hello",
-      "target": "Hallo",
-      "meaning": "привет",
-      "transcription": "/ˈhaloː/",
-      "speech": "Hallo",
-      "topics": [
-        "greetings"
-      ],
+  "schema_version": 1,
+  "entries": {
+    "hello": {
       "example": {
         "target": "Hallo, ich bin Anna.",
         "meaning": "Привет, я Анна."
@@ -22,15 +14,7 @@
         "здравствуйте"
       ]
     },
-    {
-      "entry_id": "goodbye",
-      "target": "auf Wiedersehen",
-      "meaning": "до свидания",
-      "transcription": "/aʊf ˈviːdɐˌzeːən/",
-      "speech": "auf Wiedersehen",
-      "topics": [
-        "greetings"
-      ],
+    "goodbye": {
       "example": {
         "target": "Auf Wiedersehen, bis morgen!",
         "meaning": "До свидания, до завтра!"
@@ -41,15 +25,7 @@
         "до свидания"
       ]
     },
-    {
-      "entry_id": "please",
-      "target": "bitte",
-      "meaning": "пожалуйста",
-      "transcription": "/ˈbɪtə/",
-      "speech": "bitte",
-      "topics": [
-        "greetings"
-      ],
+    "please": {
       "example": {
         "target": "Ein Glas Wasser, bitte.",
         "meaning": "Стакан воды, пожалуйста."
@@ -60,15 +36,7 @@
         "пожалуйста"
       ]
     },
-    {
-      "entry_id": "thank-you",
-      "target": "danke",
-      "meaning": "спасибо",
-      "transcription": "/ˈdaŋkə/",
-      "speech": "danke",
-      "topics": [
-        "greetings"
-      ],
+    "thank-you": {
       "example": {
         "target": "Danke für deine Hilfe!",
         "meaning": "Спасибо за твою помощь!"
@@ -80,15 +48,7 @@
         "благодарю"
       ]
     },
-    {
-      "entry_id": "yes",
-      "target": "ja",
-      "meaning": "да",
-      "transcription": "/jaː/",
-      "speech": "ja",
-      "topics": [
-        "greetings"
-      ],
+    "yes": {
       "example": {
         "target": "Ja, ich komme morgen.",
         "meaning": "Да, я приду завтра."
@@ -99,15 +59,7 @@
         "да"
       ]
     },
-    {
-      "entry_id": "no",
-      "target": "nein",
-      "meaning": "нет",
-      "transcription": "/naɪn/",
-      "speech": "nein",
-      "topics": [
-        "greetings"
-      ],
+    "no": {
       "example": {
         "target": "Nein, das ist mein Buch.",
         "meaning": "Нет, это моя книга."
@@ -118,15 +70,7 @@
         "нет"
       ]
     },
-    {
-      "entry_id": "excuse-me",
-      "target": "entschuldigen Sie",
-      "meaning": "извините",
-      "transcription": "/ɛntˈʃʊldɪɡn̩ ziː/",
-      "speech": "entschuldigen Sie",
-      "topics": [
-        "greetings"
-      ],
+    "excuse-me": {
       "example": {
         "target": "Entschuldigen Sie, wo ist der Bahnhof?",
         "meaning": "Извините, где вокзал?"
@@ -140,15 +84,7 @@
         "простите"
       ]
     },
-    {
-      "entry_id": "sorry",
-      "target": "es tut mir leid",
-      "meaning": "простите",
-      "transcription": "/ɛs tuːt miːɐ laɪt/",
-      "speech": "es tut mir leid",
-      "topics": [
-        "greetings"
-      ],
+    "sorry": {
       "example": {
         "target": "Es tut mir leid, ich habe keine Zeit.",
         "meaning": "Мне жаль, у меня нет времени."
@@ -163,15 +99,7 @@
         "сожалею"
       ]
     },
-    {
-      "entry_id": "good-morning",
-      "target": "guten Morgen",
-      "meaning": "доброе утро",
-      "transcription": "/ˈɡuːtn̩ ˈmɔʁɡn̩/",
-      "speech": "guten Morgen",
-      "topics": [
-        "greetings"
-      ],
+    "good-morning": {
       "example": {
         "target": "Guten Morgen, Frau Weber!",
         "meaning": "Доброе утро, госпожа Вебер!"
@@ -183,15 +111,7 @@
         "с добрым утром"
       ]
     },
-    {
-      "entry_id": "good-night",
-      "target": "gute Nacht",
-      "meaning": "спокойной ночи",
-      "transcription": "/ˈɡuːtə naxt/",
-      "speech": "gute Nacht",
-      "topics": [
-        "greetings"
-      ],
+    "good-night": {
       "example": {
         "target": "Gute Nacht, schlaf gut!",
         "meaning": "Спокойной ночи, спи хорошо!"
@@ -203,15 +123,7 @@
         "доброй ночи"
       ]
     },
-    {
-      "entry_id": "person",
-      "target": "Person",
-      "meaning": "человек",
-      "transcription": "/pɛʁˈzoːn/",
-      "speech": "Person",
-      "topics": [
-        "people"
-      ],
+    "person": {
       "example": {
         "target": "Eine Person wartet vor der Tür.",
         "meaning": "Один человек ждёт перед дверью."
@@ -227,15 +139,7 @@
         "персона"
       ]
     },
-    {
-      "entry_id": "friend",
-      "target": "Freund",
-      "meaning": "друг",
-      "transcription": "/fʁɔɪnt/",
-      "speech": "Freund",
-      "topics": [
-        "people"
-      ],
+    "friend": {
       "example": {
         "target": "Mein Freund wohnt in Berlin.",
         "meaning": "Мой друг живёт в Берлине."
@@ -250,15 +154,7 @@
         "приятель"
       ]
     },
-    {
-      "entry_id": "family",
-      "target": "Familie",
-      "meaning": "семья",
-      "transcription": "/faˈmiːli̯ə/",
-      "speech": "Familie",
-      "topics": [
-        "people"
-      ],
+    "family": {
       "example": {
         "target": "Meine Familie isst zusammen.",
         "meaning": "Моя семья ест вместе."
@@ -272,15 +168,7 @@
         "семья"
       ]
     },
-    {
-      "entry_id": "mother",
-      "target": "Mutter",
-      "meaning": "мать",
-      "transcription": "/ˈmʊtɐ/",
-      "speech": "Mutter",
-      "topics": [
-        "people"
-      ],
+    "mother": {
       "example": {
         "target": "Meine Mutter liest ein Buch.",
         "meaning": "Моя мама читает книгу."
@@ -295,15 +183,7 @@
         "мама"
       ]
     },
-    {
-      "entry_id": "father",
-      "target": "Vater",
-      "meaning": "отец",
-      "transcription": "/ˈfaːtɐ/",
-      "speech": "Vater",
-      "topics": [
-        "people"
-      ],
+    "father": {
       "example": {
         "target": "Mein Vater trinkt Tee.",
         "meaning": "Мой папа пьёт чай."
@@ -318,15 +198,7 @@
         "папа"
       ]
     },
-    {
-      "entry_id": "child",
-      "target": "Kind",
-      "meaning": "ребёнок",
-      "transcription": "/kɪnt/",
-      "speech": "Kind",
-      "topics": [
-        "people"
-      ],
+    "child": {
       "example": {
         "target": "Das Kind spielt im Zimmer.",
         "meaning": "Ребёнок играет в комнате."
@@ -341,15 +213,7 @@
         "дитя"
       ]
     },
-    {
-      "entry_id": "woman",
-      "target": "Frau",
-      "meaning": "женщина",
-      "transcription": "/fʁaʊ/",
-      "speech": "Frau",
-      "topics": [
-        "people"
-      ],
+    "woman": {
       "example": {
         "target": "Die Frau öffnet das Fenster.",
         "meaning": "Женщина открывает окно."
@@ -363,15 +227,7 @@
         "женщина"
       ]
     },
-    {
-      "entry_id": "man",
-      "target": "Mann",
-      "meaning": "мужчина",
-      "transcription": "/man/",
-      "speech": "Mann",
-      "topics": [
-        "people"
-      ],
+    "man": {
       "example": {
         "target": "Der Mann wartet auf den Bus.",
         "meaning": "Мужчина ждёт автобус."
@@ -385,15 +241,7 @@
         "мужчина"
       ]
     },
-    {
-      "entry_id": "name",
-      "target": "Name",
-      "meaning": "имя",
-      "transcription": "/ˈnaːmə/",
-      "speech": "Name",
-      "topics": [
-        "people"
-      ],
+    "name": {
       "example": {
         "target": "Wie ist dein Name?",
         "meaning": "Как тебя зовут?"
@@ -408,15 +256,7 @@
         "имя"
       ]
     },
-    {
-      "entry_id": "teacher",
-      "target": "Lehrer",
-      "meaning": "учитель",
-      "transcription": "/ˈleːʁɐ/",
-      "speech": "Lehrer",
-      "topics": [
-        "people"
-      ],
+    "teacher": {
       "example": {
         "target": "Der Lehrer erklärt die Frage.",
         "meaning": "Учитель объясняет вопрос."
@@ -431,15 +271,7 @@
         "преподаватель"
       ]
     },
-    {
-      "entry_id": "water",
-      "target": "Wasser",
-      "meaning": "вода",
-      "transcription": "/ˈvasɐ/",
-      "speech": "Wasser",
-      "topics": [
-        "food"
-      ],
+    "water": {
       "example": {
         "target": "Das Wasser im Glas ist kalt.",
         "meaning": "Вода в стакане холодная."
@@ -454,15 +286,7 @@
         "вода"
       ]
     },
-    {
-      "entry_id": "food",
-      "target": "Nahrung",
-      "meaning": "еда",
-      "transcription": "/ˈnaːʁʊŋ/",
-      "speech": "Nahrung",
-      "topics": [
-        "food"
-      ],
+    "food": {
       "example": {
         "target": "Der Körper braucht Nahrung.",
         "meaning": "Организму нужна пища."
@@ -479,15 +303,7 @@
         "питание"
       ]
     },
-    {
-      "entry_id": "bread",
-      "target": "Brot",
-      "meaning": "хлеб",
-      "transcription": "/bʁoːt/",
-      "speech": "Brot",
-      "topics": [
-        "food"
-      ],
+    "bread": {
       "example": {
         "target": "Ich kaufe frisches Brot.",
         "meaning": "Я покупаю свежий хлеб."
@@ -501,15 +317,7 @@
         "хлеб"
       ]
     },
-    {
-      "entry_id": "milk",
-      "target": "Milch",
-      "meaning": "молоко",
-      "transcription": "/mɪlç/",
-      "speech": "Milch",
-      "topics": [
-        "food"
-      ],
+    "milk": {
       "example": {
         "target": "Die Milch steht im Kühlschrank.",
         "meaning": "Молоко стоит в холодильнике."
@@ -524,15 +332,7 @@
         "молоко"
       ]
     },
-    {
-      "entry_id": "coffee",
-      "target": "Kaffee",
-      "meaning": "кофе",
-      "transcription": "/kaˈfeː/",
-      "speech": "Kaffee",
-      "topics": [
-        "food"
-      ],
+    "coffee": {
       "example": {
         "target": "Mein Kaffee ist noch heiß.",
         "meaning": "Мой кофе ещё горячий."
@@ -547,15 +347,7 @@
         "кофе"
       ]
     },
-    {
-      "entry_id": "tea",
-      "target": "Tee",
-      "meaning": "чай",
-      "transcription": "/teː/",
-      "speech": "Tee",
-      "topics": [
-        "food"
-      ],
+    "tea": {
       "example": {
         "target": "Wir trinken Tee ohne Zucker.",
         "meaning": "Мы пьём чай без сахара."
@@ -570,15 +362,7 @@
         "чай"
       ]
     },
-    {
-      "entry_id": "apple",
-      "target": "Apfel",
-      "meaning": "яблоко",
-      "transcription": "/ˈapfl̩/",
-      "speech": "Apfel",
-      "topics": [
-        "food"
-      ],
+    "apple": {
       "example": {
         "target": "Der Apfel liegt auf dem Tisch.",
         "meaning": "Яблоко лежит на столе."
@@ -592,15 +376,7 @@
         "яблоко"
       ]
     },
-    {
-      "entry_id": "rice",
-      "target": "Reis",
-      "meaning": "рис",
-      "transcription": "/ʁaɪs/",
-      "speech": "Reis",
-      "topics": [
-        "food"
-      ],
+    "rice": {
       "example": {
         "target": "Heute koche ich Reis.",
         "meaning": "Сегодня я готовлю рис."
@@ -615,15 +391,7 @@
         "рис"
       ]
     },
-    {
-      "entry_id": "meat",
-      "target": "Fleisch",
-      "meaning": "мясо",
-      "transcription": "/flaɪʃ/",
-      "speech": "Fleisch",
-      "topics": [
-        "food"
-      ],
+    "meat": {
       "example": {
         "target": "Ich esse heute kein Fleisch.",
         "meaning": "Сегодня я не ем мясо."
@@ -638,15 +406,7 @@
         "мясо"
       ]
     },
-    {
-      "entry_id": "fish",
-      "target": "Fisch",
-      "meaning": "рыба",
-      "transcription": "/fɪʃ/",
-      "speech": "Fisch",
-      "topics": [
-        "food"
-      ],
+    "fish": {
       "example": {
         "target": "Der Fisch schwimmt im Wasser.",
         "meaning": "Рыба плавает в воде."
@@ -660,15 +420,7 @@
         "рыба"
       ]
     },
-    {
-      "entry_id": "house",
-      "target": "Haus",
-      "meaning": "дом",
-      "transcription": "/haʊs/",
-      "speech": "Haus",
-      "topics": [
-        "home"
-      ],
+    "house": {
       "example": {
         "target": "Unser Haus hat eine blaue Tür.",
         "meaning": "У нашего дома синяя дверь."
@@ -682,15 +434,7 @@
         "дом"
       ]
     },
-    {
-      "entry_id": "room",
-      "target": "Zimmer",
-      "meaning": "комната",
-      "transcription": "/ˈtsɪmɐ/",
-      "speech": "Zimmer",
-      "topics": [
-        "home"
-      ],
+    "room": {
       "example": {
         "target": "Mein Zimmer ist klein.",
         "meaning": "Моя комната маленькая."
@@ -704,15 +448,7 @@
         "комната"
       ]
     },
-    {
-      "entry_id": "door",
-      "target": "Tür",
-      "meaning": "дверь",
-      "transcription": "/tyːɐ/",
-      "speech": "Tür",
-      "topics": [
-        "home"
-      ],
+    "door": {
       "example": {
         "target": "Bitte mach die Tür zu.",
         "meaning": "Пожалуйста, закрой дверь."
@@ -726,15 +462,7 @@
         "дверь"
       ]
     },
-    {
-      "entry_id": "window",
-      "target": "Fenster",
-      "meaning": "окно",
-      "transcription": "/ˈfɛnstɐ/",
-      "speech": "Fenster",
-      "topics": [
-        "home"
-      ],
+    "window": {
       "example": {
         "target": "Das Fenster ist offen.",
         "meaning": "Окно открыто."
@@ -748,15 +476,7 @@
         "окно"
       ]
     },
-    {
-      "entry_id": "table",
-      "target": "Tisch",
-      "meaning": "стол",
-      "transcription": "/tɪʃ/",
-      "speech": "Tisch",
-      "topics": [
-        "home"
-      ],
+    "table": {
       "example": {
         "target": "Das Buch liegt auf dem Tisch.",
         "meaning": "Книга лежит на столе."
@@ -770,15 +490,7 @@
         "стол"
       ]
     },
-    {
-      "entry_id": "chair",
-      "target": "Stuhl",
-      "meaning": "стул",
-      "transcription": "/ʃtuːl/",
-      "speech": "Stuhl",
-      "topics": [
-        "home"
-      ],
+    "chair": {
       "example": {
         "target": "Hier ist ein freier Stuhl.",
         "meaning": "Здесь есть свободный стул."
@@ -792,15 +504,7 @@
         "стул"
       ]
     },
-    {
-      "entry_id": "bed",
-      "target": "Bett",
-      "meaning": "кровать",
-      "transcription": "/bɛt/",
-      "speech": "Bett",
-      "topics": [
-        "home"
-      ],
+    "bed": {
       "example": {
         "target": "Das Kind liegt im Bett.",
         "meaning": "Ребёнок лежит в кровати."
@@ -815,15 +519,7 @@
         "постель"
       ]
     },
-    {
-      "entry_id": "kitchen",
-      "target": "Küche",
-      "meaning": "кухня",
-      "transcription": "/ˈkʏçə/",
-      "speech": "Küche",
-      "topics": [
-        "home"
-      ],
+    "kitchen": {
       "example": {
         "target": "Wir kochen in der Küche.",
         "meaning": "Мы готовим на кухне."
@@ -837,15 +533,7 @@
         "кухня"
       ]
     },
-    {
-      "entry_id": "bathroom",
-      "target": "Badezimmer",
-      "meaning": "ванная",
-      "transcription": "/ˈbaːdəˌtsɪmɐ/",
-      "speech": "Badezimmer",
-      "topics": [
-        "home"
-      ],
+    "bathroom": {
       "example": {
         "target": "Das Badezimmer ist neben der Küche.",
         "meaning": "Ванная комната рядом с кухней."
@@ -860,15 +548,7 @@
         "ванная комната"
       ]
     },
-    {
-      "entry_id": "key",
-      "target": "Schlüssel",
-      "meaning": "ключ",
-      "transcription": "/ˈʃlʏsl̩/",
-      "speech": "Schlüssel",
-      "topics": [
-        "home"
-      ],
+    "key": {
       "example": {
         "target": "Mein Schlüssel liegt hier.",
         "meaning": "Мой ключ лежит здесь."
@@ -882,15 +562,7 @@
         "ключ"
       ]
     },
-    {
-      "entry_id": "road",
-      "target": "Straße",
-      "meaning": "дорога",
-      "transcription": "/ˈʃtʁaːsə/",
-      "speech": "Straße",
-      "topics": [
-        "travel"
-      ],
+    "road": {
       "example": {
         "target": "Die Straße ist heute ruhig.",
         "meaning": "На улице сегодня тихо."
@@ -906,15 +578,7 @@
         "улица"
       ]
     },
-    {
-      "entry_id": "station",
-      "target": "Bahnhof",
-      "meaning": "станция",
-      "transcription": "/ˈbaːnˌhoːf/",
-      "speech": "Bahnhof",
-      "topics": [
-        "travel"
-      ],
+    "station": {
       "example": {
         "target": "Wir treffen uns am Bahnhof.",
         "meaning": "Мы встречаемся на вокзале."
@@ -931,15 +595,7 @@
         "железнодорожная станция"
       ]
     },
-    {
-      "entry_id": "airport",
-      "target": "Flughafen",
-      "meaning": "аэропорт",
-      "transcription": "/ˈfluːkˌhaːfn̩/",
-      "speech": "Flughafen",
-      "topics": [
-        "travel"
-      ],
+    "airport": {
       "example": {
         "target": "Der Bus fährt zum Flughafen.",
         "meaning": "Автобус едет в аэропорт."
@@ -953,15 +609,7 @@
         "аэропорт"
       ]
     },
-    {
-      "entry_id": "hotel",
-      "target": "Hotel",
-      "meaning": "отель",
-      "transcription": "/hoˈtɛl/",
-      "speech": "Hotel",
-      "topics": [
-        "travel"
-      ],
+    "hotel": {
       "example": {
         "target": "Unser Hotel ist am Bahnhof.",
         "meaning": "Наш отель у вокзала."
@@ -976,15 +624,7 @@
         "гостиница"
       ]
     },
-    {
-      "entry_id": "ticket",
-      "target": "Fahrkarte",
-      "meaning": "билет",
-      "transcription": "/ˈfaːɐˌkaʁtə/",
-      "speech": "Fahrkarte",
-      "topics": [
-        "travel"
-      ],
+    "ticket": {
       "example": {
         "target": "Ich kaufe eine Fahrkarte nach Bonn.",
         "meaning": "Я покупаю билет до Бонна."
@@ -999,15 +639,7 @@
         "проездной билет"
       ]
     },
-    {
-      "entry_id": "car",
-      "target": "Auto",
-      "meaning": "автомобиль",
-      "transcription": "/ˈaʊto/",
-      "speech": "Auto",
-      "topics": [
-        "travel"
-      ],
+    "car": {
       "example": {
         "target": "Das Auto steht vor dem Haus.",
         "meaning": "Машина стоит перед домом."
@@ -1023,15 +655,7 @@
         "авто"
       ]
     },
-    {
-      "entry_id": "train",
-      "target": "Zug",
-      "meaning": "поезд",
-      "transcription": "/tsuːk/",
-      "speech": "Zug",
-      "topics": [
-        "travel"
-      ],
+    "train": {
       "example": {
         "target": "Der Zug kommt in zehn Minuten.",
         "meaning": "Поезд прибудет через десять минут."
@@ -1045,15 +669,7 @@
         "поезд"
       ]
     },
-    {
-      "entry_id": "bus",
-      "target": "Bus",
-      "meaning": "автобус",
-      "transcription": "/bʊs/",
-      "speech": "Bus",
-      "topics": [
-        "travel"
-      ],
+    "bus": {
       "example": {
         "target": "Dieser Bus fährt ins Zentrum.",
         "meaning": "Этот автобус едет в центр."
@@ -1067,15 +683,7 @@
         "автобус"
       ]
     },
-    {
-      "entry_id": "city",
-      "target": "Stadt",
-      "meaning": "город",
-      "transcription": "/ʃtat/",
-      "speech": "Stadt",
-      "topics": [
-        "travel"
-      ],
+    "city": {
       "example": {
         "target": "Diese Stadt hat einen großen Park.",
         "meaning": "В этом городе есть большой парк."
@@ -1089,15 +697,7 @@
         "город"
       ]
     },
-    {
-      "entry_id": "country",
-      "target": "Land",
-      "meaning": "страна",
-      "transcription": "/lant/",
-      "speech": "Land",
-      "topics": [
-        "travel"
-      ],
+    "country": {
       "example": {
         "target": "In welchem Land wohnst du?",
         "meaning": "В какой стране ты живёшь?"
@@ -1112,15 +712,7 @@
         "государство"
       ]
     },
-    {
-      "entry_id": "today",
-      "target": "heute",
-      "meaning": "сегодня",
-      "transcription": "/ˈhɔɪtə/",
-      "speech": "heute",
-      "topics": [
-        "time"
-      ],
+    "today": {
       "example": {
         "target": "Heute bleibe ich zu Hause.",
         "meaning": "Сегодня я остаюсь дома."
@@ -1131,15 +723,7 @@
         "сегодня"
       ]
     },
-    {
-      "entry_id": "tomorrow",
-      "target": "morgen",
-      "meaning": "завтра",
-      "transcription": "/ˈmɔʁɡn̩/",
-      "speech": "morgen",
-      "topics": [
-        "time"
-      ],
+    "tomorrow": {
       "example": {
         "target": "Morgen beginnt die Schule.",
         "meaning": "Завтра начинается учёба в школе."
@@ -1150,15 +734,7 @@
         "завтра"
       ]
     },
-    {
-      "entry_id": "yesterday",
-      "target": "gestern",
-      "meaning": "вчера",
-      "transcription": "/ˈɡɛstɐn/",
-      "speech": "gestern",
-      "topics": [
-        "time"
-      ],
+    "yesterday": {
       "example": {
         "target": "Gestern war ich im Büro.",
         "meaning": "Вчера я был в офисе."
@@ -1169,15 +745,7 @@
         "вчера"
       ]
     },
-    {
-      "entry_id": "now",
-      "target": "jetzt",
-      "meaning": "сейчас",
-      "transcription": "/jɛtst/",
-      "speech": "jetzt",
-      "topics": [
-        "time"
-      ],
+    "now": {
       "example": {
         "target": "Jetzt habe ich Zeit.",
         "meaning": "Сейчас у меня есть время."
@@ -1189,15 +757,7 @@
         "теперь"
       ]
     },
-    {
-      "entry_id": "morning",
-      "target": "Vormittag",
-      "meaning": "утро",
-      "transcription": "/ˈfoːɐˌmɪtaːk/",
-      "speech": "Vormittag",
-      "topics": [
-        "time"
-      ],
+    "morning": {
       "example": {
         "target": "Am Vormittag arbeite ich im Büro.",
         "meaning": "В первой половине дня я работаю в офисе."
@@ -1213,15 +773,7 @@
         "первая половина дня"
       ]
     },
-    {
-      "entry_id": "evening",
-      "target": "Abend",
-      "meaning": "вечер",
-      "transcription": "/ˈaːbn̩t/",
-      "speech": "Abend",
-      "topics": [
-        "time"
-      ],
+    "evening": {
       "example": {
         "target": "Am Abend lese ich gern.",
         "meaning": "Вечером я люблю читать."
@@ -1235,15 +787,7 @@
         "вечер"
       ]
     },
-    {
-      "entry_id": "day",
-      "target": "Tag",
-      "meaning": "день",
-      "transcription": "/taːk/",
-      "speech": "Tag",
-      "topics": [
-        "time"
-      ],
+    "day": {
       "example": {
         "target": "Ein Tag hat vierundzwanzig Stunden.",
         "meaning": "В сутках двадцать четыре часа."
@@ -1258,15 +802,7 @@
         "сутки"
       ]
     },
-    {
-      "entry_id": "week",
-      "target": "Woche",
-      "meaning": "неделя",
-      "transcription": "/ˈvɔxə/",
-      "speech": "Woche",
-      "topics": [
-        "time"
-      ],
+    "week": {
       "example": {
         "target": "Eine Woche hat sieben Tage.",
         "meaning": "В неделе семь дней."
@@ -1280,15 +816,7 @@
         "неделя"
       ]
     },
-    {
-      "entry_id": "month",
-      "target": "Monat",
-      "meaning": "месяц",
-      "transcription": "/ˈmoːnat/",
-      "speech": "Monat",
-      "topics": [
-        "time"
-      ],
+    "month": {
       "example": {
         "target": "Nächsten Monat fahre ich nach Berlin.",
         "meaning": "В следующем месяце я еду в Берлин."
@@ -1302,15 +830,7 @@
         "месяц"
       ]
     },
-    {
-      "entry_id": "year",
-      "target": "Jahr",
-      "meaning": "год",
-      "transcription": "/jaːɐ/",
-      "speech": "Jahr",
-      "topics": [
-        "time"
-      ],
+    "year": {
       "example": {
         "target": "Dieses Jahr lerne ich Deutsch.",
         "meaning": "В этом году я учу немецкий."
@@ -1324,15 +844,7 @@
         "год"
       ]
     },
-    {
-      "entry_id": "work",
-      "target": "Arbeit",
-      "meaning": "работа",
-      "transcription": "/ˈaʁbaɪt/",
-      "speech": "Arbeit",
-      "topics": [
-        "work"
-      ],
+    "work": {
       "example": {
         "target": "Meine Arbeit beginnt um neun Uhr.",
         "meaning": "Моя работа начинается в девять часов."
@@ -1347,15 +859,7 @@
         "труд"
       ]
     },
-    {
-      "entry_id": "school",
-      "target": "Schule",
-      "meaning": "школа",
-      "transcription": "/ˈʃuːlə/",
-      "speech": "Schule",
-      "topics": [
-        "work"
-      ],
+    "school": {
       "example": {
         "target": "Die Schule ist neben dem Park.",
         "meaning": "Школа находится рядом с парком."
@@ -1369,15 +873,7 @@
         "школа"
       ]
     },
-    {
-      "entry_id": "student",
-      "target": "Student",
-      "meaning": "студент",
-      "transcription": "/ʃtuˈdɛnt/",
-      "speech": "Student",
-      "topics": [
-        "work"
-      ],
+    "student": {
       "example": {
         "target": "Der Student liest in der Bibliothek.",
         "meaning": "Студент читает в библиотеке."
@@ -1392,15 +888,7 @@
         "студент"
       ]
     },
-    {
-      "entry_id": "book",
-      "target": "Buch",
-      "meaning": "книга",
-      "transcription": "/buːx/",
-      "speech": "Buch",
-      "topics": [
-        "work"
-      ],
+    "book": {
       "example": {
         "target": "Das Buch ist neu.",
         "meaning": "Книга новая."
@@ -1415,15 +903,7 @@
         "книжка"
       ]
     },
-    {
-      "entry_id": "money",
-      "target": "Geld",
-      "meaning": "деньги",
-      "transcription": "/ɡɛlt/",
-      "speech": "Geld",
-      "topics": [
-        "work"
-      ],
+    "money": {
       "example": {
         "target": "Ich habe Geld für die Fahrkarte.",
         "meaning": "У меня есть деньги на билет."
@@ -1439,15 +919,7 @@
         "денежные средства"
       ]
     },
-    {
-      "entry_id": "shop",
-      "target": "Geschäft",
-      "meaning": "магазин",
-      "transcription": "/ɡəˈʃɛft/",
-      "speech": "Geschäft",
-      "topics": [
-        "work"
-      ],
+    "shop": {
       "example": {
         "target": "Das Geschäft öffnet um acht Uhr.",
         "meaning": "Магазин открывается в восемь часов."
@@ -1462,15 +934,7 @@
         "лавка"
       ]
     },
-    {
-      "entry_id": "office",
-      "target": "Büro",
-      "meaning": "офис",
-      "transcription": "/byˈʁoː/",
-      "speech": "Büro",
-      "topics": [
-        "work"
-      ],
+    "office": {
       "example": {
         "target": "Heute bin ich im Büro.",
         "meaning": "Сегодня я в офисе."
@@ -1485,15 +949,7 @@
         "контора"
       ]
     },
-    {
-      "entry_id": "computer",
-      "target": "Computer",
-      "meaning": "компьютер",
-      "transcription": "/kɔmˈpjuːtɐ/",
-      "speech": "Computer",
-      "topics": [
-        "work"
-      ],
+    "computer": {
       "example": {
         "target": "Mein Computer ist sehr schnell.",
         "meaning": "Мой компьютер очень быстрый."
@@ -1507,15 +963,7 @@
         "компьютер"
       ]
     },
-    {
-      "entry_id": "phone",
-      "target": "Telefon",
-      "meaning": "телефон",
-      "transcription": "/teleˈfoːn/",
-      "speech": "Telefon",
-      "topics": [
-        "work"
-      ],
+    "phone": {
       "example": {
         "target": "Das Telefon klingelt im Büro.",
         "meaning": "В офисе звонит телефон."
@@ -1530,15 +978,7 @@
         "телефонный аппарат"
       ]
     },
-    {
-      "entry_id": "question",
-      "target": "Frage",
-      "meaning": "вопрос",
-      "transcription": "/ˈfʁaːɡə/",
-      "speech": "Frage",
-      "topics": [
-        "work"
-      ],
+    "question": {
       "example": {
         "target": "Ich habe eine Frage zum Text.",
         "meaning": "У меня есть вопрос по тексту."
@@ -1552,15 +992,7 @@
         "вопрос"
       ]
     },
-    {
-      "entry_id": "doctor",
-      "target": "Arzt",
-      "meaning": "врач",
-      "transcription": "/aʁtst/",
-      "speech": "Arzt",
-      "topics": [
-        "health"
-      ],
+    "doctor": {
       "example": {
         "target": "Der Arzt spricht mit dem Kind.",
         "meaning": "Врач разговаривает с ребёнком."
@@ -1575,15 +1007,7 @@
         "доктор"
       ]
     },
-    {
-      "entry_id": "hospital",
-      "target": "Krankenhaus",
-      "meaning": "больница",
-      "transcription": "/ˈkʁaŋkn̩ˌhaʊs/",
-      "speech": "Krankenhaus",
-      "topics": [
-        "health"
-      ],
+    "hospital": {
       "example": {
         "target": "Das Krankenhaus ist in dieser Straße.",
         "meaning": "Больница находится на этой улице."
@@ -1597,15 +1021,7 @@
         "больница"
       ]
     },
-    {
-      "entry_id": "head",
-      "target": "Kopf",
-      "meaning": "голова",
-      "transcription": "/kɔpf/",
-      "speech": "Kopf",
-      "topics": [
-        "health"
-      ],
+    "head": {
       "example": {
         "target": "Mein Kopf tut weh.",
         "meaning": "У меня болит голова."
@@ -1619,15 +1035,7 @@
         "голова"
       ]
     },
-    {
-      "entry_id": "hand",
-      "target": "Hand",
-      "meaning": "рука",
-      "transcription": "/hant/",
-      "speech": "Hand",
-      "topics": [
-        "health"
-      ],
+    "hand": {
       "example": {
         "target": "Das Kind hält meine Hand.",
         "meaning": "Ребёнок держит меня за руку."
@@ -1644,15 +1052,7 @@
         "кисть руки"
       ]
     },
-    {
-      "entry_id": "eye",
-      "target": "Auge",
-      "meaning": "глаз",
-      "transcription": "/ˈaʊɡə/",
-      "speech": "Auge",
-      "topics": [
-        "health"
-      ],
+    "eye": {
       "example": {
         "target": "Ihre Augen sind blau.",
         "meaning": "У неё голубые глаза."
@@ -1666,15 +1066,7 @@
         "глаз"
       ]
     },
-    {
-      "entry_id": "heart",
-      "target": "Herz",
-      "meaning": "сердце",
-      "transcription": "/hɛʁt͡s/",
-      "speech": "Herz",
-      "topics": [
-        "health"
-      ],
+    "heart": {
       "example": {
         "target": "Mein Herz schlägt schnell.",
         "meaning": "Моё сердце быстро бьётся."
@@ -1689,15 +1081,7 @@
         "сердце"
       ]
     },
-    {
-      "entry_id": "pain",
-      "target": "Schmerz",
-      "meaning": "боль",
-      "transcription": "/ʃmɛʁt͡s/",
-      "speech": "Schmerz",
-      "topics": [
-        "health"
-      ],
+    "pain": {
       "example": {
         "target": "Ich habe Schmerzen im Rücken.",
         "meaning": "У меня болит спина."
@@ -1711,15 +1095,7 @@
         "боль"
       ]
     },
-    {
-      "entry_id": "medicine",
-      "target": "Medizin",
-      "meaning": "лекарство",
-      "transcription": "/medɪˈt͡siːn/",
-      "speech": "Medizin",
-      "topics": [
-        "health"
-      ],
+    "medicine": {
       "example": {
         "target": "Die Medizin steht im Schrank.",
         "meaning": "Лекарство стоит в шкафу."
@@ -1736,15 +1112,7 @@
         "лекарственное средство"
       ]
     },
-    {
-      "entry_id": "tired",
-      "target": "müde",
-      "meaning": "уставший",
-      "transcription": "/ˈmyːdə/",
-      "speech": "müde",
-      "topics": [
-        "health"
-      ],
+    "tired": {
       "example": {
         "target": "Nach der Arbeit bin ich müde.",
         "meaning": "После работы я чувствую усталость."
@@ -1757,15 +1125,7 @@
         "утомлённый"
       ]
     },
-    {
-      "entry_id": "healthy",
-      "target": "gesund",
-      "meaning": "здоровый",
-      "transcription": "/ɡəˈzʊnt/",
-      "speech": "gesund",
-      "topics": [
-        "health"
-      ],
+    "healthy": {
       "example": {
         "target": "Das Kind ist wieder gesund.",
         "meaning": "Ребёнок снова здоров."
@@ -1776,15 +1136,7 @@
         "здоровый"
       ]
     },
-    {
-      "entry_id": "go",
-      "target": "gehen",
-      "meaning": "идти",
-      "transcription": "/ˈɡeːən/",
-      "speech": "gehen",
-      "topics": [
-        "actions"
-      ],
+    "go": {
       "example": {
         "target": "Ich gehe zu Fuß zur Schule.",
         "meaning": "Я иду в школу пешком."
@@ -1800,15 +1152,7 @@
         "ходить"
       ]
     },
-    {
-      "entry_id": "come",
-      "target": "kommen",
-      "meaning": "приходить",
-      "transcription": "/ˈkɔmən/",
-      "speech": "kommen",
-      "topics": [
-        "actions"
-      ],
+    "come": {
       "example": {
         "target": "Kommst du morgen zu uns?",
         "meaning": "Ты придёшь к нам завтра?"
@@ -1824,15 +1168,7 @@
         "прибывать"
       ]
     },
-    {
-      "entry_id": "eat",
-      "target": "essen",
-      "meaning": "есть",
-      "transcription": "/ˈɛsn̩/",
-      "speech": "essen",
-      "topics": [
-        "actions"
-      ],
+    "eat": {
       "example": {
         "target": "Wir essen zusammen in der Küche.",
         "meaning": "Мы едим вместе на кухне."
@@ -1848,15 +1184,7 @@
         "кушать"
       ]
     },
-    {
-      "entry_id": "drink",
-      "target": "trinken",
-      "meaning": "пить",
-      "transcription": "/ˈtʁɪŋkn̩/",
-      "speech": "trinken",
-      "topics": [
-        "actions"
-      ],
+    "drink": {
       "example": {
         "target": "Ich trinke ein Glas Wasser.",
         "meaning": "Я пью стакан воды."
@@ -1871,15 +1199,7 @@
         "пить"
       ]
     },
-    {
-      "entry_id": "sleep",
-      "target": "schlafen",
-      "meaning": "спать",
-      "transcription": "/ˈʃlaːfn̩/",
-      "speech": "schlafen",
-      "topics": [
-        "actions"
-      ],
+    "sleep": {
       "example": {
         "target": "Das Kind schläft schon.",
         "meaning": "Ребёнок уже спит."
@@ -1894,15 +1214,7 @@
         "спать"
       ]
     },
-    {
-      "entry_id": "read",
-      "target": "lesen",
-      "meaning": "читать",
-      "transcription": "/ˈleːzn̩/",
-      "speech": "lesen",
-      "topics": [
-        "actions"
-      ],
+    "read": {
       "example": {
         "target": "Sie liest jeden Abend ein Buch.",
         "meaning": "Она каждый вечер читает книгу."
@@ -1917,15 +1229,7 @@
         "читать"
       ]
     },
-    {
-      "entry_id": "write",
-      "target": "schreiben",
-      "meaning": "писать",
-      "transcription": "/ˈʃʁaɪbn̩/",
-      "speech": "schreiben",
-      "topics": [
-        "actions"
-      ],
+    "write": {
       "example": {
         "target": "Ich schreibe meinen Namen.",
         "meaning": "Я пишу своё имя."
@@ -1940,15 +1244,7 @@
         "писать"
       ]
     },
-    {
-      "entry_id": "speak",
-      "target": "sprechen",
-      "meaning": "говорить",
-      "transcription": "/ˈʃpʁɛçn̩/",
-      "speech": "sprechen",
-      "topics": [
-        "actions"
-      ],
+    "speak": {
       "example": {
         "target": "Wir sprechen heute Deutsch.",
         "meaning": "Сегодня мы говорим по-немецки."
@@ -1964,15 +1260,7 @@
         "разговаривать"
       ]
     },
-    {
-      "entry_id": "listen",
-      "target": "zuhören",
-      "meaning": "слушать",
-      "transcription": "/ˈtsuːˌhøːʁən/",
-      "speech": "zuhören",
-      "topics": [
-        "actions"
-      ],
+    "listen": {
       "example": {
         "target": "Ich höre dir zu.",
         "meaning": "Я тебя слушаю."
@@ -1989,15 +1277,7 @@
         "выслушивать"
       ]
     },
-    {
-      "entry_id": "help",
-      "target": "helfen",
-      "meaning": "помогать",
-      "transcription": "/ˈhɛlfn̩/",
-      "speech": "helfen",
-      "topics": [
-        "actions"
-      ],
+    "help": {
       "example": {
         "target": "Kannst du mir bitte helfen?",
         "meaning": "Ты можешь мне помочь, пожалуйста?"
@@ -2014,15 +1294,7 @@
         "оказывать помощь"
       ]
     },
-    {
-      "entry_id": "big",
-      "target": "groß",
-      "meaning": "большой",
-      "transcription": "/ɡʁoːs/",
-      "speech": "groß",
-      "topics": [
-        "descriptions"
-      ],
+    "big": {
       "example": {
         "target": "Das Zimmer ist groß und hell.",
         "meaning": "Комната большая и светлая."
@@ -2034,15 +1306,7 @@
         "крупный"
       ]
     },
-    {
-      "entry_id": "small",
-      "target": "klein",
-      "meaning": "маленький",
-      "transcription": "/klaɪn/",
-      "speech": "klein",
-      "topics": [
-        "descriptions"
-      ],
+    "small": {
       "example": {
         "target": "Wir wohnen in einem kleinen Haus.",
         "meaning": "Мы живём в маленьком доме."
@@ -2054,15 +1318,7 @@
         "небольшой"
       ]
     },
-    {
-      "entry_id": "good",
-      "target": "gut",
-      "meaning": "хороший",
-      "transcription": "/ɡuːt/",
-      "speech": "gut",
-      "topics": [
-        "descriptions"
-      ],
+    "good": {
       "example": {
         "target": "Das ist eine gute Idee.",
         "meaning": "Это хорошая идея."
@@ -2073,15 +1329,7 @@
         "хороший"
       ]
     },
-    {
-      "entry_id": "bad",
-      "target": "schlecht",
-      "meaning": "плохой",
-      "transcription": "/ʃlɛçt/",
-      "speech": "schlecht",
-      "topics": [
-        "descriptions"
-      ],
+    "bad": {
       "example": {
         "target": "Das Wetter ist heute schlecht.",
         "meaning": "Сегодня плохая погода."
@@ -2094,15 +1342,7 @@
         "скверный"
       ]
     },
-    {
-      "entry_id": "new",
-      "target": "neu",
-      "meaning": "новый",
-      "transcription": "/nɔɪ/",
-      "speech": "neu",
-      "topics": [
-        "descriptions"
-      ],
+    "new": {
       "example": {
         "target": "Mein neues Fahrrad ist blau.",
         "meaning": "Мой новый велосипед синий."
@@ -2113,15 +1353,7 @@
         "новый"
       ]
     },
-    {
-      "entry_id": "old",
-      "target": "alt",
-      "meaning": "старый",
-      "transcription": "/alt/",
-      "speech": "alt",
-      "topics": [
-        "descriptions"
-      ],
+    "old": {
       "example": {
         "target": "Das alte Haus steht am Fluss.",
         "meaning": "Старый дом стоит у реки."
@@ -2132,15 +1364,7 @@
         "старый"
       ]
     },
-    {
-      "entry_id": "hot",
-      "target": "heiß",
-      "meaning": "горячий",
-      "transcription": "/haɪs/",
-      "speech": "heiß",
-      "topics": [
-        "descriptions"
-      ],
+    "hot": {
       "example": {
         "target": "Vorsicht, der Tee ist heiß!",
         "meaning": "Осторожно, чай горячий!"
@@ -2152,15 +1376,7 @@
         "жаркий"
       ]
     },
-    {
-      "entry_id": "cold",
-      "target": "kalt",
-      "meaning": "холодный",
-      "transcription": "/kalt/",
-      "speech": "kalt",
-      "topics": [
-        "descriptions"
-      ],
+    "cold": {
       "example": {
         "target": "Das Wasser ist mir zu kalt.",
         "meaning": "Эта вода для меня слишком холодная."
@@ -2171,15 +1387,7 @@
         "холодный"
       ]
     },
-    {
-      "entry_id": "happy",
-      "target": "glücklich",
-      "meaning": "счастливый",
-      "transcription": "/ˈɡlʏklɪç/",
-      "speech": "glücklich",
-      "topics": [
-        "descriptions"
-      ],
+    "happy": {
       "example": {
         "target": "Ich bin glücklich, dass du hier bist.",
         "meaning": "Я счастлив, что ты здесь."
@@ -2190,15 +1398,7 @@
         "счастливый"
       ]
     },
-    {
-      "entry_id": "sad",
-      "target": "traurig",
-      "meaning": "грустный",
-      "transcription": "/ˈtʁaʊʁɪç/",
-      "speech": "traurig",
-      "topics": [
-        "descriptions"
-      ],
+    "sad": {
       "example": {
         "target": "Sie ist traurig, weil ihr Freund geht.",
         "meaning": "Ей грустно, потому что её друг уходит."
@@ -2210,5 +1410,5 @@
         "печальный"
       ]
     }
-  ]
+  }
 }
