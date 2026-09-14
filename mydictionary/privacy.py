@@ -23,6 +23,7 @@ from mydictionary.storage import (
     MirrorDialogueTurn,
     MirrorResponseFeedback,
     MirrorResponseQuality,
+    MiniAppSwipeSession,
     RateLimitBucket,
     TelegramNotification,
     User,
@@ -102,6 +103,7 @@ class RetentionReport:
     voice_turns: int = 0
     voice_sessions: int = 0
     mirror_dialogue_turns: int = 0
+    miniapp_swipe_sessions: int = 0
 
     @property
     def total(self) -> int:
@@ -123,6 +125,7 @@ def _cutoffs(
         "ai_usage": observed_at - timedelta(days=policy.ai_usage_days),
         "abuse": observed_at - timedelta(days=policy.abuse_days),
         "rate_limit": observed_at - timedelta(days=policy.rate_limit_days),
+        "miniapp_swipe": observed_at - timedelta(days=7),
         "voice_session": observed_at
         - timedelta(days=policy.voice_transcript_days),
     }
@@ -138,6 +141,11 @@ def retention_report(
     cutoffs = _cutoffs(policy, observed_at)
     with store.Session() as session:
         return RetentionReport(
+            miniapp_swipe_sessions=int(
+                session.scalar(select(func.count()).select_from(MiniAppSwipeSession).where(
+                    MiniAppSwipeSession.created_at <= cutoffs["miniapp_swipe"]
+                )) or 0
+            ),
             analytics_events=int(
                 session.scalar(
                     select(func.count()).select_from(AnalyticsEvent).where(
@@ -214,6 +222,9 @@ def apply_retention(
     observed_at = now or utcnow()
     cutoffs = _cutoffs(policy, observed_at)
     with store.Session.begin() as session:
+        swipe_sessions = session.execute(delete(MiniAppSwipeSession).where(
+            MiniAppSwipeSession.created_at <= cutoffs["miniapp_swipe"]
+        )).rowcount
         analytics = session.execute(
             delete(AnalyticsEvent).where(
                 AnalyticsEvent.occurred_at < cutoffs["analytics"]
@@ -255,6 +266,7 @@ def apply_retention(
             )
         ).rowcount
         report = RetentionReport(
+            miniapp_swipe_sessions=int(swipe_sessions or 0),
             analytics_events=int(analytics or 0),
             ai_usage=int(ai_usage or 0),
             abuse_events=int(abuse or 0),
@@ -302,6 +314,7 @@ def erase_user_learning_data(
 
         deleted_rows = 0
         for model in (
+            MiniAppSwipeSession,
             MirrorResponseFeedback,
             MirrorResponseQuality,
             VoiceTurn,

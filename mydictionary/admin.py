@@ -64,6 +64,7 @@ from mydictionary.miniapp import (
     MiniAppSettings,
 )
 from mydictionary import miniapp as miniapp_runtime
+from mydictionary import swipe as swipe_runtime
 from mydictionary.commercial_launch import (
     CommercialLaunchError,
     commercial_launch_overview,
@@ -106,6 +107,11 @@ _MINIAPP_PRIVACY_RATE_POLICY = RateLimitPolicy(
     limit=4,
     window_seconds=60,
     block_seconds=300,
+)
+_MINIAPP_SWIPE_RATE_POLICY = RateLimitPolicy(
+    limit=90,
+    window_seconds=60,
+    block_seconds=60,
 )
 
 
@@ -775,6 +781,10 @@ def create_app(
             "/miniapp/api/interface-locale",
             "/miniapp/api/privacy-action",
             "/miniapp/api/referral-invite",
+            "/miniapp/api/swipe/deck",
+            "/miniapp/api/swipe/rate",
+            "/miniapp/api/swipe/undo",
+            "/miniapp/api/swipe/complete",
         }:
             return None
         supplied = str(request.form.get("csrf_token") or "")
@@ -900,9 +910,66 @@ def create_app(
         if not miniapp_settings.enabled or filename not in {
             "miniapp.css",
             "miniapp.js",
+            "miniapp-swipe.js",
         }:
             abort(404)
         return app.send_static_file(filename)
+
+    def miniapp_swipe_request(action: str):
+        if not miniapp_settings.enabled:
+            abort(404)
+        init_data = str(request.headers.get("X-Telegram-Init-Data") or "")
+        if not init_data or len(init_data.encode("utf-8")) > 8192:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            identity = miniapp_runtime.verify_init_data(
+                init_data, bot_token=miniapp_settings.bot_token,
+                max_age_seconds=miniapp_settings.auth_max_age_seconds,
+            )
+        except MiniAppAuthenticationError:
+            return jsonify(error="authentication_failed"), 401
+        try:
+            user_id = int(identity["user_id"])
+            miniapp_runtime.require_active_learner(store, user_id)
+            body = swipe_runtime.parse_request(
+                action, request.get_data(cache=False), request.mimetype
+            )
+            decision = PersistentRateLimiter(store).consume(
+                user_id=user_id, scope="miniapp_swipe",
+                policy=_MINIAPP_SWIPE_RATE_POLICY,
+            )
+            if not decision.allowed:
+                response = jsonify(error="rate_limited")
+                response.status_code = 429
+                response.headers["Retry-After"] = str(max(1, int(decision.retry_after_seconds)))
+                return response
+            if action == "deck":
+                payload = swipe_runtime.deck(store, user_id=user_id, catalog=CATALOG, **body)
+            else:
+                payload = swipe_runtime.mutate(store, user_id=user_id, catalog=CATALOG, action=action, **body)
+        except MiniAppAccessDenied:
+            return jsonify(error="access_denied"), 403
+        except swipe_runtime.SwipeError as exc:
+            return jsonify(error=exc.error), exc.status
+        except Exception:
+            return jsonify(error="temporarily_unavailable"), 503
+        return jsonify(payload)
+
+    @app.post("/miniapp/api/swipe/deck")
+    def miniapp_swipe_deck():
+        return miniapp_swipe_request("deck")
+
+    @app.post("/miniapp/api/swipe/rate")
+    def miniapp_swipe_rate():
+        return miniapp_swipe_request("rate")
+
+    @app.post("/miniapp/api/swipe/undo")
+    def miniapp_swipe_undo():
+        return miniapp_swipe_request("undo")
+
+    @app.post("/miniapp/api/swipe/complete")
+    def miniapp_swipe_complete():
+        return miniapp_swipe_request("complete")
 
     @app.get("/miniapp/api/bootstrap")
     def miniapp_bootstrap():

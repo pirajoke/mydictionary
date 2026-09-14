@@ -6,9 +6,10 @@
   <meta name="color-scheme" content="light dark">
   <title>Lexi — языковой тренер</title>
   <link rel="icon" href="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}">
-  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260909-compact-hero-v2-profile-reorder-v2-help-privacy-v1">
+  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260909-compact-hero-v2-profile-reorder-v2-help-privacy-v1-swipe-v1-20260914">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260909-profile-dictionary-cleanup-v3-help-privacy-v1"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp-swipe.js') }}?v=20260914-swipe-v1"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260914-swipe-v1"></script>
 </head>
 <body data-bot-username="{{ bot_username }}">
   <main class="app-shell" aria-live="polite">
@@ -118,6 +119,39 @@
           <h1 id="words-heading" data-i18n="words"></h1>
           <img class="section-art" src="{{ url_for('static', filename='miniapp/lexi-section-words-v1.webp') }}" alt="" loading="lazy" decoding="async" width="1200" height="600">
         </header>
+        <section id="swipe-trainer" class="swipe-trainer" aria-labelledby="swipe-title">
+          <header class="swipe-heading">
+            <div><span class="swipe-kicker">LEXI · SWIPE</span><h2 id="swipe-title"></h2></div>
+            <button id="swipe-language" class="swipe-language" type="button"></button>
+          </header>
+          <p id="swipe-hint" class="swipe-hint"></p>
+          <div id="swipe-modes" class="swipe-modes">
+            <button type="button" data-swipe-mode="mix" aria-pressed="true"></button>
+            <button type="button" data-swipe-mode="forgotten" aria-pressed="false"></button>
+            <button type="button" data-swipe-mode="new" aria-pressed="false"></button>
+          </div>
+          <div id="swipe-controls" class="swipe-session" hidden>
+            <div class="swipe-session-line"><span id="swipe-count"></span><progress id="swipe-progress" max="10" value="0"></progress></div>
+            <div class="swipe-stage">
+              <article id="swipe-card" class="swipe-card" tabindex="0" aria-labelledby="swipe-target" aria-describedby="swipe-keyboard-hint">
+                <span id="swipe-kind" class="swipe-kind"></span>
+                <div class="swipe-word-block">
+                  <h3 id="swipe-target" dir="auto"></h3>
+                  <div class="swipe-pronunciation"><button id="swipe-speak" type="button"></button><span id="swipe-transcription" dir="ltr"></span></div>
+                </div>
+                <p id="swipe-meaning" class="swipe-meaning" dir="auto" hidden></p>
+                <button id="swipe-reveal" class="swipe-reveal" type="button" aria-controls="swipe-meaning" aria-expanded="false"></button>
+              </article>
+            </div>
+            <div class="swipe-grades"><button id="swipe-again" class="swipe-again" type="button"></button><button id="swipe-know" class="swipe-know" type="button"></button></div>
+            <button id="swipe-undo" class="swipe-undo" type="button" disabled></button>
+            <p id="swipe-keyboard-hint" class="swipe-keyboard-hint"></p>
+          </div>
+          <p id="swipe-summary" class="swipe-summary" role="status" hidden></p>
+          <button id="swipe-start" class="swipe-start" type="button" disabled></button>
+          <p id="swipe-status" class="swipe-status" aria-live="polite" aria-atomic="true"></p>
+          <button id="swipe-retry" class="swipe-retry" type="button" hidden></button>
+        </section>
         <section id="custom-vocabulary-actions" class="custom-vocabulary-actions dashboard-section" aria-labelledby="custom-vocabulary-title">
           <div class="custom-vocabulary-copy">
             <span class="custom-vocabulary-kicker" data-i18n="custom_words_kicker"></span>

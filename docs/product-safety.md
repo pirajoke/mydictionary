@@ -47,6 +47,7 @@ must first be recovered by the normal AI reservation recovery path.
 | inactive rate-limit buckets | 7 days |
 | voice transcripts and completed voice sessions | 30 days |
 | optional Mirror dialogue turns | 7 days per turn |
+| Mini App swipe sessions and undo/replay receipts | 7 days |
 
 The corresponding environment variables are `RETENTION_ANALYTICS_DAYS`,
 `RETENTION_AI_USAGE_DAYS`, `RETENTION_ABUSE_DAYS`, and
@@ -61,7 +62,8 @@ The `/privacy` flow erases learning progress, product analytics, detailed AI
 usage, optional Mirror dialogue turns, learner-owned vocabulary entries,
 imports, rate-limit state, and Telegram profile fields. Uploaded photos, PDFs,
 audio, and extracted previews are never persisted by the custom-vocabulary
-flow. The privacy flow also resets the learner's Mirror style. It blocks the account
+flow. The privacy flow also resets the learner's Mirror style
+and removes all owned swipe sessions and grading receipts. It blocks the account
 and records a pseudonymous operation reference. Billing, credit ledger, refund,
 subscription, and administrator audit records remain available for financial
 reconciliation, refunds, and fraud review. This behavior is a product contract,

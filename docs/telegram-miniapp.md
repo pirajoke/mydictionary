@@ -1,6 +1,6 @@
 # Telegram Mini App
 
-The MY DICTIONARY Mini App is an optional, read-only companion to the Telegram
+The MY DICTIONARY Mini App is an optional companion to the Telegram
 bot. It borrows the compact five-tab navigation pattern from the supplied
 product reference while keeping MY DICTIONARY branding, vocabulary data,
 economics, privacy rules, and existing bot actions.
@@ -9,7 +9,8 @@ economics, privacy rules, and existing bot actions.
 
 - **Profile**: level, XP, streaks, sessions, accuracy, today's XP, daily goal,
   tracked and learned words, and available AI credits.
-- **Dictionary**: browser dictionary/search and standalone download actions,
+- **Dictionary**: curated swipe practice (smart mix, forgotten/due, new words),
+  plus browser dictionary/search and standalone download actions,
   followed by at most 60 tracked words from the active Telegram pack, with
   curated meaning, review/learned state and correct/incorrect attempt counts.
 - **AI credits**: durable available/reserved/spent balances, the one-credit
@@ -20,10 +21,39 @@ economics, privacy rules, and existing bot actions.
 - **Settings**: localized daily goal, meaning language, learning goal, Mirror
   response mode/style/depth/level, plus AI and Voice availability.
 
-All changes continue in the bot through allowlisted `/start miniapp_*` deep
-links. Opening or refreshing the Mini App does not update learner timestamps,
+Bot-only changes continue through allowlisted `/start miniapp_*` deep links.
+Language/interface changes and privacy actions use signed, protected APIs.
+Opening or refreshing the Mini App does not update learner timestamps,
 create progress or wallet rows, reserve credits, call an AI provider, create an
 invoice, or modify settings.
+
+## Swipe practice
+
+Press **Start swiping** in Dictionary. The existing five-item navigation stays
+unchanged. The language shortcut opens the existing Languages tab.
+Smart mix prefers seven due/mistaken words and three new words, filling
+shortages without unrelated learned fillers. Decks have at most ten curated
+cards from the current compatible pack, translated into the learner's meaning
+language. Custom vocabulary keeps its separate practice flow.
+
+Left/**Again** applies the bot's incorrect-answer SRS and puts the card after
+two others once. Right/**Know** applies the correct-answer SRS. Buttons and
+keyboard arrows are equivalent; Space/Enter flips a focused card. Device
+pronunciation is optional and does not require paid Voice or an AI provider.
+IPA stays standard notation in a readable, regular-weight font.
+
+Each answer is saved transactionally before the card advances. A lost response
+is replayed with the same operation ID, never charged twice in XP. Latest-answer
+undo restores SRS and answer XP within ten minutes, retaining the day's practice
+streak. Newer changes from another session/Telegram prevent destructive undo.
+Completion adds the canonical 25 session XP once and refreshes profile metrics.
+
+Four strict signed POST routes live under `/miniapp/api/swipe/`: `deck`, `rate`,
+`undo`, `complete`. Queue ownership, active pack and selected content identities
+are server-authoritative. Expired/changed content sessions fail closed. The
+additive `0023_miniapp_swipe_sessions` migration stores bounded short-lived
+state/receipts, without terms or messages; cleanup and learner erasure remove it.
+Only pressing Start creates a session; bootstrap/tab navigation remains read-only.
 
 Public dictionary actions open `/dictionary/` or `/dictionary/download` with only
 target/native/interface language choices. They send no signed initData or
@@ -38,10 +68,13 @@ remain local; see [offline dictionary](offline-dictionary.md).
 - Only an existing learner whose access and privacy states are both active can
   receive data. Pending, blocked, erased, missing, invalid, expired, and future
   identities fail closed with fixed errors.
-- Responses are `no-store`, identity-free beyond the signed learner's bounded
+- Bootstrap responses are `no-store`, identity-free beyond the signed learner's bounded
   display name, and exclude Telegram IDs, usernames, messages, prompts,
   answers, credentials, charge IDs, database URLs, pack IDs, and vocabulary
   identifiers.
+- Swipe responses contain only random owned session/operation IDs, public pack
+  IDs, card indices, curated vocabulary and aggregate counts; no Telegram IDs or
+  private vocabulary progress hashes. Signed initData stays out of URLs/storage.
 - The page uses a route-specific CSP, Telegram theme variables with accessible
   fallbacks, safe-area insets, RTL layout, reduced-motion support, and keyboard
   tab navigation.
@@ -65,7 +98,7 @@ read-only balance matches `/ai`. Never place the token value in environment
 output, compose diffs, logs, receipts, or chat.
 
 The Cloudflare tunnel must route `/miniapp`, `/miniapp/static/*`, and
-`/miniapp/api/bootstrap` to the admin service. The public URL is exact: HTTPS,
+`/miniapp/api/*` to the admin service. The public URL is exact: HTTPS,
 no query/fragment/userinfo, and path `/miniapp` without a trailing slash.
 
 ## Activation checks
@@ -81,6 +114,8 @@ no query/fragment/userinfo, and path `/miniapp` without a trailing slash.
    light/dark theme, empty words, disabled checkout, and deep links.
 5. Confirm opening and switching tabs changes no learner, progress, wallet,
    usage, billing, or audit rows.
+6. Verify swipe know/again, undo, network retry, empty modes and signed-access
+   failures. Answers must remain visible through the existing Telegram SRS.
 
 ## Rollback
 
@@ -88,3 +123,6 @@ Set `MINIAPP_ENABLED=false` in bot and admin together and restart both services.
 The shell and assets then return 404, `/app` is removed from command menus, and
 the bot resets Telegram's persistent Web App menu button to the default. No
 database rollback or learner-data change is required.
+After applying the additive swipe migration, do not automatically downgrade the
+database or start older code. Disable Mini App or fix forward; restore only from
+an exact reviewed backup with an explicit data-loss boundary.

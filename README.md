@@ -28,10 +28,10 @@ deployment automation.
   privacy-safe product analytics, credit operations, and audit history.
 - Optional metered AI tutor, voice practice, and Telegram Stars billing. Each
   has an independent fail-closed rollout gate.
-- Optional Telegram Mini App with five read-only learner views: profile,
+- Optional Telegram Mini App with five learner views and protected swipe practice: profile,
   dictionary/tracked words, AI credits, languages, and settings. It uses signed Telegram
-  `initData`, never creates learning or billing records on open, and delegates
-  every action back to the existing bot flows.
+  `initData`, never creates learning or billing records on open, and saves swipe
+  answers through protected APIs using the same deterministic SRS as the bot.
 - A separate browser dictionary at `/dictionary/`: seven reviewed starter
   packs (700 entries), bilingual local search, saved words, short written
   practice, explicit offline storage, standalone HTML download and saved-word
