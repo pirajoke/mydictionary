@@ -6,27 +6,34 @@
   <meta name="color-scheme" content="light dark">
   <title>Lexi — языковой тренер</title>
   <link rel="icon" href="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}">
-  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260909-compact-hero-v2-profile-reorder-v2-help-privacy-v1-swipe-v1-20260914">
+  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260914-learning-flow-v2">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp-swipe.js') }}?v=20260914-swipe-v1"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260914-swipe-v1"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp-swipe.js') }}?v=20260914-learning-flow-v2"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260914-learning-flow-v2"></script>
 </head>
 <body data-bot-username="{{ bot_username }}">
   <main class="app-shell" aria-live="polite">
     <header class="brand-bar">
       <img class="brand-mark" src="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}" alt="" aria-hidden="true">
       <div><strong>Lexi</strong><small id="current-language"></small></div>
+      <button id="change-learning-language" class="language-shortcut" type="button" data-action="lang" data-i18n="change_learning_language" hidden></button>
     </header>
 
     <section id="loading-state" class="state-card dashboard-state loading" data-ui-state="loading" role="status">
       <span class="spinner" aria-hidden="true"></span><span data-i18n="loading"></span>
     </section>
     <section id="error-state" class="state-card dashboard-state error" data-ui-state="error" role="alert" hidden>
-      <p data-i18n="error"></p><button id="retry-button" type="button" data-i18n="retry"></button>
+      <p id="bootstrap-error-message" data-i18n="error"></p><button id="retry-button" type="button" data-i18n="retry"></button><a id="reopen-telegram" hidden></a>
     </section>
 
     <div id="app-content" class="dashboard" hidden>
       <section id="panel-profile" class="panel dashboard-panel active" role="tabpanel" data-panel="profile" aria-labelledby="tab-profile">
+        <section class="learn-now" aria-labelledby="learn-now-title">
+          <h1 id="learn-now-title" data-i18n="learn_now"></h1>
+          <p id="learn-now-hint" data-i18n="first_lesson_hint"></p>
+          <button id="learn-now-action" class="primary-action dashboard-action" type="button" data-action="continue" data-i18n="start_first_lesson"></button>
+          <div class="learn-now-secondary"><button type="button" data-action="review" data-i18n="review_words"></button><button type="button" data-action="words" data-i18n="choose_words"></button></div>
+        </section>
         <p id="profile-reorder-instructions" class="visually-hidden" data-i18n="profile_reorder_instructions"></p>
         <div id="profile-reorder-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
         <div id="profile-layout" data-profile-layout>
@@ -121,10 +128,11 @@
         </header>
         <section id="swipe-trainer" class="swipe-trainer" aria-labelledby="swipe-title">
           <header class="swipe-heading">
-            <div><span class="swipe-kicker">LEXI · SWIPE</span><h2 id="swipe-title"></h2></div>
+            <div><h2 id="swipe-title"></h2></div>
             <button id="swipe-language" class="swipe-language" type="button"></button>
           </header>
           <p id="swipe-hint" class="swipe-hint"></p>
+          <p class="practice-source" data-i18n="starter_source"></p>
           <div id="swipe-modes" class="swipe-modes">
             <button type="button" data-swipe-mode="mix" aria-pressed="true"></button>
             <button type="button" data-swipe-mode="forgotten" aria-pressed="false"></button>
@@ -137,17 +145,20 @@
                 <span id="swipe-kind" class="swipe-kind"></span>
                 <div class="swipe-word-block">
                   <h3 id="swipe-target" dir="auto"></h3>
-                  <div class="swipe-pronunciation"><button id="swipe-speak" type="button"></button><span id="swipe-transcription" dir="ltr"></span></div>
+                  <div class="swipe-pronunciation"><button id="swipe-speak" type="button"></button><details id="swipe-ipa"><summary data-i18n="pronunciation_symbols"></summary><span id="swipe-transcription" dir="ltr"></span><p data-i18n="ipa_explanation"></p></details></div>
                 </div>
                 <p id="swipe-meaning" class="swipe-meaning" dir="auto" hidden></p>
+                <div id="swipe-context" class="swipe-context" hidden><p id="swipe-grammar" dir="auto"></p><p id="swipe-example" dir="auto"></p><p id="swipe-example-meaning" dir="auto"></p></div>
                 <button id="swipe-reveal" class="swipe-reveal" type="button" aria-controls="swipe-meaning" aria-expanded="false"></button>
               </article>
             </div>
             <div class="swipe-grades"><button id="swipe-again" class="swipe-again" type="button"></button><button id="swipe-know" class="swipe-know" type="button"></button></div>
-            <button id="swipe-undo" class="swipe-undo" type="button" disabled></button>
             <p id="swipe-keyboard-hint" class="swipe-keyboard-hint"></p>
           </div>
           <p id="swipe-summary" class="swipe-summary" role="status" hidden></p>
+          <button id="swipe-undo" class="swipe-undo" type="button" disabled hidden></button>
+          <button id="swipe-resume" class="swipe-start" type="button" hidden></button>
+          <button id="swipe-pause" class="swipe-undo" type="button" hidden></button>
           <button id="swipe-start" class="swipe-start" type="button" disabled></button>
           <p id="swipe-status" class="swipe-status" aria-live="polite" aria-atomic="true"></p>
           <button id="swipe-retry" class="swipe-retry" type="button" hidden></button>
@@ -169,6 +180,7 @@
           <p id="empty-custom-words" class="custom-words-empty" data-i18n="custom_words_empty"></p>
         </section>
         <div class="dictionary-entry">
+          <p class="device-dictionary-note" data-i18n="device_dictionary_note"></p>
           <button class="primary-action dashboard-action" type="button" data-open-dictionary data-i18n="dictionary_open"></button>
           <button class="dashboard-action" type="button" data-download-dictionary data-i18n="dictionary_download"></button>
           <p data-i18n="dictionary_hint"></p>

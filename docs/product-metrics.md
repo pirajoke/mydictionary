@@ -68,6 +68,13 @@ and can be recovered safely before commercial activation.**
 
 ## Metric definitions
 
+Learning-flow v2 adds privacy-safe `swipe_started` and `swipe_resumed` events
+with `version: 2` metadata. The retention activity allowlist below remains v1:
+partial swipe activity is reported separately, not silently added to historical
+D1/D7. Completion correction renames the corresponding event to
+`swipe_completion_undone`; a subsequent completion emits one current
+`block_completed`. See `lexi-learning-flow-v2.md` for replay and undo boundaries.
+
 | Metric | Formula | Included | Excluded | Source |
 |---|---|---|---|---|
 | Public cohort | Learners whose first-ever `onboarding_started` falls in the selected window | Learner role | Admins and repeat onboarding outside the window | `AdminStore.product_funnel` |

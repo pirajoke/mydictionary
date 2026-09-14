@@ -232,7 +232,7 @@ class MiniAppCompactIllustratedSectionsContractTest(unittest.TestCase):
             ".credit-chip > span:first-child { color: var(--amber); font-size: .95rem; }",
             "min-height: 48px",
             ".nav-icon { display: grid; place-items: center; width: 32px; height: 32px",
-            ".bottom-nav button { position: relative; min-width: 0; min-height: 58px",
+            ".bottom-nav button { position: relative; min-width: 0; min-height: 62px",
             ".calendar-day { display: grid; place-items: center; min-width: 0; min-height: 32px",
         )
         for contract in required:

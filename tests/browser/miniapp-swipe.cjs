@@ -172,6 +172,7 @@ const bootstrap = {locale: "en", copy: {}, features: {ai: false, voice: false, c
   assert.deepEqual(requests.at(-1).body, {session_id: sessionId});
   assert(!elements["swipe-summary"].hidden, "AC6: completion summary is visible");
   assert.match(elements["swipe-summary"].textContent, /47/, "AC6: summary renders earned server XP");
+  assert.equal(elements["swipe-undo"].disabled, false, "AC5 v2: completion keeps the last rating available for undo");
 
   // Localization is verified by rendered actionable text, not an unused map.
   const labels = new Set();

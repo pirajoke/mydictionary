@@ -687,6 +687,28 @@ _SETTINGS_HUB_COPY = {
 for _locale, _copy in _SETTINGS_HUB_COPY.items():
     MINIAPP_COPY[_locale].update(_copy)
 
+_LEARNING_FLOW_KEYS = (
+    "learn_now", "change_learning_language", "review_words", "choose_words",
+    "starter_source", "device_dictionary_note", "pronunciation_symbols",
+    "ipa_explanation", "settings_dictionary", "practice_review_hint", "practice_resume_hint",
+)
+_LEARNING_FLOW_COPY = {
+    "en": ("Learn now", "Change language", "Review words", "Choose words", "Starter pack · your learning progress", "Device dictionary · saved words and practice stay on this device, separate from Telegram progress.", "Pronunciation symbols", "IPA describes sounds. You can listen to the word without learning these symbols.", "Learning language", "{count} words ready to review", "Continue your remaining cards — answers are saved."),
+    "ru": ("Учить сейчас", "Сменить язык", "Повторить слова", "Выбрать слова", "Стартовый набор · твой учебный прогресс", "Словарь на устройстве · сохранённые слова и практика хранятся здесь, отдельно от прогресса Telegram.", "Транскрипция", "IPA обозначает звуки. Можно просто слушать слово — учить эти символы необязательно.", "Изучаемый язык", "{count} слов готовы к повторению", "Продолжи оставшиеся карточки — ответы сохранены."),
+    "fr": ("Apprendre maintenant", "Changer de langue", "Réviser les mots", "Choisir les mots", "Vocabulaire de départ · ta progression", "Dictionnaire sur cet appareil · mots enregistrés et exercices séparés de la progression Telegram.", "Transcription", "L’API représente les sons. Tu peux écouter le mot sans apprendre ces symboles.", "Langue étudiée", "{count} mots à réviser", "Continue les cartes restantes — tes réponses sont enregistrées."),
+    "de": ("Jetzt lernen", "Sprache wechseln", "Wörter wiederholen", "Wörter wählen", "Grundwortschatz · dein Lernfortschritt", "Wörterbuch auf diesem Gerät · gespeicherte Wörter und Übungen sind vom Telegram-Fortschritt getrennt.", "Lautschrift", "IPA beschreibt Laute. Du kannst das Wort anhören, ohne die Zeichen zu lernen.", "Lernsprache", "{count} Wörter zum Wiederholen", "Setze die restlichen Karten fort — deine Antworten sind gespeichert."),
+    "es": ("Aprender ahora", "Cambiar idioma", "Repasar palabras", "Elegir palabras", "Vocabulario inicial · tu progreso", "Diccionario del dispositivo · palabras guardadas y práctica separadas del progreso de Telegram.", "Transcripción", "El AFI representa sonidos. Puedes escuchar la palabra sin aprender estos símbolos.", "Idioma de aprendizaje", "{count} palabras para repasar", "Continúa las tarjetas pendientes — tus respuestas están guardadas."),
+    "ja": ("今すぐ学ぶ", "言語を変更", "単語を復習", "単語を選ぶ", "基本単語セット · 学習の進み具合", "端末の辞書 · 保存した単語と練習はこの端末に保存され、Telegramの進み具合とは別です。", "発音記号", "IPAは音を表します。記号を覚えなくても単語を聞いて練習できます。", "学習言語", "復習する単語：{count}", "残りのカードを続けましょう。回答は保存済みです。"),
+    "zh": ("现在学习", "切换语言", "复习单词", "选择单词", "基础词汇 · 你的学习进度", "设备词典 · 收藏和练习保存在此设备上，与Telegram进度分开。", "音标", "IPA表示语音。无需学习这些符号，也可以听单词发音。", "学习语言", "{count}个单词待复习", "继续剩余卡片，回答已保存。"),
+    "ar": ("تعلّم الآن", "تغيير اللغة", "راجع الكلمات", "اختر الكلمات", "مفردات أساسية · تقدمك الدراسي", "قاموس الجهاز · الكلمات المحفوظة والتدريب على هذا الجهاز منفصلان عن تقدم Telegram.", "الرموز الصوتية", "تمثل IPA الأصوات. يمكنك الاستماع للكلمة دون تعلم هذه الرموز.", "لغة التعلم", "{count} كلمة جاهزة للمراجعة", "تابع البطاقات المتبقية — إجاباتك محفوظة."),
+}
+for _locale, _values in _LEARNING_FLOW_COPY.items():
+    _copy = MINIAPP_COPY[_locale]
+    _copy.update(zip(_LEARNING_FLOW_KEYS, _values))
+    for _view, _label in (("practice", "learn_now"), ("review", "review_words"), ("words", "choose_words"), ("languages", "change_learning_language")):
+        _copy[f"{_view}_command_intro"] = _copy[_label]
+        _copy[f"{_view}_open"] = _copy[_label]
+
 _REFERRAL_COPY = {
     "en": {
         "referral_title": "Learn together, earn AI credits",

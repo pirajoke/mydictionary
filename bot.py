@@ -2528,10 +2528,15 @@ def _miniapp_detail_entry(
     view: str,
     locale: str,
 ) -> tuple[str, InlineKeyboardMarkup] | None:
+    chat_type = getattr(getattr(update, "effective_chat", None), "type", "")
+    if not chat_type and view in {"practice", "review", "words", "languages"}:
+        chat_id = getattr(getattr(update, "message", None), "chat_id", None)
+        if isinstance(chat_id, int) and chat_id > 0:
+            chat_type = "private"
     if (
-        view not in {"help", "privacy"}
+        view not in {"help", "privacy", "practice", "review", "words", "languages"}
         or not getattr(MINIAPP_SETTINGS, "enabled", False)
-        or getattr(getattr(update, "effective_chat", None), "type", "") != "private"
+        or chat_type != "private"
     ):
         return None
     try:
@@ -8407,6 +8412,12 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     locale = interface_locale_for_update(update)
     record_product_event("quick_action_selected", source=action)
+    native_view = {"continue": "practice", "review": "review", "mode": "words", "words": "words", "lang": "languages"}.get(action)
+    if native_view:
+        entry = _miniapp_detail_entry(update, view=native_view, locale=locale)
+        if entry:
+            await update.message.reply_text(entry[0], reply_markup=entry[1])
+            return
     if action == "continue":
         await continue_or_start_lesson(
             update.message,

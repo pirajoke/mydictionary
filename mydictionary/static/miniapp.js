@@ -35,6 +35,7 @@
   let privacyActionPending = false;
   let detailReturnFocus = null;
   let requestedDetailOpened = false;
+  let requestedPracticeOpened = false;
   const requestedView = new URLSearchParams(window.location.search).get("view");
   const allowedDetailViews = new Set(["help", "privacy"]);
   const referralInviteEndpoint = "/miniapp/api/referral-invite";
@@ -317,6 +318,13 @@
   }
 
   function openAction(action) {
+    if (payload && action === "lang") { activateTab(node("tab-languages"), true); return; }
+    if (payload && ["continue", "review", "words"].includes(action) && window.LexiSwipe) {
+      activateTab(node("tab-words"));
+      if (action === "words") window.LexiSwipe.choose();
+      else window.LexiSwipe.enter(action === "review" ? "forgotten" : "auto");
+      return;
+    }
     if (!webApp || !botUsername) return;
     if (action === "share") {
       const url = `https://t.me/${botUsername}`;
@@ -923,6 +931,8 @@
     text(node("daily-quest-today-xp"), progress.today_xp);
     text(node("daily-quest-goal"), data.profile.daily_word_goal);
     const firstLesson = progress.sessions === 0;
+    node("panel-profile").dataset.firstLesson = String(firstLesson);
+    if (node("learn-now-action")) text(node("learn-now-action"), firstLesson ? copy.start_first_lesson : copy.continue_lesson);
     text(node("daily-quest-action"), firstLesson ? copy.start_first_lesson : copy.continue_lesson);
     text(node("first-lesson-hint"), copy.first_lesson_hint);
     node("first-lesson-hint").hidden = !firstLesson;
@@ -1053,18 +1063,51 @@
     node("error-state").hidden = true;
     node("app-content").hidden = false;
     renderPrivacyState(data.privacy);
-    if (window.LexiSwipe) window.LexiSwipe.configure(data);
+    node("change-learning-language").hidden = false;
+    if (window.LexiSwipe) {
+      window.LexiSwipe.configure(data);
+      window.LexiSwipe.refresh?.();
+      if (!requestedPracticeOpened && ["practice", "review", "words", "languages"].includes(requestedView)) {
+        requestedPracticeOpened = true;
+        if (requestedView === "languages") activateTab(node("tab-languages"));
+        else {
+          activateTab(node("tab-words"));
+          if (requestedView === "words") window.LexiSwipe.choose?.();
+          else window.LexiSwipe.enter?.(requestedView === "review" ? "forgotten" : "auto");
+        }
+      }
+    }
     openRequestedDetailView();
   }
 
-  function showError() {
+  const recoveryCopy = {
+    en: ["Open Lexi in Telegram to sign in.", "Open in Telegram", "Could not connect to Lexi. Check your connection and retry."],
+    ru: ["Открой Lexi через Telegram, чтобы войти.", "Открыть в Telegram", "Не удалось соединиться с Lexi. Проверь соединение и повтори."],
+    fr: ["Ouvre Lexi dans Telegram pour te connecter.", "Ouvrir dans Telegram", "Connexion à Lexi impossible. Vérifie ta connexion et réessaie."],
+    de: ["Öffne Lexi in Telegram, um dich anzumelden.", "In Telegram öffnen", "Keine Verbindung zu Lexi. Prüfe deine Verbindung und versuche es erneut."],
+    es: ["Abre Lexi desde Telegram para entrar.", "Abrir en Telegram", "No se pudo conectar con Lexi. Comprueba la conexión e inténtalo de nuevo."],
+    ja: ["TelegramからLexiを開いてログインしてください。", "Telegramで開く", "Lexiに接続できません。接続を確認して再試行してください。"],
+    zh: ["请从Telegram打开Lexi登录。", "在Telegram中打开", "无法连接Lexi，请检查网络并重试。"],
+    ar: ["افتح Lexi من Telegram لتسجيل الدخول.", "افتح في Telegram", "تعذر الاتصال بـLexi. تحقق من الاتصال وحاول مجددًا."]
+  };
+  function showError(error) {
+    node("change-learning-language").hidden = true;
     node("loading-state").hidden = true;
     node("app-content").hidden = true;
     node("error-state").hidden = false;
+    const auth = [401, 403].includes(error?.status);
+    const labels = recoveryCopy[payload?.locale || hintedLocale] || recoveryCopy.en;
+    if (node("bootstrap-error-message")) text(node("bootstrap-error-message"), labels[auth ? 0 : 2]);
+    node("retry-button").hidden = auth;
+    const reopen = node("reopen-telegram");
+    if (reopen) {
+      reopen.hidden = !auth || !/^[A-Za-z0-9_]{5,32}$/.test(botUsername);
+      if (!reopen.hidden) { reopen.href = `https://t.me/${botUsername}?start=miniapp_help`; text(reopen, labels[1]); }
+    }
   }
 
   async function fetchBootstrap() {
-    if (!webApp || !webApp.initData) throw new Error("disabled");
+    if (!webApp || !webApp.initData) throw Object.assign(new Error("authentication_failed"), {status: 401});
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), BOOTSTRAP_TIMEOUT_MS);
     try {
@@ -1074,7 +1117,7 @@
         credentials: "omit",
         signal: controller.signal
       });
-      if (!response.ok) throw new Error("error");
+      if (!response.ok) throw Object.assign(new Error("bootstrap_failed"), {status: response.status});
       return await response.json();
     } finally {
       clearTimeout(timeoutId);
@@ -1092,17 +1135,20 @@
         // The authenticated bootstrap below remains authoritative.
       }
     }
+    let lastError;
     for (let attempt = 1; attempt <= BOOTSTRAP_MAX_ATTEMPTS; attempt += 1) {
       try {
         render(await fetchBootstrap());
         return true;
-      } catch (_) {
+      } catch (error) {
+        lastError = error;
+        if ([401, 403].includes(error.status)) break;
         if (attempt < BOOTSTRAP_MAX_ATTEMPTS) {
           await new Promise((resolve) => setTimeout(resolve, BOOTSTRAP_RETRY_DELAY_MS));
         }
       }
     }
-    showError();
+    showError(lastError);
     return false;
   }
 
@@ -1117,6 +1163,7 @@
     document.querySelectorAll("[data-panel]").forEach((panel) => {
       panel.hidden = panel.dataset.panel !== tab.dataset.tab;
     });
+    window.scrollTo?.({top: 0, behavior: "instant"});
     if (focus) tab.focus();
   }
   tabs.forEach((tab) => {
@@ -1153,6 +1200,15 @@
     } catch (_) {
       // Saved practice and its summary remain usable if refresh is offline.
     }
+  });
+  node("swipe-trainer")?.addEventListener("lexi:practice-status", (event) => {
+    if (!payload || !event.detail) return;
+    const overview = event.detail;
+    const copy = payload.copy;
+    const label = overview.resume ? copy.continue_lesson : overview.counts.forgotten > 0 ? copy.review_words : payload.progress.sessions === 0 ? copy.start_first_lesson : copy.learn_now;
+    const hint = overview.resume ? copy.practice_resume_hint : overview.counts.forgotten > 0 ? copy.practice_review_hint.replace("{count}", overview.counts.forgotten) : copy.first_lesson_hint;
+    if (node("learn-now-action")) text(node("learn-now-action"), label);
+    if (node("learn-now-hint")) text(node("learn-now-hint"), hint);
   });
   document.querySelectorAll("[data-download-dictionary]").forEach((button) => button.addEventListener("click", () => openDictionary(true)));
   document.querySelectorAll("[data-settings-action]").forEach((button) => {

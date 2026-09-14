@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 from uuid import UUID, uuid4
 
@@ -25,6 +26,8 @@ LEVEL_THRESHOLDS = (0, 100, 300, 600, 1000, 1500, 2500, 4000, 6000)
 MAX_OPERATIONS = 100  # Includes undone operations, keeping replay receipts bounded.
 REQUEST_KEYS = {
     "deck": {"mode"},
+    "status": set(),
+    "resume": {"session_id"},
     "rate": {"session_id", "operation_id", "word_index", "knew"},
     "undo": {"session_id", "operation_id"},
     "complete": {"session_id"},
@@ -144,35 +147,155 @@ def _require_current_content(row, state, words):
         raise SwipeError(409, "content_changed")
 
 
+def _pools(session, user_id, pack, words, now):
+    rows = session.scalars(select(WordProgress).where(
+        WordProgress.telegram_user_id == user_id,
+        WordProgress.language == pack.storage_key,
+    )).all()
+    progress = {row.vocabulary_id: row for row in rows}
+    new, due, mistakes = [], [], []
+    for index, word in enumerate(words):
+        row = progress.get(vocabulary_id_for(word))
+        if row is None:
+            new.append(index)
+            continue
+        is_due = False
+        if row.next_review:
+            try:
+                is_due = _aware(datetime.fromisoformat(row.next_review)) <= now
+            except ValueError:
+                pass
+        if is_due:
+            due.append(index)
+        elif not row.last_seen and not row.correct_count and not row.wrong_count:
+            new.append(index)
+        elif row.wrong_count > 0 and row.correct_count < 3:
+            mistakes.append(index)
+    return new, due + mistakes
+
+
+def _counts(new, forgotten):
+    return {"new": len(new), "forgotten": len(forgotten), "total": len(new) + len(forgotten)}
+
+
+def _cards(catalog, user, pack, words, indices, new_indices):
+    cards = []
+    native = user.native_language or "ru"
+    for index in indices:
+        word = words[index]
+        aligned = catalog.meaning_entry(word, meaning_language=native, target_pack=pack, role=user.role)
+        card = {
+            "word_index": index, "target": target_text(word),
+            "meaning": word["meaning"] if native == "ru" else target_text(aligned),
+            "transcription": transcription_for(word, pack.target_language),
+            "kind": "new" if index in new_indices else "forgotten",
+        }
+        if word.get("example_target"):
+            card["example"] = {"target": word["example_target"]}
+            if native == "ru" and word.get("example_meaning"):
+                card["example"]["meaning"] = word["example_meaning"]
+        if word.get("part_of_speech"):
+            card["part_of_speech"] = word["part_of_speech"]
+            # Editorial explanations are Russian; German forms remain useful
+            # for every native language without relabeling Russian as native.
+            card["grammar"] = {
+                key: value for key, value in word.get("grammar", {}).items()
+                if native == "ru" or key not in {"note", "notes"}
+            }
+        cards.append(card)
+    return cards
+
+
+def _fingerprint(value):
+    return hashlib.sha256(_encode(value).encode("utf-8")).hexdigest()
+
+
+def _restored_cards(catalog, user, pack, row, state, words, *, require_snapshot=True):
+    _require_current_content(row, state, words)
+    # Pre-v2 sessions did not record original card kinds or a content digest.
+    # Existing clients can finish them, but cannot reliably reopen their deck.
+    if require_snapshot and (not state.get("cards_hash") or "new_indices" not in state):
+        raise SwipeError(409, "session_unavailable")
+    cards = _cards(catalog, user, pack, words,
+                   json.loads(row.initial_indices_json), state.get("new_indices", []))
+    if state.get("cards_hash") and state["cards_hash"] != _fingerprint(cards):
+        raise SwipeError(409, "content_changed")
+    return cards
+
+
+def _event(session, row, state, pack, name, now, **properties):
+    session.add(AnalyticsEvent(
+        event_id=str(uuid4()), telegram_user_id=row.telegram_user_id,
+        event_name=name, source="miniapp", session_id=row.session_id,
+        properties_json=_encode({"version": 2, "pack_id": row.pack_id,
+            "language": pack.target_language, "mode": state["mode"],
+            "word_count": len(json.loads(row.initial_indices_json)), **properties}),
+        occurred_at=now,
+    ))
+
+
+def status(store, *, user_id, catalog):
+    """Read the available pools and latest resumable session without activity."""
+    now = _aware(storage.utcnow())
+    with _transaction(store, user_id) as (session, user, profile):
+        pack = _pack(catalog, user, profile)
+        words = catalog.words(pack)
+        new, forgotten = _pools(session, user_id, pack, words, now)
+        pending = session.scalars(select(MiniAppSwipeSession).where(
+            MiniAppSwipeSession.telegram_user_id == user_id,
+            MiniAppSwipeSession.pack_id == pack.pack_id,
+            MiniAppSwipeSession.language == pack.storage_key,
+            MiniAppSwipeSession.completed_at.is_(None),
+            MiniAppSwipeSession.created_at > now - timedelta(days=7),
+        ).order_by(MiniAppSwipeSession.created_at.desc(), MiniAppSwipeSession.session_id.desc()))
+        resumable = None
+        for row in pending:
+            state = json.loads(row.state_json)
+            try:
+                _restored_cards(catalog, user, pack, row, state, words)
+            except SwipeError:
+                continue
+            response = _state_response(row, state)
+            resumable = {key: response[key] for key in ("session_id", "reviewed", "known", "again")}
+            resumable.update(mode=state["mode"], remaining=len(state["queue"]),
+                             word_count=len(json.loads(row.initial_indices_json)))
+            break
+        return {"pack_id": pack.pack_id, "language": pack.target_language,
+                "counts": _counts(new, forgotten), "resume": resumable}
+
+
+def resume(store, *, user_id, catalog, session_id):
+    now = _aware(storage.utcnow())
+    with _transaction(store, user_id) as (session, user, profile):
+        row = _available(session, user_id, session_id, now)
+        pack = _pack(catalog, user, profile)
+        if pack.pack_id != row.pack_id or pack.storage_key != row.language:
+            raise SwipeError(409, "pack_changed")
+        if row.completed_at is not None:
+            raise SwipeError(409, "session_completed")
+        state = json.loads(row.state_json)
+        words = catalog.words(pack)
+        cards = _restored_cards(catalog, user, pack, row, state, words)
+        response = _state_response(row, state)
+        revision = _fingerprint(response)
+        if state.get("last_resumed_revision") != revision:
+            _event(session, row, state, pack, "swipe_resumed", now,
+                   reviewed=response["reviewed"], remaining=len(state["queue"]))
+            state["last_resumed_revision"] = revision
+            row.state_json = _encode(state)
+        new, forgotten = _pools(session, user_id, pack, words, now)
+        return {"pack_id": pack.pack_id, "language": pack.target_language,
+                "tts_locale": pack.pronunciation.tts_locale,
+                "mode": state["mode"], "cards": cards,
+                "counts": _counts(new, forgotten), **response}
+
+
 def deck(store, *, user_id, catalog, mode):
     now = _aware(storage.utcnow())
     with _transaction(store, user_id) as (session, user, profile):
         pack = _pack(catalog, user, profile)
         words = catalog.words(pack)
-        rows = session.scalars(select(WordProgress).where(
-            WordProgress.telegram_user_id == user_id,
-            WordProgress.language == pack.storage_key,
-        )).all()
-        progress = {row.vocabulary_id: row for row in rows}
-        new, due, mistakes = [], [], []
-        for index, word in enumerate(words):
-            row = progress.get(vocabulary_id_for(word))
-            if row is None:
-                new.append(index)
-                continue
-            is_due = False
-            if row.next_review:
-                try:
-                    is_due = _aware(datetime.fromisoformat(row.next_review)) <= now
-                except ValueError:
-                    pass
-            if is_due:
-                due.append(index)
-            elif not row.last_seen and not row.correct_count and not row.wrong_count:
-                new.append(index)
-            elif row.wrong_count > 0 and row.correct_count < 3:
-                mistakes.append(index)
-        forgotten = due + mistakes
+        new, forgotten = _pools(session, user_id, pack, words, now)
         if mode == "new":
             queue = new[:10]
         elif mode == "forgotten":
@@ -190,32 +313,28 @@ def deck(store, *, user_id, catalog, mode):
                 selected_f = selected_f[2:]
                 queue += selected_n[:1]
                 selected_n = selected_n[1:]
-        cards = []
-        for index in queue:
-            word = words[index]
-            aligned = catalog.meaning_entry(word, meaning_language=user.native_language or "ru", target_pack=pack, role=user.role)
-            cards.append({
-                "word_index": index, "target": target_text(word),
-                "meaning": word["meaning"] if (user.native_language or "ru") == "ru" else target_text(aligned),
-                "transcription": transcription_for(word, pack.target_language),
-                "kind": "new" if index in new else "forgotten",
-            })
+        cards = _cards(catalog, user, pack, words, queue, new)
         session_id = None
         if queue:
             session_id = str(uuid4())
-            session.add(MiniAppSwipeSession(
+            state = {"queue": queue, "ratings": [], "operations": {}, "mode": mode,
+                     "content_ids": [vocabulary_id_for(words[index]) for index in queue],
+                     "new_indices": [index for index in queue if index in new],
+                     "cards_hash": _fingerprint(cards)}
+            row = MiniAppSwipeSession(
                 session_id=session_id, telegram_user_id=user_id,
                 pack_id=pack.pack_id, language=pack.storage_key,
                 initial_indices_json=_encode(queue),
-                state_json=_encode({"queue": queue, "ratings": [], "operations": {}, "mode": mode,
-                    "content_ids": [vocabulary_id_for(words[index]) for index in queue]}),
+                state_json=_encode(state),
                 created_at=now,
-            ))
+            )
+            session.add(row)
+            _event(session, row, state, pack, "swipe_started", now)
         return {
             "session_id": session_id, "pack_id": pack.pack_id,
             "language": pack.target_language, "tts_locale": pack.pronunciation.tts_locale,
             "mode": mode, "cards": cards, "queue": queue,
-            "counts": {"new": len(new), "forgotten": len(forgotten), "total": len(new) + len(forgotten)},
+            "counts": _counts(new, forgotten),
         }
 
 
@@ -262,6 +381,8 @@ def mutate(store, *, user_id, catalog, action, session_id, **body):
         if pack.pack_id != row.pack_id or pack.storage_key != row.language:
             raise SwipeError(409, "pack_changed")
         state = json.loads(row.state_json)
+        words = catalog.words(pack)
+        _restored_cards(catalog, user, pack, row, state, words, require_snapshot=False)
         if action == "complete":
             if state["queue"]:
                 raise SwipeError(409)
@@ -270,22 +391,15 @@ def mutate(store, *, user_id, catalog, action, session_id, **body):
                 profile.sessions += 1
                 _xp(profile, 25, now)
                 row.completed_at = now
-                session.add(AnalyticsEvent(
-                    event_id=str(uuid4()), telegram_user_id=user_id,
-                    event_name="block_completed", source="miniapp", session_id=row.session_id,
-                    properties_json=_encode({"pack_id": pack.pack_id, "language": pack.target_language,
-                        "mode": state["mode"], "word_count": len(json.loads(row.initial_indices_json)),
-                        "correct_count": response["known"], "wrong_count": response["again"]}),
-                    occurred_at=now,
-                ))
+                _event(session, row, state, pack, "block_completed", now,
+                       correct_count=response["known"], wrong_count=response["again"])
+                profile.updated_at = now
             return {"completed": True, "reviewed": response["reviewed"], "known": response["known"],
                 "again": response["again"], "earned_xp": response["known"] * 10 + response["again"] * 2 + 25}
-        if row.completed_at is not None:
+        if row.completed_at is not None and action != "undo":
             raise SwipeError(409, "session_completed")
         oid = body["operation_id"]
         operation = state["operations"].get(oid)
-        words = catalog.words(pack)
-        _require_current_content(row, state, words)
         if action == "rate":
             index, knew = body["word_index"], body["knew"]
             if index >= len(words):
@@ -305,6 +419,15 @@ def mutate(store, *, user_id, catalog, action, session_id, **body):
                 raise SwipeError(409)
             if now - _aware(datetime.fromisoformat(operation["rated_at"])) > timedelta(minutes=10):
                 raise SwipeError(409, "undo_expired")
+            if row.completed_at is not None:
+                newer = session.scalar(select(MiniAppSwipeSession.session_id).where(
+                    MiniAppSwipeSession.telegram_user_id == user_id,
+                    MiniAppSwipeSession.pack_id == row.pack_id,
+                    MiniAppSwipeSession.session_id != row.session_id,
+                    MiniAppSwipeSession.created_at >= row.created_at,
+                ).limit(1))
+                if newer is not None:
+                    raise SwipeError(409, "newer_session_started")
             index, knew = operation["word_index"], operation["knew"]
         word = session.scalar(select(WordProgress).where(
             WordProgress.telegram_user_id == user_id, WordProgress.language == row.language,
@@ -313,6 +436,20 @@ def mutate(store, *, user_id, catalog, action, session_id, **body):
         if action == "undo":
             if _snapshot(word) != operation["after"]:
                 raise SwipeError(409, "progress_changed")
+            if row.completed_at is not None:
+                completion = session.scalar(select(AnalyticsEvent).where(
+                    AnalyticsEvent.telegram_user_id == user_id,
+                    AnalyticsEvent.session_id == row.session_id,
+                    AnalyticsEvent.event_name == "block_completed",
+                ).with_for_update())
+                if completion is None:
+                    raise SwipeError(409, "completion_unavailable")
+                profile.sessions -= 1
+                profile.xp -= 25
+                if profile.today_date == _aware(row.completed_at).date().isoformat():
+                    profile.today_xp -= 25
+                completion.event_name = "swipe_completion_undone"
+                row.completed_at = None
             prior = operation["before"]
             if prior is None:
                 session.delete(word)

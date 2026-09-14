@@ -330,13 +330,29 @@ class MiniAppSwipeV1ApiTest(unittest.TestCase):
         self.assertEqual(replay.get_json(), response.get_json())
         self.assertEqual(self.profile(), before)
         self.assertEqual(self.rate(deck, True).status_code, 409)
-        self.assertEqual(self.post("undo", {"session_id": deck["session_id"], "operation_id": final["undo_operation_id"]}).status_code, 409)
         with self.store.Session() as session:
             events = session.scalars(select(AnalyticsEvent).where(AnalyticsEvent.telegram_user_id == USER_ID, AnalyticsEvent.event_name == "block_completed")).all()
             self.assertEqual(len(events), 1)
             self.assertEqual(events[0].source, "miniapp")
             properties = json.loads(events[0].properties_json)
             self.assertFalse({"target", "meaning", "term", "message", "answer", "user_id", "telegram_user_id"} & set(properties))
+        # V2 permits correction of the final answer after completion. Keep the
+        # first answer and daily bonus, reversing only the last rating and block.
+        undo_body = {"session_id": deck["session_id"], "operation_id": final["undo_operation_id"]}
+        undo = self.post("undo", undo_body)
+        self.assertEqual(undo.status_code, 200, undo.get_json())
+        self.assertEqual(undo.get_json()["queue"], [deck["queue"][-1]])
+        self.assertEqual((undo.get_json()["reviewed"], undo.get_json()["known"], undo.get_json()["again"]), (1, 1, 0))
+        corrected = self.profile()
+        self.assertEqual((corrected["sessions"], corrected["xp"], corrected["today_xp"], corrected["total_correct"]), (0, 25, 25, 1))
+        self.assertEqual(self.word_state(deck["queue"][0])["correct_count"], 1)
+        self.assertIsNone(self.word_state(deck["queue"][-1]))
+        self.assertEqual(self.post("undo", undo_body).get_json(), undo.get_json())
+        self.assertEqual(self.profile(), corrected)
+        with self.store.Session() as session:
+            names = session.scalars(select(AnalyticsEvent.event_name).where(AnalyticsEvent.telegram_user_id == USER_ID)).all()
+            self.assertEqual(names.count("block_completed"), 0)
+            self.assertEqual(names.count("swipe_completion_undone"), 1)
 
     def test_ec1_empty_pool_has_no_session_or_xp(self):
         self.only_new(0)

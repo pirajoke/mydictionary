@@ -244,7 +244,7 @@ class MiniAppDashboardDesignV1ContractTest(unittest.TestCase):
             set(re.findall(r'data-action=["\']([^"\']+)["\']', self.html)),
             {
                 "continue", "share", "ai", "lang", "settings", "privacy",
-                "add_words", "practice_custom",
+                "add_words", "practice_custom", "review", "words",
             },
         )
         self.assertIn('aria-live="polite"', self.html)
