@@ -41,14 +41,14 @@ class LocaleContractTest(unittest.TestCase):
         self.assertTrue(french.startswith("Bonjour, Marc"))
         self.assertEqual(
             bot.start_keyboard("fr").inline_keyboard[0][0].text,
-            "▶️ Leçon du jour",
+            "▶️ Commencer les cartes",
         )
 
         japanese = render_start_text(BOT_PROFILE_DEFAULTS, "Aki", locale="ja")
         self.assertTrue(japanese.startswith("Akiさん、こんにちは"))
         self.assertEqual(
             bot.start_keyboard("ja").inline_keyboard[0][0].text,
-            "▶️ 今日のレッスン",
+            "▶️ カードを始める",
         )
 
     def test_topic_start_lesson_action_is_localized_in_every_interface_locale(self):
@@ -285,7 +285,7 @@ class MirrorLocaleContractTest(unittest.TestCase):
         )
         self.assertEqual(
             bot.start_keyboard().inline_keyboard[0][0].text,
-            "▶️ Урок на сегодня",
+            "▶️ Начать карточки",
         )
 
 

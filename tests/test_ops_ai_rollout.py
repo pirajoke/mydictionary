@@ -18,7 +18,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "ai_tutor_eval.json"
-EXPECTED_MIGRATION = "0023_miniapp_swipe_sessions"
+EXPECTED_MIGRATION = "0024_bot_learning_sessions"
 
 
 def parse_environment(rendered: str) -> dict[str, str]:

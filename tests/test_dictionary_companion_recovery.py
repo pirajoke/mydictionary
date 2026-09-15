@@ -98,7 +98,7 @@ class DictionaryCompanionRecoveryTest(unittest.IsolatedAsyncioTestCase):
     async def test_ac2_dictionary_remains_routable_while_language_stays_visible(self):
         for locale in INTERFACE_LOCALES:
             label = f"📖 {translate('command_dictionary', locale)}"
-            language_label = f"🌍 {translate('command_lang', locale)}"
+            language_label = bot.quick_action_label("lang", locale)
             keyboard = bot.get_quick_actions_keyboard(locale)
             self.assertEqual(len([button for row in keyboard.keyboard for button in row]), 5)
             self.assertEqual(

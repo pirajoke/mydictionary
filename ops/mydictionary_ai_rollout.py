@@ -22,7 +22,7 @@ from mydictionary.economics import (
 )
 
 
-EXPECTED_MIGRATION = "0023_miniapp_swipe_sessions"
+EXPECTED_MIGRATION = "0024_bot_learning_sessions"
 EXPECTED_LANGUAGES = {"en", "fr", "de", "ja", "ar", "zh", "ru", "es"}
 EXPECTED_RATES = {
     "AI_INPUT_USD_PER_MILLION": Decimal("0.20"),

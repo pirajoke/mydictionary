@@ -25,7 +25,7 @@ def _quick_labels(locale):
     return [
         bot.quick_action_label("continue", locale),
         bot.quick_action_label("review", locale),
-        bot.quick_action_label("mode", locale),
+        bot.quick_action_label("add", locale),
         bot.quick_action_label("words", locale),
         bot.quick_action_label("lang", locale),
     ]
@@ -115,8 +115,8 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(pack.label, labels)
 
     async def test_ac3_start_installs_quick_actions_without_language_tiles(self):
-        message = SimpleNamespace(reply_text=AsyncMock())
-        context = SimpleNamespace()
+        message = SimpleNamespace(reply_text=AsyncMock(), reply_photo=AsyncMock())
+        context = SimpleNamespace(user_data={"interface_locale": "ru"})
 
         with (
             patch.object(bot, "WELCOME_BANNER_PATH") as banner,
@@ -131,11 +131,16 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                 locale="ru",
             )
 
-        markup = message.reply_text.await_args.kwargs["reply_markup"]
+        self.assertEqual(message.reply_text.await_count, 2)
+        message.reply_photo.assert_not_awaited()
+        markup = message.reply_text.await_args_list[0].kwargs["reply_markup"]
         self.assertEqual(
             [button.text for button in _buttons(markup)],
             _quick_labels("ru"),
         )
+        inline = _inline_buttons(message.reply_text.await_args_list[1].kwargs["reply_markup"])
+        self.assertEqual(inline[0].callback_data, "start:daily")
+        self.assertFalse(any(button.web_app for button in inline))
 
     def test_ac4_quick_label_router_is_exact_and_registered_before_mirror(self):
         resolver = getattr(bot, "quick_action_for_text", None)
@@ -324,12 +329,20 @@ class PersistentBlockCardsContractTest(unittest.IsolatedAsyncioTestCase):
                 bot.build_block_quiz_keyboard(user_data, user_data["block_indices"][0])
             )
         }
+        summary_markup = bot.build_block_summary_keyboard(user_data)
         summary_callbacks = {
             button.callback_data
-            for button in _inline_buttons(bot.build_block_summary_keyboard(user_data))
+            for button in _inline_buttons(summary_markup)
+        }
+        more_callbacks = {
+            button.callback_data
+            for button in _inline_buttons(bot.build_block_more_keyboard(user_data))
         }
         self.assertIn(f"bstudy:{session_id}", quiz_callbacks)
-        self.assertIn(f"bstudy:{session_id}", summary_callbacks)
+        self.assertLessEqual(len(_inline_buttons(summary_markup)), 3)
+        self.assertIn(f"bmore:{session_id}", summary_callbacks)
+        self.assertNotIn(f"bstudy:{session_id}", summary_callbacks)
+        self.assertIn(f"bstudy:{session_id}", more_callbacks)
 
     async def test_ac6_written_question_offers_return_to_cards(self):
         user_data, _indices = self._active_block("type")
@@ -390,6 +403,8 @@ class PersistentBlockCardsContractTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(user_data["block_all_indices"], indices)
         self.assertEqual(user_data["block_indices"], indices)
+        self.assertEqual(user_data["block_pos"], 2)
+        self.assertEqual(user_data["block_correct"], 1)
         self.assertIsNone(user_data["block_mode"])
         self.assertNotEqual(user_data["block_session"], old_session)
         mark_correct.assert_not_called()

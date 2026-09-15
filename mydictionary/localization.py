@@ -4382,6 +4382,81 @@ for _locale, _messages in _CUSTOM_VOCABULARY_LANGUAGE_COPY.items():
     )
 
 
+_NATIVE_CHAT_COPY = {
+    "en": (
+        "Add words", "My words", "Language", "Swipe cards", "▶️ Start cards",
+        "Hi, {name}! 🦊\n🌍 {language} · 🔁 {due} words due for review",
+        "Your lesson is saved: card {position} of {total}.", "What would you like to do?",
+        "📚 {language}\nChoose the words you want to practise.",
+        "📚 Curated topics", "🎯 Practise current words", "📖 Practise my added words",
+        "🏠 Finish / home", "More", "More ways to practise:",
+    ),
+    "fr": (
+        "Ajouter des mots", "Mes mots", "Langue", "Cartes à faire glisser", "▶️ Commencer les cartes",
+        "Bonjour, {name} ! 🦊\n🌍 {language} · 🔁 {due} mots à réviser",
+        "Votre leçon est sauvegardée : carte {position} sur {total}.", "Que voulez-vous faire ?",
+        "📚 {language}\nChoisissez les mots à pratiquer.",
+        "📚 Thèmes proposés", "🎯 Pratiquer les mots actuels", "📖 Pratiquer mes mots ajoutés",
+        "🏠 Terminer / accueil", "Plus", "D’autres façons de pratiquer :",
+    ),
+    "de": (
+        "Wörter hinzufügen", "Meine Wörter", "Sprache", "Wischkarten", "▶️ Karten starten",
+        "Hallo, {name}! 🦊\n🌍 {language} · 🔁 {due} Wörter zur Wiederholung",
+        "Deine Lektion ist gespeichert: Karte {position} von {total}.", "Was möchtest du tun?",
+        "📚 {language}\nWähle die Wörter zum Üben.",
+        "📚 Vorgegebene Themen", "🎯 Aktuelle Wörter üben", "📖 Meine hinzugefügten Wörter üben",
+        "🏠 Fertig / Startseite", "Mehr", "Weitere Möglichkeiten zum Üben:",
+    ),
+    "ja": (
+        "単語を追加", "自分の単語", "言語", "スワイプカード", "▶️ カードを始める",
+        "こんにちは、{name}！🦊\n🌍 {language} · 🔁 復習する単語：{due}語",
+        "レッスンは保存済み：{total}枚中{position}枚目。", "何をしますか？",
+        "📚 {language}\n練習する単語を選んでください。",
+        "📚 テーマ別の単語", "🎯 今の単語を練習", "📖 追加した単語を練習",
+        "🏠 終了・ホーム", "その他", "その他の練習方法：",
+    ),
+    "ar": (
+        "إضافة كلمات", "كلماتي", "اللغة", "بطاقات بالسحب", "▶️ بدء البطاقات",
+        "مرحباً، {name}! 🦊\n🌍 {language} · 🔁 {due} كلمة للمراجعة",
+        "درسك محفوظ: البطاقة {position} من {total}.", "ماذا تريد أن تفعل؟",
+        "📚 {language}\nاختر الكلمات التي تريد التدرب عليها.",
+        "📚 مواضيع مختارة", "🎯 تدريب الكلمات الحالية", "📖 تدريب كلماتي المضافة",
+        "🏠 إنهاء / الرئيسية", "المزيد", "طرق أخرى للتدرب:",
+    ),
+    "zh": (
+        "添加单词", "我的单词", "语言", "滑动卡片", "▶️ 开始卡片",
+        "你好，{name}！🦊\n🌍 {language} · 🔁 待复习：{due}个单词",
+        "课程已保存：第{position}张，共{total}张。", "你想做什么？",
+        "📚 {language}\n请选择要练习的单词。",
+        "📚 精选主题", "🎯 练习当前单词", "📖 练习我添加的单词",
+        "🏠 结束 / 首页", "更多", "更多练习方式：",
+    ),
+    "ru": (
+        "Добавить слова", "Мои слова", "Язык", "Свайп-карточки", "▶️ Начать карточки",
+        "Привет, {name}! 🦊\n🌍 {language} · 🔁 К повторению: {due} слов",
+        "Урок сохранён: карточка {position} из {total}.", "Что хочешь сделать?",
+        "📚 {language}\nВыбери слова для практики.",
+        "📚 Готовые темы", "🎯 Практика текущих слов", "📖 Практика добавленных слов",
+        "🏠 Завершить / домой", "Ещё", "Другие способы практики:",
+    ),
+    "es": (
+        "Añadir palabras", "Mis palabras", "Idioma", "Tarjetas deslizables", "▶️ Empezar tarjetas",
+        "¡Hola, {name}! 🦊\n🌍 {language} · 🔁 {due} palabras para repasar",
+        "Tu lección está guardada: tarjeta {position} de {total}.", "¿Qué quieres hacer?",
+        "📚 {language}\nElige las palabras que quieres practicar.",
+        "📚 Temas seleccionados", "🎯 Practicar palabras actuales", "📖 Practicar mis palabras añadidas",
+        "🏠 Terminar / inicio", "Más", "Más formas de practicar:",
+    ),
+}
+for _locale, _messages in _NATIVE_CHAT_COPY.items():
+    _CATALOG[_locale].update(zip((
+        "quick_add_words", "quick_my_words", "quick_language", "quick_swipe", "native_start_cards",
+        "native_home_text", "native_home_resume", "native_home_actions", "native_words_prompt",
+        "native_words_topics", "native_words_current", "native_words_custom",
+        "native_finish_home", "native_more", "native_more_prompt",
+    ), _messages))
+
+
 def normalize_locale(value: str | None, *, fallback: str = DEFAULT_INTERFACE_LOCALE) -> str:
     """Normalize Telegram language_code without guessing unsupported locales."""
     safe_fallback = fallback if fallback in INTERFACE_LOCALES else DEFAULT_INTERFACE_LOCALE

@@ -180,6 +180,26 @@ class WordProgress(Base):
     )
 
 
+class BotLearningSession(Base):
+    """Bounded native Telegram block state, without cards or learner answers."""
+
+    __tablename__ = "bot_learning_sessions"
+
+    telegram_user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.telegram_user_id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    pack_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(16), nullable=False)
+    state_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False, index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+
 class MiniAppSwipeSession(Base):
     """Short-lived curated practice state; never stores vocabulary text."""
 

@@ -309,7 +309,9 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch.object(bot, "send_pronunciation", side_effect=send_voice):
-            await bot.learn_play_cb(update, context)
+            # Exercise text/audio ordering for this in-memory card fixture;
+            # authenticated durable restoration has separate SQLite coverage.
+            await bot.learn_play_cb.__wrapped__(update, context)
 
         self.assertEqual([event[0] for event in events], ["text", "voice"])
         self.assertEqual(
@@ -803,13 +805,19 @@ class FrenchLearningBlockLocaleTest(unittest.IsolatedAsyncioTestCase):
         )
         context = SimpleNamespace(user_data=user_data)
 
+        async def accept_answer(*args, on_accepted, **kwargs):
+            await on_accepted()
+            return True
+
         with (
             patch.object(bot, "active_content_pack", return_value=self.pack),
             patch.object(bot, "send_pronunciation", new=AsyncMock()),
-            patch.object(bot, "block_advance", new=AsyncMock()),
+            patch.object(bot, "block_advance", new=AsyncMock(side_effect=accept_answer)) as advance,
         ):
             await bot.handle_type_answer.__wrapped__(update, context)
 
+        advance.assert_awaited_once()
+        self.assertEqual(advance.await_args.args, (message, context, 10, False))
         text = message.reply_text.await_args.args[0]
         self.assertIn("Votre réponse : _mauvaise réponse_", text)
         self.assertNotIn("Твой ответ", text)
@@ -849,6 +857,7 @@ class FrenchLearningBlockLocaleTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "VOICE_SETTINGS", SimpleNamespace(enabled=True)),
         ):
             await bot.block_summary(query, context)
+            more_markup = bot.build_block_more_keyboard(user_data)
 
         payload = query.edit_message_text.await_args
         text = payload.args[0]
@@ -863,17 +872,20 @@ class FrenchLearningBlockLocaleTest(unittest.IsolatedAsyncioTestCase):
             for row in payload.kwargs["reply_markup"].inline_keyboard
             for button in row
         ]
+        self.assertEqual(button_texts, ["🔄 Revoir les erreurs", "🏠 Terminer / accueil", "Plus"])
+        self.assertEqual(len(button_texts), 3)
+        self.assertEqual(payload.kwargs["reply_markup"].inline_keyboard[-1][-1].callback_data, f"bmore:{user_data['block_session']}")
+        more_texts = [button.text for row in more_markup.inline_keyboard for button in row]
         for expected in (
-            "🔄 Revoir les erreurs",
             "✨ Tuteur IA",
             "🗣 Prononciation",
             "💬 Phrases",
-            "▶️ Encore une leçon",
             "📚 Thèmes",
             "⚙️ Réglages",
         ):
-            self.assertIn(expected, button_texts)
-        combined = f"{text} {' '.join(button_texts)}"
+            self.assertIn(expected, more_texts)
+            self.assertNotIn(expected, button_texts)
+        combined = f"{text} {' '.join(button_texts + more_texts)}"
         for russian_ui in (
             "Результат",
             "Ошибки:",
@@ -985,6 +997,9 @@ class GlobalCallbackIsolationTest(unittest.IsolatedAsyncioTestCase):
 
 
 class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
+    # These fixtures isolate callback validation/mode transitions in memory.
+    # Durable auth restoration is covered by the real SQLite native-session
+    # integration tests; it must not replace this fixture's intended state.
     def setUp(self):
         bot.PROGRESS["active_lang"] = "ja"
         self.indices = list(range(10))
@@ -1087,7 +1102,7 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         update, context, query = self.make_update(f"bquiz:stale123:{idx}:1")
 
         with patch.object(bot, "block_advance", new=AsyncMock()) as advance:
-            await bot.block_quiz_cb(update, context)
+            await bot.block_quiz_cb.__wrapped__(update, context)
 
         query.answer.assert_awaited_once_with(bot.BLOCK_STALE_TEXT, show_alert=True)
         advance.assert_not_awaited()
@@ -1100,7 +1115,7 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch.object(bot, "block_advance", new=AsyncMock()) as advance:
-            await bot.block_quiz_cb(update, context)
+            await bot.block_quiz_cb.__wrapped__(update, context)
 
         query.answer.assert_awaited_once_with(bot.BLOCK_STALE_TEXT, show_alert=True)
         advance.assert_not_awaited()
@@ -1113,7 +1128,7 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch.object(bot, "block_advance", new=AsyncMock()) as advance:
-            await bot.block_quiz_cb(update, context)
+            await bot.block_quiz_cb.__wrapped__(update, context)
 
         query.answer.assert_awaited_once_with()
         advance.assert_awaited_once_with(query, context, idx, True)
@@ -1128,7 +1143,7 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch.object(bot, "block_send_question", new=AsyncMock()) as send:
-            await bot.block_mode_cb(update, context)
+            await bot.block_mode_cb.__wrapped__(update, context)
 
         query.answer.assert_awaited_once_with()
         self.assertNotEqual(user_data["block_session"], previous_session)
@@ -1142,7 +1157,7 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
         update, context, query = self.make_update(f"bretry:{previous_session}")
 
         with patch.object(bot, "block_send_question", new=AsyncMock()) as send:
-            await bot.block_retry_cb(update, context)
+            await bot.block_retry_cb.__wrapped__(update, context)
 
         query.answer.assert_awaited_once_with()
         self.assertEqual(

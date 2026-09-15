@@ -98,17 +98,21 @@ class PersistentLanguageQuickActionFeedbackTest(unittest.IsolatedAsyncioTestCase
         ):
             banner.exists.return_value = False
             for locale in sorted(INTERFACE_LOCALES):
-                message = SimpleNamespace(reply_text=AsyncMock())
+                message = SimpleNamespace(reply_text=AsyncMock(), reply_photo=AsyncMock())
                 await bot.send_start_message(
                     message,
-                    SimpleNamespace(),
+                    SimpleNamespace(user_data={"interface_locale": locale}),
                     first_name="Learner",
                     locale=locale,
                 )
                 labels = keyboard_labels(
-                    message.reply_text.await_args.kwargs["reply_markup"]
+                    message.reply_text.await_args_list[0].kwargs["reply_markup"]
                 )
-                expected = f"🌍 {translate('command_lang', locale)}"
+                self.assertEqual(message.reply_text.await_count, 2)
+                message.reply_photo.assert_not_awaited()
+                inline = message.reply_text.await_args_list[1].kwargs["reply_markup"].inline_keyboard
+                self.assertFalse(any(button.web_app for row in inline for button in row))
+                expected = bot.quick_action_label("lang", locale)
                 if labels.count(expected) != 1:
                     missing.append((locale, expected, labels))
                 if bot.quick_action_for_text(expected) not in {"lang", "language"}:
