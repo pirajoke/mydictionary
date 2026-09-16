@@ -9030,6 +9030,7 @@ async def block_advance(
     activate_block_language(ud)
     if current_block_index(ud) != idx:
         return False
+    answered_mode = block_effective_mode(ud, idx)
     runtime = _ACTIVE_RUNTIME.get()
     if runtime is not None and isinstance(runtime.store, DatabaseStore):
         try:
@@ -9062,19 +9063,25 @@ async def block_advance(
     if on_accepted is not None:
         await on_accepted()
 
-    if ud["block_pos"] >= len(ud["block_indices"]):
-        # For type mode, summary must be sent as new message
-        if hasattr(query_or_msg, 'edit_message_text'):
-            await block_summary(query_or_msg, context)
-        else:
-            await block_summary_msg(query_or_msg, context)
-        return
+    continuation_target = query_or_msg
+    if answered_mode == "quiz" and hasattr(query_or_msg, "edit_message_text"):
+        marker = "✅" if correct else "❌"
+        await query_or_msg.edit_message_text(
+            f"{marker}\n{format_word_details(idx, learning_card_locale(ud))}",
+            reply_markup=None,
+            parse_mode="Markdown",
+        )
+        continuation_target = query_or_msg.message
 
-    # Send next question — need a query object for edit_message_text
-    if hasattr(query_or_msg, 'edit_message_text'):
-        await block_send_question(query_or_msg, context)
+    block_complete = ud["block_pos"] >= len(ud["block_indices"])
+    can_edit_message = hasattr(continuation_target, "edit_message_text")
+    if block_complete:
+        continuation = block_summary if can_edit_message else block_summary_msg
     else:
-        await block_send_question_msg(query_or_msg, context)
+        continuation = block_send_question if can_edit_message else block_send_question_msg
+    await continuation(continuation_target, context)
+    if block_complete:
+        return
     return True
 
 

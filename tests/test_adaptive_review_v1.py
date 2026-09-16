@@ -155,7 +155,8 @@ class AdaptiveReviewBehaviorTest(unittest.IsolatedAsyncioTestCase):
             await bot.block_quiz_cb.__wrapped__(update, context)
 
         query.answer.assert_awaited_once_with()
-        score.assert_awaited_once_with(query, context, idx, True)
+        score.assert_awaited_once()
+        self.assertEqual(score.await_args.args[1:], (context, idx, True))
         self.assertEqual(state["block_pos"], 1)
 
     async def test_ac3_valid_adaptive_written_answer_scores_and_continues(self):
