@@ -127,4 +127,3 @@ es tut mir leid — простите/мне жаль; Medizin — значени
 | 98 / cold | kalt → холодный | Das Wasser ist mir zu kalt.<br>Эта вода для меня слишком холодная. | adjective | холодный | ОЖИДАЕТ |
 | 99 / happy | glücklich → счастливый | Ich bin glücklich, dass du hier bist.<br>Я счастлив, что ты здесь. | adjective | счастливый | ОЖИДАЕТ |
 | 100 / sad | traurig → грустный | Sie ist traurig, weil ihr Freund geht.<br>Ей грустно, потому что её друг уходит. | adjective | грустный; печальный | ОЖИДАЕТ |
-
