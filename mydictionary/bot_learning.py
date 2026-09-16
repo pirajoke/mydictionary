@@ -66,7 +66,7 @@ def _bounded(state, pack, words):
             or any(type(index) is not int or index not in indices[:pos] for index in wrong)
             or correct + len(wrong) != pos):
             raise ValueError
-        if result.get("block_mode") not in {None, "flash", "quiz", "type"}:
+        if result.get("block_mode") not in {None, "flash", "quiz", "type", "adaptive"}:
             raise ValueError
         for key in BOOLEAN_KEYS:
             if key in result and type(result[key]) is not bool:

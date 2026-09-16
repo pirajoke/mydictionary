@@ -5635,7 +5635,7 @@ async def mirror_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     active_type_answer = type_idx is not None and (
         not context.user_data.get("block_typing")
         or (
-            context.user_data.get("block_mode") == "type"
+            context.user_data.get("block_mode") in {"type", "adaptive"}
             and bool(context.user_data.get("block_session"))
             and current_block_index(context.user_data) == type_idx
         )
@@ -7822,7 +7822,8 @@ async def start_home_lesson(
         pack.pack_id,
         lesson_kind=lesson_kind,
     )
-    start_block_attempt(context.user_data, "flash")
+    mode = "adaptive" if lesson_kind == "review" else "flash"
+    start_block_attempt(context.user_data, mode)
     event_properties = {
         "pack_id": pack.pack_id,
         "language": pack.target_language,
@@ -7843,7 +7844,7 @@ async def start_home_lesson(
     )
     record_product_event(
         "block_mode_started",
-        properties={**event_properties, "mode": "flash"},
+        properties={**event_properties, "mode": mode},
         session_id=context.user_data["block_session"],
         source=source,
     )
@@ -7916,7 +7917,8 @@ def topic_title(topic: str | None, *, locale: str = "ru") -> str:
 
 
 BLOCK_STALE_TEXT = "Эта кнопка устарела. Используй последнее сообщение блока."
-BLOCK_MODES = {"quiz", "type", "flash"}
+BLOCK_SELECTABLE_MODES = {"quiz", "type", "flash"}
+BLOCK_MODES = BLOCK_SELECTABLE_MODES | {"adaptive"}
 
 
 def new_block_session_id() -> str:
@@ -8010,6 +8012,12 @@ def current_block_index(user_data: dict) -> int | None:
     return indices[pos]
 
 
+def block_effective_mode(user_data: dict, idx: int) -> str | None:
+    """Resolve the exercise shown for one word without changing attempt mode."""
+    mode = user_data.get("block_mode")
+    return adaptive_mode(idx) if mode == "adaptive" else mode
+
+
 def block_is_complete(user_data: dict) -> bool:
     indices = user_data.get("block_indices", [])
     return bool(indices) and user_data.get("block_pos", 0) >= len(indices)
@@ -8067,7 +8075,11 @@ def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup
     correct_meaning = primary_meaning_for_word(W()[idx])
     session_id = user_data["block_session"]
     buttons = []
-    for option in build_block_quiz_options(user_data["block_all_indices"], idx):
+    if user_data.get("block_mode") == "adaptive":
+        options, _correct_position = build_quiz_options(idx)
+    else:
+        options = build_block_quiz_options(user_data["block_all_indices"], idx)
+    for option in options:
         is_right = "1" if option == correct_meaning else "0"
         callback_data = f"bquiz:{session_id}:{idx}:{is_right}"
         buttons.append([InlineKeyboardButton(option, callback_data=callback_data)])
@@ -8907,7 +8919,7 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await reject_block_callback(query)
         return
     ud = context.user_data
-    if mode not in BLOCK_MODES:
+    if mode not in BLOCK_SELECTABLE_MODES:
         await reject_block_callback(query)
         return
     if not await validate_block_callback(query, ud, session_id):
@@ -8965,13 +8977,12 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
         return
 
     idx = indices[pos]
-    mode = ud["block_mode"]
+    mode = block_effective_mode(ud, idx)
     locale = learning_card_locale(ud)
     progress_text = f"({pos + 1}/{len(indices)})"
     track_card_shown(ud, idx)
-    if mode == "type":
-        ud["type_idx"] = idx
-        ud["block_typing"] = True
+    ud["type_idx"] = idx if mode == "type" else None
+    ud["block_typing"] = mode == "type"
     if not persist_native_block(context):
         await query.message.reply_text(BLOCK_STALE_TEXT)
         return
@@ -8986,8 +8997,6 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
         await send_pronunciation(query.message.chat_id, idx, context)
 
     elif mode == "type":
-        ud["type_idx"] = idx
-        ud["block_typing"] = True
         await query.edit_message_text(
             f"{progress_text} {format_word_label(idx)}\n\n"
             f"{translate('block_written_prompt', locale)}",
@@ -9081,13 +9090,12 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
         return
 
     idx = indices[pos]
-    mode = ud["block_mode"]
+    mode = block_effective_mode(ud, idx)
     locale = learning_card_locale(ud)
     progress_text = f"({pos + 1}/{len(indices)})"
     track_card_shown(ud, idx)
-    if mode == "type":
-        ud["type_idx"] = idx
-        ud["block_typing"] = True
+    ud["type_idx"] = idx if mode == "type" else None
+    ud["block_typing"] = mode == "type"
     if not persist_native_block(context):
         await message.reply_text(BLOCK_STALE_TEXT)
         return
@@ -9102,8 +9110,6 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
         await send_pronunciation(message.chat_id, idx, context)
 
     elif mode == "type":
-        ud["type_idx"] = idx
-        ud["block_typing"] = True
         await message.reply_text(
             f"{progress_text} {format_word_label(idx)}\n\n"
             f"{translate('block_written_prompt', locale)}",
@@ -9340,11 +9346,19 @@ async def block_quiz_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if correct_text not in {"0", "1"}:
         await reject_block_callback(query)
         return
+    mode = context.user_data.get("block_mode")
+    quiz_is_active = mode == "quiz" or (
+        mode == "adaptive"
+        and current_block_index(context.user_data) == idx
+        and block_effective_mode(context.user_data, idx) == "quiz"
+    )
+    if not quiz_is_active:
+        await reject_block_callback(query)
+        return
     if not await validate_block_callback(
         query,
         context.user_data,
         session_id,
-        mode="quiz",
         current_idx=idx,
     ):
         return
