@@ -583,6 +583,22 @@ for _locale, _values in _CUSTOM_VOCABULARY_COPY.items():
         "custom_words_empty", "custom_words_no_transcription",
     ), _values))
 
+_WORD_LIBRARY_COPY = {
+    "en": ("Word library", "Previous", "Next", "Page {current} of {total}"),
+    "fr": ("Bibliothèque de mots", "Précédent", "Suivant", "Page {current} sur {total}"),
+    "de": ("Wortbibliothek", "Zurück", "Weiter", "Seite {current} von {total}"),
+    "ja": ("単語ライブラリ", "前へ", "次へ", "{current} / {total} ページ"),
+    "ar": ("مكتبة الكلمات", "السابق", "التالي", "الصفحة {current} من {total}"),
+    "zh": ("单词库", "上一页", "下一页", "第 {current} 页，共 {total} 页"),
+    "ru": ("Библиотека слов", "Назад", "Дальше", "Страница {current} из {total}"),
+    "es": ("Biblioteca de palabras", "Anterior", "Siguiente", "Página {current} de {total}"),
+}
+for _locale, _values in _WORD_LIBRARY_COPY.items():
+    MINIAPP_COPY[_locale].update(zip((
+        "word_library_title", "word_library_previous",
+        "word_library_next", "word_library_page",
+    ), _values))
+
 _LANGUAGE_SWITCH_COPY = {
     "en": ("Switching dictionary…", "Could not switch dictionary.", "Try again"),
     "fr": ("Changement de dictionnaire…", "Impossible de changer de dictionnaire.", "Réessayer"),

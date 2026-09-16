@@ -50,8 +50,13 @@
   const PROFILE_REORDER_HOLD_MS = 420;
   const PROFILE_REORDER_MOVE_TOLERANCE_PX = 10;
   const PROFILE_REORDER_NATIVE_CONTROL_SELECTOR = "button, a, input, select, textarea, summary";
+  const WORD_LIBRARY_PAGE_SIZE = 6;
   let profileReorderState = null;
   let profileReorderSuppressClick = false;
+  let wordLibraryInitialized = false;
+  let wordLibraryTab = "custom";
+  const wordLibraryPage = {custom: 0, tracked: 0};
+  const wordLibraryItems = {custom: [], tracked: []};
 
   const node = (id) => document.getElementById(id);
   const text = (element, value) => { element.textContent = String(value ?? ""); };
@@ -550,7 +555,7 @@
     }
   }
 
-  function addWord(word, copy) {
+  function addWord(word, copy, container = node("word-list")) {
     const card = document.createElement("article");
     card.className = "word-card";
     card.classList.add("dashboard-row");
@@ -573,10 +578,10 @@
     text(attempts, `${copy.attempts_correct}: ${word.correct} · ${copy.attempts_wrong}: ${word.wrong}`);
     main.append(header, meaning);
     card.append(main, attempts);
-    node("word-list").append(card);
+    container.append(card);
   }
 
-  function addCustomWord(word, copy) {
+  function addCustomWord(word, copy, container = node("custom-word-list")) {
     const card = document.createElement("article");
     card.className = "word-card custom-word-card dashboard-row";
     const main = document.createElement("div");
@@ -598,7 +603,59 @@
     text(meaning, word.meaning);
     main.append(header, transcription, meaning);
     card.append(main);
-    node("custom-word-list").append(card);
+    container.append(card);
+  }
+
+  function renderWordLibraryPage(kind, copy) {
+    const isCustom = kind === "custom";
+    const items = wordLibraryItems[kind];
+    const list = node(isCustom ? "custom-word-list" : "word-list");
+    const empty = node(isCustom ? "empty-custom-words" : "empty-words");
+    const pager = node(isCustom ? "custom-word-pager" : "tracked-word-pager");
+    const previous = node(isCustom ? "custom-word-page-previous" : "tracked-word-page-previous");
+    const next = node(isCustom ? "custom-word-page-next" : "tracked-word-page-next");
+    const status = node(isCustom ? "custom-word-page-status" : "tracked-word-page-status");
+    const totalPages = Math.max(1, Math.ceil(items.length / WORD_LIBRARY_PAGE_SIZE));
+    const currentPage = Math.min(wordLibraryPage[kind], totalPages - 1);
+    const start = currentPage * WORD_LIBRARY_PAGE_SIZE;
+
+    wordLibraryPage[kind] = currentPage;
+    list.replaceChildren();
+    items.slice(start, start + WORD_LIBRARY_PAGE_SIZE).forEach((word) => {
+      if (isCustom) addCustomWord(word, copy, list);
+      else addWord(word, copy, list);
+    });
+    empty.hidden = items.length !== 0;
+    pager.hidden = items.length <= WORD_LIBRARY_PAGE_SIZE;
+    previous.disabled = currentPage === 0;
+    next.disabled = currentPage >= totalPages - 1;
+    text(
+      status,
+      copy.word_library_page
+        .replace("{current}", String(currentPage + 1))
+        .replace("{total}", String(totalPages))
+    );
+  }
+
+  function setWordLibraryTab(kind, focus = false) {
+    if (!Object.prototype.hasOwnProperty.call(wordLibraryItems, kind)) return;
+    wordLibraryTab = kind;
+    document.querySelectorAll("[data-word-library-tab]").forEach((tab) => {
+      const selected = tab.dataset.wordLibraryTab === kind;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      if (selected && focus) tab.focus();
+    });
+    document.querySelectorAll("[data-word-library-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.wordLibraryPanel !== kind;
+    });
+  }
+
+  function moveWordLibraryPage(kind, offset) {
+    if (!payload) return;
+    const totalPages = Math.max(1, Math.ceil(wordLibraryItems[kind].length / WORD_LIBRARY_PAGE_SIZE));
+    wordLibraryPage[kind] = Math.max(0, Math.min(totalPages - 1, wordLibraryPage[kind] + offset));
+    renderWordLibraryPage(kind, payload.copy);
   }
 
   function addInterfaceLocaleSetting(container, data, copy) {
@@ -946,20 +1003,23 @@
       metric(copy.metric_tracked_words, progress.tracked_words)
     );
 
-    node("word-list").replaceChildren();
     node("word-summary").replaceChildren(
       summaryStat(copy.metric_tracked_words, progress.tracked_words, "tracked"),
       summaryStat(copy.metric_learned_words, data.words.filter((word) => word.learned).length, "learned"),
       summaryStat(copy.word_review, data.words.filter((word) => word.due).length, "due")
     );
-    data.words.forEach((word) => addWord(word, copy));
-    node("empty-words").hidden = data.words.length !== 0;
-
-    node("custom-word-list").replaceChildren();
     const customWords = Array.isArray(data.custom_words) ? data.custom_words : [];
+    wordLibraryItems.custom = customWords;
+    wordLibraryItems.tracked = data.words;
     text(node("custom-word-count"), customWords.length);
-    customWords.forEach((word) => addCustomWord(word, copy));
-    node("empty-custom-words").hidden = customWords.length !== 0;
+    text(node("tracked-word-count"), data.words.length);
+    renderWordLibraryPage("custom", copy);
+    renderWordLibraryPage("tracked", copy);
+    if (!wordLibraryInitialized) {
+      wordLibraryTab = customWords.length || data.words.length === 0 ? "custom" : "tracked";
+      wordLibraryInitialized = true;
+    }
+    setWordLibraryTab(wordLibraryTab);
 
     text(node("wallet-available"), data.credits.available);
     node("credit-summary").replaceChildren(
@@ -1244,6 +1304,27 @@
   node("retry-button").addEventListener("click", load);
   node("calendar-previous").addEventListener("click", () => moveCalendar(-1));
   node("calendar-next").addEventListener("click", () => moveCalendar(1));
+  document.querySelectorAll("[data-word-library-tab]").forEach((tab) => {
+    tab.addEventListener("click", () => setWordLibraryTab(tab.dataset.wordLibraryTab));
+    tab.addEventListener("keydown", (event) => {
+      const tabs = Array.from(document.querySelectorAll("[data-word-library-tab]"));
+      const current = tabs.indexOf(tab);
+      let target = -1;
+      if (event.key === "ArrowLeft" || event.key === "ArrowUp") target = (current - 1 + tabs.length) % tabs.length;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") target = (current + 1) % tabs.length;
+      if (event.key === "Home") target = 0;
+      if (event.key === "End") target = tabs.length - 1;
+      if (target < 0) return;
+      event.preventDefault();
+      setWordLibraryTab(tabs[target].dataset.wordLibraryTab, true);
+    });
+  });
+  document.querySelectorAll("[data-word-library-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const offset = button.dataset.pageDirection === "previous" ? -1 : 1;
+      moveWordLibraryPage(button.dataset.wordLibraryPage, offset);
+    });
+  });
   const profileLayout = node("profile-layout");
   profileLayout.addEventListener("pointerdown", handleProfilePointerDown);
   profileLayout.addEventListener("pointermove", handleProfilePointerMove);

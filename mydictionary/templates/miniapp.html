@@ -177,21 +177,43 @@
             <button class="custom-vocabulary-practice dashboard-action" type="button" data-action="practice_custom"><span aria-hidden="true">▶</span><span data-i18n="custom_words_practice"></span></button>
           </div>
         </section>
-        <section class="custom-vocabulary-library" aria-labelledby="custom-word-list-title">
-          <div class="custom-word-list-heading"><h2 id="custom-word-list-title" data-i18n="custom_words_saved"></h2><strong id="custom-word-count">0</strong></div>
-          <div id="custom-word-list" class="word-list dashboard-list"></div>
-          <p id="empty-custom-words" class="custom-words-empty" data-i18n="custom_words_empty"></p>
-        </section>
         <div class="dictionary-entry">
           <p class="device-dictionary-note" data-i18n="device_dictionary_note"></p>
           <button class="primary-action dashboard-action" type="button" data-open-dictionary data-i18n="dictionary_open"></button>
           <button class="dashboard-action" type="button" data-download-dictionary data-i18n="dictionary_download"></button>
           <p data-i18n="dictionary_hint"></p>
         </div>
-        <h2 class="tracked-heading" data-i18n="dictionary_tracked"></h2>
-        <div id="word-summary" class="word-overview" role="list"></div>
-        <div id="word-list" class="word-list dashboard-list"></div>
-        <div id="empty-words" class="state-card dashboard-state empty" data-ui-state="empty" role="status" hidden><p data-i18n="empty_words"></p><button class="dashboard-action" type="button" data-action="continue" data-i18n="start_lesson"></button></div>
+        <section class="word-library" data-i18n-aria-label="word_library_title">
+          <div class="word-library-tabs" role="tablist" data-i18n-aria-label="word_library_title">
+            <button id="word-library-custom-tab" class="word-library-tab" type="button" role="tab" aria-selected="true" aria-controls="word-library-custom-panel" tabindex="0" data-word-library-tab="custom">
+              <span data-i18n="custom_words_saved"></span>
+              <strong id="custom-word-count">0</strong>
+            </button>
+            <button id="word-library-tracked-tab" class="word-library-tab" type="button" role="tab" aria-selected="false" aria-controls="word-library-tracked-panel" tabindex="-1" data-word-library-tab="tracked">
+              <span data-i18n="dictionary_tracked"></span>
+              <strong id="tracked-word-count">0</strong>
+            </button>
+          </div>
+          <section id="word-library-custom-panel" class="word-library-panel" role="tabpanel" aria-labelledby="word-library-custom-tab" tabindex="0" data-word-library-panel="custom">
+            <div id="custom-word-list" class="word-list dashboard-list"></div>
+            <p id="empty-custom-words" class="custom-words-empty" data-i18n="custom_words_empty"></p>
+            <nav id="custom-word-pager" class="word-library-pager" data-word-library-pager="custom" data-i18n-aria-label="word_library_title" hidden>
+              <button id="custom-word-page-previous" class="dashboard-action" type="button" data-word-library-page="custom" data-page-direction="previous" data-i18n="word_library_previous"></button>
+              <span id="custom-word-page-status" role="status" aria-live="polite"></span>
+              <button id="custom-word-page-next" class="dashboard-action" type="button" data-word-library-page="custom" data-page-direction="next" data-i18n="word_library_next"></button>
+            </nav>
+          </section>
+          <section id="word-library-tracked-panel" class="word-library-panel" role="tabpanel" aria-labelledby="word-library-tracked-tab" tabindex="0" data-word-library-panel="tracked" hidden>
+            <div id="word-summary" class="word-overview" role="list"></div>
+            <div id="word-list" class="word-list dashboard-list"></div>
+            <div id="empty-words" class="state-card dashboard-state empty" data-ui-state="empty" role="status" hidden><p data-i18n="empty_words"></p><button class="dashboard-action" type="button" data-action="continue" data-i18n="start_lesson"></button></div>
+            <nav id="tracked-word-pager" class="word-library-pager" data-word-library-pager="tracked" data-i18n-aria-label="word_library_title" hidden>
+              <button id="tracked-word-page-previous" class="dashboard-action" type="button" data-word-library-page="tracked" data-page-direction="previous" data-i18n="word_library_previous"></button>
+              <span id="tracked-word-page-status" role="status" aria-live="polite"></span>
+              <button id="tracked-word-page-next" class="dashboard-action" type="button" data-word-library-page="tracked" data-page-direction="next" data-i18n="word_library_next"></button>
+            </nav>
+          </section>
+        </section>
       </section>
 
       <section id="panel-credits" class="panel dashboard-panel" role="tabpanel" data-panel="credits" aria-labelledby="tab-credits" hidden>

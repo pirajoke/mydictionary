@@ -1014,7 +1014,7 @@ class MiniAppHTTPContractTest(unittest.TestCase):
 
 
 class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
-    def test_ac7_frontend_has_five_accessible_tabs_rtl_and_reduced_motion(self):
+    def test_ac7_frontend_has_accessible_tabs_rtl_and_reduced_motion(self):
         root = Path(__file__).resolve().parents[1]
         html_path = root / "mydictionary/templates/miniapp.html"
         css_path = root / "mydictionary/static/miniapp.css"
@@ -1024,7 +1024,14 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
         html = html_path.read_text(encoding="utf-8").casefold()
         css = css_path.read_text(encoding="utf-8").casefold()
         js = js_path.read_text(encoding="utf-8").casefold()
-        self.assertEqual(html.count('role="tab"'), 5)
+        self.assertEqual(
+            len(re.findall(r'<button[^>]+role="tab"[^>]+data-tab=', html)),
+            5,
+        )
+        self.assertEqual(
+            len(re.findall(r'<button[^>]+role="tab"[^>]+data-word-library-tab=', html)),
+            2,
+        )
         for tab in ("profile", "words", "credits", "languages", "settings"):
             self.assertIn(f'data-tab="{tab}"', html)
         for marker in (
