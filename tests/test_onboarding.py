@@ -37,6 +37,7 @@ class BotProfileTest(unittest.TestCase):
             callbacks,
             [
                 "start:daily",
+                "start:mode",
                 "start:review",
                 "start:add",
                 "start:words",
@@ -83,6 +84,7 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
             ],
             [
                 bot.quick_action_label("continue", "ru"),
+                bot.quick_action_label("mode", "ru"),
                 bot.quick_action_label("review", "ru"),
                 bot.quick_action_label("add", "ru"),
                 bot.quick_action_label("words", "ru"),

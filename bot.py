@@ -1175,6 +1175,7 @@ def get_lang_keyboard():
 
 QUICK_ACTION_KEYS = {
     "continue": "quick_continue",
+    "mode": "quick_practice_mode",
     "review": "start_review",
     "add": "quick_add_words",
     "words": "quick_my_words",
@@ -1184,7 +1185,6 @@ QUICK_ACTION_KEYS = {
 # Exact labels from keyboards already delivered before the learning-first
 # redesign remain routable, although they are no longer rendered.
 LEGACY_QUICK_ACTION_KEYS = {
-    "mode": "quick_practice_mode",
     "swipe": "quick_swipe",
     "ai": "command_ai",
     "audit": "command_stats",
@@ -1227,6 +1227,7 @@ def get_quick_actions_keyboard(locale: str | None = None) -> ReplyKeyboardMarkup
     return ReplyKeyboardMarkup(
         [
             [quick_action_label("continue", locale)],
+            [quick_action_label("mode", locale)],
             [
                 quick_action_label("review", locale),
                 quick_action_label("add", locale),
@@ -2363,6 +2364,9 @@ def start_keyboard(locale: str = "ru", *, resumable: bool = False) -> InlineKeyb
             [InlineKeyboardButton(
                 quick_action_label("continue", locale) if resumable else translate("native_start_cards", locale),
                 callback_data="start:continue" if resumable else "start:daily",
+            )],
+            [InlineKeyboardButton(
+                quick_action_label("mode", locale), callback_data="start:mode"
             )],
             [
                 InlineKeyboardButton(

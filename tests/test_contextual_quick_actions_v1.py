@@ -22,7 +22,7 @@ def inline_callbacks(markup):
 
 
 class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
-    def test_ac1_learning_first_keyboard_has_five_actions_in_three_rows(self):
+    def test_ac1_learning_first_keyboard_visibly_exposes_practice_modes(self):
         for locale in sorted(INTERFACE_LOCALES):
             with self.subTest(locale=locale):
                 markup = bot.get_quick_actions_keyboard(locale)
@@ -30,6 +30,7 @@ class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
                     reply_labels(markup),
                     [
                         [bot.quick_action_label("continue", locale)],
+                        [bot.quick_action_label("mode", locale)],
                         [
                             bot.quick_action_label("review", locale),
                             bot.quick_action_label("add", locale),
@@ -41,25 +42,80 @@ class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
                     ],
                 )
                 flattened = [label for row in reply_labels(markup) for label in row]
-                self.assertEqual(len(flattened), 5)
+                self.assertEqual(len(flattened), 6)
+                self.assertIn("mode", bot.QUICK_ACTION_KEYS)
                 self.assertTrue(all(len(label) <= 64 for label in flattened))
                 self.assertNotIn(f"✨ {translate('command_ai', locale)}", flattened)
                 self.assertNotIn(f"📊 {translate('command_stats', locale)}", flattened)
                 self.assertNotIn(f"📖 {translate('command_dictionary', locale)}", flattened)
 
-    def test_ac2_exact_router_supports_only_the_five_visible_actions(self):
+    def test_ac2_start_and_reply_keyboards_localize_the_visible_mode_action(self):
         for locale in sorted(INTERFACE_LOCALES):
-            for action in ("continue", "review", "add", "words", "lang"):
+            with self.subTest(locale=locale, surface="start"):
+                buttons = [
+                    button
+                    for row in bot.start_keyboard(locale).inline_keyboard
+                    for button in row
+                    if button.callback_data == "start:mode"
+                ]
+                self.assertEqual(len(buttons), 1)
+                self.assertEqual(
+                    buttons[0].text,
+                    bot.quick_action_label("mode", locale),
+                )
+
+            for action in ("continue", "mode", "review", "add", "words", "lang"):
                 label = bot.quick_action_label(action, locale)
                 with self.subTest(locale=locale, action=action):
                     self.assertEqual(bot.quick_action_for_text(label), action)
                     self.assertIsNone(bot.quick_action_for_text(f" {label}"))
                     self.assertIsNone(bot.quick_action_for_text(f"{label}!"))
-        self.assertEqual(set(bot.QUICK_ACTION_KEYS), {
-            "continue", "review", "add", "words", "lang"
-        })
         source = inspect.getsource(bot.manual_polling)
         self.assertLess(source.index("handle_quick_action"), source.index("mirror_text_handler"))
+
+    async def test_ac2_both_visible_mode_actions_open_existing_picker(self):
+        for locale in sorted(INTERFACE_LOCALES):
+            with (
+                self.subTest(locale=locale, surface="reply"),
+                patch.object(
+                    bot, "open_practice_mode_picker", new_callable=AsyncMock
+                ) as picker,
+                patch.object(bot, "record_product_event"),
+            ):
+                message = SimpleNamespace(
+                    text=bot.quick_action_label("mode", locale),
+                    reply_text=AsyncMock(),
+                    chat_id=123,
+                )
+                update = SimpleNamespace(
+                    message=message,
+                    effective_message=message,
+                    effective_user=SimpleNamespace(id=1, language_code=locale),
+                )
+                context = SimpleNamespace(user_data={"interface_locale": locale})
+                await bot.handle_quick_action.__wrapped__(update, context)
+                picker.assert_awaited_once_with(message, context)
+
+            with (
+                self.subTest(locale=locale, surface="start"),
+                patch.object(
+                    bot, "open_practice_mode_picker", new_callable=AsyncMock
+                ) as picker,
+            ):
+                message = SimpleNamespace(chat_id=123)
+                query = SimpleNamespace(
+                    data="start:mode",
+                    message=message,
+                    answer=AsyncMock(),
+                )
+                update = SimpleNamespace(
+                    callback_query=query,
+                    effective_user=SimpleNamespace(id=1, language_code=locale),
+                    effective_chat=SimpleNamespace(type="private"),
+                )
+                context = SimpleNamespace(user_data={})
+                await bot.start_menu_cb.__wrapped__(update, context)
+                picker.assert_awaited_once_with(message, context)
 
     async def test_ac3_mode_chooser_preserves_an_incomplete_word_set_and_session(self):
         user_data = {"interface_locale": "ru"}
