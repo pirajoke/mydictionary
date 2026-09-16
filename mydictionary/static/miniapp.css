@@ -47,51 +47,58 @@
 }
 
 /* Lexi Swipe: a focused study surface, not another navigation system. */
+#panel-words {
+  --words-accent: var(--lexi-orange);
+  --words-accent-ink: var(--lexi-orange-ink);
+  --words-accent-soft: color-mix(in srgb, var(--words-accent) 11%, var(--dashboard-surface));
+  --words-accent-line: color-mix(in srgb, var(--words-accent) 38%, var(--dashboard-line));
+  --words-surface-raised: color-mix(in srgb, var(--words-accent) 5%, var(--dashboard-surface));
+}
 .swipe-trainer { --surface: var(--dashboard-surface); --radius: var(--dashboard-radius); --danger: var(--dashboard-danger); --muted: var(--dashboard-muted); --line: var(--dashboard-line); min-width: 0; padding: 16px 0 22px; border-bottom: 1px solid var(--line); }
 #panel-words:has(.swipe-trainer[data-active="true"]) > header[class~="section-hero"] { display: none; }
 .swipe-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .swipe-heading > div { min-width: 0; }
 .swipe-heading h2 { margin: 5px 0 0; font-size: 1.4rem; letter-spacing: -.025em; }
-.swipe-kicker { color: var(--lexi-teal); font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
-.swipe-language { flex-shrink: 0; max-width: 45%; border: 0; background: transparent; color: var(--lexi-blue); font-size: .8rem; padding: 10px 0 10px 8px; overflow-wrap: anywhere; }
+.swipe-kicker { color: var(--words-accent); font-size: .68rem; font-weight: 800; letter-spacing: .08em; }
+.swipe-language { flex-shrink: 0; max-width: 45%; border: 0; background: transparent; color: var(--words-accent); font-size: .8rem; padding: 10px 0 10px 8px; overflow-wrap: anywhere; }
 .swipe-hint, .swipe-keyboard-hint { color: var(--muted); font-size: .85rem; line-height: 1.5; }
 .swipe-hint { margin: 10px 0 16px; }
 .swipe-modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: var(--surface); padding: 4px; border: 1px solid var(--line); border-radius: 12px; }
 .swipe-modes button { min-width: 0; min-height: 44px; padding: 8px 5px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: .8rem; font-weight: 750; overflow-wrap: anywhere; }
-.swipe-modes button[aria-pressed="true"] { background: var(--lexi-blue); color: var(--lexi-blue-ink); }
+.swipe-modes button[aria-pressed="true"] { background: var(--words-accent); color: var(--words-accent-ink); }
 .swipe-session-line { display: flex; align-items: center; gap: 12px; margin: 18px 0 12px; color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
-.swipe-session-line progress { flex: 1; min-width: 0; height: 5px; border: 0; border-radius: 5px; overflow: hidden; background: var(--line); accent-color: var(--lexi-blue); }
+.swipe-session-line progress { flex: 1; min-width: 0; height: 5px; border: 0; border-radius: 5px; overflow: hidden; background: var(--line); accent-color: var(--words-accent); }
 .swipe-session-line progress::-webkit-progress-bar { background: var(--line); }
-.swipe-session-line progress::-webkit-progress-value { background: var(--lexi-blue); }
-.swipe-session-line progress::-moz-progress-bar { background: var(--lexi-blue); }
+.swipe-session-line progress::-webkit-progress-value { background: var(--words-accent); }
+.swipe-session-line progress::-moz-progress-bar { background: var(--words-accent); }
 .swipe-stage { position: relative; isolation: isolate; padding-bottom: 8px; }
 .swipe-stage::before { content: ""; position: absolute; z-index: -1; inset: 12px 10px 0; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); }
-.swipe-card { position: relative; display: flex; flex-direction: column; gap: 20px; min-width: 0; min-height: 330px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); background: color-mix(in srgb, var(--lexi-orange) 6%, var(--surface)); overflow-wrap: anywhere; touch-action: pan-y; cursor: grab; transition: transform 160ms ease; }
-.swipe-card::before { content: ""; position: absolute; inset: 0 16px auto; height: 4px; border-radius: 0 0 4px 4px; background: var(--lexi-orange); }
-.swipe-card[data-kind="new"] { background: color-mix(in srgb, var(--lexi-blue) 7%, var(--surface)); }
-.swipe-card[data-kind="new"]::before { background: var(--lexi-blue); }
+.swipe-card { position: relative; display: flex; flex-direction: column; gap: 20px; min-width: 0; min-height: 330px; padding: 22px; border: 1px solid var(--words-accent-line); border-radius: var(--radius); background: var(--words-surface-raised); overflow-wrap: anywhere; touch-action: pan-y; cursor: grab; transition: transform 160ms ease; }
+.swipe-card::before { content: ""; position: absolute; inset: 0 16px auto; height: 4px; border-radius: 0 0 4px 4px; background: var(--words-accent); }
+.swipe-card[data-kind="new"] { background: var(--words-surface-raised); }
+.swipe-card[data-kind="new"]::before { background: var(--words-accent); }
 .swipe-card.is-dragging { transition: none; cursor: grabbing; }
-.swipe-kind { align-self: flex-start; color: var(--lexi-orange); font-size: .75rem; font-weight: 750; }
-.swipe-card[data-kind="new"] .swipe-kind { color: var(--lexi-blue); }
+.swipe-kind { align-self: flex-start; color: var(--words-accent); font-size: .75rem; font-weight: 750; }
+.swipe-card[data-kind="new"] .swipe-kind { color: var(--words-accent); }
 .swipe-word-block { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; padding: 10px 0; text-align: center; min-width: 0; }
 .swipe-word-block h3 { width: 100%; margin: 0; font-size: clamp(1.8rem, 8vw, 3rem); line-height: 1.12; letter-spacing: -.025em; text-wrap: balance; overflow-wrap: anywhere; }
 .swipe-pronunciation { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
-.swipe-pronunciation button { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); color: var(--lexi-blue); font-size: .8rem; min-height: 44px; }
+.swipe-pronunciation button { border: 1px solid var(--words-accent-line); border-radius: 10px; padding: 10px 12px; background: var(--words-accent-soft); color: var(--words-accent); font-size: .8rem; min-height: 44px; }
 #swipe-transcription { font-family: "Arial", "Noto Sans", "DejaVu Sans", sans-serif; font-size: 1.05rem; font-weight: 400; font-variant-ligatures: none; line-height: 1.55; color: var(--muted); overflow-wrap: anywhere; }
 .swipe-meaning { margin: 0; padding-top: 16px; border-top: 1px solid var(--line); font-size: 1.3rem; line-height: 1.4; text-align: center; }
-.swipe-reveal, .swipe-start { width: 100%; min-height: 48px; border: 0; border-radius: 12px; padding: 12px 16px; background: var(--lexi-blue); color: var(--lexi-blue-ink); font-weight: 800; }
+.swipe-reveal, .swipe-start { width: 100%; min-height: 48px; border: 0; border-radius: 12px; padding: 12px 16px; background: var(--words-accent); color: var(--words-accent-ink); font-weight: 800; }
 .swipe-start { margin-top: 16px; }
 .swipe-grades { display: grid; direction: ltr; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
 .swipe-grades button { min-width: 0; min-height: 52px; padding: 12px 8px; border-radius: 12px; font-weight: 800; overflow-wrap: anywhere; }
 .swipe-again { color: var(--danger); border: 1px solid var(--danger); background: color-mix(in srgb, var(--danger) 12%, var(--surface)); }
-.swipe-know { background: var(--lexi-teal); color: var(--lexi-teal-ink); border: 1px solid var(--lexi-teal); }
+.swipe-know { background: var(--words-accent); color: var(--words-accent-ink); border: 1px solid var(--words-accent); }
 .swipe-undo { display: block; min-height: 44px; margin: 5px auto 0; padding: 8px 16px; border: 0; background: transparent; color: var(--muted); font-size: .8rem; }
 .swipe-keyboard-hint { margin: 0; text-align: center; font-size: .75rem; }
 .swipe-status { min-height: 22px; margin: 12px 0 0; font-size: .85rem; line-height: 1.5; color: var(--muted); }
-.swipe-retry { min-height: 44px; margin-top: 6px; padding: 8px 14px; border: 1px solid var(--lexi-blue); color: var(--lexi-blue); background: var(--surface); border-radius: 10px; }
-.swipe-summary { margin: 18px 0 0; padding: 26px 16px; text-align: center; white-space: pre-line; font-size: 1.25rem; line-height: 1.8; color: var(--lexi-teal); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.swipe-retry { min-height: 44px; margin-top: 6px; padding: 8px 14px; border: 1px solid var(--words-accent-line); color: var(--words-accent); background: var(--words-accent-soft); border-radius: 10px; }
+.swipe-summary { margin: 18px 0 0; padding: 26px 16px; text-align: center; white-space: pre-line; font-size: 1.25rem; line-height: 1.8; color: var(--words-accent); border: 1px solid var(--words-accent-line); border-radius: var(--radius); background: var(--words-surface-raised); }
 .swipe-trainer button:disabled { opacity: .45; cursor: default; }
-.swipe-trainer button:focus-visible, .swipe-card:focus-visible { outline: 3px solid var(--lexi-blue); outline-offset: 3px; }
+.swipe-trainer button:focus-visible, .swipe-card:focus-visible { outline: 3px solid var(--words-accent); outline-offset: 3px; }
 @media (max-width: 360px) {
   .swipe-card { padding: 18px 14px; min-height: 300px; }
   .swipe-heading h2 { font-size: 1.2rem; }
@@ -187,8 +194,8 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 .dictionary-shortcut > span:nth-child(2) { flex:1; min-width:0; }
 .dictionary-shortcut strong, .dictionary-shortcut small { display:block; }
 .dictionary-shortcut small { color:var(--dashboard-muted); font-size:.8rem; font-weight:400; margin-top:3px; }
-.dictionary-entry { display:flex; flex-wrap:wrap; gap:8px; margin-block:14px 22px; }
-.dictionary-entry p { flex-basis:100%; color:var(--dashboard-muted); font-size:.84rem; margin:2px 0 0; }
+.dictionary-entry { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-block:4px 22px; padding-top:16px; border-top:1px solid var(--dashboard-line); }
+.dictionary-entry p { grid-column:1 / -1; color:var(--dashboard-muted); font-size:.78rem; line-height:1.45; margin:2px 0 0; }
 
 /* Shared dashboard vocabulary. */
 .dashboard { display: grid; gap: var(--dashboard-gap); }
@@ -454,23 +461,21 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 /* My words. */
 .custom-vocabulary-actions {
   display: grid;
-  gap: 13px;
-  margin-bottom: 12px;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--lexi-orange) 48%, var(--dashboard-line));
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--words-accent-line);
   border-radius: var(--dashboard-radius);
-  background:
-    radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--dashboard-warning) 24%, transparent), transparent 34%),
-    color-mix(in srgb, var(--lexi-orange) 8%, var(--dashboard-surface));
+  background: var(--words-surface-raised);
 }
 .custom-vocabulary-copy { display: grid; gap: 4px; }
-.custom-vocabulary-kicker { color: var(--dashboard-warning); font-size: .64rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.custom-vocabulary-kicker { color: var(--words-accent); font-size: .68rem; font-weight: 850; }
 .custom-vocabulary-copy h2 { margin: 0; color: var(--dashboard-text); font-size: 1.02rem; }
 .custom-vocabulary-copy p { margin: 0; color: var(--dashboard-muted); font-size: .74rem; line-height: 1.4; }
 .custom-vocabulary-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .custom-vocabulary-controls button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 52px; padding: 9px 10px; font-size: .72rem; font-weight: 900; }
-.custom-vocabulary-add { color: #241405; border-color: #ffb36a; background: linear-gradient(145deg, #ffd166, #ff914d); }
-.custom-vocabulary-practice { color: #041d1a; border-color: #69dcc8; background: linear-gradient(145deg, #83ead8, #46c4b3); }
+.custom-vocabulary-practice { color: var(--words-accent-ink); border-color: var(--words-accent); background: var(--words-accent); }
+.custom-vocabulary-add { color: color-mix(in srgb, var(--words-accent) 72%, var(--dashboard-text)); border-color: var(--words-accent-line); background: var(--words-accent-soft); }
 .custom-vocabulary-controls button > span:first-child { font-size: 1rem; }
 .word-library { margin-bottom: 14px; }
 .word-library-tabs {
@@ -478,9 +483,9 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   padding: 4px;
-  border: 1px solid var(--dashboard-line);
+  border: 1px solid var(--words-accent-line);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--dashboard-line) 30%, var(--dashboard-bg));
+  background: color-mix(in srgb, var(--words-accent) 5%, var(--dashboard-bg));
 }
 .word-library-tab {
   display: grid;
@@ -489,7 +494,7 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
   align-items: center;
   min-height: 48px;
   padding: 8px 10px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 10px;
   color: var(--dashboard-muted);
   background: transparent;
@@ -501,8 +506,8 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 }
 .word-library-tab[aria-selected="true"] {
   color: var(--dashboard-text);
-  background: var(--dashboard-surface);
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--dashboard-text) 12%, transparent);
+  border-color: var(--words-accent-line);
+  background: var(--words-accent-soft);
 }
 .word-library-tab strong {
   display: grid;
@@ -511,15 +516,16 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
   min-height: 26px;
   padding-inline: 5px;
   border-radius: 999px;
-  color: var(--dashboard-warning);
-  background: color-mix(in srgb, var(--dashboard-warning) 14%, var(--dashboard-surface));
+  color: var(--words-accent);
+  background: var(--words-accent-soft);
   font-size: .68rem;
   font-variant-numeric: tabular-nums;
 }
+.word-library-tab[aria-selected="true"] strong { color: var(--words-accent-ink); background: var(--words-accent); }
 .word-library-panel { margin-top: 10px; outline: none; }
 .word-library-panel:focus-visible {
   border-radius: var(--dashboard-radius);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dashboard-accent) 34%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--words-accent) 34%, transparent);
 }
 .word-library-pager {
   display: grid;
@@ -531,6 +537,9 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 .word-library-pager button {
   min-height: 44px;
   padding: 8px 10px;
+  border-color: var(--words-accent-line);
+  color: color-mix(in srgb, var(--words-accent) 72%, var(--dashboard-text));
+  background: var(--words-accent-soft);
   font-size: .7rem;
 }
 .word-library-pager button:last-child { justify-self: stretch; }
@@ -541,24 +550,23 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
-.custom-word-card { border-inline-start: 3px solid var(--lexi-orange); }
-.custom-word-transcription { display: block; margin-top: 4px; color: var(--dashboard-accent); font-family: "Noto Sans", "DejaVu Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-size: .8rem; line-height: 1.35; }
-.custom-words-empty { margin: 0; padding: 12px; border: 1px dashed var(--dashboard-line); border-radius: 12px; color: var(--dashboard-muted); background: var(--dashboard-surface); font-size: .72rem; line-height: 1.4; }
+.custom-word-card { background: var(--words-surface-raised); }
+.custom-word-transcription { display: block; margin-top: 4px; color: color-mix(in srgb, var(--words-accent) 70%, var(--dashboard-text)); font-family: "Noto Sans", "DejaVu Sans", "Segoe UI", "Helvetica Neue", Arial, sans-serif; font-size: .8rem; line-height: 1.35; }
+.custom-words-empty { margin: 0; padding: 12px; border: 1px dashed var(--words-accent-line); border-radius: 12px; color: var(--dashboard-muted); background: var(--words-surface-raised); font-size: .72rem; line-height: 1.4; }
 .word-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 10px;
   padding: 10px 4px;
-  border: 1px solid var(--dashboard-line);
+  border: 1px solid var(--words-accent-line);
   border-radius: var(--dashboard-radius);
-  background: var(--dashboard-surface);
+  background: var(--words-surface-raised);
 }
 .summary-stat { display: grid; min-width: 0; padding-inline: 7px; text-align: center; }
 .summary-stat + .summary-stat { border-inline-start: 1px solid var(--dashboard-line); }
-.summary-stat b { font-size: 1.15rem; line-height: 1; }
+.summary-stat b { color: var(--words-accent); font-size: 1.15rem; line-height: 1; }
 .summary-stat span { margin-top: 4px; overflow-wrap: anywhere; color: var(--dashboard-muted); font-size: .66rem; line-height: 1.15; }
-.summary-stat.learned b { color: var(--dashboard-success); }
-.summary-stat.due b { color: var(--dashboard-warning); }
+.summary-stat.learned b, .summary-stat.due b { color: var(--words-accent); }
 .word-list { margin-bottom: 10px; }
 .word-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 11px 12px; }
 .word-card-main { min-width: 0; }
@@ -566,7 +574,7 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 .word-card h2 { min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: .92rem; }
 .word-card p { margin: 3px 0 0; overflow-wrap: anywhere; color: var(--dashboard-muted); font-size: .75rem; }
 .word-attempts { max-width: 15ch; color: var(--dashboard-muted); font-size: .63rem; line-height: 1.25; text-align: end; }
-.badge { flex: 0 0 auto; border-radius: 999px; padding: 3px 7px; color: var(--dashboard-accent); background: var(--dashboard-soft-accent); font-size: .62rem; font-weight: 850; }
+.badge { flex: 0 0 auto; border-radius: 999px; padding: 3px 7px; color: var(--words-accent); background: var(--words-accent-soft); font-size: .62rem; font-weight: 850; }
 
 /* AI credits. */
 .wallet-card {
@@ -842,7 +850,7 @@ html[dir="rtl"] .privacy-state dd { text-align: start; }
 .swipe-context { text-align: center; font-size: .9375rem; line-height: 1.45; }
 .swipe-context p { margin: 6px 0; }
 #swipe-example-meaning { color: var(--dashboard-muted); }
-#swipe-grammar { font-size: .875rem; color: var(--lexi-blue); }
+#swipe-grammar { font-size: .875rem; color: var(--words-accent); }
 #panel-words:has(.swipe-trainer[data-active="true"]) > :not(.swipe-trainer) { display: none; }
 .swipe-trainer[data-active="true"] { padding-top: 0; border-bottom: 0; }
 .swipe-trainer[data-active="true"] .swipe-heading,
@@ -993,16 +1001,17 @@ html[dir="rtl"] .privacy-state dd { text-align: start; }
 .calendar-day.today { outline-color: var(--lexi-gold); }
 
 .dictionary-entry .primary-action {
-  --control-accent: var(--lexi-teal);
-  color: var(--lexi-teal-ink);
-  background: var(--lexi-teal);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), 0 3px 0 color-mix(in srgb, var(--lexi-teal) 66%, #003d30);
+  --control-accent: var(--words-accent);
+  border-color: var(--words-accent-line);
+  color: color-mix(in srgb, var(--words-accent) 72%, var(--dashboard-text));
+  background: var(--words-accent-soft);
+  box-shadow: none;
 }
 .dictionary-entry [data-download-dictionary] {
-  --control-accent: var(--lexi-blue);
-  border-color: color-mix(in srgb, var(--lexi-blue) 38%, var(--dashboard-line));
-  color: color-mix(in srgb, var(--lexi-blue) 72%, var(--dashboard-text));
-  background: color-mix(in srgb, var(--lexi-blue) 11%, var(--dashboard-surface));
+  --control-accent: var(--words-accent);
+  border-color: var(--words-accent-line);
+  color: color-mix(in srgb, var(--words-accent) 72%, var(--dashboard-text));
+  background: var(--words-accent-soft);
 }
 .ai-entry,
 .settings-credit-cta,
@@ -1097,6 +1106,8 @@ html[dir="rtl"] .privacy-state dd { text-align: start; }
   .detail-back { justify-self: start; }
   .detail-actions { grid-template-columns: 1fr; }
   .custom-vocabulary-controls { grid-template-columns: 1fr; }
+  .dictionary-entry { grid-template-columns: 1fr; }
+  .dictionary-entry p { grid-column: 1; }
   .app-shell { padding-inline: max(10px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-right)); }
   .bottom-nav button { font-size: .75rem; }
   .nav-icon { width: 30px; height: 30px; }
