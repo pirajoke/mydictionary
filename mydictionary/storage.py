@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import re
 import secrets
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from uuid import uuid4
 
 from alembic import command
@@ -1856,6 +1856,78 @@ class DatabaseStore:
             )
         return dialogue
 
+    def peek_mirror_dialogue(
+        self,
+        user_id: int,
+        *,
+        limit: int = 6,
+        now: datetime | None = None,
+    ) -> list[dict[str, str]]:
+        """Read complete unexpired exchanges without pruning or other writes."""
+        bounded_limit = int(limit)
+        if not 1 <= bounded_limit <= 20:
+            raise ValueError("Mirror dialogue limit must be 1-20 turns")
+        exchange_limit = bounded_limit // 2
+        if exchange_limit == 0:
+            return []
+        observed_at = now or utcnow()
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=timezone.utc)
+        with self.Session() as session:
+            user = session.get(User, int(user_id))
+            if user is None or user.privacy_status != "active":
+                return []
+            latest_exchanges = session.execute(
+                select(
+                    MirrorDialogueTurn.exchange_id,
+                    func.max(MirrorDialogueTurn.created_at).label(
+                        "exchange_created_at"
+                    ),
+                )
+                .where(
+                    MirrorDialogueTurn.telegram_user_id == int(user_id),
+                    MirrorDialogueTurn.expires_at > observed_at,
+                )
+                .group_by(MirrorDialogueTurn.exchange_id)
+                .order_by(
+                    func.max(MirrorDialogueTurn.created_at).desc(),
+                    MirrorDialogueTurn.exchange_id.desc(),
+                )
+                .limit(exchange_limit)
+            ).all()
+            exchange_ids = [
+                str(row.exchange_id) for row in reversed(latest_exchanges)
+            ]
+            if not exchange_ids:
+                return []
+            rows = session.execute(
+                select(MirrorDialogueTurn).where(
+                    MirrorDialogueTurn.telegram_user_id == int(user_id),
+                    MirrorDialogueTurn.exchange_id.in_(exchange_ids),
+                    MirrorDialogueTurn.expires_at > observed_at,
+                )
+            ).scalars().all()
+
+        turns_by_exchange: dict[str, list[MirrorDialogueTurn]] = {}
+        for row in rows:
+            turns_by_exchange.setdefault(str(row.exchange_id), []).append(row)
+        dialogue: list[dict[str, str]] = []
+        for exchange_id in exchange_ids:
+            linked_turns = sorted(
+                turns_by_exchange.get(exchange_id, []),
+                key=lambda row: row.turn_index,
+            )
+            if (
+                len(linked_turns) != 2
+                or linked_turns[0].role != "user"
+                or linked_turns[1].role != "assistant"
+            ):
+                continue
+            dialogue.extend(
+                {"role": row.role, "text": row.text} for row in linked_turns
+            )
+        return dialogue
+
     def clear_mirror_dialogue(self, user_id: int) -> int:
         with self.Session.begin() as session:
             deleted = session.execute(
@@ -2707,6 +2779,62 @@ class DatabaseStore:
         for field, value in _word_values(word).items():
             setattr(row, field, value)
         row.updated_at = utcnow()
+
+    def record_word_exposures(
+        self,
+        user_id: int,
+        *,
+        language: str,
+        entries: Sequence[tuple[int, Mapping[str, Any]]],
+        now: datetime | None = None,
+    ) -> int:
+        """Remember mentioned catalog words without awarding scores or XP."""
+        namespace = str(language or "").strip()[:16]
+        if not namespace:
+            raise ValueError("Word exposure language is required")
+        observed_at = now or utcnow()
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=timezone.utc)
+        bounded: list[tuple[int, Mapping[str, Any], str]] = []
+        seen: set[str] = set()
+        for raw_index, word in list(entries)[:24]:
+            if not isinstance(word, Mapping):
+                continue
+            vocabulary_id = vocabulary_id_for(word)
+            if not vocabulary_id or vocabulary_id in seen:
+                continue
+            seen.add(vocabulary_id)
+            bounded.append((int(raw_index), word, vocabulary_id))
+            if len(bounded) >= 12:
+                break
+        if not bounded:
+            return 0
+        with self.Session.begin() as session:
+            user = session.get(User, int(user_id))
+            if (
+                user is None
+                or user.privacy_status != "active"
+                or user.access_status == "blocked"
+            ):
+                raise ValueError("Inactive users cannot store word exposure")
+            for word_index, word, vocabulary_id in bounded:
+                key = (int(user_id), namespace, vocabulary_id)
+                row = session.get(WordProgress, key)
+                if row is None:
+                    row = WordProgress(
+                        telegram_user_id=int(user_id),
+                        language=namespace,
+                        vocabulary_id=vocabulary_id,
+                        term=target_text(word),
+                        word_index=word_index,
+                    )
+                    session.add(row)
+                else:
+                    row.word_index = word_index
+                    row.term = target_text(word)
+                row.last_seen = observed_at.isoformat()
+                row.updated_at = observed_at
+        return len(bounded)
 
     def save_learning_state(
         self,
