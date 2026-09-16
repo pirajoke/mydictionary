@@ -116,8 +116,10 @@ from mydictionary.mirror_assistant import (
     build_companion_learner_context,
     build_mirror_progress_summary,
     build_mirror_provider_payload,
+    catalog_word_exposures,
     classify_mirror_intent,
     classify_mirror_task,
+    classify_mirror_turn_task,
     direct_mirror_capability_greeting_locale,
     direct_mirror_daily_plan_locale,
     direct_mirror_progress_locale,
@@ -5998,6 +6000,11 @@ async def handle_mirror_question(
                     dialogue = recent_mirror_dialogue(context.user_data)
             else:
                 dialogue = recent_mirror_dialogue(context.user_data)
+            if task_kind is None:
+                selected_task_kind = classify_mirror_turn_task(
+                    question,
+                    recent_dialogue=dialogue,
+                )
             persona = str(
                 mirror_profile.get(
                     "mirror_persona_guidance",
@@ -6129,6 +6136,32 @@ async def handle_mirror_question(
         voice_renderer=voice_renderer,
         locale=reply_locale,
     )
+    if intent not in {"greeting", "capabilities"}:
+        try:
+            active_pack = CATALOG.get(str(profile.get("active_pack_id") or ""))
+            if active_pack is None:
+                active_pack = CATALOG.pack_for_language(
+                    str(profile.get("active_lang") or ""),
+                    str(profile.get("role") or "learner"),
+                )
+            exposure_writer = getattr(store, "record_word_exposures", None)
+            if active_pack is not None and callable(exposure_writer):
+                exposures = catalog_word_exposures(
+                    CATALOG.words(active_pack),
+                    question,
+                    response,
+                )
+                if exposures:
+                    exposure_writer(
+                        user_id,
+                        language=active_pack.storage_key,
+                        entries=exposures,
+                    )
+        except Exception as exc:
+            logger.warning(
+                "Mirror word exposure write failed: error_type=%s",
+                type(exc).__name__,
+            )
     if (
         intent not in {"greeting", "capabilities"}
         and not deterministic_capability_greeting

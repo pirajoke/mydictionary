@@ -531,6 +531,31 @@ MINIAPP_COPY: dict[str, dict[str, str]] = {
     },
 }
 
+_TUTOR_HISTORY_COPY = {
+    "en": (
+        "History with Lexi",
+        "Recent topics and replies are kept for a limited time.",
+    ),
+    "fr": (
+        "Historique avec Lexi",
+        "Les sujets et réponses récents sont conservés pour une durée limitée.",
+    ),
+    "de": (
+        "Verlauf mit Lexi",
+        "Letzte Themen und Antworten werden nur begrenzte Zeit gespeichert.",
+    ),
+    "ja": ("Lexiとの履歴", "最近のトピックと回答は一定期間のみ保存されます。"),
+    "ar": ("السجل مع Lexi", "تُحفظ المواضيع والإجابات الأخيرة لمدة محدودة."),
+    "zh": ("与 Lexi 的记录", "最近的话题和回答只会保存有限时间。"),
+    "ru": ("История с Lexi", "Последние темы и ответы хранятся ограниченное время."),
+    "es": ("Historial con Lexi", "Los temas y respuestas recientes se guardan por tiempo limitado."),
+}
+for _locale, (_title, _hint) in _TUTOR_HISTORY_COPY.items():
+    MINIAPP_COPY[_locale].update(
+        tutor_history_title=_title,
+        tutor_history_hint=_hint,
+    )
+
 _DICTIONARY_COMPANION_COPY = {
     "en": ("Dictionary", "Open dictionary", "Search, saved words and offline practice · opens in your browser", "Download dictionary", "Your Telegram learning words"),
     "fr": ("Dictionnaire", "Ouvrir le dictionnaire", "Recherche, mots enregistrés et pratique hors ligne · dans le navigateur", "Télécharger le dictionnaire", "Vos mots étudiés dans Telegram"),
@@ -1072,6 +1097,28 @@ def _bounded_text(value: object, maximum: int = 160) -> str:
     return str(value or "").strip()[:maximum]
 
 
+def _tutor_history_from_dialogue(
+    dialogue: object,
+) -> list[dict[str, str]]:
+    if not isinstance(dialogue, list):
+        return []
+    exchanges: list[dict[str, str]] = []
+    for index in range(0, len(dialogue) - 1):
+        question = dialogue[index]
+        answer = dialogue[index + 1]
+        if not isinstance(question, Mapping) or not isinstance(answer, Mapping):
+            continue
+        if question.get("role") != "user" or answer.get("role") != "assistant":
+            continue
+        exchanges.append(
+            {
+                "question": _bounded_text(question.get("text"), 120),
+                "answer": _bounded_text(answer.get("text"), 220),
+            }
+        )
+    return [item for item in exchanges if item["question"] and item["answer"]][-3:]
+
+
 def visible_credit_products(
     products: list[Mapping[str, Any]] | tuple[Mapping[str, Any], ...],
     *,
@@ -1498,6 +1545,19 @@ def build_bootstrap(
             ),
         },
     }
+    tutor_history: list[dict[str, str]] = []
+    history_loader = getattr(store, "peek_mirror_dialogue", None)
+    if (
+        mirror_memory_enabled
+        and ai_consent == "granted"
+        and callable(history_loader)
+    ):
+        try:
+            tutor_history = _tutor_history_from_dialogue(
+                history_loader(int(user_id), limit=6)
+            )
+        except Exception:
+            tutor_history = []
 
     return {
         "locale": selected_locale,
@@ -1518,6 +1578,7 @@ def build_bootstrap(
         },
         "words": words,
         "custom_words": custom_words,
+        "tutor_history": tutor_history,
         "credits": {
             "available": max(0, int(usage.get("available_credits") or 0)),
             "reserved": max(0, int(usage.get("reserved_credits") or 0)),

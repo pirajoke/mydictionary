@@ -1002,6 +1002,24 @@
       metric(copy.metric_best_streak, progress.best_streak),
       metric(copy.metric_tracked_words, progress.tracked_words)
     );
+    const tutorHistory = Array.isArray(data.tutor_history) ? data.tutor_history.slice(-3) : [];
+    const tutorHistorySection = node("tutor-history");
+    const tutorHistoryList = node("tutor-history-list");
+    const historyItems = tutorHistory.map((exchange) => {
+      const item = document.createElement("article");
+      item.className = "tutor-history-item";
+      const historyQuestion = document.createElement("p");
+      historyQuestion.className = "tutor-history-question";
+      text(historyQuestion, `💬 ${exchange.question || ""}`);
+      const historyAnswer = document.createElement("p");
+      historyAnswer.className = "tutor-history-answer";
+      text(historyAnswer, `🦊 ${exchange.answer || ""}`);
+      item.append(historyQuestion, historyAnswer);
+      return item;
+    });
+    tutorHistoryList.replaceChildren(...historyItems);
+    text(node("tutor-history-count"), tutorHistory.length);
+    tutorHistorySection.hidden = tutorHistory.length === 0;
 
     node("word-summary").replaceChildren(
       summaryStat(copy.metric_tracked_words, progress.tracked_words, "tracked"),

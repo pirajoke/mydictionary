@@ -10,6 +10,7 @@ import os
 import re
 from types import MappingProxyType
 from typing import Any, Mapping, Sequence
+import unicodedata
 
 from sqlalchemy import func, select
 
@@ -339,6 +340,7 @@ _DIRECT_PROGRESS_LOCALES = {
     "какой сейчас прогресс": "ru",
     "прогресс": "ru",
     "что я уже прошел": "ru",
+    "что я проходил": "ru",
     "en qué debo enfocarme": "es",
     "mi progreso": "es",
     "cómo va mi progreso": "es",
@@ -868,6 +870,95 @@ def classify_mirror_task(text: str) -> str:
     return "general_conversation"
 
 
+def classify_mirror_turn_task(
+    text: str,
+    *,
+    recent_dialogue: Sequence[Mapping[str, Any]] | None = None,
+) -> str:
+    """Keep a short learner answer inside the previous teaching exercise."""
+    base_task = classify_mirror_task(text)
+    if base_task != "general_conversation":
+        return base_task
+    normalized = " ".join(str(text).casefold().strip().split())
+    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
+    if not words_only or words_only in _GREETING_PATTERNS:
+        return base_task
+    if len(words_only) > 80 or len(words_only.split()) > 8:
+        return base_task
+    dialogue = normalize_linked_mirror_dialogue(recent_dialogue)
+    if not dialogue:
+        return base_task
+    previous = next(
+        (
+            str(turn.get("text") or "")
+            for turn in reversed(dialogue)
+            if turn.get("role") == "assistant"
+        ),
+        "",
+    )
+    challenge_markers = (
+        "▶️",
+        "переведи",
+        "напиши",
+        "ответь",
+        "translate",
+        "write ",
+        "réponds",
+        "traduis",
+        "übersetze",
+        "اكتب",
+        "ترجم",
+        "翻译",
+        "訳して",
+        "traduce",
+    )
+    if any(marker in previous.casefold() for marker in challenge_markers):
+        return "practice"
+    return base_task
+
+
+def catalog_word_exposures(
+    words: Sequence[Mapping[str, Any]],
+    *texts: str,
+    limit: int = 12,
+) -> list[tuple[int, Mapping[str, Any]]]:
+    """Match bounded whole catalog terms mentioned in one Mirror exchange."""
+    bounded_limit = max(0, min(12, int(limit)))
+    if bounded_limit == 0:
+        return []
+
+    def normalize(value: object) -> str:
+        canonical = unicodedata.normalize("NFKC", str(value or "")).casefold()
+        return " ".join(re.findall(r"\w+", canonical, flags=re.UNICODE))
+
+    haystack = normalize(" ".join(str(text or "") for text in texts))
+    padded_haystack = f" {haystack} "
+    compact_haystack = haystack.replace(" ", "")
+    matches: list[tuple[int, Mapping[str, Any]]] = []
+    seen: set[str] = set()
+    for index, word in enumerate(words):
+        term = normalize(word.get("target") or word.get("en"))
+        if not term:
+            continue
+        compact_term = term.replace(" ", "")
+        uses_compact_matching = bool(
+            re.search(r"[\u3040-\u30ff\u3400-\u9fff]", term)
+        )
+        mentioned = (
+            compact_term in compact_haystack
+            if uses_compact_matching
+            else f" {term} " in padded_haystack
+        )
+        identity = str(word.get("entry_id") or term)
+        if not mentioned or identity in seen:
+            continue
+        seen.add(identity)
+        matches.append((index, word))
+        if len(matches) >= bounded_limit:
+            break
+    return matches
+
+
 def render_mirror_capabilities(capabilities: str, *, locale: str | None = None) -> str:
     """Return only the reviewed learner-facing capability copy."""
     selected = normalize_locale(locale, fallback="ru" if locale is None else "en")
@@ -985,7 +1076,32 @@ def render_mirror_progress_focus(
         focus = translate("mirror_progress_focus_due", selected, due=due)
     else:
         focus = translate("mirror_progress_focus_starter", selected)
-    return f"📊 {facts}\n👉 {focus}"
+    recent_terms = snapshot.get("recent_terms")
+    recent: list[str] = []
+    seen_recent: set[str] = set()
+    if isinstance(recent_terms, Sequence) and not isinstance(
+        recent_terms, (str, bytes)
+    ):
+        for value in recent_terms:
+            candidate = " ".join(str(value or "").strip().split())[:40]
+            normalized_candidate = candidate.casefold()
+            if candidate and normalized_candidate not in seen_recent:
+                recent.append(candidate)
+                seen_recent.add(normalized_candidate)
+            if len(recent) >= 5:
+                break
+    sections = [f"📊 {facts}"]
+    if recent:
+        sections.append(
+            "🧠 "
+            + translate(
+                "mirror_progress_recent_terms",
+                selected,
+                terms=", ".join(recent),
+            )
+        )
+    sections.append(f"{'🎯' if recent else '👉'} {focus}")
+    return "\n".join(sections)
 
 
 def _normalize_mirror_turn(value: Mapping[str, Any]) -> dict[str, str]:
@@ -1265,6 +1381,20 @@ def grounded_progress_snapshot(
             except ValueError:
                 pass
     weak_terms.sort(key=lambda item: (-item["error_gap"], item["term"]))
+    recent_terms: list[str] = []
+    seen_recent_terms: set[str] = set()
+    for word in sorted(
+        words,
+        key=lambda item: str(item.last_seen or ""),
+        reverse=True,
+    ):
+        term = " ".join(str(word.term or "").strip().split())[:80]
+        normalized_term = term.casefold()
+        if word.last_seen and term and normalized_term not in seen_recent_terms:
+            recent_terms.append(term)
+            seen_recent_terms.add(normalized_term)
+        if len(recent_terms) >= 5:
+            break
     accuracy = round(correct * 100 / attempts) if attempts else None
     streak = int(progress.streak or 0)
     snapshot: dict[str, Any] = {
@@ -1282,6 +1412,7 @@ def grounded_progress_snapshot(
         "due_count": due_count,
         "due_reviews": due_count,
         "weak_terms": weak_terms[:5],
+        "recent_terms": recent_terms,
         "streak": streak if streak > 0 else None,
         "streak_days": streak,
         "recent_activity": {"sessions_7d": int(recent_sessions)},

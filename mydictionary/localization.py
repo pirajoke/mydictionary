@@ -4075,6 +4075,7 @@ for _locale, _messages in _AI_TUTOR_ECONOMICS_COPY.items():
 _ZERKALO_COMMUNICATION_COPY = {
     "en": {
         "mirror_progress_facts": "Accuracy {accuracy}% · {tracked} words · {due} due · {streak}-day streak.",
+        "mirror_progress_recent_terms": "Recently practised: {terms}.",
         "mirror_progress_focus_weak": "Focus now: review “{term}”.",
         "mirror_progress_focus_due": "Focus now: complete {due} due reviews.",
         "mirror_progress_no_history": "There is not enough learning history yet.",
@@ -4082,6 +4083,7 @@ _ZERKALO_COMMUNICATION_COPY = {
     },
     "fr": {
         "mirror_progress_facts": "Précision {accuracy} % · {tracked} mots · {due} à réviser · série de {streak} jours.",
+        "mirror_progress_recent_terms": "Travaillés récemment : {terms}.",
         "mirror_progress_focus_weak": "Priorité : révisez « {term} ».",
         "mirror_progress_focus_due": "Priorité : terminez les {due} révisions prévues.",
         "mirror_progress_no_history": "Il n’y a pas encore assez d’historique d’apprentissage.",
@@ -4089,6 +4091,7 @@ _ZERKALO_COMMUNICATION_COPY = {
     },
     "de": {
         "mirror_progress_facts": "Genauigkeit {accuracy} % · {tracked} Wörter · {due} fällig · Serie: {streak} Tage.",
+        "mirror_progress_recent_terms": "Zuletzt geübt: {terms}.",
         "mirror_progress_focus_weak": "Fokus jetzt: „{term}“ wiederholen.",
         "mirror_progress_focus_due": "Fokus jetzt: {due} fällige Wiederholungen abschließen.",
         "mirror_progress_no_history": "Es gibt noch nicht genug Lernverlauf.",
@@ -4096,6 +4099,7 @@ _ZERKALO_COMMUNICATION_COPY = {
     },
     "ja": {
         "mirror_progress_facts": "正答率 {accuracy}%・学習語 {tracked}・復習 {due}・連続 {streak}日。",
+        "mirror_progress_recent_terms": "最近練習した語：{terms}。",
         "mirror_progress_focus_weak": "今の重点：「{term}」を復習しましょう。",
         "mirror_progress_focus_due": "今の重点：期限の来た復習を {due} 件終えましょう。",
         "mirror_progress_no_history": "学習履歴はまだ十分にありません。",
@@ -4103,6 +4107,7 @@ _ZERKALO_COMMUNICATION_COPY = {
     },
     "ar": {
         "mirror_progress_facts": "الدقة {accuracy}% · الكلمات {tracked} · للمراجعة {due} · السلسلة {streak} أيام.",
+        "mirror_progress_recent_terms": "تم التدريب مؤخراً: {terms}.",
         "mirror_progress_focus_weak": "التركيز الآن: راجع «{term}».",
         "mirror_progress_focus_due": "التركيز الآن: أكمل {due} مراجعات مستحقة.",
         "mirror_progress_no_history": "لا يوجد سجل تعلم كافٍ بعد.",
@@ -4110,6 +4115,7 @@ _ZERKALO_COMMUNICATION_COPY = {
     },
     "zh": {
         "mirror_progress_facts": "正确率 {accuracy}% · 已学 {tracked} 词 · 待复习 {due} · 连续 {streak} 天。",
+        "mirror_progress_recent_terms": "最近练习：{terms}。",
         "mirror_progress_focus_weak": "当前重点：复习“{term}”。",
         "mirror_progress_focus_due": "当前重点：完成 {due} 项到期复习。",
         "mirror_progress_no_history": "目前还没有足够的学习记录。",
@@ -4117,6 +4123,7 @@ _ZERKALO_COMMUNICATION_COPY = {
     },
     "ru": {
         "mirror_progress_facts": "Точность {accuracy}% · слов {tracked} · к повторению {due} · серия {streak} дн.",
+        "mirror_progress_recent_terms": "Недавно повторяли: {terms}.",
         "mirror_progress_focus_weak": "Сейчас фокус: повтори «{term}».",
         "mirror_progress_focus_due": "Сейчас фокус: пройди {due} запланированных повторения.",
         "mirror_progress_no_history": "Данных об обучении пока недостаточно.",
@@ -4124,6 +4131,7 @@ _ZERKALO_COMMUNICATION_COPY = {
     },
     "es": {
         "mirror_progress_facts": "Precisión {accuracy}% · {tracked} palabras · {due} pendientes · racha de {streak} días.",
+        "mirror_progress_recent_terms": "Practicadas recientemente: {terms}.",
         "mirror_progress_focus_weak": "Enfócate ahora en repasar «{term}».",
         "mirror_progress_focus_due": "Enfócate ahora en completar {due} repasos pendientes.",
         "mirror_progress_no_history": "Todavía no hay suficiente historial de aprendizaje.",

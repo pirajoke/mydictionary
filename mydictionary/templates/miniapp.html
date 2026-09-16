@@ -6,13 +6,13 @@
   <meta name="color-scheme" content="light dark">
   <title>Lexi — языковой тренер</title>
   <link rel="icon" href="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}">
-  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260914-learning-flow-v2">
+  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260917-teacher-continuity-v1">
   {% for section in ('profile', 'words', 'credits', 'languages', 'settings') %}
   <link rel="preload" as="image" type="image/webp" href="{{ url_for('static', filename='miniapp/lexi-section-' ~ section ~ '-v1.webp') }}" fetchpriority="{{ 'high' if section == 'profile' else 'low' }}">
   {% endfor %}
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp-swipe.js') }}?v=20260914-learning-flow-v2"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260914-learning-flow-v2"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp-swipe.js') }}?v=20260917-teacher-continuity-v1"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260917-teacher-continuity-v1"></script>
 </head>
 <body data-bot-username="{{ bot_username }}">
   <main class="app-shell" aria-live="polite">
@@ -120,6 +120,15 @@
           <summary data-i18n="more_stats"></summary>
           <span id="best-streak" hidden>0</span>
           <div class="metric-grid" id="profile-metrics"></div>
+          <section id="tutor-history" class="tutor-history" aria-labelledby="tutor-history-title" hidden>
+            <header class="tutor-history-heading">
+              <span aria-hidden="true">🦊</span>
+              <h3 id="tutor-history-title" data-i18n="tutor_history_title"></h3>
+              <span id="tutor-history-count" class="tutor-history-count"></span>
+            </header>
+            <p class="tutor-history-hint" data-i18n="tutor_history_hint"></p>
+            <div id="tutor-history-list" class="tutor-history-list"></div>
+          </section>
         </details>
         </div>
       </section>

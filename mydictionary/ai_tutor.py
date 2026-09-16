@@ -1034,6 +1034,9 @@ def render_mirror_answer(
 
     def clean(value: str) -> str:
         plain = re.sub(r"```[A-Za-z0-9_-]*", "", str(value))
+        plain = re.sub(r"\*\*(.+?)\*\*", r"\1", plain)
+        plain = re.sub(r"__(.+?)__", r"\1", plain)
+        plain = plain.replace("**", "").replace("__", "")
         plain = _MIRROR_APPLICATION_SECTION_MARKER_PATTERN.sub("", plain)
         field_names = tuple(MIRROR_RESPONSE_SCHEMA["required"])
         for field_name in field_names:

@@ -410,6 +410,16 @@ button:not(:disabled):active { transform: translateY(1px) scale(.985); }
 .metric b { display: block; color: var(--dashboard-text); font-size: 1.15rem; line-height: 1.1; }
 .metric span { display: block; margin-top: 4px; color: #52605d; font-size: .72rem; overflow-wrap: anywhere; }
 .dashboard-metric span { color: var(--dashboard-muted); }
+.tutor-history { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--dashboard-line); }
+.tutor-history-heading { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
+.tutor-history-heading h3 { margin: 0; color: var(--dashboard-text); font-size: .86rem; }
+.tutor-history-count { min-width: 24px; color: var(--dashboard-muted); text-align: end; font-size: .72rem; font-variant-numeric: tabular-nums; }
+.tutor-history-hint { margin: 5px 0 0; color: var(--dashboard-muted); font-size: .7rem; line-height: 1.35; }
+.tutor-history-list { margin-top: 8px; }
+.tutor-history-item { padding: 9px 0; border-top: 1px solid var(--dashboard-line); }
+.tutor-history-item:first-child { border-top: 0; }
+.tutor-history-item p { margin: 0; overflow-wrap: anywhere; font-size: .75rem; line-height: 1.4; }
+.tutor-history-answer { margin-top: 4px !important; color: var(--dashboard-muted); }
 
 /* One full-width title-and-art card across all five tabs. */
 .section-heading { min-height: 0; }
