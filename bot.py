@@ -9254,6 +9254,16 @@ def build_block_summary_keyboard(user_data: dict) -> InlineKeyboardMarkup:
             translate("block_retry_errors", locale),
             callback_data=f"bretry:{session_id}",
         )
+    elif user_data.get("block_mode") == "flash":
+        primary = InlineKeyboardButton(
+            translate("block_reinforce_quiz", locale),
+            callback_data=f"bmode:{session_id}:quiz",
+        )
+    elif user_data.get("block_mode") == "quiz":
+        primary = InlineKeyboardButton(
+            translate("block_reinforce_written", locale),
+            callback_data=f"bmode:{session_id}:type",
+        )
     else:
         primary = InlineKeyboardButton(
             translate("block_another_lesson", locale),
