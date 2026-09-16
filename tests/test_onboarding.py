@@ -38,37 +38,43 @@ class BotProfileTest(unittest.TestCase):
             [
                 "start:daily",
                 "start:review",
-                "start:topics",
-                "start:stats",
-                "start:settings",
+                "start:add",
+                "start:words",
+                "start:language",
             ],
         )
         self.assertEqual(
             bot.start_keyboard().inline_keyboard[0][0].text,
-            "▶️ Урок на сегодня",
+            "▶️ Начать карточки",
         )
 
 
 class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
-    async def test_start_sends_banner_with_editable_text(self):
+    async def test_start_sends_compact_personal_home_before_inline_actions(self):
         message = SimpleNamespace(
             reply_photo=AsyncMock(),
             reply_text=AsyncMock(),
         )
-        profile = dict(
-            BOT_PROFILE_DEFAULTS,
-            bot_start_text="Привет, {name}! Настраиваемый старт.",
-        )
-        with patch.object(bot, "get_bot_profile", return_value=profile):
+        pack = bot.CATALOG.require("ja-basics-100")
+        with (
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.object(bot, "due_word_indices", return_value=[0, 1, 2]),
+        ):
             await bot.send_start_message(
                 message,
-                SimpleNamespace(),
+                SimpleNamespace(user_data={"interface_locale": "ru"}),
                 first_name="Анна",
             )
 
-        message.reply_photo.assert_awaited_once()
-        payload = message.reply_photo.await_args.kwargs
-        self.assertEqual(payload["caption"], "Привет, Анна! Настраиваемый старт.")
+        message.reply_photo.assert_not_awaited()
+        self.assertEqual(message.reply_text.await_count, 2)
+        first = message.reply_text.await_args_list[0]
+        payload = first.kwargs
+        self.assertIn("Привет, Анна!", first.args[0])
+        self.assertIn(pack.label, first.args[0])
+        self.assertIn("3", first.args[0])
+        self.assertLessEqual(len(first.args[0]), 220)
+        self.assertTrue(payload["reply_markup"].is_persistent)
         self.assertEqual(
             [
                 button.text
@@ -78,14 +84,16 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
             [
                 bot.quick_action_label("continue", "ru"),
                 bot.quick_action_label("review", "ru"),
-                bot.quick_action_label("mode", "ru"),
+                bot.quick_action_label("add", "ru"),
                 bot.quick_action_label("words", "ru"),
                 bot.quick_action_label("lang", "ru"),
             ],
         )
-        message.reply_text.assert_not_awaited()
+        inline = message.reply_text.await_args_list[1].kwargs["reply_markup"].inline_keyboard
+        self.assertEqual(inline[0][0].callback_data, "start:daily")
+        self.assertFalse(any(button.web_app for row in inline for button in row))
 
-    async def test_start_falls_back_to_text_when_photo_fails(self):
+    async def test_start_does_not_attempt_photo_upload_before_native_actions(self):
         message = SimpleNamespace(
             reply_photo=AsyncMock(side_effect=RuntimeError("photo unavailable")),
             reply_text=AsyncMock(),
@@ -93,12 +101,15 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
         with patch.object(bot, "get_bot_profile", return_value=BOT_PROFILE_DEFAULTS):
             await bot.send_start_message(
                 message,
-                SimpleNamespace(),
+                SimpleNamespace(user_data={"interface_locale": "ru"}),
                 first_name="Иван",
             )
 
-        message.reply_text.assert_awaited_once()
-        self.assertIn("Привет, Иван!", message.reply_text.await_args.args[0])
+        message.reply_photo.assert_not_awaited()
+        self.assertEqual(message.reply_text.await_count, 2)
+        self.assertIn("Привет, Иван!", message.reply_text.await_args_list[0].args[0])
+        self.assertTrue(message.reply_text.await_args_list[0].kwargs["reply_markup"].is_persistent)
+        self.assertEqual(message.reply_text.await_args_list[1].kwargs["reply_markup"].inline_keyboard[0][0].callback_data, "start:daily")
 
 
 class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):

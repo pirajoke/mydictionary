@@ -17,6 +17,7 @@ from mydictionary.storage import (
     AbuseEvent,
     AdminAuditLog,
     AnalyticsEvent,
+    BotLearningSession,
     CustomVocabularyEntry,
     DataImport,
     DatabaseStore,
@@ -104,6 +105,7 @@ class RetentionReport:
     voice_sessions: int = 0
     mirror_dialogue_turns: int = 0
     miniapp_swipe_sessions: int = 0
+    bot_learning_sessions: int = 0
 
     @property
     def total(self) -> int:
@@ -141,6 +143,11 @@ def retention_report(
     cutoffs = _cutoffs(policy, observed_at)
     with store.Session() as session:
         return RetentionReport(
+            bot_learning_sessions=int(
+                session.scalar(select(func.count()).select_from(BotLearningSession).where(
+                    BotLearningSession.created_at <= cutoffs["miniapp_swipe"]
+                )) or 0
+            ),
             miniapp_swipe_sessions=int(
                 session.scalar(select(func.count()).select_from(MiniAppSwipeSession).where(
                     MiniAppSwipeSession.created_at <= cutoffs["miniapp_swipe"]
@@ -222,6 +229,9 @@ def apply_retention(
     observed_at = now or utcnow()
     cutoffs = _cutoffs(policy, observed_at)
     with store.Session.begin() as session:
+        bot_sessions = session.execute(delete(BotLearningSession).where(
+            BotLearningSession.created_at <= cutoffs["miniapp_swipe"]
+        )).rowcount
         swipe_sessions = session.execute(delete(MiniAppSwipeSession).where(
             MiniAppSwipeSession.created_at <= cutoffs["miniapp_swipe"]
         )).rowcount
@@ -266,6 +276,7 @@ def apply_retention(
             )
         ).rowcount
         report = RetentionReport(
+            bot_learning_sessions=int(bot_sessions or 0),
             miniapp_swipe_sessions=int(swipe_sessions or 0),
             analytics_events=int(analytics or 0),
             ai_usage=int(ai_usage or 0),
@@ -314,6 +325,7 @@ def erase_user_learning_data(
 
         deleted_rows = 0
         for model in (
+            BotLearningSession,
             MiniAppSwipeSession,
             MirrorResponseFeedback,
             MirrorResponseQuality,

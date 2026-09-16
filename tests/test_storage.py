@@ -114,7 +114,7 @@ class DatabaseStoreTest(unittest.TestCase):
             revision = connection.execute(
                 text("select version_num from alembic_version")
             ).scalar_one()
-        self.assertEqual(revision, "0023_miniapp_swipe_sessions")
+        self.assertEqual(revision, "0024_bot_learning_sessions")
         self.assertLessEqual(len(revision), 32)
 
         ai_usage_columns = {

@@ -29,8 +29,10 @@ invoice, or modify settings.
 
 ## Swipe practice
 
-Press **Start swiping** in Dictionary. The existing five-item navigation stays
-unchanged. The language shortcut opens the existing Languages tab.
+Use the profile's learn-now action to resume unfinished practice or start the
+next appropriate lesson. Dictionary offers explicit word-source choices and
+swipe practice. The existing five-item navigation stays unchanged. The language
+shortcut opens the existing Languages tab. See [learning flow v2](lexi-learning-flow-v2.md).
 Smart mix prefers seven due/mistaken words and three new words, filling
 shortages without unrelated learned fillers. Decks have at most ten curated
 cards from the current compatible pack, translated into the learner's meaning
@@ -48,8 +50,10 @@ undo restores SRS and answer XP within ten minutes, retaining the day's practice
 streak. Newer changes from another session/Telegram prevent destructive undo.
 Completion adds the canonical 25 session XP once and refreshes profile metrics.
 
-Four strict signed POST routes live under `/miniapp/api/swipe/`: `deck`, `rate`,
-`undo`, `complete`. Queue ownership, active pack and selected content identities
+Six strict signed POST routes live under `/miniapp/api/swipe/`: `deck`, `status`,
+`resume`, `rate`, `undo`, `complete`. Status reads unfinished-session metadata
+without starting practice; resume reconstructs the learner's original queue.
+Queue ownership, active pack and selected content identities
 are server-authoritative. Expired/changed content sessions fail closed. The
 additive `0023_miniapp_swipe_sessions` migration stores bounded short-lived
 state/receipts, without terms or messages; cleanup and learner erasure remove it.

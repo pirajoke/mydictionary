@@ -34,34 +34,48 @@ class LearningEntryV2Test(unittest.IsolatedAsyncioTestCase):
             "mode": stack.enter_context(patch.object(bot, "open_practice_mode_picker", new_callable=AsyncMock)),
             "words": stack.enter_context(patch.object(bot.cmd_learn, "__wrapped__", new_callable=AsyncMock)),
             "lang": stack.enter_context(patch.object(bot.cmd_lang, "__wrapped__", new_callable=AsyncMock)),
+            "add": stack.enter_context(patch.object(bot.cmd_add_words, "__wrapped__", new_callable=AsyncMock)),
         }
 
     async def test_ac2_enabled_quick_actions_open_native_destinations_in_all_locales(self):
-        destinations = {"continue": "practice", "review": "review", "mode": "words", "words": "words", "lang": "languages"}
+        actions = ("continue", "review", "mode", "words", "lang", "add")
         for locale in ("en", "ru", "fr", "de", "es", "ja", "zh", "ar"):
-            for action, destination in destinations.items():
+            for action in actions:
                 with self.subTest(locale=locale, action=action), ExitStack() as stack:
                     routes = self.routes(stack)
                     event = stack.enter_context(patch.object(bot, "record_product_event"))
                     stack.enter_context(patch.object(bot, "MINIAPP_SETTINGS", replace(bot.MINIAPP_SETTINGS, enabled=True, public_url="https://dictionary.example/miniapp")))
                     update, context = self.fixture(action, locale)
                     await bot.handle_quick_action.__wrapped__(update, context)
-                    update.message.reply_text.assert_awaited_once()
-                    self.assertTrue(update.message.reply_text.await_args.args[0].strip())
-                    markup = update.message.reply_text.await_args.kwargs.get("reply_markup")
-                    self.assertIsNotNone(markup)
-                    buttons = [button for row in markup.inline_keyboard for button in row if button.web_app]
-                    self.assertEqual(len(buttons), 1)
-                    parsed = urlsplit(buttons[0].web_app.url)
-                    self.assertEqual((parsed.scheme, parsed.netloc, parsed.path), ("https", "dictionary.example", "/miniapp"))
-                    self.assertEqual(parse_qs(parsed.query), {"view": [destination]})
-                    self.assertFalse(parsed.fragment)
-                    for route in routes.values():
-                        route.assert_not_awaited()
+                    routes[action].assert_awaited_once()
+                    for name, route in routes.items():
+                        if name != action:
+                            route.assert_not_awaited()
+                    update.message.reply_text.assert_not_awaited()
+                    if action == "review":
+                        self.assertEqual(routes[action].await_args.kwargs["lesson_kind"], "review")
                     event.assert_called_once_with("quick_action_selected", source=action)
 
+    async def test_explicit_swipe_alone_opens_webapp_practice(self):
+        with ExitStack() as stack:
+            routes = self.routes(stack)
+            stack.enter_context(patch.object(bot, "record_product_event"))
+            stack.enter_context(patch.object(bot, "MINIAPP_SETTINGS", replace(bot.MINIAPP_SETTINGS, enabled=True, public_url="https://dictionary.example/miniapp")))
+            update, context = self.fixture("swipe")
+            await bot.handle_quick_action.__wrapped__(update, context)
+        update.message.reply_text.assert_awaited_once()
+        markup = update.message.reply_text.await_args.kwargs["reply_markup"]
+        buttons = [button for row in markup.inline_keyboard for button in row if button.web_app]
+        self.assertEqual(len(buttons), 1)
+        parsed = urlsplit(buttons[0].web_app.url)
+        self.assertEqual((parsed.scheme, parsed.netloc, parsed.path), ("https", "dictionary.example", "/miniapp"))
+        self.assertEqual(parse_qs(parsed.query), {"view": ["practice"]})
+        self.assertFalse(parsed.fragment)
+        for route in routes.values():
+            route.assert_not_awaited()
+
     async def test_ec2_disabled_miniapp_preserves_every_deterministic_bot_route(self):
-        for action in ("continue", "review", "mode", "words", "lang"):
+        for action in ("continue", "review", "mode", "words", "lang", "add"):
             with self.subTest(action=action), ExitStack() as stack:
                 routes = self.routes(stack)
                 stack.enter_context(patch.object(bot, "record_product_event"))

@@ -32,7 +32,7 @@ class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
                         [bot.quick_action_label("continue", locale)],
                         [
                             bot.quick_action_label("review", locale),
-                            bot.quick_action_label("mode", locale),
+                            bot.quick_action_label("add", locale),
                         ],
                         [
                             bot.quick_action_label("words", locale),
@@ -49,14 +49,14 @@ class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
 
     def test_ac2_exact_router_supports_only_the_five_visible_actions(self):
         for locale in sorted(INTERFACE_LOCALES):
-            for action in ("continue", "review", "mode", "words", "lang"):
+            for action in ("continue", "review", "add", "words", "lang"):
                 label = bot.quick_action_label(action, locale)
                 with self.subTest(locale=locale, action=action):
                     self.assertEqual(bot.quick_action_for_text(label), action)
                     self.assertIsNone(bot.quick_action_for_text(f" {label}"))
                     self.assertIsNone(bot.quick_action_for_text(f"{label}!"))
         self.assertEqual(set(bot.QUICK_ACTION_KEYS), {
-            "continue", "review", "mode", "words", "lang"
+            "continue", "review", "add", "words", "lang"
         })
         source = inspect.getsource(bot.manual_polling)
         self.assertLess(source.index("handle_quick_action"), source.index("mirror_text_handler"))

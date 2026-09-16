@@ -138,6 +138,7 @@ from mydictionary.miniapp import (
 from mydictionary.readiness import BotHeartbeat, heartbeat_path
 from mydictionary.runtime_secrets import load_runtime_secret_files
 from mydictionary.privacy import erase_user_learning_data
+from mydictionary import bot_learning
 from mydictionary.safety import PersistentRateLimiter, SafetySettings
 from mydictionary.storage import (
     ACCESS_STATUSES,
@@ -1175,14 +1176,16 @@ def get_lang_keyboard():
 QUICK_ACTION_KEYS = {
     "continue": "quick_continue",
     "review": "start_review",
-    "mode": "quick_practice_mode",
-    "words": "quick_choose_words",
-    "lang": "command_lang",
+    "add": "quick_add_words",
+    "words": "quick_my_words",
+    "lang": "quick_language",
 }
 
 # Exact labels from keyboards already delivered before the learning-first
 # redesign remain routable, although they are no longer rendered.
 LEGACY_QUICK_ACTION_KEYS = {
+    "mode": "quick_practice_mode",
+    "swipe": "quick_swipe",
     "ai": "command_ai",
     "audit": "command_stats",
     "dictionary": "command_dictionary",
@@ -1204,6 +1207,10 @@ def quick_action_label(action: str, locale: str | None = None) -> str:
         return f"🎯 {label}"
     if action == "words":
         return f"📚 {label}"
+    if action == "add":
+        return f"➕ {label}"
+    if action == "swipe":
+        return f"📱 {label}"
     if action == "ai":
         return f"✨ {label}"
     if action == "audit":
@@ -1222,7 +1229,7 @@ def get_quick_actions_keyboard(locale: str | None = None) -> ReplyKeyboardMarkup
             [quick_action_label("continue", locale)],
             [
                 quick_action_label("review", locale),
-                quick_action_label("mode", locale),
+                quick_action_label("add", locale),
             ],
             [
                 quick_action_label("words", locale),
@@ -1241,6 +1248,10 @@ def quick_action_for_text(text: str | None) -> str | None:
     for locale in INTERFACE_LOCALES:
         if candidate == legacy_continue_label(locale):
             return "continue"
+        if candidate == f"📚 {translate('quick_choose_words', locale)}":
+            return "words"
+        if candidate == f"🌍 {translate('command_lang', locale)}":
+            return "lang"
         for action in QUICK_ACTION_KEYS | LEGACY_QUICK_ACTION_KEYS:
             if candidate == quick_action_label(action, locale):
                 return action
@@ -1254,6 +1265,14 @@ QUICK_ACTION_TEXTS = {
 }
 QUICK_ACTION_TEXTS.update(
     legacy_continue_label(locale) for locale in INTERFACE_LOCALES
+)
+QUICK_ACTION_TEXTS.update(
+    label
+    for locale in INTERFACE_LOCALES
+    for label in (
+        f"📚 {translate('quick_choose_words', locale)}",
+        f"🌍 {translate('command_lang', locale)}",
+    )
 )
 QUICK_ACTION_PATTERN = r"^(?:" + "|".join(
     re.escape(label) for label in sorted(QUICK_ACTION_TEXTS)
@@ -1690,6 +1709,8 @@ def auth(func):
                 for key in tuple(user_data):
                     if str(key).startswith("block_") or key == "lesson_kind":
                         user_data.pop(key, None)
+                user_data["type_idx"] = None
+                user_data["smart_mode"] = False
             if SAFETY_SETTINGS.enabled and runtime.role != "admin":
                 scope, policy = SAFETY_SETTINGS.for_handler(func.__name__)
                 rate_decision = PersistentRateLimiter(runtime.store).consume(
@@ -1721,7 +1742,32 @@ def auth(func):
                         message, locale=interface_locale_for_update(update)
                     )
                 return
-            return await func(update, context)
+            standalone_pending = (
+                isinstance(user_data, MutableMapping)
+                and not user_data.get("block_session")
+                and (user_data.get("smart_mode") or user_data.get("type_idx") is not None)
+                and func.__name__ not in {
+                    "cmd_start", "cmd_continue", "cmd_review", "cmd_learn", "cmd_lang",
+                    "handle_quick_action", "start_menu_cb",
+                }
+            )
+            if (isinstance(user_data, MutableMapping) and isinstance(runtime.store, DatabaseStore)
+                and not standalone_pending):
+                try:
+                    restored = bot_learning.load(
+                        runtime.store, user_id=runtime.user_id, catalog=CATALOG,
+                    )
+                except bot_learning.BotLearningError:
+                    restored = None
+                for key in tuple(user_data):
+                    if key in bot_learning.STATE_KEYS:
+                        user_data.pop(key, None)
+                if restored is not None:
+                    user_data.update(restored)
+            try:
+                return await func(update, context)
+            finally:
+                persist_native_block(context)
     return wrapper
 
 # ---------------------------------------------------------------------------
@@ -2311,26 +2357,27 @@ async def onboarding_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await edit_onboarding_message(query, translate("onboarding_stale", locale))
 
 
-def start_keyboard(locale: str = "ru") -> InlineKeyboardMarkup:
+def start_keyboard(locale: str = "ru", *, resumable: bool = False) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(
-                translate("start_daily", locale), callback_data="start:daily"
+                quick_action_label("continue", locale) if resumable else translate("native_start_cards", locale),
+                callback_data="start:continue" if resumable else "start:daily",
             )],
             [
                 InlineKeyboardButton(
                     translate("start_review", locale), callback_data="start:review"
                 ),
                 InlineKeyboardButton(
-                    translate("start_topics", locale), callback_data="start:topics"
+                    quick_action_label("add", locale), callback_data="start:add"
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    translate("start_stats", locale), callback_data="start:stats"
+                    quick_action_label("words", locale), callback_data="start:words"
                 ),
                 InlineKeyboardButton(
-                    translate("start_settings", locale), callback_data="start:settings"
+                    quick_action_label("lang", locale), callback_data="start:language"
                 ),
             ],
         ]
@@ -2505,21 +2552,27 @@ async def send_start_message(
     first_name: str | None,
     locale: str = "ru",
 ) -> None:
-    profile = get_bot_profile()
-    text = render_start_text(profile, first_name, locale=locale)
-    quick_actions = get_quick_actions_keyboard(locale)
-    if WELCOME_BANNER_PATH.exists():
-        try:
-            with WELCOME_BANNER_PATH.open("rb") as photo:
-                await message.reply_photo(
-                    photo=photo,
-                    caption=text,
-                    reply_markup=quick_actions,
-                )
-            return
-        except Exception as exc:
-            logger.warning("Welcome banner failed; using text fallback: %s", exc)
-    await message.reply_text(text, reply_markup=quick_actions)
+    user_data = context.user_data
+    pack = active_content_pack()
+    resumable = active_tutor_context(user_data) is not None and not block_is_complete(user_data)
+    text = translate(
+        "native_home_text",
+        locale,
+        name=first_name or "Lexi",
+        language=pack.label,
+        due=len(due_word_indices(size=len(W()))),
+    )
+    if resumable:
+        text += "\n" + translate(
+            "native_home_resume", locale,
+            position=int(user_data.get("block_pos", 0)) + 1,
+            total=len(user_data.get("block_indices", [])),
+        )
+    await message.reply_text(text, reply_markup=get_quick_actions_keyboard(locale))
+    await message.reply_text(
+        translate("native_home_actions", locale),
+        reply_markup=start_keyboard(locale, resumable=resumable),
+    )
 
 
 def _miniapp_detail_entry(
@@ -3031,6 +3084,37 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = query.message.chat_id
     locale = interface_locale_for_update(update)
     context.user_data["interface_locale"] = locale
+    native_update = SimpleNamespace(
+        message=query.message,
+        effective_message=query.message,
+        effective_user=update.effective_user,
+        effective_chat=getattr(update, "effective_chat", None),
+    )
+    if action == "continue":
+        await continue_or_start_lesson(query.message, context)
+        return
+    if action == "home":
+        await send_start_message(
+            query.message, context,
+            first_name=getattr(update.effective_user, "first_name", None),
+            locale=locale,
+        )
+        return
+    if action == "words":
+        await cmd_learn.__wrapped__(native_update, context)
+        return
+    if action == "mode":
+        await open_practice_mode_picker(query.message, context)
+        return
+    if action == "add":
+        await cmd_add_words.__wrapped__(native_update, context)
+        return
+    if action == "language":
+        await cmd_lang.__wrapped__(native_update, context)
+        return
+    if action == "swipe":
+        await send_swipe_entry(native_update, context, locale=locale)
+        return
     if action in {"daily"}:
         await start_home_lesson(query, context, lesson_kind="daily")
         return
@@ -3041,10 +3125,7 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await send_dictionary_prompt(query.message, context, locale=locale)
         return
     if action in {"topics", "learn"}:
-        invalidate_block_session(context.user_data)
         pack = active_content_pack()
-        context.user_data["block_lang"] = pack.target_language
-        context.user_data["block_pack_id"] = pack.pack_id
         await context.bot.send_message(
             chat_id=chat_id,
             text=f"📚 *{pack.label}*\n\n{translate('topic_prompt', locale)}",
@@ -7164,10 +7245,17 @@ async def handle_type_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 f"❌\n{format_word_details(idx)}\n"
                 f"{translate('block_your_answer', locale, answer=answer)}"
             )
-        await update.message.reply_text(text, parse_mode="Markdown")
-        await send_pronunciation(update.message.chat_id, idx, context)
-        context.user_data["type_idx"] = None
-        await block_advance(update.message, context, idx, is_correct)
+        async def accepted_feedback():
+            await update.message.reply_text(text, parse_mode="Markdown")
+            await send_pronunciation(update.message.chat_id, idx, context)
+
+        context.user_data["native_answer_update_id"] = getattr(update, "update_id", None)
+        try:
+            await block_advance(
+                update.message, context, idx, is_correct, on_accepted=accepted_feedback,
+            )
+        finally:
+            context.user_data.pop("native_answer_update_id", None)
         return
 
     # Smart type mode
@@ -7846,6 +7934,23 @@ def invalidate_block_session(user_data: dict):
     user_data.pop("quick_mode_pending_start", None)
 
 
+def persist_native_block(context) -> bool:
+    """Persist issued cards before network I/O; never persist free-form messages."""
+    runtime = _ACTIVE_RUNTIME.get()
+    user_data = getattr(context, "user_data", None)
+    if runtime is None or not isinstance(runtime.store, DatabaseStore):
+        return True
+    if not isinstance(user_data, MutableMapping) or not user_data.get("block_session"):
+        return True
+    try:
+        return bot_learning.save(
+            runtime.store, user_id=runtime.user_id, catalog=CATALOG, state=user_data,
+        )
+    except bot_learning.BotLearningError as exc:
+        logger.warning("Native block persistence unavailable: code=%s", exc.code)
+        return False
+
+
 def reset_block_state(
     user_data: dict,
     indices: list[int],
@@ -7855,6 +7960,7 @@ def reset_block_state(
     *,
     lesson_kind: str | None = None,
 ):
+    previous_pack = user_data.get("block_pack_id")
     user_data["block_all_indices"] = list(indices)
     user_data["block_indices"] = list(indices)
     user_data["block_pos"] = 0
@@ -7870,11 +7976,14 @@ def reset_block_state(
             candidate = visible_pack_for_language(lang)
         pack_id = candidate.pack_id if candidate else None
     user_data["block_pack_id"] = pack_id
+    if previous_pack != pack_id:
+        user_data.pop("block_storage_session", None)
     user_data["block_topic"] = topic
     user_data["block_session"] = new_block_session_id()
     user_data["block_completion_tracked"] = False
     user_data["lesson_kind"] = lesson_kind
     user_data["lesson_completion_tracked"] = False
+    user_data["block_reward_granted"] = False
 
 
 def start_block_attempt(user_data: dict, mode: str, indices: list[int] | None = None):
@@ -7890,6 +7999,7 @@ def start_block_attempt(user_data: dict, mode: str, indices: list[int] | None = 
     user_data["smart_mode"] = False
     user_data["block_session"] = new_block_session_id()
     user_data["block_completion_tracked"] = False
+    user_data["block_reward_granted"] = False
 
 
 def current_block_index(user_data: dict) -> int | None:
@@ -8287,15 +8397,18 @@ async def request_compact_learning_companion(
 
 @auth
 async def cmd_learn(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    invalidate_block_session(context.user_data)
     pack = active_content_pack()
-    context.user_data["block_lang"] = pack.target_language
-    context.user_data["block_pack_id"] = pack.pack_id
     locale = learning_card_locale(context.user_data)
+    rows = [
+        [InlineKeyboardButton(translate("native_words_topics", locale), callback_data="start:topics")],
+        [InlineKeyboardButton(translate("native_words_current", locale), callback_data="start:mode")],
+        [InlineKeyboardButton(translate("native_words_custom", locale), callback_data="custom-practice:start")],
+    ]
+    if MINIAPP_SETTINGS.enabled:
+        rows.append([InlineKeyboardButton(translate("quick_swipe", locale), callback_data="start:swipe")])
     await update.message.reply_text(
-        f"📚 *{pack.label}*\n\n{translate('topic_prompt', locale)}",
-        reply_markup=build_topic_keyboard(pack, locale=locale),
-        parse_mode="Markdown",
+        translate("native_words_prompt", locale, language=pack.label),
+        reply_markup=InlineKeyboardMarkup(rows),
     )
 
 
@@ -8307,12 +8420,19 @@ async def continue_or_start_lesson(
 ) -> None:
     """Resume a valid incomplete block, otherwise start today's lesson."""
     user_data = context.user_data
+    if user_data.pop("native_reissue_required", False):
+        remaining = list(user_data.get("block_indices", []))[user_data.get("block_pos", 0):]
+        if remaining:
+            start_block_attempt(user_data, user_data.get("block_mode") or "flash", remaining)
     if active_tutor_context(user_data) is not None and not block_is_complete(user_data):
         if user_data.get("block_mode") in BLOCK_MODES:
             await block_send_question_msg(message, context)
             return
         indices = list(user_data.get("block_all_indices", []))
         locale = learning_card_locale(user_data)
+        if not persist_native_block(context):
+            await message.reply_text(BLOCK_STALE_TEXT)
+            return
         await message.reply_text(
             format_block_intro(
                 indices,
@@ -8398,6 +8518,9 @@ async def open_practice_mode_picker(message, context) -> None:
             lesson_kind="practice",
         )
         user_data["quick_mode_pending_start"] = True
+    if not persist_native_block(context):
+        await message.reply_text(BLOCK_STALE_TEXT)
+        return
     await message.reply_text(
         translate("practice_mode_prompt", locale, count=len(indices)),
         reply_markup=practice_mode_keyboard(user_data),
@@ -8412,12 +8535,9 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     locale = interface_locale_for_update(update)
     record_product_event("quick_action_selected", source=action)
-    native_view = {"continue": "practice", "review": "review", "mode": "words", "words": "words", "lang": "languages"}.get(action)
-    if native_view:
-        entry = _miniapp_detail_entry(update, view=native_view, locale=locale)
-        if entry:
-            await update.message.reply_text(entry[0], reply_markup=entry[1])
-            return
+    if action == "swipe":
+        await send_swipe_entry(update, context, locale=locale)
+        return
     if action == "continue":
         await continue_or_start_lesson(
             update.message,
@@ -8439,6 +8559,9 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     if action == "words":
         await cmd_learn.__wrapped__(update, context)
         return
+    if action == "add":
+        await cmd_add_words.__wrapped__(update, context)
+        return
     if action == "audit":
         await cmd_stats.__wrapped__(update, context)
         return
@@ -8457,6 +8580,16 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         user_id=int(update.effective_user.id),
         locale=locale,
     )
+
+
+async def send_swipe_entry(update, context, *, locale: str) -> None:
+    """Open swipe only after an explicit secondary action."""
+    entry = _miniapp_detail_entry(update, view="practice", locale=locale)
+    message = getattr(update, "effective_message", None) or update.message
+    if entry is None:
+        await message.reply_text(translate("miniapp_disabled", locale))
+        return
+    await message.reply_text(entry[0], reply_markup=entry[1])
 
 
 @auth
@@ -8489,6 +8622,9 @@ async def learn_topic_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             translate("topic_empty", locale),
             reply_markup=build_topic_keyboard(pack, locale=locale),
         )
+        return
+    if not persist_native_block(context):
+        await query.message.reply_text(BLOCK_STALE_TEXT)
         return
     await query.edit_message_text(
         format_block_intro(indices, topic, locale=locale),
@@ -8779,7 +8915,13 @@ async def block_mode_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ud["interface_locale"] = interface_locale_for_update(update)
     activate_block_language(ud)
     quick_start = bool(ud.pop("quick_mode_pending_start", False))
-    start_block_attempt(ud, mode)
+    if not quick_start and not block_is_complete(ud) and ud.get("block_pos", 0) > 0:
+        ud["block_mode"] = mode
+        ud["block_session"] = new_block_session_id()
+        ud["block_typing"] = False
+        ud["type_idx"] = None
+    else:
+        start_block_attempt(ud, mode)
     if quick_start:
         event_properties = {
             "pack_id": active_content_pack().pack_id,
@@ -8827,6 +8969,12 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
     locale = learning_card_locale(ud)
     progress_text = f"({pos + 1}/{len(indices)})"
     track_card_shown(ud, idx)
+    if mode == "type":
+        ud["type_idx"] = idx
+        ud["block_typing"] = True
+    if not persist_native_block(context):
+        await query.message.reply_text(BLOCK_STALE_TEXT)
+        return
 
     if mode == "quiz":
         await query.edit_message_text(
@@ -8864,20 +9012,46 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
         await send_pronunciation(query.message.chat_id, idx, context)
 
 
-async def block_advance(query_or_msg, context: ContextTypes.DEFAULT_TYPE, idx: int, correct: bool):
+async def block_advance(
+    query_or_msg, context: ContextTypes.DEFAULT_TYPE, idx: int, correct: bool,
+    *, on_accepted=None,
+):
     """Record answer and advance to next word."""
     ud = context.user_data
     activate_block_language(ud)
     if current_block_index(ud) != idx:
         return False
-    if correct:
-        mark_correct(idx)
-        ud["block_correct"] += 1
+    runtime = _ACTIVE_RUNTIME.get()
+    if runtime is not None and isinstance(runtime.store, DatabaseStore):
+        try:
+            result = bot_learning.rate(
+                runtime.store, user_id=runtime.user_id, catalog=CATALOG,
+                state=ud, word_index=idx, knew=correct,
+            )
+        except bot_learning.BotLearningError as exc:
+            if exc.code == "answer_already_recorded":
+                return False
+            if exc.code == "progress_changed":
+                ud["native_reissue_required"] = True
+            message = getattr(query_or_msg, "message", query_or_msg)
+            await message.reply_text(
+                BLOCK_STALE_TEXT, reply_markup=get_quick_actions_keyboard(learning_card_locale(ud)),
+            )
+            return False
+        ud.update(result["state"])
+        runtime.progress.update(result["profile"])
+        W()[idx].update(result["word"])
     else:
-        mark_wrong(idx)
-        ud["block_wrong"].append(idx)
+        if correct:
+            mark_correct(idx)
+            ud["block_correct"] += 1
+        else:
+            mark_wrong(idx)
+            ud["block_wrong"].append(idx)
+        ud["block_pos"] += 1
 
-    ud["block_pos"] += 1
+    if on_accepted is not None:
+        await on_accepted()
 
     if ud["block_pos"] >= len(ud["block_indices"]):
         # For type mode, summary must be sent as new message
@@ -8911,6 +9085,12 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
     locale = learning_card_locale(ud)
     progress_text = f"({pos + 1}/{len(indices)})"
     track_card_shown(ud, idx)
+    if mode == "type":
+        ud["type_idx"] = idx
+        ud["block_typing"] = True
+    if not persist_native_block(context):
+        await message.reply_text(BLOCK_STALE_TEXT)
+        return
 
     if mode == "quiz":
         await message.reply_text(
@@ -8953,9 +9133,11 @@ def format_block_summary(ud) -> str:
     correct = ud["block_correct"]
     wrong_indices = ud["block_wrong"]
     # Award session completion bonus
-    PROGRESS["sessions"] += 1
-    award_xp(XP_SESSION)
-    save_progress(PROGRESS)
+    if not ud.get("block_reward_granted"):
+        PROGRESS["sessions"] += 1
+        award_xp(XP_SESSION)
+        save_progress(PROGRESS)
+        ud["block_reward_granted"] = True
     xp_earned = correct * XP_CORRECT + len(wrong_indices) * XP_WRONG + XP_SESSION
     locale = learning_card_locale(ud)
     lvl, _title, next_xp = get_level(PROGRESS["xp"])
@@ -9048,18 +9230,35 @@ def track_lesson_completion(user_data: dict) -> None:
 
 
 def build_block_summary_keyboard(user_data: dict) -> InlineKeyboardMarkup:
-    rows = []
     session_id = user_data["block_session"]
     locale = learning_card_locale(user_data)
     if user_data["block_wrong"]:
-        rows.append([InlineKeyboardButton(
+        primary = InlineKeyboardButton(
             translate("block_retry_errors", locale),
             callback_data=f"bretry:{session_id}",
-        )])
-    rows.append([InlineKeyboardButton(
+        )
+    else:
+        primary = InlineKeyboardButton(
+            translate("block_another_lesson", locale),
+            callback_data="start:daily" if user_data.get("lesson_kind") else f"bnext:{session_id}",
+        )
+    return InlineKeyboardMarkup([
+        [primary],
+        [
+            InlineKeyboardButton(translate("native_finish_home", locale), callback_data="start:home"),
+            InlineKeyboardButton(translate("native_more", locale), callback_data=f"bmore:{session_id}"),
+        ],
+    ])
+
+
+def build_block_more_keyboard(user_data: dict) -> InlineKeyboardMarkup:
+    """Keep optional practice and navigation out of the completion surface."""
+    session_id = user_data["block_session"]
+    locale = learning_card_locale(user_data)
+    rows = [[InlineKeyboardButton(
         translate("block_cards_study", locale),
         callback_data=f"bstudy:{session_id}",
-    )])
+    )]]
     if AI_SETTINGS.enabled:
         rows.append([
             InlineKeyboardButton(
@@ -9078,33 +9277,27 @@ def build_block_summary_keyboard(user_data: dict) -> InlineKeyboardMarkup:
                 callback_data=f"bconversation:{session_id}",
             ),
         ])
-    if user_data.get("lesson_kind"):
-        rows.append([InlineKeyboardButton(
-            translate("block_another_lesson", locale),
-            callback_data="start:daily",
-        )])
-        rows.append([
-            InlineKeyboardButton(
-                translate("block_topics", locale),
-                callback_data=f"btopics:{session_id}",
-            ),
-            InlineKeyboardButton(
-                translate("block_settings", locale),
-                callback_data="start:settings",
-            ),
-        ])
-    else:
-        rows.append([
-            InlineKeyboardButton(
-                translate("block_next", locale),
-                callback_data=f"bnext:{session_id}",
-            ),
-            InlineKeyboardButton(
-                translate("block_topics", locale),
-                callback_data=f"btopics:{session_id}",
-            ),
-        ])
+    rows.append([
+        InlineKeyboardButton(translate("block_topics", locale), callback_data=f"btopics:{session_id}"),
+        InlineKeyboardButton(translate("block_settings", locale), callback_data="start:settings"),
+    ])
     return InlineKeyboardMarkup(rows)
+
+
+@auth
+async def block_more_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    parts = str(query.data or "").split(":")
+    if len(parts) != 2:
+        await reject_block_callback(query)
+        return
+    if not await validate_block_callback(
+        query, context.user_data, parts[1], require_complete=True,
+    ):
+        return
+    await query.edit_message_reply_markup(
+        reply_markup=build_block_more_keyboard(context.user_data),
+    )
 
 
 async def block_summary(query, context: ContextTypes.DEFAULT_TYPE):
@@ -9274,17 +9467,15 @@ async def block_study_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     activate_block_language(user_data)
     indices = list(user_data["block_all_indices"])
-    user_data["block_indices"] = indices
-    user_data["block_pos"] = 0
-    user_data["block_correct"] = 0
-    user_data["block_wrong"] = []
     user_data["block_mode"] = None
     user_data["block_typing"] = False
     user_data["type_idx"] = None
     user_data["smart_mode"] = False
     user_data["block_session"] = new_block_session_id()
-    user_data["block_completion_tracked"] = False
     locale = learning_card_locale(user_data)
+    if not persist_native_block(context):
+        await query.message.reply_text(BLOCK_STALE_TEXT)
+        return
     await query.edit_message_text(
         format_block_intro(indices, user_data.get("block_topic"), locale=locale),
         reply_markup=build_study_buttons(
@@ -9347,6 +9538,9 @@ async def block_next_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reset_block_state(
         ud, indices, pack.target_language, topic, pack.pack_id
     )
+    if not persist_native_block(context):
+        await query.message.reply_text(BLOCK_STALE_TEXT)
+        return
     await query.edit_message_text(
         format_block_intro(
             indices,
@@ -9714,6 +9908,7 @@ async def manual_polling():
     app.add_handler(CallbackQueryHandler(block_retry_cb, pattern=r"^bretry(?::|$)"))
     app.add_handler(CallbackQueryHandler(block_next_cb, pattern=r"^bnext(?::|$)"))
     app.add_handler(CallbackQueryHandler(block_study_cb, pattern=r"^bstudy(?::|$)"))
+    app.add_handler(CallbackQueryHandler(block_more_cb, pattern=r"^bmore(?::|$)"))
 
     # Quiz callbacks
     app.add_handler(CallbackQueryHandler(quiz_callback, pattern=r"^quiz:"))

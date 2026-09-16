@@ -31,7 +31,7 @@ from mydictionary.storage import AnalyticsEvent, DatabaseStore, User, UserProgre
 
 ROOT = Path(__file__).resolve().parents[1]
 USER_ID, OTHER_ID = 739001, 739002
-HEAD = "0023_miniapp_swipe_sessions"
+HEAD = "0024_bot_learning_sessions"
 NODE = shutil.which("node") or "/Users/mark/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
 
 
@@ -546,8 +546,12 @@ class MiniAppSwipeV1ApiTest(unittest.TestCase):
         config = Config(str(ROOT / "alembic.ini"))
         config.set_main_option("script_location", str(ROOT / "migrations"))
         config.set_main_option("sqlalchemy.url", str(self.store.engine.url))
+        command.downgrade(config, "0023_miniapp_swipe_sessions")
+        self.assertEqual(set(inspect(self.store.engine).get_table_names()), tables - {"bot_learning_sessions"})
+        command.upgrade(config, "head")
+        self.assertIn("bot_learning_sessions", inspect(self.store.engine).get_table_names())
         command.downgrade(config, "0022_custom_vocab_translation")
-        self.assertEqual(set(inspect(self.store.engine).get_table_names()), tables - {"miniapp_swipe_sessions"})
+        self.assertEqual(set(inspect(self.store.engine).get_table_names()), tables - {"miniapp_swipe_sessions", "bot_learning_sessions"})
         with self.store.Session() as session:
             self.assertIsNotNone(session.get(WordProgress, (OTHER_ID, self.pack.storage_key, vocabulary_id_for(self.words[0]))))
         command.upgrade(config, "head")
