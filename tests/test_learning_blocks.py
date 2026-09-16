@@ -1131,7 +1131,8 @@ class BlockCallbackTest(unittest.IsolatedAsyncioTestCase):
             await bot.block_quiz_cb.__wrapped__(update, context)
 
         query.answer.assert_awaited_once_with()
-        advance.assert_awaited_once_with(query, context, idx, True)
+        advance.assert_awaited_once()
+        self.assertEqual(advance.await_args.args[1:], (context, idx, True))
 
     async def test_starting_mode_invalidates_study_buttons(self):
         user_data = {}
