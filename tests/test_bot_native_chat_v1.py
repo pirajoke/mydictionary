@@ -28,14 +28,14 @@ class NativeChatEntryTest(unittest.IsolatedAsyncioTestCase):
                                  effective_user=SimpleNamespace(id=1, language_code=locale))
         return update, SimpleNamespace(user_data={"interface_locale": locale})
 
-    def test_persistent_primary_actions_are_native_five_not_mode_or_swipe(self):
-        expected = {"continue", "review", "words", "lang", "add"}
+    def test_persistent_primary_actions_include_native_mode_not_swipe(self):
+        expected = {"continue", "mode", "review", "words", "lang", "add"}
         for locale in bot.INTERFACE_LOCALES:
             markup = bot.get_quick_actions_keyboard(locale)
             labels = [button.text for row in markup.keyboard for button in row]
             actions = [bot.quick_action_for_text(label) for label in labels]
-            self.assertEqual(set(actions), expected, "Replace primary Mode with Add words")
-            self.assertEqual(len(actions), 5)
+            self.assertEqual(set(actions), expected)
+            self.assertEqual(len(actions), 6)
             self.assertTrue(markup.is_persistent)
             self.assertFalse(markup.one_time_keyboard)
 

@@ -24,6 +24,7 @@ def _inline_buttons(markup):
 def _quick_labels(locale):
     return [
         bot.quick_action_label("continue", locale),
+        bot.quick_action_label("mode", locale),
         bot.quick_action_label("review", locale),
         bot.quick_action_label("add", locale),
         bot.quick_action_label("words", locale),
@@ -32,7 +33,7 @@ def _quick_labels(locale):
 
 
 class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
-    def test_ac1_quick_keyboard_has_five_learning_first_actions(self):
+    def test_ac1_quick_keyboard_has_six_learning_first_actions(self):
         factory = getattr(bot, "get_quick_actions_keyboard", None)
         self.assertTrue(callable(factory), "quick-action keyboard is missing")
         pack_labels = {pack.label for pack in bot.CATALOG.packs}
