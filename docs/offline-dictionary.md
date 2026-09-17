@@ -16,6 +16,17 @@ Telegram account and does not read learner storage.
   bidirectional search, accepted Russian meanings and transcription.
 - Saved words and short written recall with corrections. Saved entries have a
   simple local next-review timestamp; this is independent of Telegram SRS/XP.
+- A device-local learning profile shows saved, learned and due words for the
+  selected language pair. Study days, the current streak and the seven-day
+  activity chart cover all practice recorded in that browser. No learner or
+  Telegram account data is read.
+- Search results reveal eight entries at a time instead of rendering a long
+  list. A user can explicitly show the next group; a new search, view or
+  language pair resets the list.
+- **PDF / print** creates a readable snapshot of the profile and all saved
+  words for the selected pair through the browser's native print dialog.
+  CSV, the standalone HTML download and offline controls live in one collapsed
+  secondary section instead of competing with daily review.
 - UI languages: Russian, English and French. Other requested interface locales
   fall back to English; vocabulary-language coverage is independent of UI.
 - Queries stay in the browser. The **Translate in Yandex** link sends the
@@ -27,11 +38,11 @@ Telegram account and does not read learner storage.
 ## Offline use
 
 **Save on this device** registers a worker scoped to `/dictionary/` and caches
-only the public dictionary shell, dictionary CSS/JS and manifest. After saving,
+only the public dictionary shell, profile/dictionary CSS/JS and manifest. After saving,
 the page can reopen offline in a supported browser/home-screen installation.
 The Mini App, admin pages, authentication, API responses and user identity are
 never cached by this worker. HTTP responses retain `no-store`; explicit browser
-Cache API writes apply only to the four public allowlisted resources.
+Cache API writes apply only to the five public allowlisted resources.
 
 The worker revision hashes dictionary content, template, CSS, JS, worker source,
 manifest and CSP. New revisions install a complete new cache and remove only
@@ -73,9 +84,10 @@ Browser: start an isolated `OfflineDictionaryTest` app, then run
 verifies a v1-to-v2 worker upgrade, coherent new shell/JS/CSS/content, cleanup of
 only old dictionary caches, and a cold offline lookup on the new version.
 
-Browser checks cover 42 non-identical language pairs, reverse and Unicode
-lookup, persisted saved entries, written feedback, no external query requests,
-mobile overflow, offline save/remove/resave, a new tab while network is blocked,
+Browser checks cover 42 non-identical language pairs, progressive result
+reveal, reverse and Unicode lookup, persisted profile activity, a printable
+saved-word snapshot, written feedback, no external query requests, mobile
+overflow, offline save/remove/resave, a new tab while network is blocked,
 standalone HTML with no network, and malformed local storage. Physical iOS and
 Android file-preview/home-screen behavior still needs pilot device validation.
 

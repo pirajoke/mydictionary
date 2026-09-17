@@ -10,7 +10,7 @@ const {chromium} = require("playwright");
 
 const root = path.resolve(__dirname, "../..");
 const ownCache = /^lexi-dictionary-[a-f0-9]{16}$/;
-const allowedPaths = ["/dictionary/", "/static/dictionary.css", "/static/dictionary.js", "/dictionary/manifest.webmanifest"];
+const allowedPaths = ["/dictionary/", "/static/dictionary-profile.js", "/static/dictionary.css", "/static/dictionary.js", "/dictionary/manifest.webmanifest"];
 
 async function main() {
   // Render the actual template and public projection without initializing a DB.
@@ -23,12 +23,12 @@ from mydictionary.dictionary import build_dictionary_data, dictionary_content_se
 env = Environment(loader=FileSystemLoader("mydictionary/templates"), autoescape=select_autoescape())
 html = env.get_template("dictionary.html").render(
     dictionary_data=build_dictionary_data(load_catalog()), dictionary_css=None,
-    dictionary_js=None, dictionary_defaults=None, offline_download=False,
+    dictionary_profile_js=None, dictionary_js=None, dictionary_defaults=None, offline_download=False,
     dictionary_csp=dictionary_content_security_policy().replace("frame-ancestors 'none'; ", ""))
 print(json.dumps({"html": html, "manifest": dictionary_manifest()}))
 `], {cwd:root, encoding:"utf8", maxBuffer:2 * 1024 * 1024}));
-  const [javascript, css, worker] = await Promise.all(
-    ["dictionary.js", "dictionary.css", "dictionary-sw.js"].map(name =>
+  const [profileJavascript, javascript, css, worker] = await Promise.all(
+    ["dictionary-profile.js", "dictionary.js", "dictionary.css", "dictionary-sw.js"].map(name =>
       fs.readFile(path.join(root, "mydictionary/static", name), "utf8"))
   );
   assert(worker.includes("__DICTIONARY_REVISION__"), "Fixture must use the real revisioned worker");
@@ -50,8 +50,8 @@ print(json.dumps({"html": html, "manifest": dictionary_manifest()}))
     const style = css + `\n:root { --fixture-revision: ${marker}; }\n`;
     const manifest = JSON.stringify(rendered.manifest);
     const revision = crypto.createHash("sha256")
-      .update(JSON.stringify({html, js, style, manifest, worker})).digest("hex").slice(0, 16);
-    return {html, js, style, manifest, revision};
+      .update(JSON.stringify({html, profileJavascript, js, style, manifest, worker})).digest("hex").slice(0, 16);
+    return {html, profileJavascript, js, style, manifest, revision};
   }
 
   const version1 = fixture("v1");
@@ -63,6 +63,7 @@ print(json.dumps({"html": html, "manifest": dictionary_manifest()}))
     requests.push({pathname, revision:current.revision});
     const routes = {
       "/dictionary/": ["text/html; charset=utf-8", current.html],
+      "/static/dictionary-profile.js": ["application/javascript", current.profileJavascript],
       "/static/dictionary.js": ["application/javascript", current.js],
       "/static/dictionary.css": ["text/css", current.style],
       "/dictionary/manifest.webmanifest": ["application/manifest+json", current.manifest],
@@ -96,6 +97,7 @@ print(json.dumps({"html": html, "manifest": dictionary_manifest()}))
     const page = await context.newPage();
     await page.goto(`${base}/dictionary/?target=en&native=ru&ui=en`);
     await page.locator(".word-row").first().waitFor();
+    await page.locator(".offline-tools > summary").click();
     await page.locator("#save-offline").click();
     await page.waitForFunction(() => document.getElementById("offline-status").textContent.includes("Dictionary saved"));
 

@@ -11,7 +11,7 @@ import base64
 import hashlib
 import json
 import re
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from mydictionary.catalog import ContentCatalog
 from mydictionary.content import accepted_meanings
@@ -120,16 +120,21 @@ def escape_inline_asset(source: str, element: str) -> str:
                   flags=re.IGNORECASE)
 
 
-def dictionary_content_security_policy(*, css: str = "", javascript: str = "") -> str:
+def dictionary_content_security_policy(
+    *, css: str = "", javascript: str | Sequence[str] = ""
+) -> str:
     """Authorize exact inline download assets without allowing arbitrary code."""
     def hash_source(source: str) -> str:
         digest = base64.b64encode(hashlib.sha256(source.encode("utf-8")).digest()).decode("ascii")
         return f" 'sha256-{digest}'" if source else ""
 
+    scripts = [javascript] if isinstance(javascript, str) else list(javascript)
+    script_hashes = "".join(hash_source(source) for source in scripts)
+
     return (
         "default-src 'none'; img-src 'self' data:; "
         f"style-src 'self'{hash_source(css)}; "
-        f"script-src 'self'{hash_source(javascript)}; "
+        f"script-src 'self'{script_hashes}; "
         "connect-src 'self'; worker-src 'self'; manifest-src 'self'; "
         "form-action 'none'; frame-ancestors 'none'; base-uri 'none'"
     )
@@ -138,9 +143,9 @@ def dictionary_content_security_policy(*, css: str = "", javascript: str = "") -
 def dictionary_manifest() -> dict[str, Any]:
     return {
         "id": "/dictionary/",
-        "name": "Lexi Dictionary",
+        "name": "Lexi — My Word Profile",
         "short_name": "Lexi",
-        "description": "A portable starter dictionary for seven languages.",
+        "description": "A private, device-local word profile and offline starter dictionary.",
         "start_url": "/dictionary/",
         "scope": "/dictionary/",
         "display": "standalone",

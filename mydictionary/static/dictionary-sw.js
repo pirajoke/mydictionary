@@ -1,7 +1,7 @@
 "use strict";
 const CACHE = "lexi-dictionary-__DICTIONARY_REVISION__";
 const SHELL = "/dictionary/";
-const ASSETS = [SHELL, "/static/dictionary.css", "/static/dictionary.js", "/dictionary/manifest.webmanifest"];
+const ASSETS = [SHELL, "/static/dictionary-profile.js", "/static/dictionary.css", "/static/dictionary.js", "/dictionary/manifest.webmanifest"];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
