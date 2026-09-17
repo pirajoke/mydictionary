@@ -6,13 +6,13 @@
   <meta name="color-scheme" content="light dark">
   <title>Lexi — языковой тренер</title>
   <link rel="icon" href="{{ url_for('static', filename='mascot/lexi-telegram-avatar-v1.jpg') }}">
-  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260917-teacher-continuity-v1">
+  <link rel="stylesheet" href="{{ url_for('miniapp_static', filename='miniapp.css') }}?v=20260917-card-modes-v1">
   {% for section in ('profile', 'words', 'credits', 'languages', 'settings') %}
   <link rel="preload" as="image" type="image/webp" href="{{ url_for('static', filename='miniapp/lexi-section-' ~ section ~ '-v1.webp') }}" fetchpriority="{{ 'high' if section == 'profile' else 'low' }}">
   {% endfor %}
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp-swipe.js') }}?v=20260917-teacher-continuity-v1"></script>
-  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260917-teacher-continuity-v1"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp-swipe.js') }}?v=20260917-card-modes-v1"></script>
+  <script defer src="{{ url_for('miniapp_static', filename='miniapp.js') }}?v=20260917-card-modes-v1"></script>
 </head>
 <body data-bot-username="{{ bot_username }}">
   <main class="app-shell" aria-live="polite">
@@ -144,12 +144,13 @@
             <button id="swipe-language" class="swipe-language" type="button"></button>
           </header>
           <p id="swipe-hint" class="swipe-hint"></p>
-          <p class="practice-source" data-i18n="starter_source"></p>
-          <div id="swipe-modes" class="swipe-modes">
+          <p id="swipe-mode-label" class="swipe-mode-label"></p>
+          <div id="swipe-modes" class="swipe-modes" role="group" aria-labelledby="swipe-mode-label" aria-describedby="swipe-mode-help">
             <button type="button" data-swipe-mode="mix" aria-pressed="true"></button>
             <button type="button" data-swipe-mode="forgotten" aria-pressed="false"></button>
             <button type="button" data-swipe-mode="new" aria-pressed="false"></button>
           </div>
+          <p id="swipe-mode-help" class="swipe-mode-help" aria-live="polite"></p>
           <div id="swipe-controls" class="swipe-session" hidden>
             <div class="swipe-session-line"><span id="swipe-count"></span><progress id="swipe-progress" max="10" value="0"></progress></div>
             <div class="swipe-stage">
@@ -171,28 +172,50 @@
           <button id="swipe-undo" class="swipe-undo" type="button" disabled hidden></button>
           <button id="swipe-resume" class="swipe-start" type="button" hidden></button>
           <button id="swipe-pause" class="swipe-undo" type="button" hidden></button>
-          <button id="swipe-start" class="swipe-start" type="button" disabled></button>
+          <button id="swipe-start" class="swipe-start" type="button" aria-describedby="swipe-mode-help swipe-status" disabled></button>
           <p id="swipe-status" class="swipe-status" aria-live="polite" aria-atomic="true"></p>
           <button id="swipe-retry" class="swipe-retry" type="button" hidden></button>
         </section>
-        <section id="custom-vocabulary-actions" class="custom-vocabulary-actions dashboard-section" aria-labelledby="custom-vocabulary-title">
-          <div class="custom-vocabulary-copy">
-            <span class="custom-vocabulary-kicker" data-i18n="custom_words_kicker"></span>
-            <h2 id="custom-vocabulary-title" data-i18n="custom_words_title"></h2>
-            <p data-i18n="custom_words_hint"></p>
+        <details id="custom-vocabulary-actions" class="words-disclosure custom-vocabulary-actions">
+          <summary>
+            <span class="words-disclosure-icon" aria-hidden="true">＋</span>
+            <span class="words-disclosure-label"><strong data-i18n="custom_words_add"></strong><small data-i18n="custom_words_hint"></small></span>
+            <span class="words-disclosure-chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="words-disclosure-body">
+            <div class="custom-vocabulary-copy">
+              <h2 id="custom-vocabulary-title" data-i18n="custom_words_title"></h2>
+            </div>
+            <div class="custom-vocabulary-controls">
+              <button class="custom-vocabulary-practice dashboard-action" type="button" data-action="practice_custom"><span aria-hidden="true">▶</span><span data-i18n="custom_words_practice"></span></button>
+              <button class="custom-vocabulary-add dashboard-action" type="button" data-action="add_words"><span aria-hidden="true">＋</span><span data-i18n="custom_words_add"></span></button>
+            </div>
           </div>
-          <div class="custom-vocabulary-controls">
-            <button class="custom-vocabulary-practice dashboard-action" type="button" data-action="practice_custom"><span aria-hidden="true">▶</span><span data-i18n="custom_words_practice"></span></button>
-            <button class="custom-vocabulary-add dashboard-action" type="button" data-action="add_words"><span aria-hidden="true">＋</span><span data-i18n="custom_words_add"></span></button>
+        </details>
+        <details class="words-disclosure dictionary-entry">
+          <summary>
+            <span class="words-disclosure-icon" aria-hidden="true">⌕</span>
+            <span class="words-disclosure-label"><strong data-i18n="words"></strong><small data-i18n="dictionary_hint"></small></span>
+            <span class="words-disclosure-chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="words-disclosure-body dictionary-entry-body">
+            <p class="device-dictionary-note" data-i18n="device_dictionary_note"></p>
+            <div class="dictionary-entry-actions">
+              <button class="primary-action dashboard-action" type="button" data-open-dictionary data-i18n="dictionary_open"></button>
+              <button class="dashboard-action" type="button" data-download-dictionary data-i18n="dictionary_download"></button>
+            </div>
           </div>
-        </section>
-        <div class="dictionary-entry">
-          <p class="device-dictionary-note" data-i18n="device_dictionary_note"></p>
-          <button class="primary-action dashboard-action" type="button" data-open-dictionary data-i18n="dictionary_open"></button>
-          <button class="dashboard-action" type="button" data-download-dictionary data-i18n="dictionary_download"></button>
-          <p data-i18n="dictionary_hint"></p>
-        </div>
-        <section class="word-library" data-i18n-aria-label="word_library_title">
+        </details>
+        <details class="word-library" data-words-disclosure>
+          <summary>
+            <span class="words-disclosure-icon" aria-hidden="true">≡</span>
+            <span class="words-disclosure-label">
+              <strong data-i18n="word_library_title"></strong>
+              <small><span data-i18n="custom_words_saved"></span> <b id="custom-word-summary-count">0</b> · <span data-i18n="dictionary_tracked"></span> <b id="tracked-word-summary-count">0</b></small>
+            </span>
+            <span class="words-disclosure-chevron" aria-hidden="true">›</span>
+          </summary>
+          <div class="words-disclosure-body">
           <div class="word-library-tabs" role="tablist" data-i18n-aria-label="word_library_title">
             <button id="word-library-custom-tab" class="word-library-tab" type="button" role="tab" aria-selected="true" aria-controls="word-library-custom-panel" tabindex="0" data-word-library-tab="custom">
               <span data-i18n="custom_words_saved"></span>
@@ -222,7 +245,8 @@
               <button id="tracked-word-page-next" class="dashboard-action" type="button" data-word-library-page="tracked" data-page-direction="next" data-i18n="word_library_next"></button>
             </nav>
           </section>
-        </section>
+          </div>
+        </details>
       </section>
 
       <section id="panel-credits" class="panel dashboard-panel" role="tabpanel" data-panel="credits" aria-labelledby="tab-credits" hidden>

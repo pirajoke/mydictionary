@@ -43,7 +43,7 @@ function fixture() {
       await flush();
     }
   }
-  const names = "trainer card target meaning transcription reveal speak again know undo status retry summary start count progress kind controls modes title hint language examples grammar pronunciation-status ipa-toggle resume pause".split(" ");
+  const names = "trainer card target meaning transcription reveal speak again know undo status retry summary start count progress kind controls modes title hint mode-label mode-help language examples grammar pronunciation-status ipa-toggle resume pause".split(" ");
   const elements = Object.fromEntries(names.map(name => [`swipe-${name}`, new Element(`swipe-${name}`)]));
   const modes = ["mix", "forgotten", "new"].map(mode => {const node = new Element(); node.dataset.swipeMode = mode; return node;});
   const document = {documentElement: {lang: "en", dir: "ltr"}, getElementById: id => elements[id] || null,
@@ -63,7 +63,7 @@ function fixture() {
   const context = {window, document, fetch, crypto, console, setTimeout, clearTimeout, AbortController, Event, CustomEvent, navigator: {onLine: true}, requestAnimationFrame: callback => callback()};
   vm.createContext(context); vm.runInContext(source, context);
   window.LexiSwipe.configure(bootstrap);
-  return {api: window.LexiSwipe, elements, requests, responses};
+  return {api: window.LexiSwipe, elements, modeControls: modes, requests, responses};
 }
 
 test("AC1/3 configure is passive; refresh reads status; entry resumes the existing queue", async () => {
@@ -98,6 +98,24 @@ test("AC1/EC1 auto entry prioritizes due review, otherwise new; explicit empty r
       assert(f.elements["swipe-know"].disabled);
     }
   }
+});
+
+test("AC2 mode selection updates the single start action and explanation before starting", async () => {
+  const f = fixture();
+  f.responses.push({counts: {new: 5, forgotten: 2, total: 7}, resume: null});
+  await f.api.refresh();
+  assert.match(f.elements["swipe-start"].textContent, /mix/i);
+  assert(f.elements["swipe-mode-help"].textContent.trim());
+  assert.equal(f.elements["swipe-mode-label"].textContent, "Choose a mode");
+
+  await f.modeControls.find(item => item.dataset.swipeMode === "forgotten").click();
+  assert.match(f.elements["swipe-start"].textContent, /review/i);
+  assert.match(f.elements["swipe-mode-help"].textContent, /due/i);
+  assert.equal(f.requests.length, 1, "changing mode is local and must not start a deck");
+
+  f.responses.push({...deck, mode: "forgotten", counts: {new: 5, forgotten: 2, total: 7}});
+  await f.elements["swipe-start"].click();
+  assert.deepEqual(f.requests.at(-1).body, {mode: "forgotten"});
 });
 
 test("AC5 last-answer undo remains actionable after completion and restores the card", async () => {

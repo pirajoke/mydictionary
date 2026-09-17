@@ -1031,6 +1031,8 @@
     wordLibraryItems.tracked = data.words;
     text(node("custom-word-count"), customWords.length);
     text(node("tracked-word-count"), data.words.length);
+    text(node("custom-word-summary-count"), customWords.length);
+    text(node("tracked-word-summary-count"), data.words.length);
     renderWordLibraryPage("custom", copy);
     renderWordLibraryPage("tracked", copy);
     if (!wordLibraryInitialized) {

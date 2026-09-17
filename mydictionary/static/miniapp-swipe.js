@@ -24,6 +24,17 @@
     ar: ["تابع البطاقات المتبقية", "توقف مؤقت · الإجابات محفوظة", "الصوت غير متاح. حاول الاستماع مجددًا.", "مزيج", "ابدأ التدريب"]
   };
   Object.entries(additional).forEach(([locale, values]) => Object.assign(copies[locale], Object.fromEntries(["resume", "pause", "audio_error", "mix", "start"].map((key, index) => [key, values[index]]))));
+  const modeUx = {
+    en: {mode_prompt: "Choose a mode", mix_hint: "Recommended: due reviews first, then new words.", forgotten_hint: "Only words that are due for review.", new_hint: "Only words you have not studied yet.", mix_start: "Start smart mix", forgotten_start: "Start review", new_start: "Learn new words"},
+    ru: {mode_prompt: "Выбери режим", mix_hint: "Рекомендуем: сначала повторение, затем новые слова.", forgotten_hint: "Только слова, которые пора повторить.", new_hint: "Только слова, которые ты ещё не изучал.", mix_start: "Начать умный микс", forgotten_start: "Начать повторение", new_start: "Учить новые слова"},
+    fr: {mode_prompt: "Choisis un mode", mix_hint: "Recommandé : révisions dues, puis nouveaux mots.", forgotten_hint: "Uniquement les mots à réviser maintenant.", new_hint: "Uniquement les mots pas encore étudiés.", mix_start: "Lancer le mix malin", forgotten_start: "Commencer la révision", new_start: "Apprendre de nouveaux mots"},
+    de: {mode_prompt: "Modus wählen", mix_hint: "Empfohlen: zuerst fällige Wiederholungen, dann neue Wörter.", forgotten_hint: "Nur Wörter, die jetzt wiederholt werden sollen.", new_hint: "Nur Wörter, die du noch nicht gelernt hast.", mix_start: "Smarten Mix starten", forgotten_start: "Wiederholung starten", new_start: "Neue Wörter lernen"},
+    es: {mode_prompt: "Elige un modo", mix_hint: "Recomendado: primero repasos pendientes y luego palabras nuevas.", forgotten_hint: "Solo palabras que ya toca repasar.", new_hint: "Solo palabras que aún no has estudiado.", mix_start: "Empezar mezcla inteligente", forgotten_start: "Empezar repaso", new_start: "Aprender palabras nuevas"},
+    ja: {mode_prompt: "モードを選ぶ", mix_hint: "おすすめ：復習する単語のあとに新しい単語を学びます。", forgotten_hint: "今が復習のタイミングの単語だけ。", new_hint: "まだ学習していない単語だけ。", mix_start: "スマートミックスを始める", forgotten_start: "復習を始める", new_start: "新しい単語を学ぶ"},
+    zh: {mode_prompt: "选择模式", mix_hint: "推荐：先复习到期单词，再学习新单词。", forgotten_hint: "只练习现在需要复习的单词。", new_hint: "只学习尚未学过的单词。", mix_start: "开始智能混合", forgotten_start: "开始复习", new_start: "学习新单词"},
+    ar: {mode_prompt: "اختر وضعًا", mix_hint: "موصى به: راجع الكلمات المستحقة ثم تعلّم كلمات جديدة.", forgotten_hint: "الكلمات المستحقة للمراجعة الآن فقط.", new_hint: "الكلمات التي لم تدرسها بعد فقط.", mix_start: "ابدأ المزيج الذكي", forgotten_start: "ابدأ المراجعة", new_start: "تعلّم كلمات جديدة"}
+  };
+  Object.entries(modeUx).forEach(([locale, values]) => Object.assign(copies[locale], values));
   const plurals = {en: "plural", ru: "мн. ч.", fr: "pluriel", de: "Plural", es: "plural", ja: "複数", zh: "复数", ar: "الجمع"};
   Object.entries(plurals).forEach(([locale, label]) => { copies[locale].plural = label; });
   const root = document.getElementById("swipe-trainer");
@@ -70,7 +81,8 @@
       setText("resume", copy.resume);
     }
     if (el("pause")) { el("pause").hidden = !card; el("pause").disabled = blocked; setText("pause", copy.pause); }
-    setText("start", completed ? copy.restart : copy.start);
+    setText("mode-help", copy[`${mode}_hint`]);
+    setText("start", completed ? copy.restart : copy[`${mode}_start`] || copy.start);
     setText("reveal", revealed ? copy.hide : copy.reveal);
     el("reveal").setAttribute("aria-expanded", String(revealed));
     el("meaning").hidden = !revealed;
@@ -303,6 +315,7 @@
     copy = copies[data.locale] || copies.en;
     fatal = !authenticated() || data.privacy?.access_erased === true;
     ["title", "hint", "again", "know", "undo", "retry", "speak"].forEach(id => setText(id, copy[id]));
+    setText("mode-label", copy.mode_prompt);
     setText("keyboard-hint", copy.keyboard);
     setText("language", current ? `${current.label} ›` : copy.language);
     if (el("language")) el("language").setAttribute("aria-label", copy.language);
