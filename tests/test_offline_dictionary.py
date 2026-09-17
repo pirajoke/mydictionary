@@ -185,7 +185,13 @@ class OfflineDictionaryTest(unittest.TestCase):
         baseline = worker_source()
         self.assertEqual(worker_source(), baseline)
         original_read_bytes = Path.read_bytes
-        for filename in ("dictionary.css", "dictionary.js", "dictionary.html", "dictionary-sw.js"):
+        for filename in (
+            "dictionary-profile.js",
+            "dictionary.css",
+            "dictionary.js",
+            "dictionary.html",
+            "dictionary-sw.js",
+        ):
             def changed_asset(path, filename=filename):
                 source = original_read_bytes(path)
                 return source + b"\n/* revision test */" if path.name == filename else source

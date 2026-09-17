@@ -20,10 +20,38 @@
       <span id="connection-status" class="connection-status" role="status"></span>
     </header>
     <section class="intro" aria-labelledby="dictionary-heading">
-      <h1 id="dictionary-heading" data-copy="title">Your words, at hand.</h1>
-      <p data-copy="intro">Find a word. Save it. Remember it.</p>
-      <a class="button" href="#offline-title" data-copy="download">Download dictionary</a>
+      <h1 id="dictionary-heading" data-copy="title">My word profile</h1>
+      <p data-copy="intro">A living dictionary on this device.</p>
     </section>
+    <section id="learning-profile" class="learning-profile" aria-labelledby="profile-title">
+      <header class="profile-heading">
+        <div>
+          <h2 id="profile-title" data-copy="profile_title">Your progress</h2>
+          <p data-copy="profile_scope">Word totals use the selected language pair; study days cover all activity in this browser. Telegram progress stays in the Lexi Mini App.</p>
+        </div>
+        <button id="print-profile" class="print-profile" type="button" data-copy="print_profile">PDF / print</button>
+      </header>
+      <div class="profile-metrics" role="list" data-copy-aria="profile_title">
+        <div class="profile-metric" role="listitem"><strong id="profile-saved">0</strong><span data-copy="metric_saved">Saved</span></div>
+        <div class="profile-metric" role="listitem"><strong id="profile-learned">0</strong><span data-copy="metric_learned">Learned</span></div>
+        <div class="profile-metric" role="listitem"><strong id="profile-due">0</strong><span data-copy="metric_due">Due now</span></div>
+        <div class="profile-metric" role="listitem"><strong id="profile-days">0</strong><span data-copy="metric_days">Days with Lexi</span></div>
+      </div>
+      <div class="profile-detail-grid">
+        <div class="mastery-block">
+          <div class="profile-detail-heading"><span data-copy="mastery">Vocabulary learned</span><strong id="profile-mastery-value">0 / 0</strong></div>
+          <progress id="profile-progress" max="100" value="0">0%</progress>
+          <p id="profile-empty" class="subtle" data-copy="profile_empty">Save a word and complete reviews to build your profile.</p>
+        </div>
+        <div class="activity-block">
+          <div class="profile-detail-heading"><span data-copy="last_seven">Last 7 days</span><strong id="profile-streak">0</strong></div>
+          <div id="profile-activity" class="activity-chart" role="list" data-copy-aria="last_seven"></div>
+        </div>
+      </div>
+      <button id="start-practice" class="primary profile-practice" type="button" data-copy="practice">Review now</button>
+    </section>
+    <section class="dictionary-workspace" aria-labelledby="search-heading">
+      <h2 id="search-heading" data-copy="search_heading">Find a word</h2>
     <div class="language-pair">
       <label><span data-copy="target">Learning</span><select id="target-language" aria-label="Learning language"></select></label>
       <button id="swap-languages" class="icon-button" type="button" data-label="swap" aria-label="Swap languages">⇄</button>
@@ -38,8 +66,8 @@
         <button id="view-all" type="button" aria-pressed="true" data-copy="all">Dictionary</button>
         <button id="view-saved" type="button" aria-pressed="false"><span data-copy="saved">Saved</span> <span id="saved-count">0</span></button>
       </div>
-      <button id="start-practice" class="practice-button" type="button" data-copy="practice">Practise 5 words</button>
     </div>
+    </section>
     <section id="practice-area" class="practice-area" aria-labelledby="practice-title" hidden>
       <div class="practice-top"><h2 id="practice-title" data-copy="practice_title">A little practice</h2><button id="close-practice" class="icon-button" type="button" data-label="close" aria-label="Close">×</button></div>
       <p id="practice-position" class="subtle"></p>
@@ -52,29 +80,39 @@
     </section>
     <p id="result-status" class="subtle" role="status" aria-live="polite"></p>
     <div id="dictionary-results" class="results"></div>
+    <button id="show-more-results" class="show-more-results" type="button" data-copy="show_more" hidden>Show more</button>
     <div id="empty-results" class="empty-state" hidden><p id="empty-copy"></p></div>
     <aside id="online-translation" class="online-translation" hidden>
       <p data-copy="online_hint">For words and phrases outside this pack, use online translation.</p>
       <a id="translate-link" class="text-link" target="_blank" rel="noopener noreferrer" data-copy="translate">Translate in Yandex ↗</a>
       <small data-copy="provider_note">Only this click sends your text to Yandex. Internet required.</small>
     </aside>
-    <section class="offline-tools" aria-labelledby="offline-title">
-      <div><h2 id="offline-title" data-copy="offline_title">Take your dictionary with you</h2><p data-copy="offline_body">Save these packs for local search and practice without internet.</p></div>
-      <div class="download-actions">
-        <button id="save-offline" type="button" class="primary" data-copy="save_offline">Save on this device</button>
-        <a id="download-dictionary" class="button" href="/dictionary/download" download="lexi-dictionary.html" data-copy="download">Download dictionary</a>
-        <button id="export-saved" type="button" data-copy="export">Export saved words · CSV</button>
+    <details class="offline-tools">
+      <summary id="offline-title"><span data-copy="export_tools">Export and offline</span><span aria-hidden="true">›</span></summary>
+      <div class="offline-tools-body">
+        <p data-copy="offline_body">Save these packs for local search and practice without internet.</p>
+        <div class="download-actions">
+          <button id="save-offline" type="button" class="primary" data-copy="save_offline">Save on this device</button>
+          <a id="download-dictionary" class="button" href="/dictionary/download" download="lexi-dictionary.html" data-copy="download">Download dictionary</a>
+          <button id="export-saved" type="button" data-copy="export">Export saved words · CSV</button>
+        </div>
+        <p id="offline-status" role="status" aria-live="polite"></p>
+        <small data-copy="offline_limit">Offline: included words and flashcards. AI, new translations and online audio need internet. Browser storage can be cleared by your device.</small>
+        <p class="offline-instructions" data-copy="instructions">Open this page in Safari or Chrome, save it on this device, then add it to your home screen. You can also download the HTML file and open it in a browser.</p>
+        <p class="local-note" data-copy="local_note">Saved words and practice stay in this browser. They do not sync with your Telegram progress.</p>
+        <button id="remove-offline" class="text-button" type="button" data-copy="remove_offline" hidden>Remove offline packs</button>
       </div>
-      <p id="offline-status" role="status" aria-live="polite"></p>
-      <small data-copy="offline_limit">Offline: included words and flashcards. AI, new translations and online audio need internet. Browser storage can be cleared by your device.</small>
-      <details><summary data-copy="how_open">How to open offline</summary><p data-copy="instructions">Open this page in Safari or Chrome, save it on this device, then add it to your home screen. You can also download the HTML file and open it in a browser. Some phone file previews do not run interactive files.</p></details>
-      <p class="local-note" data-copy="local_note">Saved words and practice stay in this browser. They do not sync with your Telegram progress.</p>
-      <button id="remove-offline" class="text-button" type="button" data-copy="remove_offline" hidden>Remove offline packs</button>
-    </section>
+    </details>
     <footer><label><span data-copy="interface">Interface language</span><select id="interface-language" aria-label="Interface language"></select></label><span>Lexi · <span data-copy="free">Free starter dictionary</span></span></footer>
     <noscript>This interactive dictionary needs JavaScript enabled in your browser.</noscript>
   </main>
   <script id="dictionary-data" type="application/json">{{ dictionary_data|tojson }}</script>
-  {% if offline_download %}<script>{{ dictionary_js|safe }}</script>{% else %}<script defer src="/static/dictionary.js"></script>{% endif %}
+  {% if offline_download %}
+  <script>{{ dictionary_profile_js|safe }}</script>
+  <script>{{ dictionary_js|safe }}</script>
+  {% else %}
+  <script defer src="/static/dictionary-profile.js"></script>
+  <script defer src="/static/dictionary.js"></script>
+  {% endif %}
 </body>
 </html>

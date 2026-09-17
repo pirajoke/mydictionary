@@ -2,6 +2,7 @@
   "use strict";
   const data = JSON.parse(document.getElementById("dictionary-data").textContent);
   const packs = data.packs;
+  const profile = window.LexiDictionaryProfile;
   const $ = (id) => document.getElementById(id);
   const isFile = document.body.dataset.download === "true" || location.protocol === "file:";
   const storageKey = "lexi:dictionary:v1";
@@ -16,8 +17,15 @@
       title: "Tes mots, à portée de main.", intro: "Trouve une traduction. Garde-la. Retiens-la.", target: "J’apprends", native: "Traduction", swap: "Inverser les langues", search_label: "Mot ou courte phrase", placeholder: "Chercher dans les deux langues", clear: "Effacer", all: "Dictionnaire", saved: "Enregistrés", practice: "Réviser 5 mots", practice_title: "Un peu de pratique", close: "Fermer", answer_label: "Écris la traduction", check: "Vérifier", show: "Voir la réponse", next: "Mot suivant", online_hint: "Pour les mots et phrases hors de ce pack, utilise la traduction en ligne.", translate: "Traduire avec Yandex ↗", provider_note: "Seul ce clic envoie le texte à Yandex. Internet nécessaire.", offline_title: "Emporte ton dictionnaire", offline_body: "Enregistre les packs pour chercher et pratiquer sans internet.", save_offline: "Enregistrer sur cet appareil", download: "Télécharger le dictionnaire", export: "Exporter mes mots · CSV", offline_limit: "Hors ligne : mots inclus et exercices. IA, nouvelles traductions et audio en ligne nécessitent internet. Le navigateur peut vider son stockage.", how_open: "Comment ouvrir hors ligne", instructions: "Ouvre cette page dans Safari ou Chrome, enregistre-la sur cet appareil et ajoute-la à l’écran d’accueil. Tu peux aussi télécharger le fichier HTML et l’ouvrir dans un navigateur. Certains aperçus de fichiers sur téléphone ne sont pas interactifs.", local_note: "Mots et exercices restent dans ce navigateur, sans synchronisation avec ta progression Telegram.", interface: "Langue de l’interface", free: "Dictionnaire de base gratuit", remove_offline: "Supprimer les packs hors ligne", online: "Recherche locale · en ligne", offline: "Recherche locale · hors ligne", file_ready: "Dictionnaire téléchargé", cached: "Disponible hors ligne", pack: "{count} mots dans cette paire · recherche et pratique gratuites", results: "{count} résultats", truncated: "{shown} sur {count} affichés. Affine ta recherche.", save: "+ Garder", unsave: "✓ Gardé", no_match: "Ce mot n’est pas encore dans le pack. Essaie une recherche plus courte ou traduis-le en ligne.", no_saved: "Appuie sur « + Garder » pour retrouver ici tes mots à réviser.", empty_filter: "Aucun mot enregistré ne correspond.", saving: "Enregistrement…", save_success: "Dictionnaire enregistré. Ouvre cette page une fois dans ton navigateur pour pouvoir la rouvrir sans internet.", save_error: "Impossible d’enregistrer hors ligne. Réessaie dans Safari ou Chrome, ou télécharge le fichier HTML.", removed: "Packs hors ligne supprimés. Tes mots sont conservés.", storage_error: "Le navigateur ne peut pas enregistrer les changements. Exporte tes mots avant de fermer.", correct: "Exact !", correction: "Traduction correcte :", complete: "C’est assez pour aujourd’hui. Reviens demain pour une courte révision.", score: "{correct} sur {total} sans indice", position: "Mot {index} sur {total}", unsupported: "Cette langue n’est pas encore téléchargeable. Une paire disponible a été sélectionnée. Les autres langues restent disponibles dans Telegram.", remind: "À réessayer", no_export: "Enregistre d’abord un mot.", file_help: "Tous les packs sont déjà dans ce fichier. Ouvre-le dans un navigateur sans internet. Les favoris d’un autre navigateur ne sont pas copiés ici.", offline_provider: "Les nouvelles traductions nécessitent internet. Les mots téléchargés fonctionnent toujours.", recall: "Essaie de te rappeler avant d’afficher la réponse.", copied: "Mots enregistrés exportés."
     }
   };
+  const profileCopy = {
+    en: {title: "My word profile", intro: "Words and progress on this device.", profile_title: "Your progress", profile_scope: "Word totals use the selected language pair; study days cover all activity in this browser. Telegram progress stays in the Lexi Mini App.", metric_saved: "Saved", metric_learned: "Learned", metric_due: "Due now", metric_days: "Days with Lexi", mastery: "Vocabulary learned", last_seven: "Last 7 days", streak: "{count} day streak", profile_empty: "Save a word and complete reviews to build your profile.", print_profile: "PDF / print", search_heading: "Find a word", show_more: "Show more", export_tools: "Export and offline", practice: "Review now", truncated: "Showing {shown} of {count}"},
+    ru: {title: "Мой словарь", intro: "Слова и прогресс на этом устройстве.", profile_title: "Твой прогресс", profile_scope: "Слова считаются для выбранной языковой пары, а дни — по всем занятиям в этом браузере. Прогресс Telegram остаётся в Mini App Lexi.", metric_saved: "Сохранено", metric_learned: "Изучено", metric_due: "К повторению", metric_days: "Дней с Lexi", mastery: "Изучено слов", last_seven: "Последние 7 дней", streak: "Серия: {count} дн.", profile_empty: "Сохрани слово и повторяй его — здесь появится прогресс.", print_profile: "PDF / печать", search_heading: "Найти слово", show_more: "Показать ещё", export_tools: "Экспорт и офлайн", practice: "Повторить сейчас", truncated: "Показано {shown} из {count}"},
+    fr: {title: "Mon dictionnaire", intro: "Mots et progression sur cet appareil.", profile_title: "Ta progression", profile_scope: "Les mots concernent la paire de langues choisie ; les jours regroupent toute l’activité de ce navigateur. La progression Telegram reste dans la Mini App Lexi.", metric_saved: "Enregistrés", metric_learned: "Appris", metric_due: "À réviser", metric_days: "Jours avec Lexi", mastery: "Vocabulaire appris", last_seven: "7 derniers jours", streak: "Série : {count} j", profile_empty: "Enregistre un mot et révise-le pour construire ton profil.", print_profile: "PDF / imprimer", search_heading: "Trouver un mot", show_more: "Afficher plus", export_tools: "Export et hors ligne", practice: "Réviser maintenant", truncated: "{shown} sur {count} affichés"},
+  };
+  Object.entries(profileCopy).forEach(([locale, values]) => Object.assign(copy[locale], values));
   let saved = {};
   let preferences = {};
+  let activity = {};
   try {
     const stored = JSON.parse(localStorage.getItem(storageKey) || "{}");
     if (stored.saved && typeof stored.saved === "object" && !Array.isArray(stored.saved)) {
@@ -25,6 +33,7 @@
       // favourites, while bounding deliberately malformed local storage.
       saved = Object.fromEntries(Object.entries(stored.saved).slice(0, 10000).filter(([key, value]) => /^[a-z]{2}:[a-z]{2}:[\w-]{1,100}$/.test(key) && value && typeof value === "object"));
     }
+    activity = profile.sanitizeActivity(stored.activity);
     preferences = Object.fromEntries(Object.entries(stored.preferences || {}).filter(([key,value]) => ["target","native","ui"].includes(key) && typeof value === "string" && /^[a-z]{2}$/.test(value)));
   } catch (_) { /* Local lookup also works when storage is unavailable. */ }
   const params = new URLSearchParams(location.search);
@@ -39,12 +48,19 @@
   let view = "all";
   let offlineReady = false;
   let session = null;
+  const pageSize = 8;
+  let visibleLimit = pageSize;
   const normalized = (value) => String(value || "").normalize("NFKC").toLocaleLowerCase().replace(/\s+/g, " ").trim();
   const searchable = (value) => normalized(value).normalize("NFD").replace(/\p{M}/gu, "");
   const t = (key, values = {}) => Object.entries(values).reduce((text, [name, value]) => text.replaceAll(`{${name}}`, String(value)), copy[ui][key] || copy.en[key] || key);
   function persist() {
-    try { localStorage.setItem(storageKey, JSON.stringify({saved, preferences: {target, native, ui}})); }
+    try { localStorage.setItem(storageKey, JSON.stringify({saved, activity, preferences: {target, native, ui}})); }
     catch (_) { $("offline-status").textContent = t("storage_error"); $("offline-status").className = "error"; }
+  }
+  function recordActivity() {
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    activity = profile.sanitizeActivity({...activity, [date]: Math.min(999, (Number(activity[date]) || 0) + 1)});
   }
   function entries() {
     const pack = packs.find((item) => item.target_language === target);
@@ -77,6 +93,7 @@
     document.documentElement.lang = ui;
     document.title = `Lexi · ${t("all")}`;
     document.querySelectorAll("[data-copy]").forEach((node) => {node.textContent = t(node.dataset.copy);});
+    document.querySelectorAll("[data-copy-aria]").forEach((node) => {node.setAttribute("aria-label",t(node.dataset.copyAria));});
     document.querySelectorAll("[data-label]").forEach((node) => {node.setAttribute("aria-label",t(node.dataset.label));});
     $("dictionary-query").placeholder = t("placeholder");
     $("target-language").setAttribute("aria-label",t("target"));
@@ -101,16 +118,41 @@
     const button=document.createElement("button"); button.type="button"; button.className="save-word";
     button.textContent=t(saved[entry.key] ? "unsave":"save"); button.setAttribute("aria-pressed",String(Boolean(saved[entry.key]))); button.setAttribute("aria-label",`${button.textContent}: ${entry.target}`);
     button.addEventListener("click",()=>{
-      if (saved[entry.key]) delete saved[entry.key]; else saved[entry.key]={due:Date.now(),interval:0};
+      if (saved[entry.key]) delete saved[entry.key];
+      else { saved[entry.key]={due:Date.now(),interval:0}; recordActivity(); }
       persist(); render();
       const replacement=Array.from($("dictionary-results").querySelectorAll(".save-word")).find((candidate)=>candidate.getAttribute("aria-label")?.endsWith(`: ${entry.target}`));
       if (replacement) replacement.focus({preventScroll:true});
     });
     item.append(content,button); return item;
   }
+  function renderProfile() {
+    const snapshot = profile.buildSnapshot({saved, activity, pairPrefix:`${target}:${native}:`, now:Date.now()});
+    $("profile-saved").textContent = snapshot.saved;
+    $("profile-learned").textContent = snapshot.learned;
+    $("profile-due").textContent = snapshot.due;
+    $("profile-days").textContent = snapshot.studyDays;
+    $("profile-mastery-value").textContent = `${snapshot.learned} / ${snapshot.saved}`;
+    $("profile-progress").value = snapshot.progress;
+    $("profile-progress").textContent = `${snapshot.progress}%`;
+    $("profile-empty").hidden = snapshot.saved > 0;
+    $("profile-streak").textContent = t("streak", {count:snapshot.streak});
+    const weekday = new Intl.DateTimeFormat(ui, {weekday:"narrow"});
+    $("profile-activity").replaceChildren(...snapshot.week.map((day) => {
+      const item = document.createElement("span");
+      item.className = `activity-day level-${day.level}`;
+      item.setAttribute("role", "listitem");
+      item.setAttribute("aria-label", `${day.date}: ${day.count}`);
+      const bar = document.createElement("i"); bar.setAttribute("aria-hidden", "true");
+      const label = document.createElement("b"); label.textContent = weekday.format(new Date(`${day.date}T12:00:00`));
+      item.append(bar, label);
+      return item;
+    }));
+  }
   function render() {
     const all=entries(); const query=$("dictionary-query").value.trim(); const needle=searchable(query);
     const selected=all.filter((entry)=>saved[entry.key]);
+    renderProfile();
     $("saved-count").textContent=selected.length;
     $("pack-note").textContent=t("pack",{count:all.length});
     $("view-all").setAttribute("aria-pressed",String(view==="all")); $("view-saved").setAttribute("aria-pressed",String(view==="saved"));
@@ -119,8 +161,9 @@
       const rank=!needle ? 0 : fields.includes(needle) ? 0 : fields.some((field)=>field.startsWith(needle)) ? 1 : fields.some((field)=>field.includes(needle)) ? 2 : 9;
       return {entry,rank};
     }).filter((item)=>item.rank<9).sort((a,b)=>a.rank-b.rank).map((item)=>item.entry);
-    const shown=matches.slice(0,50); $("dictionary-results").replaceChildren(...shown.map(row));
-    $("result-status").textContent=matches.length>50?t("truncated",{shown:50,count:matches.length}):t("results",{count:matches.length});
+    const shown=matches.slice(0,visibleLimit); $("dictionary-results").replaceChildren(...shown.map(row));
+    $("result-status").textContent=matches.length>shown.length?t("truncated",{shown:shown.length,count:matches.length}):t("results",{count:matches.length});
+    $("show-more-results").hidden=shown.length>=matches.length;
     $("empty-results").hidden=matches.length>0;
     $("empty-copy").textContent=t(view==="saved" ? selected.length ? "empty_filter":"no_saved":"no_match");
     $("start-practice").disabled=all.length===0;
@@ -131,15 +174,17 @@
     $("online-translation").querySelector("p").textContent=t(navigator.onLine?"online_hint":"offline_provider");
   }
   function closePractice(){session=null;$("practice-area").hidden=true;$("dictionary-results").hidden=false;render();}
-  function changePair(){closePractice();$("pair-notice").hidden=true;$("dictionary-query").value="";persist();applyCopy();render();}
+  function resetResults(){visibleLimit=pageSize;}
+  function changePair(){closePractice();$("pair-notice").hidden=true;$("dictionary-query").value="";resetResults();persist();applyCopy();render();}
   $("target-language").addEventListener("change",()=>{const old=target;target=$("target-language").value;if(native===target) native=old;changePair();});
   $("native-language").addEventListener("change",()=>{const old=native;native=$("native-language").value;if(target===native) target=old;changePair();});
   $("swap-languages").addEventListener("click",()=>{[target,native]=[native,target];changePair();});
   $("interface-language").addEventListener("change",()=>{ui=$("interface-language").value;closePractice();persist();applyCopy();render();});
-  $("dictionary-query").addEventListener("input",render);
-  $("clear-query").addEventListener("click",()=>{$("dictionary-query").value="";render();$("dictionary-query").focus();});
-  $("view-all").addEventListener("click",()=>{view="all";render();});
-  $("view-saved").addEventListener("click",()=>{view="saved";render();});
+  $("dictionary-query").addEventListener("input",()=>{resetResults();render();});
+  $("clear-query").addEventListener("click",()=>{$("dictionary-query").value="";resetResults();render();$("dictionary-query").focus();});
+  $("view-all").addEventListener("click",()=>{view="all";resetResults();render();});
+  $("view-saved").addEventListener("click",()=>{view="saved";resetResults();render();});
+  $("show-more-results").addEventListener("click",()=>{visibleLimit+=pageSize;render();});
   function practiceWord() {
     const entry=session.words[session.index];
     $("practice-position").textContent=t("position",{index:session.index+1,total:session.words.length});
@@ -169,7 +214,9 @@
     $("practice-feedback").textContent=`${t(correct?"correct":"correction")}\n${entry.meaning}`;
     $("practice-feedback").className=correct?"correct":"incorrect";
     $("practice-input").disabled=true;$("check-answer").disabled=true;$("show-answer").hidden=true;$("next-word").hidden=false;
-    if(saved[entry.key]){const previous=Math.max(0,Math.min(30,Number(saved[entry.key].interval)||0));const interval=correct?Math.min(30,Math.max(1,previous*2)):0;saved[entry.key]={interval,due:Date.now()+(correct?interval*86400000:120000)};persist();}
+    recordActivity();
+    if(saved[entry.key]){const previous=Math.max(0,Math.min(30,Number(saved[entry.key].interval)||0));const interval=correct?Math.min(30,Math.max(1,previous*2)):0;saved[entry.key]={interval,due:Date.now()+(correct?interval*86400000:120000)};}
+    persist();renderProfile();
   }
   $("practice-form").addEventListener("submit",(event)=>{event.preventDefault();answer();});
   $("show-answer").addEventListener("click",()=>answer(true));
@@ -190,7 +237,18 @@
     const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));const link=document.createElement("a");link.href=url;link.download=`lexi-${target}-${native}.csv`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$("offline-status").textContent=t("copied");
   }
   $("export-saved").addEventListener("click",downloadCsv);
-  const offlineAssets=["/dictionary/","/static/dictionary.css","/static/dictionary.js","/dictionary/manifest.webmanifest"];
+  let printState = null;
+  function restorePrintState(){
+    if(!printState)return;
+    view=printState.view;visibleLimit=printState.visibleLimit;$("dictionary-query").value=printState.query;
+    printState=null;document.body.classList.remove("printing");render();
+  }
+  $("print-profile").addEventListener("click",()=>{
+    printState={view,visibleLimit,query:$("dictionary-query").value};
+    view="saved";visibleLimit=10000;$("dictionary-query").value="";document.body.classList.add("printing");render();window.print();
+  });
+  window.addEventListener("afterprint",restorePrintState);
+  const offlineAssets=["/dictionary/","/static/dictionary-profile.js","/static/dictionary.css","/static/dictionary.js","/dictionary/manifest.webmanifest"];
   const ownCache=(key)=>/^lexi-dictionary-[a-f0-9]{16}$/.test(key);
   async function inspectOffline(){
     if(isFile||!("caches" in window)||!("serviceWorker" in navigator))return;

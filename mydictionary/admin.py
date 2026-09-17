@@ -852,6 +852,7 @@ def create_app(
             "dictionary.html",
             dictionary_data=build_dictionary_data(CATALOG),
             dictionary_css=None,
+            dictionary_profile_js=None,
             dictionary_js=None,
             dictionary_csp=dictionary_content_security_policy().replace(
                 "frame-ancestors 'none'; ", ""
@@ -866,15 +867,22 @@ def create_app(
         css = escape_inline_asset(
             (static_dir / "dictionary.css").read_text(encoding="utf-8"), "style"
         )
+        profile_javascript = escape_inline_asset(
+            (static_dir / "dictionary-profile.js").read_text(encoding="utf-8"),
+            "script",
+        )
         javascript = escape_inline_asset(
             (static_dir / "dictionary.js").read_text(encoding="utf-8"), "script"
         )
-        csp = dictionary_content_security_policy(css=css, javascript=javascript)
+        csp = dictionary_content_security_policy(
+            css=css, javascript=(profile_javascript, javascript)
+        )
         dictionary_data = build_dictionary_data(CATALOG)
         response = Response(render_template(
             "dictionary.html",
             dictionary_data=dictionary_data,
             dictionary_css=css,
+            dictionary_profile_js=profile_javascript,
             dictionary_js=javascript,
             dictionary_csp=csp.replace("frame-ancestors 'none'; ", ""),
             dictionary_defaults=dictionary_download_defaults(request.args, dictionary_data),
@@ -891,7 +899,12 @@ def create_app(
         static_dir = Path(app.static_folder)
         sources = {
             filename: (static_dir / filename).read_bytes()
-            for filename in ("dictionary.js", "dictionary.css", "dictionary-sw.js")
+            for filename in (
+                "dictionary-profile.js",
+                "dictionary.js",
+                "dictionary.css",
+                "dictionary-sw.js",
+            )
         }
         sources["dictionary.html"] = (
             Path(app.root_path) / "templates" / "dictionary.html"
