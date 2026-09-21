@@ -72,10 +72,11 @@ class OfflineDictionaryTest(unittest.TestCase):
         expected_ids = {"en-basics-100", "fr-basics-100", "de-basics-100",
                         "ar-basics-100", "zh-basics-100", "es-basics-100", "ru-basics-100"}
         self.assertEqual({pack["id"] for pack in data["packs"]}, expected_ids)
-        self.assertEqual(sum(len(pack["entries"]) for pack in data["packs"]), 700)
+        self.assertEqual(sum(len(pack["entries"]) for pack in data["packs"]), 3500)
         shared_ids = {entry["entry_id"] for entry in data["packs"][0]["entries"]}
         for pack in data["packs"]:
-            self.assertEqual(pack["entry_count"], 100)
+            self.assertEqual(pack["entry_count"], 500)
+            self.assertEqual(len(pack["entries"]), 500)
             self.assertEqual({entry["entry_id"] for entry in pack["entries"]}, shared_ids)
             original = {entry["entry_id"]: entry for entry in CATALOG.words(CATALOG.require(pack["id"]))}
             for entry in pack["entries"]:

@@ -96,7 +96,7 @@ class HomeSurfaceLocaleTest(unittest.IsolatedAsyncioTestCase):
             for row in payload["reply_markup"].inline_keyboard
             for button in row
         ]
-        self.assertIn("🌐 Tous les mots (100)", button_texts)
+        self.assertIn("🌐 Tous les mots (500)", button_texts)
         self.assertIn("👋 Salutations (10)", button_texts)
         self.assertNotRegex(" ".join(button_texts), r"[А-Яа-яЁё]")
         self.assertNotIn("Выбери тему", payload["text"])

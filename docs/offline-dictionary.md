@@ -7,10 +7,10 @@ Telegram account and does not read learner storage.
 
 ## Capabilities and boundaries
 
-- 700 entries from seven explicitly redistribution-approved public, free,
+- 3,500 entries from seven explicitly redistribution-approved public, free,
   published schema-v2 starter packs: English, French, German, Arabic, Chinese,
-  Russian and Spanish. These represent 100 aligned vocabulary concepts, not
-  700 distinct words in each language. Private/admin packs and the legacy
+  Russian and Spanish. These represent 500 aligned vocabulary concepts, not
+  3,500 distinct words in each language. Private/admin packs and the legacy
   Japanese/Vietnamese packs are not exported.
 - Target/translation language selectors, pair swapping, Unicode-normalized
   bidirectional search, accepted Russian meanings and transcription.

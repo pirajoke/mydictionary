@@ -1100,6 +1100,4406 @@
         "descriptions"
       ],
       "example": null
+    },
+    {
+      "entry_id": "advice",
+      "target": "сове́т",
+      "meaning": "понятие или предмет: совет",
+      "transcription": "sovet",
+      "speech": "сове́т",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "agree",
+      "target": "соглаша́ться",
+      "meaning": "действие: соглашаться",
+      "transcription": "soglashatsya",
+      "speech": "соглаша́ться",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "article",
+      "target": "статья́",
+      "meaning": "понятие или предмет: статья",
+      "transcription": "statya",
+      "speech": "статья́",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "blog",
+      "target": "блог",
+      "meaning": "понятие или предмет: блог",
+      "transcription": "blog",
+      "speech": "блог",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "call",
+      "target": "звоно́к",
+      "meaning": "понятие или предмет: звонок",
+      "transcription": "zvonok",
+      "speech": "звоно́к",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "conversation",
+      "target": "разгово́р",
+      "meaning": "понятие или предмет: разговор",
+      "transcription": "razgovor",
+      "speech": "разгово́р",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "correct",
+      "target": "пра́вильный",
+      "meaning": "понятие или предмет: правильный",
+      "transcription": "pravilnyi",
+      "speech": "пра́вильный",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "describe",
+      "target": "опи́сывать",
+      "meaning": "действие: описывать",
+      "transcription": "opisyvat",
+      "speech": "опи́сывать",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "description",
+      "target": "описа́ние",
+      "meaning": "понятие или предмет: описание",
+      "transcription": "opisanie",
+      "speech": "описа́ние",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dialogue",
+      "target": "диало́г",
+      "meaning": "понятие или предмет: диалог",
+      "transcription": "dialog",
+      "speech": "диало́г",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "discuss",
+      "target": "обсужда́ть",
+      "meaning": "действие: обсуждать",
+      "transcription": "obsuzhdat",
+      "speech": "обсужда́ть",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "email",
+      "target": "электро́нная по́чта",
+      "meaning": "понятие или предмет: электронная почта",
+      "transcription": "elektronnaya pochta",
+      "speech": "электро́нная по́чта",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "example",
+      "target": "приме́р",
+      "meaning": "понятие или предмет: пример",
+      "transcription": "primer",
+      "speech": "приме́р",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "explain",
+      "target": "объясня́ть",
+      "meaning": "действие: объяснять",
+      "transcription": "obyasnyat",
+      "speech": "объясня́ть",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fact",
+      "target": "факт",
+      "meaning": "понятие или предмет: факт",
+      "transcription": "fakt",
+      "speech": "факт",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "false",
+      "target": "фальши́вый",
+      "meaning": "понятие или предмет: фальшивый",
+      "transcription": "falshivyi",
+      "speech": "фальши́вый",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "information",
+      "target": "информа́ция",
+      "meaning": "понятие или предмет: информация",
+      "transcription": "informatsiya",
+      "speech": "информа́ция",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "interview",
+      "target": "интервью́",
+      "meaning": "понятие или предмет: интервью",
+      "transcription": "intervyu",
+      "speech": "интервью́",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "introduce",
+      "target": "предста́вить",
+      "meaning": "действие: представить",
+      "transcription": "predstavit",
+      "speech": "предста́вить",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "magazine",
+      "target": "журна́л",
+      "meaning": "понятие или предмет: журнал",
+      "transcription": "zhurnal",
+      "speech": "журна́л",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mean",
+      "target": "означа́ть",
+      "meaning": "действие: означать",
+      "transcription": "oznachat",
+      "speech": "означа́ть",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "meaning",
+      "target": "значе́ние",
+      "meaning": "понятие или предмет: значение",
+      "transcription": "znachenie",
+      "speech": "значе́ние",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "message",
+      "target": "сообще́ние",
+      "meaning": "понятие или предмет: сообщение",
+      "transcription": "soobshchenie",
+      "speech": "сообще́ние",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "news",
+      "target": "но́вости",
+      "meaning": "понятие или предмет: новости",
+      "transcription": "novosti",
+      "speech": "но́вости",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "newspaper",
+      "target": "газе́та",
+      "meaning": "понятие или предмет: газета",
+      "transcription": "gazeta",
+      "speech": "газе́та",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "note",
+      "target": "заме́тка",
+      "meaning": "понятие или предмет: заметка",
+      "transcription": "zametka",
+      "speech": "заме́тка",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "opinion",
+      "target": "мне́ние",
+      "meaning": "понятие или предмет: мнение",
+      "transcription": "mnenie",
+      "speech": "мне́ние",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "paragraph",
+      "target": "абза́ц",
+      "meaning": "понятие или предмет: абзац",
+      "transcription": "abzats",
+      "speech": "абза́ц",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "repeat",
+      "target": "повторя́ть",
+      "meaning": "действие: повторять",
+      "transcription": "povtoryat",
+      "speech": "повторя́ть",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "report",
+      "target": "репорта́ж",
+      "meaning": "понятие или предмет: репортаж",
+      "transcription": "reportazh",
+      "speech": "репорта́ж",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "say",
+      "target": "говори́ть",
+      "meaning": "действие: говорить",
+      "transcription": "govorit",
+      "speech": "говори́ть",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sentence",
+      "target": "предложе́ние",
+      "meaning": "понятие или предмет: предложение",
+      "transcription": "predlozhenie",
+      "speech": "предложе́ние",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "share",
+      "target": "дели́ть",
+      "meaning": "действие: делить",
+      "transcription": "delit",
+      "speech": "дели́ть",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "spell",
+      "target": "произноси́ть по бу́квам",
+      "meaning": "действие: произносить по буквам",
+      "transcription": "proiznosit po bukvam",
+      "speech": "произноси́ть по бу́квам",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "spelling",
+      "target": "правописа́ние",
+      "meaning": "понятие или предмет: правописание",
+      "transcription": "pravopisanie",
+      "speech": "правописа́ние",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "statement",
+      "target": "заявле́ние",
+      "meaning": "понятие или предмет: заявление",
+      "transcription": "zayavlenie",
+      "speech": "заявле́ние",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "about",
+      "target": "о",
+      "meaning": "понятие или предмет: о",
+      "transcription": "o",
+      "speech": "о",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "reason",
+      "target": "причи́на",
+      "meaning": "понятие или предмет: причина",
+      "transcription": "prichina",
+      "speech": "причи́на",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "text",
+      "target": "текст",
+      "meaning": "понятие или предмет: текст",
+      "transcription": "tekst",
+      "speech": "текст",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thank",
+      "target": "благодари́ть",
+      "meaning": "действие: благодарить",
+      "transcription": "blagodarit",
+      "speech": "благодари́ть",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "actor",
+      "target": "актёр",
+      "meaning": "понятие или предмет: актёр",
+      "transcription": "akter",
+      "speech": "актёр",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "actress",
+      "target": "актри́са",
+      "meaning": "понятие или предмет: актриса",
+      "transcription": "aktrisa",
+      "speech": "актри́са",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "adult",
+      "target": "взро́слый",
+      "meaning": "понятие или предмет: взрослый",
+      "transcription": "vzroslyi",
+      "speech": "взро́слый",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "artist",
+      "target": "худо́жник",
+      "meaning": "понятие или предмет: художник",
+      "transcription": "khudozhnik",
+      "speech": "худо́жник",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "aunt",
+      "target": "тётя",
+      "meaning": "понятие или предмет: тётя",
+      "transcription": "tetya",
+      "speech": "тётя",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "boyfriend",
+      "target": "па́рень",
+      "meaning": "понятие или предмет: парень",
+      "transcription": "paren",
+      "speech": "па́рень",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cousin",
+      "target": "ро́дственник",
+      "meaning": "понятие или предмет: родственник",
+      "transcription": "rodstvennik",
+      "speech": "ро́дственник",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "customer",
+      "target": "клие́нт",
+      "meaning": "понятие или предмет: клиент",
+      "transcription": "klient",
+      "speech": "клие́нт",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dad",
+      "target": "па́па",
+      "meaning": "понятие или предмет: папа",
+      "transcription": "papa",
+      "speech": "па́па",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dancer",
+      "target": "танцо́р",
+      "meaning": "понятие или предмет: танцор",
+      "transcription": "tantsor",
+      "speech": "танцо́р",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "driver",
+      "target": "води́тель",
+      "meaning": "понятие или предмет: водитель",
+      "transcription": "voditel",
+      "speech": "води́тель",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "farmer",
+      "target": "крестья́нин",
+      "meaning": "понятие или предмет: крестьянин",
+      "transcription": "krestyanin",
+      "speech": "крестья́нин",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "girlfriend",
+      "target": "де́вушка",
+      "meaning": "понятие или предмет: девушка",
+      "transcription": "devushka",
+      "speech": "де́вушка",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "grandfather",
+      "target": "де́душка",
+      "meaning": "понятие или предмет: дедушка",
+      "transcription": "dedushka",
+      "speech": "де́душка",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "grandmother",
+      "target": "ба́бушка",
+      "meaning": "понятие или предмет: бабушка",
+      "transcription": "babushka",
+      "speech": "ба́бушка",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "animal",
+      "target": "живо́тное",
+      "meaning": "понятие или предмет: животное",
+      "transcription": "zhivotnoe",
+      "speech": "живо́тное",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "group",
+      "target": "гру́ппа",
+      "meaning": "понятие или предмет: группа",
+      "transcription": "gruppa",
+      "speech": "гру́ппа",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "member",
+      "target": "член",
+      "meaning": "понятие или предмет: член",
+      "transcription": "chlen",
+      "speech": "член",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "model",
+      "target": "моде́ль",
+      "meaning": "понятие или предмет: модель",
+      "transcription": "model",
+      "speech": "моде́ль",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "nurse",
+      "target": "медсестра́",
+      "meaning": "понятие или предмет: медсестра",
+      "transcription": "medsestra",
+      "speech": "медсестра́",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "horse",
+      "target": "ло́шадь",
+      "meaning": "понятие или предмет: лошадь",
+      "transcription": "loshad",
+      "speech": "ло́шадь",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "partner",
+      "target": "партнёр",
+      "meaning": "понятие или предмет: партнёр",
+      "transcription": "partner",
+      "speech": "партнёр",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "player",
+      "target": "игро́к",
+      "meaning": "понятие или предмет: игрок",
+      "transcription": "igrok",
+      "speech": "игро́к",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "police",
+      "target": "поли́ция",
+      "meaning": "понятие или предмет: полиция",
+      "transcription": "politsiya",
+      "speech": "поли́ция",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "reader",
+      "target": "чита́тель",
+      "meaning": "понятие или предмет: читатель",
+      "transcription": "chitatel",
+      "speech": "чита́тель",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "scientist",
+      "target": "учёный",
+      "meaning": "понятие или предмет: учёный",
+      "transcription": "uchenyi",
+      "speech": "учёный",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "singer",
+      "target": "певе́ц",
+      "meaning": "понятие или предмет: певец",
+      "transcription": "pevets",
+      "speech": "певе́ц",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "team",
+      "target": "кома́нда",
+      "meaning": "понятие или предмет: команда",
+      "transcription": "komanda",
+      "speech": "кома́нда",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "teenager",
+      "target": "подро́сток",
+      "meaning": "понятие или предмет: подросток",
+      "transcription": "podrostok",
+      "speech": "подро́сток",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tourist",
+      "target": "тури́ст",
+      "meaning": "понятие или предмет: турист",
+      "transcription": "turist",
+      "speech": "тури́ст",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "uncle",
+      "target": "дя́дя",
+      "meaning": "понятие или предмет: дядя",
+      "transcription": "dyadya",
+      "speech": "дя́дя",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "visitor",
+      "target": "посети́тель",
+      "meaning": "понятие или предмет: посетитель",
+      "transcription": "posetitel",
+      "speech": "посети́тель",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "waiter",
+      "target": "официа́нт",
+      "meaning": "понятие или предмет: официант",
+      "transcription": "ofitsiant",
+      "speech": "официа́нт",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wife",
+      "target": "жена́",
+      "meaning": "понятие или предмет: жена",
+      "transcription": "zhena",
+      "speech": "жена́",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "worker",
+      "target": "рабо́тник",
+      "meaning": "понятие или предмет: работник",
+      "transcription": "rabotnik",
+      "speech": "рабо́тник",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "writer",
+      "target": "писа́тель",
+      "meaning": "понятие или предмет: писатель",
+      "transcription": "pisatel",
+      "speech": "писа́тель",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "career",
+      "target": "карье́ра",
+      "meaning": "понятие или предмет: карьера",
+      "transcription": "karera",
+      "speech": "карье́ра",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dear",
+      "target": "дорого́й",
+      "meaning": "понятие или предмет: дорогой",
+      "transcription": "dorogoi",
+      "speech": "дорого́й",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "personal",
+      "target": "ли́чный",
+      "meaning": "понятие или предмет: личный",
+      "transcription": "lichnyi",
+      "speech": "ли́чный",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "class",
+      "target": "класс",
+      "meaning": "понятие или предмет: класс",
+      "transcription": "klass",
+      "speech": "класс",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bar",
+      "target": "бар",
+      "meaning": "понятие или предмет: бар",
+      "transcription": "bar",
+      "speech": "бар",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "breakfast",
+      "target": "за́втрак",
+      "meaning": "понятие или предмет: завтрак",
+      "transcription": "zavtrak",
+      "speech": "за́втрак",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cake",
+      "target": "торт",
+      "meaning": "понятие или предмет: торт",
+      "transcription": "tort",
+      "speech": "торт",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cheap",
+      "target": "дешёвый",
+      "meaning": "понятие или предмет: дешёвый",
+      "transcription": "deshevyi",
+      "speech": "дешёвый",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "chocolate",
+      "target": "шокола́д",
+      "meaning": "понятие или предмет: шоколад",
+      "transcription": "shokolad",
+      "speech": "шокола́д",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cooking",
+      "target": "гото́вка",
+      "meaning": "понятие или предмет: готовка",
+      "transcription": "gotovka",
+      "speech": "гото́вка",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cost",
+      "target": "расхо́ды",
+      "meaning": "понятие или предмет: расходы",
+      "transcription": "raskhody",
+      "speech": "расхо́ды",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cream",
+      "target": "сли́вки",
+      "meaning": "понятие или предмет: сливки",
+      "transcription": "slivki",
+      "speech": "сли́вки",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "delicious",
+      "target": "вку́сный",
+      "meaning": "понятие или предмет: вкусный",
+      "transcription": "vkusnyi",
+      "speech": "вку́сный",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "diet",
+      "target": "дие́та",
+      "meaning": "понятие или предмет: диета",
+      "transcription": "dieta",
+      "speech": "дие́та",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dinner",
+      "target": "у́жин",
+      "meaning": "понятие или предмет: ужин",
+      "transcription": "uzhin",
+      "speech": "у́жин",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dish",
+      "target": "блю́до",
+      "meaning": "понятие или предмет: блюдо",
+      "transcription": "blyudo",
+      "speech": "блю́до",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pound",
+      "target": "фунт",
+      "meaning": "понятие или предмет: фунт",
+      "transcription": "funt",
+      "speech": "фунт",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hungry",
+      "target": "голо́дный",
+      "meaning": "понятие или предмет: голодный",
+      "transcription": "golodnyi",
+      "speech": "голо́дный",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ice",
+      "target": "лёд",
+      "meaning": "понятие или предмет: лёд",
+      "transcription": "led",
+      "speech": "лёд",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ice-cream",
+      "target": "моро́женое",
+      "meaning": "понятие или предмет: мороженое",
+      "transcription": "morozhenoe",
+      "speech": "моро́женое",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "juice",
+      "target": "сок",
+      "meaning": "понятие или предмет: сок",
+      "transcription": "sok",
+      "speech": "сок",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "lunch",
+      "target": "обе́д",
+      "meaning": "понятие или предмет: обед",
+      "transcription": "obed",
+      "speech": "обе́д",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "farm",
+      "target": "фе́рма",
+      "meaning": "понятие или предмет: ферма",
+      "transcription": "ferma",
+      "speech": "фе́рма",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "menu",
+      "target": "меню́",
+      "meaning": "понятие или предмет: меню",
+      "transcription": "menyu",
+      "speech": "меню́",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "orange",
+      "target": "апельси́н",
+      "meaning": "понятие или предмет: апельсин",
+      "transcription": "apelsin",
+      "speech": "апельси́н",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "order",
+      "target": "зака́з",
+      "meaning": "понятие или предмет: заказ",
+      "transcription": "zakaz",
+      "speech": "зака́з",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pepper",
+      "target": "пе́рец",
+      "meaning": "понятие или предмет: перец",
+      "transcription": "perets",
+      "speech": "пе́рец",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "potato",
+      "target": "карто́фель",
+      "meaning": "понятие или предмет: картофель",
+      "transcription": "kartofel",
+      "speech": "карто́фель",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "prepare",
+      "target": "гото́вить",
+      "meaning": "действие: готовить",
+      "transcription": "gotovit",
+      "speech": "гото́вить",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "price",
+      "target": "цена́",
+      "meaning": "понятие или предмет: цена",
+      "transcription": "tsena",
+      "speech": "цена́",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "product",
+      "target": "проду́кт",
+      "meaning": "понятие или предмет: продукт",
+      "transcription": "produkt",
+      "speech": "проду́кт",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "restaurant",
+      "target": "рестора́н",
+      "meaning": "понятие или предмет: ресторан",
+      "transcription": "restoran",
+      "speech": "рестора́н",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "salad",
+      "target": "сала́т",
+      "meaning": "понятие или предмет: салат",
+      "transcription": "salat",
+      "speech": "сала́т",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sandwich",
+      "target": "са́ндвич",
+      "meaning": "понятие или предмет: сандвич",
+      "transcription": "sandvich",
+      "speech": "са́ндвич",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "soup",
+      "target": "суп",
+      "meaning": "понятие или предмет: суп",
+      "transcription": "sup",
+      "speech": "суп",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sugar",
+      "target": "са́хар",
+      "meaning": "понятие или предмет: сахар",
+      "transcription": "sakhar",
+      "speech": "са́хар",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "supermarket",
+      "target": "суперма́ркет",
+      "meaning": "понятие или предмет: супермаркет",
+      "transcription": "supermarket",
+      "speech": "суперма́ркет",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thirsty",
+      "target": "жа́ждущий",
+      "meaning": "понятие или предмет: жаждущий",
+      "transcription": "zhazhdushchii",
+      "speech": "жа́ждущий",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tomato",
+      "target": "помидо́р",
+      "meaning": "понятие или предмет: помидор",
+      "transcription": "pomidor",
+      "speech": "помидо́р",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "vegetable",
+      "target": "о́вощ",
+      "meaning": "понятие или предмет: овощ",
+      "transcription": "ovoshch",
+      "speech": "о́вощ",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "buy",
+      "target": "покупа́ть",
+      "meaning": "действие: покупать",
+      "transcription": "pokupat",
+      "speech": "покупа́ть",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fill",
+      "target": "заполня́ть",
+      "meaning": "действие: заполнять",
+      "transcription": "zapolnyat",
+      "speech": "заполня́ть",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "festival",
+      "target": "фестива́ль",
+      "meaning": "понятие или предмет: фестиваль",
+      "transcription": "festival",
+      "speech": "фестива́ль",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "party",
+      "target": "вечери́нка",
+      "meaning": "понятие или предмет: вечеринка",
+      "transcription": "vecherinka",
+      "speech": "вечери́нка",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "apartment",
+      "target": "кварти́ра",
+      "meaning": "понятие или предмет: квартира",
+      "transcription": "kvartira",
+      "speech": "кварти́ра",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "area",
+      "target": "пло́щадь",
+      "meaning": "понятие или предмет: площадь",
+      "transcription": "ploshchad",
+      "speech": "пло́щадь",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bath",
+      "target": "ва́нна",
+      "meaning": "понятие или предмет: ванна",
+      "transcription": "vanna",
+      "speech": "ва́нна",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bedroom",
+      "target": "спа́льня",
+      "meaning": "понятие или предмет: спальня",
+      "transcription": "spalnya",
+      "speech": "спа́льня",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "building",
+      "target": "зда́ние",
+      "meaning": "понятие или предмет: здание",
+      "transcription": "zdanie",
+      "speech": "зда́ние",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "card",
+      "target": "ка́рточка",
+      "meaning": "понятие или предмет: карточка",
+      "transcription": "kartochka",
+      "speech": "ка́рточка",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "clothes",
+      "target": "оде́жда",
+      "meaning": "понятие или предмет: одежда",
+      "transcription": "odezhda",
+      "speech": "оде́жда",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "club",
+      "target": "клуб",
+      "meaning": "понятие или предмет: клуб",
+      "transcription": "klub",
+      "speech": "клуб",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "coat",
+      "target": "пальто́",
+      "meaning": "понятие или предмет: пальто",
+      "transcription": "palto",
+      "speech": "пальто́",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "desk",
+      "target": "пи́сьменный стол",
+      "meaning": "понятие или предмет: письменный стол",
+      "transcription": "pismennyi stol",
+      "speech": "пи́сьменный стол",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dirty",
+      "target": "гря́зный",
+      "meaning": "понятие или предмет: грязный",
+      "transcription": "gryaznyi",
+      "speech": "гря́зный",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dress",
+      "target": "пла́тье",
+      "meaning": "понятие или предмет: платье",
+      "transcription": "plate",
+      "speech": "пла́тье",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "floor",
+      "target": "пол",
+      "meaning": "понятие или предмет: пол",
+      "transcription": "pol",
+      "speech": "пол",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "front",
+      "target": "пере́дняя часть",
+      "meaning": "понятие или предмет: передняя часть",
+      "transcription": "perednyaya chast",
+      "speech": "пере́дняя часть",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "here",
+      "target": "здесь",
+      "meaning": "понятие или предмет: здесь",
+      "transcription": "zdes",
+      "speech": "здесь",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "jacket",
+      "target": "ку́ртка",
+      "meaning": "понятие или предмет: куртка",
+      "transcription": "kurtka",
+      "speech": "ку́ртка",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "jeans",
+      "target": "джи́нсы",
+      "meaning": "понятие или предмет: джинсы",
+      "transcription": "dzhinsy",
+      "speech": "джи́нсы",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "light",
+      "target": "свет",
+      "meaning": "понятие или предмет: свет",
+      "transcription": "svet",
+      "speech": "свет",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mall",
+      "target": "торго́вый центр",
+      "meaning": "понятие или предмет: торговый центр",
+      "transcription": "torgovyi tsentr",
+      "speech": "торго́вый центр",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "neighborhood",
+      "target": "сосе́дство",
+      "meaning": "понятие или предмет: соседство",
+      "transcription": "sosedstvo",
+      "speech": "сосе́дство",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "object",
+      "target": "предме́т",
+      "meaning": "понятие или предмет: предмет",
+      "transcription": "predmet",
+      "speech": "предме́т",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "outside",
+      "target": "снару́жи",
+      "meaning": "понятие или предмет: снаружи",
+      "transcription": "snaruzhi",
+      "speech": "снару́жи",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "own",
+      "target": "свой",
+      "meaning": "понятие или предмет: свой",
+      "transcription": "svoi",
+      "speech": "свой",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "paint",
+      "target": "кра́ска",
+      "meaning": "понятие или предмет: краска",
+      "transcription": "kraska",
+      "speech": "кра́ска",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "painting",
+      "target": "жи́вопись",
+      "meaning": "понятие или предмет: живопись",
+      "transcription": "zhivopis",
+      "speech": "жи́вопись",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pants",
+      "target": "брю́ки",
+      "meaning": "понятие или предмет: брюки",
+      "transcription": "bryuki",
+      "speech": "брю́ки",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "paper",
+      "target": "бума́га",
+      "meaning": "понятие или предмет: бумага",
+      "transcription": "bumaga",
+      "speech": "бума́га",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pencil",
+      "target": "каранда́ш",
+      "meaning": "понятие или предмет: карандаш",
+      "transcription": "karandash",
+      "speech": "каранда́ш",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "photograph",
+      "target": "фотогра́фия",
+      "meaning": "понятие или предмет: фотография",
+      "transcription": "fotografiya",
+      "speech": "фотогра́фия",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "picture",
+      "target": "карти́на",
+      "meaning": "понятие или предмет: картина",
+      "transcription": "kartina",
+      "speech": "карти́на",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pool",
+      "target": "бассе́йн",
+      "meaning": "понятие или предмет: бассейн",
+      "transcription": "bassein",
+      "speech": "бассе́йн",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shirt",
+      "target": "руба́шка",
+      "meaning": "понятие или предмет: рубашка",
+      "transcription": "rubashka",
+      "speech": "руба́шка",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shoe",
+      "target": "ту́фля",
+      "meaning": "понятие или предмет: туфля",
+      "transcription": "tuflya",
+      "speech": "ту́фля",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shopping",
+      "target": "поку́пка",
+      "meaning": "понятие или предмет: покупка",
+      "transcription": "pokupka",
+      "speech": "поку́пка",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shower",
+      "target": "душ",
+      "meaning": "понятие или предмет: душ",
+      "transcription": "dush",
+      "speech": "душ",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "skirt",
+      "target": "ю́бка",
+      "meaning": "понятие или предмет: юбка",
+      "transcription": "yubka",
+      "speech": "ю́бка",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "plant",
+      "target": "расте́ние",
+      "meaning": "понятие или предмет: растение",
+      "transcription": "rastenie",
+      "speech": "расте́ние",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sweater",
+      "target": "сви́тер",
+      "meaning": "понятие или предмет: свитер",
+      "transcription": "sviter",
+      "speech": "сви́тер",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wear",
+      "target": "носи́ть",
+      "meaning": "действие: носить",
+      "transcription": "nosit",
+      "speech": "носи́ть",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yard",
+      "target": "двор",
+      "meaning": "понятие или предмет: двор",
+      "transcription": "dvor",
+      "speech": "двор",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "address",
+      "target": "а́дрес",
+      "meaning": "понятие или предмет: адрес",
+      "transcription": "adres",
+      "speech": "а́дрес",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "arrive",
+      "target": "прибыва́ть",
+      "meaning": "действие: прибывать",
+      "transcription": "pribyvat",
+      "speech": "прибыва́ть",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "away",
+      "target": "далеко́",
+      "meaning": "понятие или предмет: далеко",
+      "transcription": "daleko",
+      "speech": "далеко́",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "beach",
+      "target": "пляж",
+      "meaning": "понятие или предмет: пляж",
+      "transcription": "plyazh",
+      "speech": "пляж",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bicycle",
+      "target": "велосипе́д",
+      "meaning": "понятие или предмет: велосипед",
+      "transcription": "velosiped",
+      "speech": "велосипе́д",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "air",
+      "target": "во́здух",
+      "meaning": "понятие или предмет: воздух",
+      "transcription": "vozdukh",
+      "speech": "во́здух",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "climb",
+      "target": "поднима́ться",
+      "meaning": "действие: подниматься",
+      "transcription": "podnimatsya",
+      "speech": "поднима́ться",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "drive",
+      "target": "вести́",
+      "meaning": "действие: вести",
+      "transcription": "vesti",
+      "speech": "вести́",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "flight",
+      "target": "рейс",
+      "meaning": "понятие или предмет: рейс",
+      "transcription": "reis",
+      "speech": "рейс",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "follow",
+      "target": "сле́довать",
+      "meaning": "действие: следовать",
+      "transcription": "sledovat",
+      "speech": "сле́довать",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "geography",
+      "target": "геогра́фия",
+      "meaning": "понятие или предмет: география",
+      "transcription": "geografiya",
+      "speech": "геогра́фия",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "leave",
+      "target": "оставля́ть",
+      "meaning": "действие: оставлять",
+      "transcription": "ostavlyat",
+      "speech": "оставля́ть",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "map",
+      "target": "ка́рта",
+      "meaning": "понятие или предмет: карта",
+      "transcription": "karta",
+      "speech": "ка́рта",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mile",
+      "target": "ми́ля",
+      "meaning": "понятие или предмет: миля",
+      "transcription": "milya",
+      "speech": "ми́ля",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mountain",
+      "target": "гора́",
+      "meaning": "понятие или предмет: гора",
+      "transcription": "gora",
+      "speech": "гора́",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "move",
+      "target": "дви́гаться",
+      "meaning": "действие: двигаться",
+      "transcription": "dvigatsya",
+      "speech": "дви́гаться",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "museum",
+      "target": "музе́й",
+      "meaning": "понятие или предмет: музей",
+      "transcription": "muzei",
+      "speech": "музе́й",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "near",
+      "target": "бли́зкий",
+      "meaning": "понятие или предмет: близкий",
+      "transcription": "blizkii",
+      "speech": "бли́зкий",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "park",
+      "target": "парк",
+      "meaning": "понятие или предмет: парк",
+      "transcription": "park",
+      "speech": "парк",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "passport",
+      "target": "па́спорт",
+      "meaning": "понятие или предмет: паспорт",
+      "transcription": "pasport",
+      "speech": "па́спорт",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "plane",
+      "target": "самолёт",
+      "meaning": "понятие или предмет: самолёт",
+      "transcription": "samolet",
+      "speech": "самолёт",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "return",
+      "target": "возвраще́ние",
+      "meaning": "понятие или предмет: возвращение",
+      "transcription": "vozvrashchenie",
+      "speech": "возвраще́ние",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ride",
+      "target": "е́хать",
+      "meaning": "действие: ехать",
+      "transcription": "ekhat",
+      "speech": "е́хать",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "south",
+      "target": "юг",
+      "meaning": "понятие или предмет: юг",
+      "transcription": "yug",
+      "speech": "юг",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "stay",
+      "target": "остава́ться",
+      "meaning": "действие: оставаться",
+      "transcription": "ostavatsya",
+      "speech": "остава́ться",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "taxi",
+      "target": "такси́",
+      "meaning": "понятие или предмет: такси",
+      "transcription": "taksi",
+      "speech": "такси́",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "theater",
+      "target": "теа́тр",
+      "meaning": "понятие или предмет: театр",
+      "transcription": "teatr",
+      "speech": "теа́тр",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "there",
+      "target": "там",
+      "meaning": "понятие или предмет: там",
+      "transcription": "tam",
+      "speech": "там",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "capital",
+      "target": "столи́ца",
+      "meaning": "понятие или предмет: столица",
+      "transcription": "stolitsa",
+      "speech": "столи́ца",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "traffic",
+      "target": "движе́ние",
+      "meaning": "понятие или предмет: движение",
+      "transcription": "dvizhenie",
+      "speech": "движе́ние",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "travel",
+      "target": "путеше́ствовать",
+      "meaning": "понятие или предмет: путешествовать",
+      "transcription": "puteshestvovat",
+      "speech": "путеше́ствовать",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "trip",
+      "target": "пое́здка",
+      "meaning": "понятие или предмет: поездка",
+      "transcription": "poezdka",
+      "speech": "пое́здка",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "truck",
+      "target": "грузови́к",
+      "meaning": "понятие или предмет: грузовик",
+      "transcription": "gruzovik",
+      "speech": "грузови́к",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "turn",
+      "target": "поворо́т",
+      "meaning": "понятие или предмет: поворот",
+      "transcription": "povorot",
+      "speech": "поворо́т",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "vacation",
+      "target": "кани́кулы",
+      "meaning": "понятие или предмет: каникулы",
+      "transcription": "kanikuly",
+      "speech": "кани́кулы",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "visit",
+      "target": "посеща́ть",
+      "meaning": "понятие или предмет: посещать",
+      "transcription": "poseshchat",
+      "speech": "посеща́ть",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "walk",
+      "target": "ходьба́",
+      "meaning": "понятие или предмет: ходьба",
+      "transcription": "khodba",
+      "speech": "ходьба́",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wait",
+      "target": "ждать",
+      "meaning": "действие: ждать",
+      "transcription": "zhdat",
+      "speech": "ждать",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "center",
+      "target": "центр",
+      "meaning": "понятие или предмет: центр",
+      "transcription": "tsentr",
+      "speech": "центр",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "local",
+      "target": "ме́стный",
+      "meaning": "понятие или предмет: местный",
+      "transcription": "mestnyi",
+      "speech": "ме́стный",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "friday",
+      "target": "пя́тница",
+      "meaning": "понятие или предмет: пятница",
+      "transcription": "pyatnitsa",
+      "speech": "пя́тница",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "monday",
+      "target": "понеде́льник",
+      "meaning": "понятие или предмет: понедельник",
+      "transcription": "ponedelnik",
+      "speech": "понеде́льник",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "saturday",
+      "target": "суббо́та",
+      "meaning": "понятие или предмет: суббота",
+      "transcription": "subbota",
+      "speech": "суббо́та",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sunday",
+      "target": "воскресе́нье",
+      "meaning": "понятие или предмет: воскресенье",
+      "transcription": "voskresene",
+      "speech": "воскресе́нье",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thursday",
+      "target": "четве́рг",
+      "meaning": "понятие или предмет: четверг",
+      "transcription": "chetverg",
+      "speech": "четве́рг",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tuesday",
+      "target": "вто́рник",
+      "meaning": "понятие или предмет: вторник",
+      "transcription": "vtornik",
+      "speech": "вто́рник",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wednesday",
+      "target": "среда́",
+      "meaning": "понятие или предмет: среда",
+      "transcription": "sreda",
+      "speech": "среда́",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "weather",
+      "target": "пого́да",
+      "meaning": "понятие или предмет: погода",
+      "transcription": "pogoda",
+      "speech": "пого́да",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "age",
+      "target": "во́зраст",
+      "meaning": "понятие или предмет: возраст",
+      "transcription": "vozrast",
+      "speech": "во́зраст",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "birthday",
+      "target": "день рожде́ния",
+      "meaning": "понятие или предмет: день рождения",
+      "transcription": "den rozhdeniya",
+      "speech": "день рожде́ния",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "beginning",
+      "target": "нача́ло",
+      "meaning": "понятие или предмет: начало",
+      "transcription": "nachalo",
+      "speech": "нача́ло",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "early",
+      "target": "ра́нний",
+      "meaning": "понятие или предмет: ранний",
+      "transcription": "rannii",
+      "speech": "ра́нний",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "end",
+      "target": "коне́ц",
+      "meaning": "понятие или предмет: конец",
+      "transcription": "konets",
+      "speech": "коне́ц",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "event",
+      "target": "собы́тие",
+      "meaning": "понятие или предмет: событие",
+      "transcription": "sobytie",
+      "speech": "собы́тие",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "future",
+      "target": "бу́дущее",
+      "meaning": "понятие или предмет: будущее",
+      "transcription": "budushchee",
+      "speech": "бу́дущее",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "half",
+      "target": "полови́на",
+      "meaning": "понятие или предмет: половина",
+      "transcription": "polovina",
+      "speech": "полови́на",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hour",
+      "target": "час",
+      "meaning": "понятие или предмет: час",
+      "transcription": "chas",
+      "speech": "час",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "space",
+      "target": "простра́нство",
+      "meaning": "понятие или предмет: пространство",
+      "transcription": "prostranstvo",
+      "speech": "простра́нство",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "later",
+      "target": "по́зже",
+      "meaning": "понятие или предмет: позже",
+      "transcription": "pozzhe",
+      "speech": "по́зже",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "midnight",
+      "target": "по́лночь",
+      "meaning": "понятие или предмет: полночь",
+      "transcription": "polnoch",
+      "speech": "по́лночь",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "moment",
+      "target": "моме́нт",
+      "meaning": "понятие или предмет: момент",
+      "transcription": "moment",
+      "speech": "моме́нт",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "never",
+      "target": "никогда́",
+      "meaning": "понятие или предмет: никогда",
+      "transcription": "nikogda",
+      "speech": "никогда́",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "next",
+      "target": "сле́дующий",
+      "meaning": "понятие или предмет: следующий",
+      "transcription": "sleduyushchii",
+      "speech": "сле́дующий",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "once",
+      "target": "оди́н раз",
+      "meaning": "понятие или предмет: один раз",
+      "transcription": "odin raz",
+      "speech": "оди́н раз",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "past",
+      "target": "про́шлый",
+      "meaning": "понятие или предмет: прошлый",
+      "transcription": "proshlyi",
+      "speech": "про́шлый",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "period",
+      "target": "пери́од",
+      "meaning": "понятие или предмет: период",
+      "transcription": "period",
+      "speech": "пери́од",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "quarter",
+      "target": "че́тверть",
+      "meaning": "понятие или предмет: четверть",
+      "transcription": "chetvert",
+      "speech": "че́тверть",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "soon",
+      "target": "ско́ро",
+      "meaning": "понятие или предмет: скоро",
+      "transcription": "skoro",
+      "speech": "ско́ро",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "start",
+      "target": "начина́ть",
+      "meaning": "действие: начинать",
+      "transcription": "nachinat",
+      "speech": "начина́ть",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "still",
+      "target": "всё ещё",
+      "meaning": "понятие или предмет: всё ещё",
+      "transcription": "vse eshche",
+      "speech": "всё ещё",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "then",
+      "target": "тогда́",
+      "meaning": "понятие или предмет: тогда",
+      "transcription": "togda",
+      "speech": "тогда́",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tonight",
+      "target": "сего́дня ве́чером",
+      "meaning": "понятие или предмет: сегодня вечером",
+      "transcription": "segodnya vecherom",
+      "speech": "сего́дня ве́чером",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "twice",
+      "target": "два́жды",
+      "meaning": "понятие или предмет: дважды",
+      "transcription": "dvazhdy",
+      "speech": "два́жды",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "weekend",
+      "target": "уик-э́нд",
+      "meaning": "понятие или предмет: уик-энд",
+      "transcription": "uik-end",
+      "speech": "уик-э́нд",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "always",
+      "target": "всегда́",
+      "meaning": "понятие или предмет: всегда",
+      "transcription": "vsegda",
+      "speech": "всегда́",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "again",
+      "target": "сно́ва",
+      "meaning": "понятие или предмет: снова",
+      "transcription": "snova",
+      "speech": "сно́ва",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sometimes",
+      "target": "иногда́",
+      "meaning": "понятие или предмет: иногда",
+      "transcription": "inogda",
+      "speech": "иногда́",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "usually",
+      "target": "обы́чно",
+      "meaning": "понятие или предмет: обычно",
+      "transcription": "obychno",
+      "speech": "обы́чно",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "often",
+      "target": "ча́сто",
+      "meaning": "понятие или предмет: часто",
+      "transcription": "chasto",
+      "speech": "ча́сто",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "probably",
+      "target": "вероя́тно",
+      "meaning": "понятие или предмет: вероятно",
+      "transcription": "veroyatno",
+      "speech": "вероя́тно",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "action",
+      "target": "де́йствие",
+      "meaning": "понятие или предмет: действие",
+      "transcription": "deistvie",
+      "speech": "де́йствие",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "activity",
+      "target": "де́ятельность",
+      "meaning": "понятие или предмет: деятельность",
+      "transcription": "deyatelnost",
+      "speech": "де́ятельность",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "business",
+      "target": "предприя́тие",
+      "meaning": "понятие или предмет: предприятие",
+      "transcription": "predpriyatie",
+      "speech": "предприя́тие",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "chart",
+      "target": "диагра́мма",
+      "meaning": "понятие или предмет: диаграмма",
+      "transcription": "diagramma",
+      "speech": "диагра́мма",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "check",
+      "target": "проверя́ть",
+      "meaning": "действие: проверять",
+      "transcription": "proveryat",
+      "speech": "проверя́ть",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "classroom",
+      "target": "кла́ссная ко́мната",
+      "meaning": "понятие или предмет: классная комната",
+      "transcription": "klassnaya komnata",
+      "speech": "кла́ссная ко́мната",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "college",
+      "target": "ко́лледж",
+      "meaning": "понятие или предмет: колледж",
+      "transcription": "kolledzh",
+      "speech": "ко́лледж",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "company",
+      "target": "компа́ния",
+      "meaning": "понятие или предмет: компания",
+      "transcription": "kompaniya",
+      "speech": "компа́ния",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "compare",
+      "target": "сра́внивать",
+      "meaning": "действие: сравнивать",
+      "transcription": "sravnivat",
+      "speech": "сра́внивать",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "complete",
+      "target": "по́лный",
+      "meaning": "понятие или предмет: полный",
+      "transcription": "polnyi",
+      "speech": "по́лный",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "course",
+      "target": "курс",
+      "meaning": "понятие или предмет: курс",
+      "transcription": "kurs",
+      "speech": "курс",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "create",
+      "target": "создава́ть",
+      "meaning": "действие: создавать",
+      "transcription": "sozdavat",
+      "speech": "создава́ть",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "design",
+      "target": "план",
+      "meaning": "понятие или предмет: план",
+      "transcription": "plan",
+      "speech": "план",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "detail",
+      "target": "дета́ль",
+      "meaning": "понятие или предмет: деталь",
+      "transcription": "detal",
+      "speech": "дета́ль",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "form",
+      "target": "фо́рма",
+      "meaning": "понятие или предмет: форма",
+      "transcription": "forma",
+      "speech": "фо́рма",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "homework",
+      "target": "дома́шнее зада́ние",
+      "meaning": "понятие или предмет: домашнее задание",
+      "transcription": "domashnee zadanie",
+      "speech": "дома́шнее зада́ние",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "improve",
+      "target": "улучша́ть",
+      "meaning": "действие: улучшать",
+      "transcription": "uluchshat",
+      "speech": "улучша́ть",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "include",
+      "target": "включа́ть",
+      "meaning": "действие: включать",
+      "transcription": "vklyuchat",
+      "speech": "включа́ть",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "interest",
+      "target": "интере́с",
+      "meaning": "понятие или предмет: интерес",
+      "transcription": "interes",
+      "speech": "интере́с",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "machine",
+      "target": "маши́на",
+      "meaning": "понятие или предмет: машина",
+      "transcription": "mashina",
+      "speech": "маши́на",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "join",
+      "target": "соединя́ть",
+      "meaning": "действие: соединять",
+      "transcription": "soedinyat",
+      "speech": "соединя́ть",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "lesson",
+      "target": "уро́к",
+      "meaning": "понятие или предмет: урок",
+      "transcription": "urok",
+      "speech": "уро́к",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "practice",
+      "target": "пра́ктика",
+      "meaning": "понятие или предмет: практика",
+      "transcription": "praktika",
+      "speech": "пра́ктика",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "present",
+      "target": "пода́рок",
+      "meaning": "понятие или предмет: подарок",
+      "transcription": "podarok",
+      "speech": "пода́рок",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "problem",
+      "target": "пробле́ма",
+      "meaning": "понятие или предмет: проблема",
+      "transcription": "problema",
+      "speech": "пробле́ма",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "program",
+      "target": "програ́мма",
+      "meaning": "понятие или предмет: программа",
+      "transcription": "programma",
+      "speech": "програ́мма",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "project",
+      "target": "прое́кт",
+      "meaning": "понятие или предмет: проект",
+      "transcription": "proekt",
+      "speech": "прое́кт",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "result",
+      "target": "результа́т",
+      "meaning": "понятие или предмет: результат",
+      "transcription": "rezultat",
+      "speech": "результа́т",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "rule",
+      "target": "пра́вило",
+      "meaning": "понятие или предмет: правило",
+      "transcription": "pravilo",
+      "speech": "пра́вило",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "skill",
+      "target": "уме́ние",
+      "meaning": "понятие или предмет: умение",
+      "transcription": "umenie",
+      "speech": "уме́ние",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "study",
+      "target": "уче́ние",
+      "meaning": "понятие или предмет: учение",
+      "transcription": "uchenie",
+      "speech": "уче́ние",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "style",
+      "target": "стиль",
+      "meaning": "понятие или предмет: стиль",
+      "transcription": "stil",
+      "speech": "стиль",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "subject",
+      "target": "уче́бный предме́т",
+      "meaning": "понятие или предмет: учебный предмет",
+      "transcription": "uchebnyi predmet",
+      "speech": "уче́бный предме́т",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "success",
+      "target": "успе́х",
+      "meaning": "понятие или предмет: успех",
+      "transcription": "uspekh",
+      "speech": "успе́х",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "teach",
+      "target": "преподава́ть",
+      "meaning": "действие: преподавать",
+      "transcription": "prepodavat",
+      "speech": "преподава́ть",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "test",
+      "target": "тест",
+      "meaning": "понятие или предмет: тест",
+      "transcription": "test",
+      "speech": "тест",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "title",
+      "target": "ти́тул",
+      "meaning": "понятие или предмет: титул",
+      "transcription": "titul",
+      "speech": "ти́тул",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "writing",
+      "target": "пи́сьменность",
+      "meaning": "понятие или предмет: письменность",
+      "transcription": "pismennost",
+      "speech": "пи́сьменность",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "reading",
+      "target": "чте́ние",
+      "meaning": "понятие или предмет: чтение",
+      "transcription": "chtenie",
+      "speech": "чте́ние",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "useful",
+      "target": "поле́зный",
+      "meaning": "понятие или предмет: полезный",
+      "transcription": "poleznyi",
+      "speech": "поле́зный",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "afraid",
+      "target": "испу́ганный",
+      "meaning": "понятие или предмет: испуганный",
+      "transcription": "ispugannyi",
+      "speech": "испу́ганный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "angry",
+      "target": "серди́тый",
+      "meaning": "понятие или предмет: сердитый",
+      "transcription": "serdityi",
+      "speech": "серди́тый",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "arm",
+      "target": "рука́",
+      "meaning": "понятие или предмет: рука",
+      "transcription": "ruka",
+      "speech": "рука́",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bored",
+      "target": "скуча́ющий",
+      "meaning": "понятие или предмет: скучающий",
+      "transcription": "skuchayushchii",
+      "speech": "скуча́ющий",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "baseball",
+      "target": "бейсбо́л",
+      "meaning": "понятие или предмет: бейсбол",
+      "transcription": "beisbol",
+      "speech": "бейсбо́л",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dangerous",
+      "target": "опа́сный",
+      "meaning": "понятие или предмет: опасный",
+      "transcription": "opasnyi",
+      "speech": "опа́сный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ear",
+      "target": "у́хо",
+      "meaning": "понятие или предмет: ухо",
+      "transcription": "ukho",
+      "speech": "у́хо",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "enjoy",
+      "target": "наслажда́ться",
+      "meaning": "действие: наслаждаться",
+      "transcription": "naslazhdatsya",
+      "speech": "наслажда́ться",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "enough",
+      "target": "доста́точно",
+      "meaning": "понятие или предмет: достаточно",
+      "transcription": "dostatochno",
+      "speech": "доста́точно",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "excited",
+      "target": "возбуждённый",
+      "meaning": "понятие или предмет: возбуждённый",
+      "transcription": "vozbuzhdennyi",
+      "speech": "возбуждённый",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "feel",
+      "target": "чу́вствовать",
+      "meaning": "действие: чувствовать",
+      "transcription": "chuvstvovat",
+      "speech": "чу́вствовать",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "feeling",
+      "target": "ощуще́ние",
+      "meaning": "понятие или предмет: ощущение",
+      "transcription": "oshchushchenie",
+      "speech": "ощуще́ние",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "free",
+      "target": "свобо́дный",
+      "meaning": "понятие или предмет: свободный",
+      "transcription": "svobodnyi",
+      "speech": "свобо́дный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fun",
+      "target": "весе́лье",
+      "meaning": "понятие или предмет: веселье",
+      "transcription": "vesele",
+      "speech": "весе́лье",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "funny",
+      "target": "смешно́й",
+      "meaning": "понятие или предмет: смешной",
+      "transcription": "smeshnoi",
+      "speech": "смешно́й",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hard",
+      "target": "твёрдый",
+      "meaning": "понятие или предмет: твёрдый",
+      "transcription": "tverdyi",
+      "speech": "твёрдый",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hate",
+      "target": "ненави́деть",
+      "meaning": "действие: ненавидеть",
+      "transcription": "nenavidet",
+      "speech": "ненави́деть",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "health",
+      "target": "здоро́вье",
+      "meaning": "понятие или предмет: здоровье",
+      "transcription": "zdorove",
+      "speech": "здоро́вье",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "basketball",
+      "target": "баскетбо́л",
+      "meaning": "понятие или предмет: баскетбол",
+      "transcription": "basketbol",
+      "speech": "баскетбо́л",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "like",
+      "target": "люби́ть",
+      "meaning": "действие: любить",
+      "transcription": "lyubit",
+      "speech": "люби́ть",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "negative",
+      "target": "отрица́тельный",
+      "meaning": "понятие или предмет: отрицательный",
+      "transcription": "otritsatelnyi",
+      "speech": "отрица́тельный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "nice",
+      "target": "ми́лый",
+      "meaning": "понятие или предмет: милый",
+      "transcription": "milyi",
+      "speech": "ми́лый",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "poor",
+      "target": "бе́дный",
+      "meaning": "понятие или предмет: бедный",
+      "transcription": "bednyi",
+      "speech": "бе́дный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "positive",
+      "target": "положи́тельный",
+      "meaning": "понятие или предмет: положительный",
+      "transcription": "polozhitelnyi",
+      "speech": "положи́тельный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "relax",
+      "target": "расслабля́ться",
+      "meaning": "действие: расслабляться",
+      "transcription": "rasslablyatsya",
+      "speech": "расслабля́ться",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tennis",
+      "target": "те́ннис",
+      "meaning": "понятие или предмет: теннис",
+      "transcription": "tennis",
+      "speech": "те́ннис",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "smart",
+      "target": "сообрази́тельный",
+      "meaning": "понятие или предмет: сообразительный",
+      "transcription": "soobrazitelnyi",
+      "speech": "сообрази́тельный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "strong",
+      "target": "си́льный",
+      "meaning": "понятие или предмет: сильный",
+      "transcription": "silnyi",
+      "speech": "си́льный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "terrible",
+      "target": "ужа́сный",
+      "meaning": "понятие или предмет: ужасный",
+      "transcription": "uzhasnyi",
+      "speech": "ужа́сный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wonderful",
+      "target": "замеча́тельный",
+      "meaning": "понятие или предмет: замечательный",
+      "transcription": "zamechatelnyi",
+      "speech": "замеча́тельный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "young",
+      "target": "молодо́й",
+      "meaning": "понятие или предмет: молодой",
+      "transcription": "molodoi",
+      "speech": "молодо́й",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "beautiful",
+      "target": "краси́вый",
+      "meaning": "понятие или предмет: красивый",
+      "transcription": "krasivyi",
+      "speech": "краси́вый",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "easy",
+      "target": "лёгкий",
+      "meaning": "понятие или предмет: лёгкий",
+      "transcription": "legkii",
+      "speech": "лёгкий",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cool",
+      "target": "прохла́дный",
+      "meaning": "понятие или предмет: прохладный",
+      "transcription": "prokhladnyi",
+      "speech": "прохла́дный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "great",
+      "target": "отли́чный",
+      "meaning": "понятие или предмет: отличный",
+      "transcription": "otlichnyi",
+      "speech": "отли́чный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "exercise",
+      "target": "упражне́ние",
+      "meaning": "понятие или предмет: упражнение",
+      "transcription": "uprazhnenie",
+      "speech": "упражне́ние",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "important",
+      "target": "ва́жный",
+      "meaning": "понятие или предмет: важный",
+      "transcription": "vazhnyi",
+      "speech": "ва́жный",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "show",
+      "target": "представле́ние",
+      "meaning": "понятие или предмет: представление",
+      "transcription": "predstavlenie",
+      "speech": "представле́ние",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "swimming",
+      "target": "пла́вание",
+      "meaning": "понятие или предмет: плавание",
+      "transcription": "plavanie",
+      "speech": "пла́вание",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "football",
+      "target": "футбо́л",
+      "meaning": "понятие или предмет: футбол",
+      "transcription": "futbol",
+      "speech": "футбо́л",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "add",
+      "target": "добавля́ть",
+      "meaning": "действие: добавлять",
+      "transcription": "dobavlyat",
+      "speech": "добавля́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "become",
+      "target": "станови́ться",
+      "meaning": "действие: становиться",
+      "transcription": "stanovitsya",
+      "speech": "станови́ться",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "begin",
+      "target": "нача́ть",
+      "meaning": "действие: начать",
+      "transcription": "nachat",
+      "speech": "нача́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "believe",
+      "target": "ве́рить",
+      "meaning": "действие: верить",
+      "transcription": "verit",
+      "speech": "ве́рить",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bring",
+      "target": "приноси́ть",
+      "meaning": "действие: приносить",
+      "transcription": "prinosit",
+      "speech": "приноси́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "build",
+      "target": "стро́ить",
+      "meaning": "действие: строить",
+      "transcription": "stroit",
+      "speech": "стро́ить",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "choose",
+      "target": "выбира́ть",
+      "meaning": "действие: выбирать",
+      "transcription": "vybirat",
+      "speech": "выбира́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "close",
+      "target": "закрыва́ть",
+      "meaning": "действие: закрывать",
+      "transcription": "zakryvat",
+      "speech": "закрыва́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cut",
+      "target": "ре́зать",
+      "meaning": "действие: резать",
+      "transcription": "rezat",
+      "speech": "ре́зать",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "decide",
+      "target": "реша́ть",
+      "meaning": "действие: решать",
+      "transcription": "reshat",
+      "speech": "реша́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "die",
+      "target": "умира́ть",
+      "meaning": "действие: умирать",
+      "transcription": "umirat",
+      "speech": "умира́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "do",
+      "target": "де́лать",
+      "meaning": "действие: делать",
+      "transcription": "delat",
+      "speech": "де́лать",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "draw",
+      "target": "рисова́ть",
+      "meaning": "действие: рисовать",
+      "transcription": "risovat",
+      "speech": "рисова́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "find",
+      "target": "находи́ть",
+      "meaning": "действие: находить",
+      "transcription": "nakhodit",
+      "speech": "находи́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "finish",
+      "target": "зака́нчивать",
+      "meaning": "действие: заканчивать",
+      "transcription": "zakanchivat",
+      "speech": "зака́нчивать",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "forget",
+      "target": "забыва́ть",
+      "meaning": "действие: забывать",
+      "transcription": "zabyvat",
+      "speech": "забыва́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "get",
+      "target": "достава́ть",
+      "meaning": "действие: доставать",
+      "transcription": "dostavat",
+      "speech": "достава́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "grow",
+      "target": "расти́",
+      "meaning": "действие: расти",
+      "transcription": "rasti",
+      "speech": "расти́",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "happen",
+      "target": "происходи́ть",
+      "meaning": "действие: происходить",
+      "transcription": "proiskhodit",
+      "speech": "происходи́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hear",
+      "target": "слы́шать",
+      "meaning": "действие: слышать",
+      "transcription": "slyshat",
+      "speech": "слы́шать",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "imagine",
+      "target": "представля́ть",
+      "meaning": "действие: представлять",
+      "transcription": "predstavlyat",
+      "speech": "представля́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "keep",
+      "target": "храни́ть",
+      "meaning": "действие: хранить",
+      "transcription": "khranit",
+      "speech": "храни́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "know",
+      "target": "знать",
+      "meaning": "действие: знать",
+      "transcription": "znat",
+      "speech": "знать",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "learn",
+      "target": "учи́ться",
+      "meaning": "действие: учиться",
+      "transcription": "uchitsya",
+      "speech": "учи́ться",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "let",
+      "target": "позволя́ть",
+      "meaning": "действие: позволять",
+      "transcription": "pozvolyat",
+      "speech": "позволя́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "lose",
+      "target": "теря́ть",
+      "meaning": "действие: терять",
+      "transcription": "teryat",
+      "speech": "теря́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "change",
+      "target": "меня́ть",
+      "meaning": "понятие или предмет: менять",
+      "transcription": "menyat",
+      "speech": "меня́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "meet",
+      "target": "встреча́ть",
+      "meaning": "действие: встречать",
+      "transcription": "vstrechat",
+      "speech": "встреча́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "miss",
+      "target": "скуча́ть по",
+      "meaning": "действие: скучать по",
+      "transcription": "skuchat po",
+      "speech": "скуча́ть по",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "prefer",
+      "target": "предпочита́ть",
+      "meaning": "действие: предпочитать",
+      "transcription": "predpochitat",
+      "speech": "предпочита́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "put",
+      "target": "класть",
+      "meaning": "действие: класть",
+      "transcription": "klast",
+      "speech": "класть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "remember",
+      "target": "по́мнить",
+      "meaning": "действие: помнить",
+      "transcription": "pomnit",
+      "speech": "по́мнить",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sell",
+      "target": "продава́ть",
+      "meaning": "действие: продавать",
+      "transcription": "prodavat",
+      "speech": "продава́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "send",
+      "target": "посыла́ть",
+      "meaning": "действие: посылать",
+      "transcription": "posylat",
+      "speech": "посыла́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sing",
+      "target": "петь",
+      "meaning": "действие: петь",
+      "transcription": "pet",
+      "speech": "петь",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "watch",
+      "target": "нару́чные часы́",
+      "meaning": "понятие или предмет: наручные часы",
+      "transcription": "naruchnye chasy",
+      "speech": "нару́чные часы́",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "try",
+      "target": "пыта́ться",
+      "meaning": "действие: пытаться",
+      "transcription": "pytatsya",
+      "speech": "пыта́ться",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "understand",
+      "target": "понима́ть",
+      "meaning": "действие: понимать",
+      "transcription": "ponimat",
+      "speech": "понима́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "use",
+      "target": "испо́льзовать",
+      "meaning": "действие: использовать",
+      "transcription": "ispolzovat",
+      "speech": "испо́льзовать",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "win",
+      "target": "побежда́ть",
+      "meaning": "действие: побеждать",
+      "transcription": "pobezhdat",
+      "speech": "побежда́ть",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "amazing",
+      "target": "изуми́тельный",
+      "meaning": "понятие или предмет: изумительный",
+      "transcription": "izumitelnyi",
+      "speech": "изуми́тельный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "better",
+      "target": "лу́чше",
+      "meaning": "понятие или предмет: лучше",
+      "transcription": "luchshe",
+      "speech": "лу́чше",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "blond",
+      "target": "ру́сый",
+      "meaning": "понятие или предмет: русый",
+      "transcription": "rusyi",
+      "speech": "ру́сый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "brown",
+      "target": "кори́чневый",
+      "meaning": "понятие или предмет: коричневый",
+      "transcription": "korichnevyi",
+      "speech": "кори́чневый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "busy",
+      "target": "занято́й",
+      "meaning": "понятие или предмет: занятой",
+      "transcription": "zanyatoi",
+      "speech": "занято́й",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "different",
+      "target": "друго́й",
+      "meaning": "понятие или предмет: другой",
+      "transcription": "drugoi",
+      "speech": "друго́й",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "difficult",
+      "target": "тру́дный",
+      "meaning": "понятие или предмет: трудный",
+      "transcription": "trudnyi",
+      "speech": "тру́дный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fantastic",
+      "target": "чуде́сный",
+      "meaning": "понятие или предмет: чудесный",
+      "transcription": "chudesnyi",
+      "speech": "чуде́сный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "friendly",
+      "target": "дружелю́бный",
+      "meaning": "понятие или предмет: дружелюбный",
+      "transcription": "druzhelyubnyi",
+      "speech": "дружелю́бный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "gray",
+      "target": "се́рый",
+      "meaning": "понятие или предмет: серый",
+      "transcription": "seryi",
+      "speech": "се́рый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "green",
+      "target": "зелёный",
+      "meaning": "понятие или предмет: зелёный",
+      "transcription": "zelenyi",
+      "speech": "зелёный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "kind",
+      "target": "до́брый",
+      "meaning": "понятие или предмет: добрый",
+      "transcription": "dobryi",
+      "speech": "до́брый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "difference",
+      "target": "разли́чие",
+      "meaning": "понятие или предмет: различие",
+      "transcription": "razlichie",
+      "speech": "разли́чие",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "long",
+      "target": "дли́нный",
+      "meaning": "понятие или предмет: длинный",
+      "transcription": "dlinnyi",
+      "speech": "дли́нный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "main",
+      "target": "гла́вный",
+      "meaning": "понятие или предмет: главный",
+      "transcription": "glavnyi",
+      "speech": "гла́вный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "married",
+      "target": "жена́тый",
+      "meaning": "понятие или предмет: женатый",
+      "transcription": "zhenatyi",
+      "speech": "жена́тый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "modern",
+      "target": "совреме́нный",
+      "meaning": "понятие или предмет: современный",
+      "transcription": "sovremennyi",
+      "speech": "совреме́нный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "natural",
+      "target": "приро́дный",
+      "meaning": "понятие или предмет: природный",
+      "transcription": "prirodnyi",
+      "speech": "приро́дный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "perfect",
+      "target": "соверше́нный",
+      "meaning": "понятие или предмет: совершенный",
+      "transcription": "sovershennyi",
+      "speech": "соверше́нный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pink",
+      "target": "ро́зовый",
+      "meaning": "понятие или предмет: розовый",
+      "transcription": "rozovyi",
+      "speech": "ро́зовый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "popular",
+      "target": "популя́рный",
+      "meaning": "понятие или предмет: популярный",
+      "transcription": "populyarnyi",
+      "speech": "популя́рный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "possible",
+      "target": "возмо́жный",
+      "meaning": "понятие или предмет: возможный",
+      "transcription": "vozmozhnyi",
+      "speech": "возмо́жный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pretty",
+      "target": "хоро́шенький",
+      "meaning": "понятие или предмет: хорошенький",
+      "transcription": "khoroshenkii",
+      "speech": "хоро́шенький",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "purple",
+      "target": "фиоле́товый",
+      "meaning": "понятие или предмет: фиолетовый",
+      "transcription": "fioletovyi",
+      "speech": "фиоле́товый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "quick",
+      "target": "бы́стрый",
+      "meaning": "понятие или предмет: быстрый",
+      "transcription": "bystryi",
+      "speech": "бы́стрый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "quiet",
+      "target": "ти́хий",
+      "meaning": "понятие или предмет: тихий",
+      "transcription": "tikhii",
+      "speech": "ти́хий",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "real",
+      "target": "настоя́щий",
+      "meaning": "понятие или предмет: настоящий",
+      "transcription": "nastoyashchii",
+      "speech": "настоя́щий",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "same",
+      "target": "одина́ковый",
+      "meaning": "понятие или предмет: одинаковый",
+      "transcription": "odinakovyi",
+      "speech": "одина́ковый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "similar",
+      "target": "подо́бный",
+      "meaning": "понятие или предмет: подобный",
+      "transcription": "podobnyi",
+      "speech": "подо́бный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "slow",
+      "target": "ме́дленный",
+      "meaning": "понятие или предмет: медленный",
+      "transcription": "medlennyi",
+      "speech": "ме́дленный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "special",
+      "target": "осо́бый",
+      "meaning": "понятие или предмет: особый",
+      "transcription": "osobyi",
+      "speech": "осо́бый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sure",
+      "target": "уве́ренный",
+      "meaning": "понятие или предмет: уверенный",
+      "transcription": "uverennyi",
+      "speech": "уве́ренный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "point",
+      "target": "то́чка",
+      "meaning": "понятие или предмет: точка",
+      "transcription": "tochka",
+      "speech": "то́чка",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "true",
+      "target": "ве́рный",
+      "meaning": "понятие или предмет: верный",
+      "transcription": "vernyi",
+      "speech": "ве́рный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wrong",
+      "target": "непра́вильный",
+      "meaning": "понятие или предмет: неправильный",
+      "transcription": "nepravilnyi",
+      "speech": "непра́вильный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yellow",
+      "target": "жёлтый",
+      "meaning": "понятие или предмет: жёлтый",
+      "transcription": "zheltyi",
+      "speech": "жёлтый",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "only",
+      "target": "еди́нственный",
+      "meaning": "понятие или предмет: единственный",
+      "transcription": "edinstvennyi",
+      "speech": "еди́нственный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "common",
+      "target": "о́бщий",
+      "meaning": "понятие или предмет: общий",
+      "transcription": "obshchii",
+      "speech": "о́бщий",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "very",
+      "target": "о́чень",
+      "meaning": "понятие или предмет: очень",
+      "transcription": "ochen",
+      "speech": "о́чень",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "famous",
+      "target": "изве́стный",
+      "meaning": "понятие или предмет: известный",
+      "transcription": "izvestnyi",
+      "speech": "изве́стный",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
     }
   ]
 }

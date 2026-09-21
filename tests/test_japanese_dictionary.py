@@ -23,8 +23,8 @@ class JapaneseDictionaryTest(unittest.TestCase):
     def setUpClass(cls):
         cls.words = json.loads(JAPANESE_WORDS.read_text(encoding="utf-8"))
 
-    def test_contains_exactly_100_words(self):
-        self.assertEqual(len(self.words), 100)
+    def test_contains_exactly_500_words(self):
+        self.assertEqual(len(self.words), 500)
 
     def test_terms_are_unique(self):
         terms = [word["en"] for word in self.words]

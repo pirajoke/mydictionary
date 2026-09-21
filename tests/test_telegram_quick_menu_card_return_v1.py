@@ -163,7 +163,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(resolver(label), expected)
                     self.assertIsNone(resolver(f" {label}"))
                     self.assertIsNone(resolver(f"{label}!"))
-        self.assertIsNone(resolver("🇫🇷 Français · 100"))
+        self.assertIsNone(resolver("🇫🇷 Français · 500"))
 
         source = inspect.getsource(bot.manual_polling)
         self.assertIn("handle_quick_action", source)
