@@ -53,7 +53,7 @@ const path = require("node:path");
       await page.locator("#target-language").selectOption(target);
       for (const native of codes.filter(code=>code!==target)) {
         await page.locator("#native-language").selectOption(native);
-        assert.match(await page.locator("#pack-note").innerText(),/100/);
+        assert.match(await page.locator("#pack-note").innerText(),/500/);
       }
     }
     await page.locator("#target-language").selectOption("fr");

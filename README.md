@@ -33,7 +33,7 @@ deployment automation.
   `initData`, never creates learning or billing records on open, and saves swipe
   answers through protected APIs using the same deterministic SRS as the bot.
 - A separate browser dictionary at `/dictionary/`: seven reviewed starter
-  packs (700 entries), bilingual local search, saved words, short written
+  packs (3,500 entries), bilingual local search, saved words, short written
   practice, explicit offline storage, standalone HTML download and saved-word
   CSV export. It opens without Telegram or a learner account. Words outside
   these packs can be sent to Yandex Translate by an explicitly labelled link.
@@ -130,6 +130,9 @@ release and Cloudflare route deliberately use separate runbooks and gates.
 ## License
 
 The application source code is MIT-licensed; see [`LICENSE`](LICENSE). The
-seven generated schema-v2 starter packs derive from the project's original
-`content/basic_100.tsv` matrix. Verify provenance and redistribution rights
-before republishing legacy or externally supplied vocabulary datasets.
+seven generated schema-v2 starter packs retain the project's original first
+100 aligned rows and add 400 curated rows per language from open,
+Wiktionary-derived sources. Japanese retains its original first 100 entries and
+adds 400 reviewed entries. See [`docs/basic-language-packs.md`](docs/basic-language-packs.md)
+for exact source revisions, attribution, third-party license notes, and the
+reason the legacy `*-basics-100` IDs and `basic_100.tsv` filename remain.

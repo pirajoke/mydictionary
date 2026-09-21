@@ -337,7 +337,7 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
             "きょう",
             voice="ja-JP-NanamiNeural",
             rate="-25%",
-            cache_namespace="ja-basics-100:v1",
+            cache_namespace="ja-basics-100:v2",
         )
         send_voice.assert_awaited_once_with(chat_id=123, voice=audio)
 

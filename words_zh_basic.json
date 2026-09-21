@@ -1100,6 +1100,4406 @@
         "descriptions"
       ],
       "example": null
+    },
+    {
+      "entry_id": "advice",
+      "target": "劝告",
+      "meaning": "совет",
+      "transcription": "quàn gào",
+      "speech": "劝告",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "agree",
+      "target": "同意",
+      "meaning": "соглашаться",
+      "transcription": "tóng yì",
+      "speech": "同意",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "article",
+      "target": "文章",
+      "meaning": "статья",
+      "transcription": "wén zhāng",
+      "speech": "文章",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "blog",
+      "target": "博客",
+      "meaning": "блог",
+      "transcription": "bó kè",
+      "speech": "博客",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "call",
+      "target": "呼叫",
+      "meaning": "звонок",
+      "transcription": "hū jiào",
+      "speech": "呼叫",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "conversation",
+      "target": "会话",
+      "meaning": "разговор",
+      "transcription": "huì huà",
+      "speech": "会话",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "correct",
+      "target": "正确",
+      "meaning": "правильный",
+      "transcription": "zhèng què",
+      "speech": "正确",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "describe",
+      "target": "描述",
+      "meaning": "описывать",
+      "transcription": "miáo shù",
+      "speech": "描述",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "description",
+      "target": "描写",
+      "meaning": "описание",
+      "transcription": "miáo xiě",
+      "speech": "描写",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dialogue",
+      "target": "对话",
+      "meaning": "диалог",
+      "transcription": "duì huà",
+      "speech": "对话",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "discuss",
+      "target": "讨论",
+      "meaning": "обсуждать",
+      "transcription": "tǎo lùn",
+      "speech": "讨论",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "email",
+      "target": "电子邮件",
+      "meaning": "электронная почта",
+      "transcription": "diàn zi yóu jiàn",
+      "speech": "电子邮件",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "example",
+      "target": "例子",
+      "meaning": "пример",
+      "transcription": "lì zi",
+      "speech": "例子",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "explain",
+      "target": "解释",
+      "meaning": "объяснять",
+      "transcription": "jiě shì",
+      "speech": "解释",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fact",
+      "target": "事实",
+      "meaning": "факт",
+      "transcription": "shì shí",
+      "speech": "事实",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "false",
+      "target": "假",
+      "meaning": "фальшивый",
+      "transcription": "jiǎ",
+      "speech": "假",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "information",
+      "target": "资讯",
+      "meaning": "информация",
+      "transcription": "zī xùn",
+      "speech": "资讯",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "interview",
+      "target": "采访",
+      "meaning": "интервью",
+      "transcription": "cǎi fǎng",
+      "speech": "采访",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "introduce",
+      "target": "介绍",
+      "meaning": "представить",
+      "transcription": "jiè shào",
+      "speech": "介绍",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "magazine",
+      "target": "杂志",
+      "meaning": "журнал",
+      "transcription": "zá zhì",
+      "speech": "杂志",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mean",
+      "target": "意味着",
+      "meaning": "означать",
+      "transcription": "yì wèi zhe",
+      "speech": "意味着",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "meaning",
+      "target": "意义",
+      "meaning": "значение",
+      "transcription": "yì yì",
+      "speech": "意义",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "message",
+      "target": "信息",
+      "meaning": "сообщение",
+      "transcription": "xìn xī",
+      "speech": "信息",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "news",
+      "target": "消息",
+      "meaning": "новости",
+      "transcription": "xiāo xī",
+      "speech": "消息",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "newspaper",
+      "target": "报纸",
+      "meaning": "газета",
+      "transcription": "bào zhǐ",
+      "speech": "报纸",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "note",
+      "target": "字条",
+      "meaning": "заметка",
+      "transcription": "zì tiáo",
+      "speech": "字条",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "opinion",
+      "target": "意见",
+      "meaning": "мнение",
+      "transcription": "yì jiàn",
+      "speech": "意见",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "paragraph",
+      "target": "段",
+      "meaning": "абзац",
+      "transcription": "duàn",
+      "speech": "段",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "repeat",
+      "target": "重复",
+      "meaning": "повторять",
+      "transcription": "chóng fù",
+      "speech": "重复",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "report",
+      "target": "报告",
+      "meaning": "репортаж",
+      "transcription": "bào gào",
+      "speech": "报告",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "say",
+      "target": "說",
+      "meaning": "говорить",
+      "transcription": "shuō",
+      "speech": "說",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sentence",
+      "target": "句子",
+      "meaning": "предложение",
+      "transcription": "jù zi",
+      "speech": "句子",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "share",
+      "target": "共享",
+      "meaning": "делить",
+      "transcription": "gòng xiǎng",
+      "speech": "共享",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "spell",
+      "target": "拼写",
+      "meaning": "произносить по буквам",
+      "transcription": "pīn xiě",
+      "speech": "拼写",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "spelling",
+      "target": "拼写法",
+      "meaning": "правописание",
+      "transcription": "pīn xiě fǎ",
+      "speech": "拼写法",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "statement",
+      "target": "声明",
+      "meaning": "заявление",
+      "transcription": "shēng míng",
+      "speech": "声明",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "about",
+      "target": "关于",
+      "meaning": "о",
+      "transcription": "guān yú",
+      "speech": "关于",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "reason",
+      "target": "理由",
+      "meaning": "причина",
+      "transcription": "lǐ yóu",
+      "speech": "理由",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "text",
+      "target": "课文",
+      "meaning": "текст",
+      "transcription": "kè wén",
+      "speech": "课文",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thank",
+      "target": "道谢",
+      "meaning": "благодарить",
+      "transcription": "dào xiè",
+      "speech": "道谢",
+      "topics": [
+        "greetings"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "actor",
+      "target": "演员",
+      "meaning": "актёр",
+      "transcription": "yǎn yuán",
+      "speech": "演员",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "actress",
+      "target": "女演员",
+      "meaning": "актриса",
+      "transcription": "nǚ yǎn yuán",
+      "speech": "女演员",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "adult",
+      "target": "成人",
+      "meaning": "взрослый",
+      "transcription": "chéng rén",
+      "speech": "成人",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "artist",
+      "target": "艺术家",
+      "meaning": "художник",
+      "transcription": "yì shù jiā",
+      "speech": "艺术家",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "aunt",
+      "target": "姑",
+      "meaning": "тётя",
+      "transcription": "gū",
+      "speech": "姑",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "boyfriend",
+      "target": "男朋友",
+      "meaning": "парень",
+      "transcription": "nán péng yǒu",
+      "speech": "男朋友",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cousin",
+      "target": "堂兄",
+      "meaning": "родственник",
+      "transcription": "táng xiōng",
+      "speech": "堂兄",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "customer",
+      "target": "顾客",
+      "meaning": "клиент",
+      "transcription": "gù kè",
+      "speech": "顾客",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dad",
+      "target": "爸",
+      "meaning": "папа",
+      "transcription": "bà",
+      "speech": "爸",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dancer",
+      "target": "舞蹈家",
+      "meaning": "танцор",
+      "transcription": "wǔ dǎo jiā",
+      "speech": "舞蹈家",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "driver",
+      "target": "司机",
+      "meaning": "водитель",
+      "transcription": "sī jī",
+      "speech": "司机",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "farmer",
+      "target": "农夫",
+      "meaning": "крестьянин",
+      "transcription": "nóng fū",
+      "speech": "农夫",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "girlfriend",
+      "target": "女朋友",
+      "meaning": "девушка",
+      "transcription": "nǚ péng yǒu",
+      "speech": "女朋友",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "grandfather",
+      "target": "爷爷",
+      "meaning": "дедушка",
+      "transcription": "yé yé",
+      "speech": "爷爷",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "grandmother",
+      "target": "奶奶",
+      "meaning": "бабушка",
+      "transcription": "nǎi nǎi",
+      "speech": "奶奶",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "animal",
+      "target": "动物",
+      "meaning": "животное",
+      "transcription": "dòng wù",
+      "speech": "动物",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "group",
+      "target": "集团",
+      "meaning": "группа",
+      "transcription": "jí tuán",
+      "speech": "集团",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "member",
+      "target": "会员",
+      "meaning": "член",
+      "transcription": "huì yuán",
+      "speech": "会员",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "model",
+      "target": "模特儿",
+      "meaning": "модель",
+      "transcription": "mó tè ér",
+      "speech": "模特儿",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "nurse",
+      "target": "护士",
+      "meaning": "медсестра",
+      "transcription": "hù shì",
+      "speech": "护士",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "horse",
+      "target": "马",
+      "meaning": "лошадь",
+      "transcription": "mǎ",
+      "speech": "马",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "partner",
+      "target": "伙伴",
+      "meaning": "партнёр",
+      "transcription": "huǒ bàn",
+      "speech": "伙伴",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "player",
+      "target": "运动员",
+      "meaning": "игрок",
+      "transcription": "yùn dòng yuán",
+      "speech": "运动员",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "police",
+      "target": "警察",
+      "meaning": "полиция",
+      "transcription": "jǐng chá",
+      "speech": "警察",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "reader",
+      "target": "读者",
+      "meaning": "читатель",
+      "transcription": "dú zhě",
+      "speech": "读者",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "scientist",
+      "target": "科学家",
+      "meaning": "учёный",
+      "transcription": "kē xué jiā",
+      "speech": "科学家",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "singer",
+      "target": "歌手",
+      "meaning": "певец",
+      "transcription": "gē shǒu",
+      "speech": "歌手",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "team",
+      "target": "团队",
+      "meaning": "команда",
+      "transcription": "tuán duì",
+      "speech": "团队",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "teenager",
+      "target": "少年",
+      "meaning": "подросток",
+      "transcription": "shào nián",
+      "speech": "少年",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tourist",
+      "target": "旅游者",
+      "meaning": "турист",
+      "transcription": "lǚ yóu zhě",
+      "speech": "旅游者",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "uncle",
+      "target": "伯父",
+      "meaning": "дядя",
+      "transcription": "bó fù",
+      "speech": "伯父",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "visitor",
+      "target": "访客",
+      "meaning": "посетитель",
+      "transcription": "fǎng kè",
+      "speech": "访客",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "waiter",
+      "target": "服务员",
+      "meaning": "официант",
+      "transcription": "fú wù yuán",
+      "speech": "服务员",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wife",
+      "target": "妻子",
+      "meaning": "жена",
+      "transcription": "qī zǐ",
+      "speech": "妻子",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "worker",
+      "target": "工人",
+      "meaning": "работник",
+      "transcription": "gōng rén",
+      "speech": "工人",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "writer",
+      "target": "作家",
+      "meaning": "писатель",
+      "transcription": "zuò jiā",
+      "speech": "作家",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "career",
+      "target": "职业",
+      "meaning": "карьера",
+      "transcription": "zhí yè",
+      "speech": "职业",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dear",
+      "target": "亲爱的",
+      "meaning": "дорогой",
+      "transcription": "qīn ài de",
+      "speech": "亲爱的",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "personal",
+      "target": "私人的",
+      "meaning": "личный",
+      "transcription": "sī rén de",
+      "speech": "私人的",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "class",
+      "target": "班级",
+      "meaning": "класс",
+      "transcription": "bān jí",
+      "speech": "班级",
+      "topics": [
+        "people"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bar",
+      "target": "酒吧",
+      "meaning": "бар",
+      "transcription": "jiǔ bā",
+      "speech": "酒吧",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "breakfast",
+      "target": "早饭",
+      "meaning": "завтрак",
+      "transcription": "zǎo fàn",
+      "speech": "早饭",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cake",
+      "target": "蛋糕",
+      "meaning": "торт",
+      "transcription": "dàn gāo",
+      "speech": "蛋糕",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cheap",
+      "target": "便宜",
+      "meaning": "дешёвый",
+      "transcription": "pián yi",
+      "speech": "便宜",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "chocolate",
+      "target": "巧克力",
+      "meaning": "шоколад",
+      "transcription": "qiǎo kè lì",
+      "speech": "巧克力",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cooking",
+      "target": "烹调",
+      "meaning": "готовка",
+      "transcription": "pēng tiáo",
+      "speech": "烹调",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cost",
+      "target": "费用",
+      "meaning": "расходы",
+      "transcription": "fèi yòng",
+      "speech": "费用",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cream",
+      "target": "奶油",
+      "meaning": "сливки",
+      "transcription": "nǎi yóu",
+      "speech": "奶油",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "delicious",
+      "target": "好吃",
+      "meaning": "вкусный",
+      "transcription": "hǎo chī",
+      "speech": "好吃",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "diet",
+      "target": "饮食",
+      "meaning": "диета",
+      "transcription": "yǐn shí",
+      "speech": "饮食",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dinner",
+      "target": "晚饭",
+      "meaning": "ужин",
+      "transcription": "wǎn fàn",
+      "speech": "晚饭",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dish",
+      "target": "菜肴",
+      "meaning": "блюдо",
+      "transcription": "cài yáo",
+      "speech": "菜肴",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pound",
+      "target": "英镑",
+      "meaning": "фунт",
+      "transcription": "yīng bàng",
+      "speech": "英镑",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hungry",
+      "target": "饥饿",
+      "meaning": "голодный",
+      "transcription": "jī è",
+      "speech": "饥饿",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ice",
+      "target": "冰",
+      "meaning": "лёд",
+      "transcription": "bīng",
+      "speech": "冰",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ice-cream",
+      "target": "冰淇淋",
+      "meaning": "мороженое",
+      "transcription": "bīng qí lín",
+      "speech": "冰淇淋",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "juice",
+      "target": "汁",
+      "meaning": "сок",
+      "transcription": "zhī",
+      "speech": "汁",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "lunch",
+      "target": "午饭",
+      "meaning": "обед",
+      "transcription": "wǔ fàn",
+      "speech": "午饭",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "farm",
+      "target": "农场",
+      "meaning": "ферма",
+      "transcription": "nóng chǎng",
+      "speech": "农场",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "menu",
+      "target": "菜单",
+      "meaning": "меню",
+      "transcription": "cài dān",
+      "speech": "菜单",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "orange",
+      "target": "橙子",
+      "meaning": "апельсин",
+      "transcription": "chéng zi",
+      "speech": "橙子",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "order",
+      "target": "订单",
+      "meaning": "заказ",
+      "transcription": "dìng dān",
+      "speech": "订单",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pepper",
+      "target": "胡椒",
+      "meaning": "перец",
+      "transcription": "hú jiāo",
+      "speech": "胡椒",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "potato",
+      "target": "土豆",
+      "meaning": "картофель",
+      "transcription": "tǔ dòu",
+      "speech": "土豆",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "prepare",
+      "target": "准备",
+      "meaning": "готовить",
+      "transcription": "zhǔn bèi",
+      "speech": "准备",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "price",
+      "target": "价格",
+      "meaning": "цена",
+      "transcription": "jià gé",
+      "speech": "价格",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "product",
+      "target": "产品",
+      "meaning": "продукт",
+      "transcription": "chǎn pǐn",
+      "speech": "产品",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "restaurant",
+      "target": "餐厅",
+      "meaning": "ресторан",
+      "transcription": "cān tīng",
+      "speech": "餐厅",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "salad",
+      "target": "色拉",
+      "meaning": "салат",
+      "transcription": "sè lā",
+      "speech": "色拉",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sandwich",
+      "target": "三明治",
+      "meaning": "сандвич",
+      "transcription": "sān míng zhì",
+      "speech": "三明治",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "soup",
+      "target": "汤",
+      "meaning": "суп",
+      "transcription": "tāng",
+      "speech": "汤",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sugar",
+      "target": "糖",
+      "meaning": "сахар",
+      "transcription": "táng",
+      "speech": "糖",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "supermarket",
+      "target": "超级市场",
+      "meaning": "супермаркет",
+      "transcription": "chāo jí shì chǎng",
+      "speech": "超级市场",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thirsty",
+      "target": "渴",
+      "meaning": "жаждущий",
+      "transcription": "kě",
+      "speech": "渴",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tomato",
+      "target": "西红柿",
+      "meaning": "помидор",
+      "transcription": "xī hóng shì",
+      "speech": "西红柿",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "vegetable",
+      "target": "蔬菜",
+      "meaning": "овощ",
+      "transcription": "shū cài",
+      "speech": "蔬菜",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "buy",
+      "target": "买",
+      "meaning": "покупать",
+      "transcription": "mǎi",
+      "speech": "买",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fill",
+      "target": "装满",
+      "meaning": "заполнять",
+      "transcription": "zhuāng mǎn",
+      "speech": "装满",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "festival",
+      "target": "节庆",
+      "meaning": "фестиваль",
+      "transcription": "jié qìng",
+      "speech": "节庆",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "party",
+      "target": "聚会",
+      "meaning": "вечеринка",
+      "transcription": "jù huì",
+      "speech": "聚会",
+      "topics": [
+        "food"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "apartment",
+      "target": "公寓",
+      "meaning": "квартира",
+      "transcription": "gōng yù",
+      "speech": "公寓",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "area",
+      "target": "面积",
+      "meaning": "площадь",
+      "transcription": "miàn jī",
+      "speech": "面积",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bath",
+      "target": "浴缸",
+      "meaning": "ванна",
+      "transcription": "yù gāng",
+      "speech": "浴缸",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bedroom",
+      "target": "卧室",
+      "meaning": "спальня",
+      "transcription": "wò shì",
+      "speech": "卧室",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "building",
+      "target": "建筑物",
+      "meaning": "здание",
+      "transcription": "jiàn zhù wù",
+      "speech": "建筑物",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "card",
+      "target": "卡片",
+      "meaning": "карточка",
+      "transcription": "kǎ piàn",
+      "speech": "卡片",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "clothes",
+      "target": "衣服",
+      "meaning": "одежда",
+      "transcription": "yī fú",
+      "speech": "衣服",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "club",
+      "target": "俱乐部",
+      "meaning": "клуб",
+      "transcription": "jù lè bù",
+      "speech": "俱乐部",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "coat",
+      "target": "外衣",
+      "meaning": "пальто",
+      "transcription": "wài yī",
+      "speech": "外衣",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "desk",
+      "target": "书桌",
+      "meaning": "письменный стол",
+      "transcription": "shū zhuō",
+      "speech": "书桌",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dirty",
+      "target": "脏",
+      "meaning": "грязный",
+      "transcription": "zàng",
+      "speech": "脏",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dress",
+      "target": "连衣裙",
+      "meaning": "платье",
+      "transcription": "lián yī qún",
+      "speech": "连衣裙",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "floor",
+      "target": "地板",
+      "meaning": "пол",
+      "transcription": "dì bǎn",
+      "speech": "地板",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "front",
+      "target": "前面",
+      "meaning": "передняя часть",
+      "transcription": "qián miàn",
+      "speech": "前面",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "here",
+      "target": "这里",
+      "meaning": "здесь",
+      "transcription": "zhè lǐ",
+      "speech": "这里",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "jacket",
+      "target": "夹克",
+      "meaning": "куртка",
+      "transcription": "jiá kè",
+      "speech": "夹克",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "jeans",
+      "target": "牛仔裤",
+      "meaning": "джинсы",
+      "transcription": "niú zǎi kù",
+      "speech": "牛仔裤",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "light",
+      "target": "光",
+      "meaning": "свет",
+      "transcription": "guāng",
+      "speech": "光",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mall",
+      "target": "购物中心",
+      "meaning": "торговый центр",
+      "transcription": "gòu wù zhōng xīn",
+      "speech": "购物中心",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "neighborhood",
+      "target": "附近",
+      "meaning": "соседство",
+      "transcription": "fù jìn",
+      "speech": "附近",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "object",
+      "target": "物体",
+      "meaning": "предмет",
+      "transcription": "wù tǐ",
+      "speech": "物体",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "outside",
+      "target": "外边",
+      "meaning": "снаружи",
+      "transcription": "wài biān",
+      "speech": "外边",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "own",
+      "target": "自己的",
+      "meaning": "свой",
+      "transcription": "zì jǐ de",
+      "speech": "自己的",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "paint",
+      "target": "油漆",
+      "meaning": "краска",
+      "transcription": "yóu qī",
+      "speech": "油漆",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "painting",
+      "target": "图画",
+      "meaning": "живопись",
+      "transcription": "tú huà",
+      "speech": "图画",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pants",
+      "target": "裤子",
+      "meaning": "брюки",
+      "transcription": "kù zi",
+      "speech": "裤子",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "paper",
+      "target": "纸",
+      "meaning": "бумага",
+      "transcription": "zhǐ",
+      "speech": "纸",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pencil",
+      "target": "铅笔",
+      "meaning": "карандаш",
+      "transcription": "qiān bǐ",
+      "speech": "铅笔",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "photograph",
+      "target": "照片",
+      "meaning": "фотография",
+      "transcription": "zhào piān",
+      "speech": "照片",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "picture",
+      "target": "圖畫",
+      "meaning": "картина",
+      "transcription": "tú huà",
+      "speech": "圖畫",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pool",
+      "target": "游泳池",
+      "meaning": "бассейн",
+      "transcription": "yóu yǒng chí",
+      "speech": "游泳池",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shirt",
+      "target": "衬衫",
+      "meaning": "рубашка",
+      "transcription": "chèn shān",
+      "speech": "衬衫",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shoe",
+      "target": "鞋子",
+      "meaning": "туфля",
+      "transcription": "xié zi",
+      "speech": "鞋子",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shopping",
+      "target": "买东西",
+      "meaning": "покупка",
+      "transcription": "mǎi dōng xī",
+      "speech": "买东西",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "shower",
+      "target": "淋浴",
+      "meaning": "душ",
+      "transcription": "lín yù",
+      "speech": "淋浴",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "skirt",
+      "target": "裙子",
+      "meaning": "юбка",
+      "transcription": "qún zi",
+      "speech": "裙子",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "plant",
+      "target": "植物",
+      "meaning": "растение",
+      "transcription": "zhí wù",
+      "speech": "植物",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sweater",
+      "target": "毛衣",
+      "meaning": "свитер",
+      "transcription": "máo yī",
+      "speech": "毛衣",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wear",
+      "target": "穿",
+      "meaning": "носить",
+      "transcription": "chuān",
+      "speech": "穿",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yard",
+      "target": "院子",
+      "meaning": "двор",
+      "transcription": "yuàn zi",
+      "speech": "院子",
+      "topics": [
+        "home"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "address",
+      "target": "地址",
+      "meaning": "адрес",
+      "transcription": "dì zhǐ",
+      "speech": "地址",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "arrive",
+      "target": "到达",
+      "meaning": "прибывать",
+      "transcription": "dào dá",
+      "speech": "到达",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "away",
+      "target": "远离",
+      "meaning": "далеко",
+      "transcription": "yuǎn lí",
+      "speech": "远离",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "beach",
+      "target": "海滩",
+      "meaning": "пляж",
+      "transcription": "hǎi tān",
+      "speech": "海滩",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bicycle",
+      "target": "自行车",
+      "meaning": "велосипед",
+      "transcription": "zì xíng chē",
+      "speech": "自行车",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "air",
+      "target": "空气",
+      "meaning": "воздух",
+      "transcription": "kōng qì",
+      "speech": "空气",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "climb",
+      "target": "登",
+      "meaning": "подниматься",
+      "transcription": "dēng",
+      "speech": "登",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "drive",
+      "target": "开车",
+      "meaning": "вести",
+      "transcription": "kāi chē",
+      "speech": "开车",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "flight",
+      "target": "航班",
+      "meaning": "рейс",
+      "transcription": "háng bān",
+      "speech": "航班",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "follow",
+      "target": "随",
+      "meaning": "следовать",
+      "transcription": "suí",
+      "speech": "随",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "geography",
+      "target": "地理学",
+      "meaning": "география",
+      "transcription": "dì lǐ xué",
+      "speech": "地理学",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "leave",
+      "target": "留",
+      "meaning": "оставлять",
+      "transcription": "liú",
+      "speech": "留",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "map",
+      "target": "地图",
+      "meaning": "карта",
+      "transcription": "dì tú",
+      "speech": "地图",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mile",
+      "target": "英里",
+      "meaning": "миля",
+      "transcription": "yīng lǐ",
+      "speech": "英里",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "mountain",
+      "target": "山",
+      "meaning": "гора",
+      "transcription": "shān",
+      "speech": "山",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "move",
+      "target": "动",
+      "meaning": "двигаться",
+      "transcription": "dòng",
+      "speech": "动",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "museum",
+      "target": "博物馆",
+      "meaning": "музей",
+      "transcription": "bó wù guǎn",
+      "speech": "博物馆",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "near",
+      "target": "近",
+      "meaning": "близкий",
+      "transcription": "jìn",
+      "speech": "近",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "park",
+      "target": "公园",
+      "meaning": "парк",
+      "transcription": "gōng yuán",
+      "speech": "公园",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "passport",
+      "target": "护照",
+      "meaning": "паспорт",
+      "transcription": "hù zhào",
+      "speech": "护照",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "plane",
+      "target": "飞机",
+      "meaning": "самолёт",
+      "transcription": "fēi jī",
+      "speech": "飞机",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "return",
+      "target": "归还",
+      "meaning": "возвращение",
+      "transcription": "guī huán",
+      "speech": "归还",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ride",
+      "target": "骑",
+      "meaning": "ехать",
+      "transcription": "qí",
+      "speech": "骑",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "south",
+      "target": "南",
+      "meaning": "юг",
+      "transcription": "nán",
+      "speech": "南",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "stay",
+      "target": "呆",
+      "meaning": "оставаться",
+      "transcription": "dāi",
+      "speech": "呆",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "taxi",
+      "target": "出租汽车",
+      "meaning": "такси",
+      "transcription": "chū zū qì chē",
+      "speech": "出租汽车",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "theater",
+      "target": "剧场",
+      "meaning": "театр",
+      "transcription": "jù chǎng",
+      "speech": "剧场",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "there",
+      "target": "那里",
+      "meaning": "там",
+      "transcription": "nà lǐ",
+      "speech": "那里",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "capital",
+      "target": "首都",
+      "meaning": "столица",
+      "transcription": "shǒu dū",
+      "speech": "首都",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "traffic",
+      "target": "交通",
+      "meaning": "движение",
+      "transcription": "jiāo tōng",
+      "speech": "交通",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "travel",
+      "target": "旅游",
+      "meaning": "путешествовать",
+      "transcription": "lǚ yóu",
+      "speech": "旅游",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "trip",
+      "target": "旅行",
+      "meaning": "поездка",
+      "transcription": "lǚ xíng",
+      "speech": "旅行",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "truck",
+      "target": "卡车",
+      "meaning": "грузовик",
+      "transcription": "kǎ chē",
+      "speech": "卡车",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "turn",
+      "target": "转弯",
+      "meaning": "поворот",
+      "transcription": "zhuǎn wān",
+      "speech": "转弯",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "vacation",
+      "target": "假期",
+      "meaning": "каникулы",
+      "transcription": "jià qī",
+      "speech": "假期",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "visit",
+      "target": "参观",
+      "meaning": "посещать",
+      "transcription": "cān guān",
+      "speech": "参观",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "walk",
+      "target": "散步",
+      "meaning": "ходьба",
+      "transcription": "sàn bù",
+      "speech": "散步",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wait",
+      "target": "等",
+      "meaning": "ждать",
+      "transcription": "děng",
+      "speech": "等",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "center",
+      "target": "中心",
+      "meaning": "центр",
+      "transcription": "zhōng xīn",
+      "speech": "中心",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "local",
+      "target": "本地",
+      "meaning": "местный",
+      "transcription": "běn dì",
+      "speech": "本地",
+      "topics": [
+        "travel"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "friday",
+      "target": "星期五",
+      "meaning": "пятница",
+      "transcription": "xīng qī wǔ",
+      "speech": "星期五",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "monday",
+      "target": "星期一",
+      "meaning": "понедельник",
+      "transcription": "xīng qī yī",
+      "speech": "星期一",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "saturday",
+      "target": "星期六",
+      "meaning": "суббота",
+      "transcription": "xīng qī liù",
+      "speech": "星期六",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sunday",
+      "target": "星期日",
+      "meaning": "воскресенье",
+      "transcription": "xīng qī rì",
+      "speech": "星期日",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "thursday",
+      "target": "星期四",
+      "meaning": "четверг",
+      "transcription": "xīng qī sì",
+      "speech": "星期四",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tuesday",
+      "target": "星期二",
+      "meaning": "вторник",
+      "transcription": "xīng qī èr",
+      "speech": "星期二",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wednesday",
+      "target": "星期三",
+      "meaning": "среда",
+      "transcription": "xīng qī sān",
+      "speech": "星期三",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "weather",
+      "target": "天气",
+      "meaning": "погода",
+      "transcription": "tiān qì",
+      "speech": "天气",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "age",
+      "target": "年岁",
+      "meaning": "возраст",
+      "transcription": "nián suì",
+      "speech": "年岁",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "birthday",
+      "target": "生日",
+      "meaning": "день рождения",
+      "transcription": "shēng rì",
+      "speech": "生日",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "beginning",
+      "target": "开端",
+      "meaning": "начало",
+      "transcription": "kāi duān",
+      "speech": "开端",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "early",
+      "target": "早",
+      "meaning": "ранний",
+      "transcription": "zǎo",
+      "speech": "早",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "end",
+      "target": "结束",
+      "meaning": "конец",
+      "transcription": "jié shù",
+      "speech": "结束",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "event",
+      "target": "事件",
+      "meaning": "событие",
+      "transcription": "shì jiàn",
+      "speech": "事件",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "future",
+      "target": "未来",
+      "meaning": "будущее",
+      "transcription": "wèi lái",
+      "speech": "未来",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "half",
+      "target": "半",
+      "meaning": "половина",
+      "transcription": "bàn",
+      "speech": "半",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hour",
+      "target": "小时",
+      "meaning": "час",
+      "transcription": "xiǎo shí",
+      "speech": "小时",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "space",
+      "target": "空间",
+      "meaning": "пространство",
+      "transcription": "kōng jiān",
+      "speech": "空间",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "later",
+      "target": "更迟",
+      "meaning": "позже",
+      "transcription": "gèng chí",
+      "speech": "更迟",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "midnight",
+      "target": "午夜",
+      "meaning": "полночь",
+      "transcription": "wǔ yè",
+      "speech": "午夜",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "moment",
+      "target": "瞬间",
+      "meaning": "момент",
+      "transcription": "shùn jiān",
+      "speech": "瞬间",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "never",
+      "target": "从未",
+      "meaning": "никогда",
+      "transcription": "cóng wèi",
+      "speech": "从未",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "next",
+      "target": "下一个",
+      "meaning": "следующий",
+      "transcription": "xià yí gè",
+      "speech": "下一个",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "once",
+      "target": "一次",
+      "meaning": "один раз",
+      "transcription": "yī cì",
+      "speech": "一次",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "past",
+      "target": "过去",
+      "meaning": "прошлый",
+      "transcription": "guò qù",
+      "speech": "过去",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "period",
+      "target": "时期",
+      "meaning": "период",
+      "transcription": "shí qī",
+      "speech": "时期",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "quarter",
+      "target": "四分之一",
+      "meaning": "четверть",
+      "transcription": "sì fēn zhī yī",
+      "speech": "四分之一",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "soon",
+      "target": "不久",
+      "meaning": "скоро",
+      "transcription": "bù jiǔ",
+      "speech": "不久",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "start",
+      "target": "开始",
+      "meaning": "начинать",
+      "transcription": "kāi shǐ",
+      "speech": "开始",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "still",
+      "target": "还",
+      "meaning": "всё ещё",
+      "transcription": "hái",
+      "speech": "还",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "then",
+      "target": "当时",
+      "meaning": "тогда",
+      "transcription": "dāng shí",
+      "speech": "当时",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tonight",
+      "target": "今晚",
+      "meaning": "сегодня вечером",
+      "transcription": "jīn wǎn",
+      "speech": "今晚",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "twice",
+      "target": "两次",
+      "meaning": "дважды",
+      "transcription": "liǎng cì",
+      "speech": "两次",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "weekend",
+      "target": "周末",
+      "meaning": "уик-энд",
+      "transcription": "zhōu mò",
+      "speech": "周末",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "always",
+      "target": "总是",
+      "meaning": "всегда",
+      "transcription": "zǒng shì",
+      "speech": "总是",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "again",
+      "target": "再",
+      "meaning": "снова",
+      "transcription": "zài",
+      "speech": "再",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sometimes",
+      "target": "有时",
+      "meaning": "иногда",
+      "transcription": "yǒu shí",
+      "speech": "有时",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "usually",
+      "target": "通常",
+      "meaning": "обычно",
+      "transcription": "tōng cháng",
+      "speech": "通常",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "often",
+      "target": "经常",
+      "meaning": "часто",
+      "transcription": "jīng cháng",
+      "speech": "经常",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "probably",
+      "target": "或许",
+      "meaning": "вероятно",
+      "transcription": "huò xǔ",
+      "speech": "或许",
+      "topics": [
+        "time"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "action",
+      "target": "行动",
+      "meaning": "действие",
+      "transcription": "xíng dòng",
+      "speech": "行动",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "activity",
+      "target": "活动",
+      "meaning": "деятельность",
+      "transcription": "huó dòng",
+      "speech": "活动",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "business",
+      "target": "事业",
+      "meaning": "предприятие",
+      "transcription": "shì yè",
+      "speech": "事业",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "chart",
+      "target": "图表",
+      "meaning": "диаграмма",
+      "transcription": "tú biǎo",
+      "speech": "图表",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "check",
+      "target": "检查",
+      "meaning": "проверять",
+      "transcription": "jiǎn chá",
+      "speech": "检查",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "classroom",
+      "target": "教室",
+      "meaning": "классная комната",
+      "transcription": "jiào shì",
+      "speech": "教室",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "college",
+      "target": "大学",
+      "meaning": "колледж",
+      "transcription": "dà xué",
+      "speech": "大学",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "company",
+      "target": "公司",
+      "meaning": "компания",
+      "transcription": "gōng sī",
+      "speech": "公司",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "compare",
+      "target": "比",
+      "meaning": "сравнивать",
+      "transcription": "bǐ",
+      "speech": "比",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "complete",
+      "target": "完全",
+      "meaning": "полный",
+      "transcription": "wán quán",
+      "speech": "完全",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "course",
+      "target": "课程",
+      "meaning": "курс",
+      "transcription": "kè chéng",
+      "speech": "课程",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "create",
+      "target": "创造",
+      "meaning": "создавать",
+      "transcription": "chuàng zào",
+      "speech": "创造",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "design",
+      "target": "设计",
+      "meaning": "план",
+      "transcription": "shè jì",
+      "speech": "设计",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "detail",
+      "target": "细节",
+      "meaning": "деталь",
+      "transcription": "xì jié",
+      "speech": "细节",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "form",
+      "target": "形式",
+      "meaning": "форма",
+      "transcription": "xíng shì",
+      "speech": "形式",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "homework",
+      "target": "作业",
+      "meaning": "домашнее задание",
+      "transcription": "zuò yè",
+      "speech": "作业",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "improve",
+      "target": "改善",
+      "meaning": "улучшать",
+      "transcription": "gǎi shàn",
+      "speech": "改善",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "include",
+      "target": "包括",
+      "meaning": "включать",
+      "transcription": "bāo kuò",
+      "speech": "包括",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "interest",
+      "target": "兴趣",
+      "meaning": "интерес",
+      "transcription": "xìng qù",
+      "speech": "兴趣",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "machine",
+      "target": "机",
+      "meaning": "машина",
+      "transcription": "jī",
+      "speech": "机",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "join",
+      "target": "连接",
+      "meaning": "соединять",
+      "transcription": "lián jiē",
+      "speech": "连接",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "lesson",
+      "target": "课业",
+      "meaning": "урок",
+      "transcription": "kè yè",
+      "speech": "课业",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "practice",
+      "target": "練習",
+      "meaning": "практика",
+      "transcription": "liàn xí",
+      "speech": "練習",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "present",
+      "target": "礼物",
+      "meaning": "подарок",
+      "transcription": "lǐ wù",
+      "speech": "礼物",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "problem",
+      "target": "問題",
+      "meaning": "проблема",
+      "transcription": "wèn tí",
+      "speech": "問題",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "program",
+      "target": "计划",
+      "meaning": "программа",
+      "transcription": "jì huà",
+      "speech": "计划",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "project",
+      "target": "計劃",
+      "meaning": "проект",
+      "transcription": "jì huà",
+      "speech": "計劃",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "result",
+      "target": "结果",
+      "meaning": "результат",
+      "transcription": "jié guǒ",
+      "speech": "结果",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "rule",
+      "target": "规则",
+      "meaning": "правило",
+      "transcription": "guī zé",
+      "speech": "规则",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "skill",
+      "target": "技巧",
+      "meaning": "умение",
+      "transcription": "jì qiǎo",
+      "speech": "技巧",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "study",
+      "target": "学习",
+      "meaning": "учение",
+      "transcription": "xué xí",
+      "speech": "学习",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "style",
+      "target": "风格",
+      "meaning": "стиль",
+      "transcription": "fēng gé",
+      "speech": "风格",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "subject",
+      "target": "学科",
+      "meaning": "учебный предмет",
+      "transcription": "xué kē",
+      "speech": "学科",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "success",
+      "target": "成功",
+      "meaning": "успех",
+      "transcription": "chéng gōng",
+      "speech": "成功",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "teach",
+      "target": "教",
+      "meaning": "преподавать",
+      "transcription": "jiào",
+      "speech": "教",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "test",
+      "target": "测试",
+      "meaning": "тест",
+      "transcription": "cè shì",
+      "speech": "测试",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "title",
+      "target": "称号",
+      "meaning": "титул",
+      "transcription": "chēng hào",
+      "speech": "称号",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "writing",
+      "target": "文字",
+      "meaning": "письменность",
+      "transcription": "wén zì",
+      "speech": "文字",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "reading",
+      "target": "阅读",
+      "meaning": "чтение",
+      "transcription": "yuè dú",
+      "speech": "阅读",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "useful",
+      "target": "有用",
+      "meaning": "полезный",
+      "transcription": "yǒu yòng",
+      "speech": "有用",
+      "topics": [
+        "work"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "afraid",
+      "target": "害怕",
+      "meaning": "испуганный",
+      "transcription": "hài pà",
+      "speech": "害怕",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "angry",
+      "target": "恼怒",
+      "meaning": "сердитый",
+      "transcription": "nǎo nù",
+      "speech": "恼怒",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "arm",
+      "target": "胳膊",
+      "meaning": "рука",
+      "transcription": "gē bó",
+      "speech": "胳膊",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bored",
+      "target": "厌烦",
+      "meaning": "скучающий",
+      "transcription": "yàn fán",
+      "speech": "厌烦",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "baseball",
+      "target": "棒球",
+      "meaning": "бейсбол",
+      "transcription": "bàng qiú",
+      "speech": "棒球",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "dangerous",
+      "target": "危险",
+      "meaning": "опасный",
+      "transcription": "wēi xiǎn",
+      "speech": "危险",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "ear",
+      "target": "耳朵",
+      "meaning": "ухо",
+      "transcription": "ěr duǒ",
+      "speech": "耳朵",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "enjoy",
+      "target": "欣赏",
+      "meaning": "наслаждаться",
+      "transcription": "xīn shǎng",
+      "speech": "欣赏",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "enough",
+      "target": "足够",
+      "meaning": "достаточно",
+      "transcription": "zú gòu",
+      "speech": "足够",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "excited",
+      "target": "兴奋",
+      "meaning": "возбуждённый",
+      "transcription": "xīng fèn",
+      "speech": "兴奋",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "feel",
+      "target": "感觉",
+      "meaning": "чувствовать",
+      "transcription": "gǎn jué",
+      "speech": "感觉",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "feeling",
+      "target": "感受",
+      "meaning": "ощущение",
+      "transcription": "gǎn shòu",
+      "speech": "感受",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "free",
+      "target": "自由的",
+      "meaning": "свободный",
+      "transcription": "zì yóu de",
+      "speech": "自由的",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fun",
+      "target": "乐趣",
+      "meaning": "веселье",
+      "transcription": "lè qù",
+      "speech": "乐趣",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "funny",
+      "target": "可笑",
+      "meaning": "смешной",
+      "transcription": "kě xiào",
+      "speech": "可笑",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hard",
+      "target": "硬",
+      "meaning": "твёрдый",
+      "transcription": "yìng",
+      "speech": "硬",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hate",
+      "target": "恨",
+      "meaning": "ненавидеть",
+      "transcription": "hèn",
+      "speech": "恨",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "health",
+      "target": "健康状况",
+      "meaning": "здоровье",
+      "transcription": "jiàn kāng zhuàng kuàng",
+      "speech": "健康状况",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "basketball",
+      "target": "篮球",
+      "meaning": "баскетбол",
+      "transcription": "lán qiú",
+      "speech": "篮球",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "like",
+      "target": "喜欢",
+      "meaning": "любить",
+      "transcription": "xǐ huān",
+      "speech": "喜欢",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "negative",
+      "target": "否定的",
+      "meaning": "отрицательный",
+      "transcription": "fǒu dìng de",
+      "speech": "否定的",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "nice",
+      "target": "美好的",
+      "meaning": "милый",
+      "transcription": "měi hǎo de",
+      "speech": "美好的",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "poor",
+      "target": "贫穷",
+      "meaning": "бедный",
+      "transcription": "pín qióng",
+      "speech": "贫穷",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "positive",
+      "target": "确定的",
+      "meaning": "положительный",
+      "transcription": "què dìng de",
+      "speech": "确定的",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "relax",
+      "target": "放松",
+      "meaning": "расслабляться",
+      "transcription": "fàng sōng",
+      "speech": "放松",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "tennis",
+      "target": "网球",
+      "meaning": "теннис",
+      "transcription": "wǎng qiú",
+      "speech": "网球",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "smart",
+      "target": "机灵",
+      "meaning": "сообразительный",
+      "transcription": "jī líng",
+      "speech": "机灵",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "strong",
+      "target": "强",
+      "meaning": "сильный",
+      "transcription": "qiáng",
+      "speech": "强",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "terrible",
+      "target": "诡异的",
+      "meaning": "ужасный",
+      "transcription": "guǐ yì de",
+      "speech": "诡异的",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wonderful",
+      "target": "棒",
+      "meaning": "замечательный",
+      "transcription": "bàng",
+      "speech": "棒",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "young",
+      "target": "年轻",
+      "meaning": "молодой",
+      "transcription": "nián qīng",
+      "speech": "年轻",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "beautiful",
+      "target": "美",
+      "meaning": "красивый",
+      "transcription": "měi",
+      "speech": "美",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "easy",
+      "target": "容易",
+      "meaning": "лёгкий",
+      "transcription": "róng yì",
+      "speech": "容易",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cool",
+      "target": "凉快",
+      "meaning": "прохладный",
+      "transcription": "liáng kuài",
+      "speech": "凉快",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "great",
+      "target": "很棒",
+      "meaning": "отличный",
+      "transcription": "hěn bàng",
+      "speech": "很棒",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "exercise",
+      "target": "练习",
+      "meaning": "упражнение",
+      "transcription": "liàn xí",
+      "speech": "练习",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "important",
+      "target": "重要",
+      "meaning": "важный",
+      "transcription": "zhòng yào",
+      "speech": "重要",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "show",
+      "target": "表演",
+      "meaning": "представление",
+      "transcription": "biǎo yǎn",
+      "speech": "表演",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "swimming",
+      "target": "游泳",
+      "meaning": "плавание",
+      "transcription": "yóu yǒng",
+      "speech": "游泳",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "football",
+      "target": "足球",
+      "meaning": "футбол",
+      "transcription": "zú qiú",
+      "speech": "足球",
+      "topics": [
+        "health"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "add",
+      "target": "加",
+      "meaning": "добавлять",
+      "transcription": "jiā",
+      "speech": "加",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "become",
+      "target": "成",
+      "meaning": "становиться",
+      "transcription": "chéng",
+      "speech": "成",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "begin",
+      "target": "開始",
+      "meaning": "начать",
+      "transcription": "kāi shǐ",
+      "speech": "開始",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "believe",
+      "target": "相信",
+      "meaning": "верить",
+      "transcription": "xiāng xìn",
+      "speech": "相信",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "bring",
+      "target": "带来",
+      "meaning": "приносить",
+      "transcription": "dài lái",
+      "speech": "带来",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "build",
+      "target": "建設",
+      "meaning": "строить",
+      "transcription": "jiàn shè",
+      "speech": "建設",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "choose",
+      "target": "选择",
+      "meaning": "выбирать",
+      "transcription": "xuǎn zé",
+      "speech": "选择",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "close",
+      "target": "关",
+      "meaning": "закрывать",
+      "transcription": "guān",
+      "speech": "关",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "cut",
+      "target": "切",
+      "meaning": "резать",
+      "transcription": "qiè",
+      "speech": "切",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "decide",
+      "target": "决定",
+      "meaning": "решать",
+      "transcription": "jué dìng",
+      "speech": "决定",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "die",
+      "target": "死",
+      "meaning": "умирать",
+      "transcription": "sǐ",
+      "speech": "死",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "do",
+      "target": "做",
+      "meaning": "делать",
+      "transcription": "zuò",
+      "speech": "做",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "draw",
+      "target": "画",
+      "meaning": "рисовать",
+      "transcription": "huà",
+      "speech": "画",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "find",
+      "target": "找到",
+      "meaning": "находить",
+      "transcription": "zhǎo dào",
+      "speech": "找到",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "finish",
+      "target": "完成",
+      "meaning": "заканчивать",
+      "transcription": "wán chéng",
+      "speech": "完成",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "forget",
+      "target": "忘记",
+      "meaning": "забывать",
+      "transcription": "wàng jì",
+      "speech": "忘记",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "get",
+      "target": "获得",
+      "meaning": "доставать",
+      "transcription": "huò dé",
+      "speech": "获得",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "grow",
+      "target": "生长",
+      "meaning": "расти",
+      "transcription": "shēng zhǎng",
+      "speech": "生长",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "happen",
+      "target": "发生",
+      "meaning": "происходить",
+      "transcription": "fā shēng",
+      "speech": "发生",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "hear",
+      "target": "听见",
+      "meaning": "слышать",
+      "transcription": "tīng jiàn",
+      "speech": "听见",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "imagine",
+      "target": "想像",
+      "meaning": "представлять",
+      "transcription": "xiǎng xiàng",
+      "speech": "想像",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "keep",
+      "target": "保持",
+      "meaning": "хранить",
+      "transcription": "bǎo chí",
+      "speech": "保持",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "know",
+      "target": "懂",
+      "meaning": "знать",
+      "transcription": "dǒng",
+      "speech": "懂",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "learn",
+      "target": "学会",
+      "meaning": "учиться",
+      "transcription": "xué huì",
+      "speech": "学会",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "let",
+      "target": "让",
+      "meaning": "позволять",
+      "transcription": "ràng",
+      "speech": "让",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "lose",
+      "target": "丢",
+      "meaning": "терять",
+      "transcription": "diū",
+      "speech": "丢",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "change",
+      "target": "改变",
+      "meaning": "менять",
+      "transcription": "gǎi biàn",
+      "speech": "改变",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "meet",
+      "target": "遇见",
+      "meaning": "встречать",
+      "transcription": "yù jiàn",
+      "speech": "遇见",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "miss",
+      "target": "想念",
+      "meaning": "скучать по",
+      "transcription": "xiǎng niàn",
+      "speech": "想念",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "prefer",
+      "target": "比较喜欢",
+      "meaning": "предпочитать",
+      "transcription": "bǐ jiào xǐ huān",
+      "speech": "比较喜欢",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "put",
+      "target": "放",
+      "meaning": "класть",
+      "transcription": "fàng",
+      "speech": "放",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "remember",
+      "target": "记得",
+      "meaning": "помнить",
+      "transcription": "jì de",
+      "speech": "记得",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sell",
+      "target": "卖",
+      "meaning": "продавать",
+      "transcription": "mài",
+      "speech": "卖",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "send",
+      "target": "送",
+      "meaning": "посылать",
+      "transcription": "sòng",
+      "speech": "送",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sing",
+      "target": "唱歌",
+      "meaning": "петь",
+      "transcription": "chàng gē",
+      "speech": "唱歌",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "watch",
+      "target": "手表",
+      "meaning": "наручные часы",
+      "transcription": "shǒu biǎo",
+      "speech": "手表",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "try",
+      "target": "尝试",
+      "meaning": "пытаться",
+      "transcription": "cháng shì",
+      "speech": "尝试",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "understand",
+      "target": "明白",
+      "meaning": "понимать",
+      "transcription": "míng bái",
+      "speech": "明白",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "use",
+      "target": "用",
+      "meaning": "использовать",
+      "transcription": "yòng",
+      "speech": "用",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "win",
+      "target": "赢",
+      "meaning": "побеждать",
+      "transcription": "yíng",
+      "speech": "赢",
+      "topics": [
+        "actions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "amazing",
+      "target": "精彩",
+      "meaning": "изумительный",
+      "transcription": "jīng cǎi",
+      "speech": "精彩",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "better",
+      "target": "更好",
+      "meaning": "лучше",
+      "transcription": "gèng hǎo",
+      "speech": "更好",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "blond",
+      "target": "金发",
+      "meaning": "русый",
+      "transcription": "jīn fà",
+      "speech": "金发",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "brown",
+      "target": "褐色",
+      "meaning": "коричневый",
+      "transcription": "hè sè",
+      "speech": "褐色",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "busy",
+      "target": "忙",
+      "meaning": "занятой",
+      "transcription": "máng",
+      "speech": "忙",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "different",
+      "target": "不一样",
+      "meaning": "другой",
+      "transcription": "bù yí yàng",
+      "speech": "不一样",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "difficult",
+      "target": "难",
+      "meaning": "трудный",
+      "transcription": "nán",
+      "speech": "难",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "fantastic",
+      "target": "奇妙",
+      "meaning": "чудесный",
+      "transcription": "qí miào",
+      "speech": "奇妙",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "friendly",
+      "target": "友好",
+      "meaning": "дружелюбный",
+      "transcription": "yǒu hǎo",
+      "speech": "友好",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "gray",
+      "target": "灰色",
+      "meaning": "серый",
+      "transcription": "huī sè",
+      "speech": "灰色",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "green",
+      "target": "绿色的",
+      "meaning": "зелёный",
+      "transcription": "lǜ sè de",
+      "speech": "绿色的",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "kind",
+      "target": "善良",
+      "meaning": "добрый",
+      "transcription": "shàn liáng",
+      "speech": "善良",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "difference",
+      "target": "差别",
+      "meaning": "различие",
+      "transcription": "chā bié",
+      "speech": "差别",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "long",
+      "target": "长",
+      "meaning": "длинный",
+      "transcription": "zhǎng",
+      "speech": "长",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "main",
+      "target": "首要",
+      "meaning": "главный",
+      "transcription": "shǒu yào",
+      "speech": "首要",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "married",
+      "target": "已婚",
+      "meaning": "женатый",
+      "transcription": "yǐ hūn",
+      "speech": "已婚",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "modern",
+      "target": "现代的",
+      "meaning": "современный",
+      "transcription": "xiàn dài de",
+      "speech": "现代的",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "natural",
+      "target": "自然的",
+      "meaning": "природный",
+      "transcription": "zì rán de",
+      "speech": "自然的",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "perfect",
+      "target": "完美",
+      "meaning": "совершенный",
+      "transcription": "wán měi",
+      "speech": "完美",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pink",
+      "target": "粉红色",
+      "meaning": "розовый",
+      "transcription": "fěn hóng sè",
+      "speech": "粉红色",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "popular",
+      "target": "受欢迎的",
+      "meaning": "популярный",
+      "transcription": "shòu huān yíng de",
+      "speech": "受欢迎的",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "possible",
+      "target": "可能",
+      "meaning": "возможный",
+      "transcription": "kě néng",
+      "speech": "可能",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "pretty",
+      "target": "漂亮",
+      "meaning": "хорошенький",
+      "transcription": "piào liàng",
+      "speech": "漂亮",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "purple",
+      "target": "紫色",
+      "meaning": "фиолетовый",
+      "transcription": "zǐ sè",
+      "speech": "紫色",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "quick",
+      "target": "快",
+      "meaning": "быстрый",
+      "transcription": "kuài",
+      "speech": "快",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "quiet",
+      "target": "安静",
+      "meaning": "тихий",
+      "transcription": "ān jìng",
+      "speech": "安静",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "real",
+      "target": "真的",
+      "meaning": "настоящий",
+      "transcription": "zhēn de",
+      "speech": "真的",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "same",
+      "target": "同一",
+      "meaning": "одинаковый",
+      "transcription": "tóng yī",
+      "speech": "同一",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "similar",
+      "target": "类似",
+      "meaning": "подобный",
+      "transcription": "lèi sì",
+      "speech": "类似",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "slow",
+      "target": "慢",
+      "meaning": "медленный",
+      "transcription": "màn",
+      "speech": "慢",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "special",
+      "target": "特别的",
+      "meaning": "особый",
+      "transcription": "tè bié de",
+      "speech": "特别的",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "sure",
+      "target": "确定",
+      "meaning": "уверенный",
+      "transcription": "què dìng",
+      "speech": "确定",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "point",
+      "target": "点",
+      "meaning": "точка",
+      "transcription": "diǎn",
+      "speech": "点",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "true",
+      "target": "真",
+      "meaning": "верный",
+      "transcription": "zhēn",
+      "speech": "真",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "wrong",
+      "target": "错",
+      "meaning": "неправильный",
+      "transcription": "cuò",
+      "speech": "错",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "yellow",
+      "target": "黄色",
+      "meaning": "жёлтый",
+      "transcription": "huáng sè",
+      "speech": "黄色",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "only",
+      "target": "唯一",
+      "meaning": "единственный",
+      "transcription": "wéi yī",
+      "speech": "唯一",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "common",
+      "target": "共同",
+      "meaning": "общий",
+      "transcription": "gòng tóng",
+      "speech": "共同",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "very",
+      "target": "很",
+      "meaning": "очень",
+      "transcription": "hěn",
+      "speech": "很",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
+    },
+    {
+      "entry_id": "famous",
+      "target": "有名",
+      "meaning": "известный",
+      "transcription": "yǒu míng",
+      "speech": "有名",
+      "topics": [
+        "descriptions"
+      ],
+      "example": null
     }
   ]
 }

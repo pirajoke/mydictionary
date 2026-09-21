@@ -1,9 +1,13 @@
+import asyncio
 from collections import Counter
+import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+from types import SimpleNamespace
 import unittest
+from unittest.mock import AsyncMock, patch
 import unicodedata
 
 from mydictionary.catalog import load_catalog
@@ -89,17 +93,63 @@ class BasicLanguagePacksTest(unittest.TestCase):
                 self.assertEqual(pack.visibility, "public")
                 self.assertTrue(pack.is_free)
                 self.assertEqual(pack.status, "published")
-                self.assertEqual(pack.entry_count, 100)
+                self.assertEqual(pack.entry_count, 500)
         self.assertEqual(
             len({self.catalog.require(pack_id).label for pack_id in BASIC_PACKS}),
             8,
         )
 
+    def test_telegram_language_picker_displays_500_for_every_basic_pack(self):
+        os.environ.setdefault("BOT_TOKEN", "123456:TESTTOKEN_ABCDEFGHIJKLMNOP")
+        os.environ.setdefault("ALLOWED_USER_ID", "1")
+        os.environ.setdefault("ALLOW_SQLITE_DEV", "true")
+        import bot
+
+        packs = tuple(bot.CATALOG.require(pack_id) for pack_id in BASIC_PACKS)
+        expected_callbacks = {f"lang:{pack_id}" for pack_id in BASIC_PACKS}
+
+        for current in packs:
+            message = SimpleNamespace(reply_text=AsyncMock())
+            update = SimpleNamespace(message=message)
+            context = SimpleNamespace(user_data={"interface_locale": "ru"})
+            with (
+                patch.object(bot, "active_content_pack", return_value=current),
+                patch.object(bot, "switchable_packs", return_value=packs),
+                patch.object(bot, "PROGRESS", {"active_pack_id": current.pack_id}),
+                patch.object(bot, "W", return_value=[]),
+            ):
+                asyncio.run(bot.cmd_lang.__wrapped__(update, context))
+
+            response = message.reply_text.await_args
+            current_text = response.args[0]
+            buttons = [
+                button
+                for row in response.kwargs["reply_markup"].inline_keyboard
+                for button in row
+            ]
+            self.assertEqual(
+                {button.callback_data for button in buttons},
+                expected_callbacks,
+            )
+            button = next(
+                button
+                for button in buttons
+                if button.callback_data == f"lang:{current.pack_id}"
+            )
+            for surface, visible_text in (
+                ("current_pack", current_text),
+                ("language_button", button.text),
+            ):
+                with self.subTest(pack=current.pack_id, surface=surface):
+                    self.assertNotIn(current.pack_id, visible_text)
+                    self.assertIn("500", visible_text)
+                    self.assertNotIn("100", visible_text)
+
     def test_every_entry_has_complete_learning_and_audio_content(self):
         for pack_id, language in BASIC_PACKS.items():
             pack = self.catalog.require(pack_id)
             words = self.catalog.words(pack)
-            self.assertEqual(len(words), 100)
+            self.assertEqual(len(words), 500)
             targets = set()
             entry_ids = set()
             for word in words:
@@ -111,11 +161,11 @@ class BasicLanguagePacksTest(unittest.TestCase):
                     self.assertTrue(topics_for_word(word, language))
                     targets.add(target_text(word).casefold())
                     entry_ids.add(word["entry_id"])
-            self.assertEqual(len(targets), 100)
-            self.assertEqual(len(entry_ids), 100)
+            self.assertEqual(len(targets), 500)
+            self.assertEqual(len(entry_ids), 500)
 
-    def test_aligned_generated_packs_have_ten_entries_per_topic(self):
-        expected_counts = Counter({topic: 10 for topic in EXPECTED_TOPICS})
+    def test_aligned_generated_packs_have_fifty_entries_per_topic(self):
+        expected_counts = Counter({topic: 50 for topic in EXPECTED_TOPICS})
         expected_entry_ids = None
         for pack_id in GENERATED_PACKS:
             pack = self.catalog.require(pack_id)

@@ -99,3 +99,403 @@ hot	descriptions	горячий	имеющий высокую температу
 cold	descriptions	холодный	имеющий низкую температуру	cold|/koʊld/	froid|/fʁwa/	kalt|/kalt/	بارد|bārid	冷|lěng	холодный|kholodnyy	frío|/ˈfɾi.o/
 happy	descriptions	счастливый	испытывающий радость	happy|/ˈhæpi/	heureux|/ø.ʁø/	glücklich|/ˈɡlʏklɪç/	سعيد|saʿīd	高兴|gāoxìng	счастливый|schastlivyy	feliz|/feˈliθ/
 sad	descriptions	грустный	испытывающий печаль	sad|/sæd/	triste|/tʁist/	traurig|/ˈtʁaʊʁɪç/	حزين|ḥazīn	难过|nánguò	грустный|grustnyy	triste|/ˈtɾiste/
+advice	greetings	совет	понятие или предмет: совет	advice|/ædˈvaɪs/	conseil|/kɔ̃sɛj/	Rat|/ʁaːt/	نَصِيحَة|nasiyhaa	劝告|quàn gào	сове́т|sovet	consejo|/kõnˈsexo/
+agree	greetings	соглашаться	действие: соглашаться	agree|/əˈɡɹi/	être d'accord|/\ɛtʁ\ \de\ \a.kɔʁ\/	zustimmen|/ˈt͡suːˌʃtɪmən/	وَافَقَ|waafaqa	同意|tóng yì	соглаша́ться|soglashatsya	estar de acuerdo|/esˈt̪aɾ d̪e aˈkweɾð̞o/
+article	greetings	статья	понятие или предмет: статья	article|/ˈɑɹtəkəɫ/	article|/aʁtikl/	Artikel|/ˌaʁˈtiːkl̩/	مَقَال|maqaal	文章|wén zhāng	статья́|statya	artículo|/aˈɾtikulo/
+blog	greetings	блог	понятие или предмет: блог	blog|/ˈbɫɔɡ/	blog|/\blɔɡ\/	Blog|/blɔk/	مُدَوَّنَة إِلِكْتْرُونِيَّة|mudawanaa iiliktruwniyaa	博客|bó kè	блог|blog	blog|/ˈbloɣ̞/
+call	greetings	звонок	понятие или предмет: звонок	call|/ˈkɔɫ/	appel|/apɛl/	Anruf|/ˈanˌʁuːf/	اِتِّصَال|aitisaal	呼叫|hū jiào	звоно́к|zvonok	llamada|/ʝaˈmað̞a/
+conversation	greetings	разговор	понятие или предмет: разговор	conversation|/ˌkɑnvɝˈseɪʃən/	conversation|/kɔ̃vɛʁsasjɔ̃/	Gespräch|/ɡəˈʃpʁɛːç/	مُحَادَثَة|muhaadathaa	会话|huì huà	разгово́р|razgovor	conversación|/kõmbeɾsaˈsjõn/
+correct	greetings	правильный	понятие или предмет: правильный	correct|/kɝˈɛkt/	correct|/kɔʁɛkt/	korrekt|/kɔˈʁɛkt/	صَحِيح|sahiyh	正确|zhèng què	пра́вильный|pravilnyi	correcto|/koˈrekt̪o/
+describe	greetings	описывать	действие: описывать	describe|/dɪsˈkɹaɪb/	décrire|/dekʁiʁ/	beschreiben|/bəˈʃʁaɪ̯bm̩/	وَصَفَ|wasafa	描述|miáo shù	опи́сывать|opisyvat	describir|/d̪eskɾiˈβ̞iɾ/
+description	greetings	описание	понятие или предмет: описание	description|/dɪsˈkɹɪpʃən/	description|/dɛskʁipsjɔ̃/	Beschreibung|/bəˈʃʁaɪ̯bʊŋ/	تَوْصِيف|tawsiyf	描写|miáo xiě	описа́ние|opisanie	descripción|/d̪eskɾipˈsjõn/
+dialogue	greetings	диалог	понятие или предмет: диалог	dialogue|/ˈdaɪəˌɫɔɡ/	dialogue|/djalɔg/	Dialog|/diaˈloːk/	حِوَار|hiwaar	对话|duì huà	диало́г|dialog	diálogo|/ˈd̪jaloɣ̞o/
+discuss	greetings	обсуждать	действие: обсуждать	discuss|/dɪˈskəs/	discuter|/diskyte/	diskutieren|/dɪskuˈtiːʁən/	نَاقَشَ|naaqasha	讨论|tǎo lùn	обсужда́ть|obsuzhdat	discutir|/d̪iskuˈt̪iɾ/
+email	greetings	электронная почта	понятие или предмет: электронная почта	email|/iˈmeɪɫ/	courrier électronique|/\ku.ʁje e.lɛk.tʁɔ.nik\/	E-Mail|/ˈiːmeɪ̯l/	بَرِيد إِلِكْتْرُونِيّ|bariyd iiliktruwniy	电子邮件|diàn zi yóu jiàn	электро́нная по́чта|elektronnaya pochta	correo electrónico|/koˈreo elekˈt̪ɾoniko/
+example	greetings	пример	понятие или предмет: пример	example|/ɪɡˈzæmpəɫ/	exemple|/ɛgzɑ̃pl/	Beispiel|/ˈbaɪ̯ˌʃpiːl/	مِثَال|mithaal	例子|lì zi	приме́р|primer	ejemplo|/eˈxẽmplo/
+explain	greetings	объяснять	действие: объяснять	explain|/ɪksˈpɫeɪn/	expliquer|/ɛksplike/	erklären|/ɛɐ̯ˈklɛːʁən/	شَرَحَ|sharaha	解释|jiě shì	объясня́ть|obyasnyat	explicar|/ekspliˈkaɾ/
+fact	greetings	факт	понятие или предмет: факт	fact|/ˈfækt/	fait|/fɛ/	Tatsache|/ˈtaːtˌzaxə/	حَقِيقَة|haqiyqaa	事实|shì shí	факт|fakt	hecho|/ˈet͡ʃo/
+false	greetings	фальшивый	понятие или предмет: фальшивый	false|/ˈfɔɫs/	faux|/fo/	unwahr|/ˈʊnvaːɐ̯/	زَائِف|zaaiif	假|jiǎ	фальши́вый|falshivyi	falso|/ˈfalso/
+information	greetings	информация	понятие или предмет: информация	information|/ˌɪnfɝˈmeɪʃən/	renseignement|/ʁɑ̃sɛɲəmɑ̃/	Information|/ɪnfɔʁmaˈt͡si̯oːn/	مَعْلُومَات|maaluwmaat	资讯|zī xùn	информа́ция|informatsiya	información|/ĩɱfoɾmaˈsjõn/
+interview	greetings	интервью	понятие или предмет: интервью	interview|/ˈɪntɝvˌju/	interview|/ɛ̃tɛʁvju/	Interview|/ˈɪntɐvjuː/	مُقَابَلَة|muqaabalaa	采访|cǎi fǎng	интервью́|intervyu	entrevista|/ẽn̪t̪ɾeˈβ̞ist̪a/
+introduce	greetings	представить	действие: представить	introduce|/ˌɪntɹəˈdus/	présenter|/pʁezɑ̃te/	vorstellen|/ˈfoːɐ̯ˌʃtɛlən/	قَدَّمَ|qadama	介绍|jiè shào	предста́вить|predstavit	presentar|/pɾesẽn̪ˈt̪aɾ/
+magazine	greetings	журнал	понятие или предмет: журнал	magazine|/ˈmæɡəˌzin/	magazine|/magazin/	Zeitschrift|/ˈt͡saɪ̯tˌʃʁɪft/	مَجَلَّة|majalaa	杂志|zá zhì	журна́л|zhurnal	revista|/reˈβ̞ist̪a/
+mean	greetings	означать	действие: означать	mean|/ˈmin/	signifier|/siɲifje/	bedeuten|/bəˈdɔɪ̯tn̩/	عَنَى|aanaa	意味着|yì wèi zhe	означа́ть|oznachat	significar|/siɣnifiˈkaɾ/
+meaning	greetings	значение	понятие или предмет: значение	meaning|/ˈminɪŋ/	signification|/siɲifikasjɔ̃/	Bedeutung|/bəˈdɔɪ̯tʊŋ/	مَعْنًى|maanana	意义|yì yì	значе́ние|znachenie	sentido|/sẽn̪ˈt̪ið̞o/
+message	greetings	сообщение	понятие или предмет: сообщение	message|/ˈmɛsədʒ/	message|/mesaʒ/	Nachricht|/ˈnaːxˌʁɪçt/	رِسَالَة|risaalaa	信息|xìn xī	сообще́ние|soobshchenie	mensaje|/mẽnˈsaxe/
+news	greetings	новости	понятие или предмет: новости	news|/ˈnjuz/	nouvelles|/nuvɛl/	Neuigkeiten|/ˈnɔɪ̯ɪkkaɪ̯tn̩/	أَخْبَار|aakhbaar	消息|xiāo xī	но́вости|novosti	noticias|/noˈt̪isjas/
+newspaper	greetings	газета	понятие или предмет: газета	newspaper|/ˈnuzˌpeɪpɝ/	journal|/ʒuʁnal/	Zeitung|/ˈt͡saɪ̯tʊŋ/	جَرِيدَة|jariydaa	报纸|bào zhǐ	газе́та|gazeta	periódico|/peˈɾjoð̞iko/
+note	greetings	заметка	понятие или предмет: заметка	note|/ˈnoʊt/	note|/nɔt/	Notiz|/noˈtiːt͡s/	مُلَاحَظَة|mulaahazaa	字条|zì tiáo	заме́тка|zametka	nota|/ˈnot̪a/
+opinion	greetings	мнение	понятие или предмет: мнение	opinion|/əˈpɪnjən/	avis|/avi/	Meinung|/ˈmaɪ̯nʊŋ/	رَأْي|raay	意见|yì jiàn	мне́ние|mnenie	opinión|/opiˈnjõn/
+paragraph	greetings	абзац	понятие или предмет: абзац	paragraph|/ˈpæɹəˌɡɹæf/	paragraphe|/paʁagʁaf/	Absatz|/ˈapˌzat͡s/	فِقْرَة|fiqraa	段|duàn	абза́ц|abzats	párrafo|/ˈparafo/
+repeat	greetings	повторять	действие: повторять	repeat|/ɹiˈpit/	répéter|/ʁepete/	wiederholen|/ˈviːdɐˌhoːlən/	كَرَّرَ|karara	重复|chóng fù	повторя́ть|povtoryat	repetir|/repeˈt̪iɾ/
+report	greetings	репортаж	понятие или предмет: репортаж	report|/ɹiˈpɔɹt/	rapport|/ʁapɔʁ/	Bericht|/bəˈʁɪçt/	تَقْرِير|taqriyr	报告|bào gào	репорта́ж|reportazh	informe|/ĩɱˈfoɾme/
+say	greetings	говорить	действие: говорить	say|/ˈseɪ/	dire|/diʁ/	sagen|/ˈzaːɡn̩/	قَالَ|qaala	說|shuō	говори́ть|govorit	decir|/d̪eˈsiɾ/
+sentence	greetings	предложение	понятие или предмет: предложение	sentence|/ˈsɛntəns/	phrase|/fʁaz/	Satz|/zat͡s/	جُمْلَة|jumlaa	句子|jù zi	предложе́ние|predlozhenie	oración|/oɾaˈsjõn/
+share	greetings	делить	действие: делить	share|/ˈʃɛɹ/	partager|/paʁtaʒe/	teilen|/ˈtaɪ̯lən/	شَارَكَ|shaaraka	共享|gòng xiǎng	дели́ть|delit	compartir|/kõmpaɾˈt̪iɾ/
+spell	greetings	произносить по буквам	действие: произносить по буквам	spell|/ˈspɛɫ/	épeler|/eple/	buchstabieren|/ˌbuːxʃtaˈbiːʁən/	هَجَّى|hajaa	拼写|pīn xiě	произноси́ть по бу́квам|proiznosit po bukvam	deletrear|/d̪elet̪ɾeˈaɾ/
+spelling	greetings	правописание	понятие или предмет: правописание	spelling|/ˈspɛɫɪŋ/	orthographe|/ɔʁtɔgʁaf/	Rechtschreibung|/ˈʁɛçtˌʃʁaɪ̯bʊŋ/	تَهْجِئَة|tahjiiaa	拼写法|pīn xiě fǎ	правописа́ние|pravopisanie	ortografía|/oɾt̪oɣ̞ɾaˈfia/
+statement	greetings	заявление	понятие или предмет: заявление	statement|/ˈsteɪtmənt/	déclaration|/deklaʁasjɔ̃/	Aussage|/ˈaʊ̯sˌzaːɡə/	تَصْرِيح|tasriyh	声明|shēng míng	заявле́ние|zayavlenie	declaración|/d̪eklaɾaˈsjõn/
+about	greetings	о	понятие или предмет: о	about|/əˈbaʊt/	au sujet de|/o syʒɛ də/	über|/ˈyːbɐ/	حَوْلَ|hawla	关于|guān yú	о|o	sobre|/ˈsoβɾe/
+reason	greetings	причина	понятие или предмет: причина	reason|/ˈɹizən/	raison|/ʁɛzɔ̃/	Grund|/ɡʁʊnt/	سَبَب|sabab	理由|lǐ yóu	причи́на|prichina	razón|/raˈsõn/
+text	greetings	текст	понятие или предмет: текст	text|/ˈtɛkst/	texte|/tekst/	Text|/tɛkst/	نَصّ|nas	课文|kè wén	текст|tekst	texto|/ˈt̪ekst̪o/
+thank	greetings	благодарить	действие: благодарить	thank|/ˈθæŋk/	remercier|/ʁəmɛʁsje/	danken|/ˈdaŋkn̩/	شَكَرَ|shakara	道谢|dào xiè	благодари́ть|blagodarit	agradecer|/aɣɾaðeθeɾ/
+actor	people	актёр	понятие или предмет: актёр	actor|/ˈæktɝ/	acteur|/aktœʁ/	Schauspieler|/ˈʃaʊ̯ˌʃpiːlɐ/	مُمَثِّل|mumathil	演员|yǎn yuán	актёр|akter	actor|/aktoɾ/
+actress	people	актриса	понятие или предмет: актриса	actress|/ˈæktɹəs/	actrice|/aktʁis/	Schauspielerin|/ˈʃaʊ̯ˌʃpiːləʁɪn/	مُمَثِّلَة|mumathilaa	女演员|nǚ yǎn yuán	актри́са|aktrisa	actriz|/aktɾiθ/
+adult	people	взрослый	понятие или предмет: взрослый	adult|/ˈædəɫt/	adulte|/adylt/	Erwachsener|/ɛɐ̯ˈvaksənɐ/	بَالِغ|baaligh	成人|chéng rén	взро́слый|vzroslyi	adulto|/aðulto/
+artist	people	художник	понятие или предмет: художник	artist|/ˈɑɹtəst/	artiste|/aʁtist/	Künstler|/ˈkʏnstlɐ/	فَنَّان|fanaan	艺术家|yì shù jiā	худо́жник|khudozhnik	artista|/aɾtista/
+aunt	people	тётя	понятие или предмет: тётя	aunt|/ˈænt/	tante|/tɑ̃t/	Tante|/ˈtantə/	عَمَّة|aamaa	姑|gū	тётя|tetya	tía|/ˈt̪ia/
+boyfriend	people	парень	понятие или предмет: парень	boyfriend|/ˈbɔɪˌfɹɛnd/	petit ami|/pəti ami/	fester Freund|/ˈfɛstɐ fʁɔɪ̯nt/	حَبِيب|habiyb	男朋友|nán péng yǒu	па́рень|paren	novio|/ˈnoβ̞jo/
+cousin	people	родственник	понятие или предмет: родственник	cousin|/ˈkəzən/	cousin|/kuzɛ̃/	entfernter Verwandter|/ɛntˈfɛʁntɐ fɛɐ̯ˈvantɐ/	اِبْن عَمّ|aibn aam	堂兄|táng xiōng	ро́дственник|rodstvennik	primo|/ˈpɾimo/
+customer	people	клиент	понятие или предмет: клиент	customer|/ˈkəstəmɝ/	chaland|/ʃalɑ̃/	Stammkunde|/ˈʃtamˌkʊndə/	زَبُون|zabuwn	顾客|gù kè	клие́нт|klient	cliente|/ˈkljẽn̪t̪e/
+dad	people	папа	понятие или предмет: папа	dad|/ˈdæd/	papa|/papa/	Papa|/ˈpapa/	بَابَا|baabaa	爸|bà	па́па|papa	papá|/paˈpa/
+dancer	people	танцор	понятие или предмет: танцор	dancer|/ˈdænsɝ/	danseur|/dɑ̃sœʁ/	Tänzer|/ˈtɛnt͡sɐ/	رَاقِص|raaqis	舞蹈家|wǔ dǎo jiā	танцо́р|tantsor	bailarín|/bailaˈɾin/
+driver	people	водитель	понятие или предмет: водитель	driver|/ˈdɹaɪvɝ/	conducteur|/kɔ̃dyktœʁ/	Fahrer|/ˈfaːʁɐ/	سَائِق|saaiiq	司机|sī jī	води́тель|voditel	conductor|/kõn̪d̪ukˈt̪oɾ/
+farmer	people	крестьянин	понятие или предмет: крестьянин	farmer|/ˈfɑɹmɝ/	agriculteur|/agʁikyltœʁ/	Landwirt|/ˈlantˌvɪʁt/	فَلَّاح|falaah	农夫|nóng fū	крестья́нин|krestyanin	granjero|/gɾãŋˈxeɾo/
+girlfriend	people	девушка	понятие или предмет: девушка	girlfriend|/ˈɡɝɫˌfɹɛnd/	petite amie|/\pə.ti.t‿a.mi\/	Freundin|/ˈfʁɔɪ̯ndɪn/	حَبِيبَة|habiybaa	女朋友|nǚ péng yǒu	де́вушка|devushka	novia|/ˈnoβ̞ja/
+grandfather	people	дедушка	понятие или предмет: дедушка	grandfather|/ˈɡɹænˌfɑðɝ/	grand-père|/gʁɑ̃pɛʁ/	Großvater|/ˈɡʁoːsˌfaːtɐ/	جَدّ|jad	爷爷|yé yé	де́душка|dedushka	abuelo|/aβwelo/
+grandmother	people	бабушка	понятие или предмет: бабушка	grandmother|/ˈɡɹændˌməðɝ/	grand-mère|/gʁɑ̃mɛʁ/	Großmutter|/ˈɡʁoːsˌmʊtɐ/	جَدَّة|jadaa	奶奶|nǎi nǎi	ба́бушка|babushka	abuela|/aβwela/
+animal	people	животное	понятие или предмет: животное	animal|/ˈænəməɫ/	animal|/animal/	Tier|/tiːɐ̯/	حَيَوَان|hayawaan	动物|dòng wù	живо́тное|zhivotnoe	animal|/animal/
+group	people	группа	понятие или предмет: группа	group|/ˈɡɹup/	groupe|/gʁup/	Gruppe|/ˈɡʁʊpə/	مَجْمُوعَة|majmuwaaa	集团|jí tuán	гру́ппа|gruppa	grupo|/ˈgɾupo/
+member	people	член	понятие или предмет: член	member|/ˈmɛmbɝ/	membre|/mɑ̃bʁ/	Mitglied|/ˈmɪtˌɡliːt/	عُضْو|audw	会员|huì yuán	член|chlen	miembro|/ˈmjẽmbɾo/
+model	people	модель	понятие или предмет: модель	model|/ˈmɑdəɫ/	mannequin|/mankɛ̃/	Model|/ˈmoːdl̩/	عَارِضُ أَزْيَاءٍ|aaaridu aazyaain	模特儿|mó tè ér	моде́ль|model	modelo|/moˈð̞elo/
+nurse	people	медсестра	понятие или предмет: медсестра	nurse|/ˈnɝs/	infirmière|/ɛ̃fiʁmjɛʁ/	Krankenschwester|/ˈkʁaŋkn̩ˌʃvɛstɐ/	مُمَرِّض|mumarid	护士|hù shì	медсестра́|medsestra	enfermera|/ẽɱfeɾˈmeɾa/
+horse	people	лошадь	понятие или предмет: лошадь	horse|/ˈhɔɹs/	cheval|/ʃval/	Pferd|/p͡feːɐ̯t/	حِصَان|hisaan	马|mǎ	ло́шадь|loshad	caballo|/kaˈβ̞aʝo/
+partner	people	партнёр	понятие или предмет: партнёр	partner|/ˈpɑɹtnɝ/	partenaire|/paʁtənɛʁ/	Partner|/ˈpaʁtnɐ/	شَرِيك|shariyk	伙伴|huǒ bàn	партнёр|partner	socio|/ˈsosjo/
+player	people	игрок	понятие или предмет: игрок	player|/ˈpɫeɪɝ/	joueur|/ʒwœʁ/	Spieler|/ˈʃpiːlɐ/	لَاعِب|laaaib	运动员|yùn dòng yuán	игро́к|igrok	jugador|/xuɣ̞aˈð̞oɾ/
+police	people	полиция	понятие или предмет: полиция	police|/pəˈɫis/	police|/pɔlis/	Polizei|/ˌpoliˈt͡saɪ̯/	شُرْطَة|shurtaa	警察|jǐng chá	поли́ция|politsiya	policía|/poliˈsia/
+reader	people	читатель	понятие или предмет: читатель	reader|/ˈɹidɝ/	lecteur|/lɛktœʁ/	Leser|/ˈleːzɐ/	قَارِئ|qaarii	读者|dú zhě	чита́тель|chitatel	lector|/lekˈt̪oɾ/
+scientist	people	учёный	понятие или предмет: учёный	scientist|/ˈsaɪəntɪst/	scientifique|/sjɑ̃tifik/	Wissenschaftler|/ˈvɪsn̩ˌʃaftlɐ/	عَالِم|aaalim	科学家|kē xué jiā	учёный|uchenyi	científico|/sjẽn̪ˈt̪ifiko/
+singer	people	певец	понятие или предмет: певец	singer|/ˈsɪŋɝ/	chanteur|/ʃɑ̃tœʁ/	Sänger|/ˈzɛŋɐ/	مُطْرِب|mutrib	歌手|gē shǒu	певе́ц|pevets	cantante|/kãn̪ˈt̪ãn̪t̪e/
+team	people	команда	понятие или предмет: команда	team|/ˈtim/	équipe|/ekip/	Mannschaft|/ˈmanʃaft/	فَرِيق|fariyq	团队|tuán duì	кома́нда|komanda	equipo|/eˈkipo/
+teenager	people	подросток	понятие или предмет: подросток	teenager|/ˈtiˌneɪdʒɝ/	adolescent|/adɔlesɑ̃/	Jugendlicher|/ˈjuːɡəntlɪçɐ/	مُرَاهِق|muraahiq	少年|shào nián	подро́сток|podrostok	adolescente|/aðolesθente/
+tourist	people	турист	понятие или предмет: турист	tourist|/ˈtʊɹəst/	touriste|/tuʁist/	Tourist|/tuˈʁɪst/	سَائِح|saaiih	旅游者|lǚ yóu zhě	тури́ст|turist	turista|/t̪uˈɾist̪a/
+uncle	people	дядя	понятие или предмет: дядя	uncle|/ˈəŋkəɫ/	oncle|/ɔ̃kl/	Onkel|/ˈɔŋkl̩/	عَمّ|aam	伯父|bó fù	дя́дя|dyadya	tío|/ˈt̪io/
+visitor	people	посетитель	понятие или предмет: посетитель	visitor|/ˈvɪzɪtɝ/	visiteur|/vizitœʁ/	Besucher|/bəˈzuːxɐ/	زَائِر|zaaiir	访客|fǎng kè	посети́тель|posetitel	visitante|/bisiˈtante/
+waiter	people	официант	понятие или предмет: официант	waiter|/ˈweɪtɝ/	serveur|/sɛʁvœʁ/	Kellner|/ˈkɛlnɐ/	نَادِل|naadil	服务员|fú wù yuán	официа́нт|ofitsiant	camarero|/kamaˈɾeɾo/
+wife	people	жена	понятие или предмет: жена	wife|/ˈwaɪf/	épouse|/epuz/	Ehefrau|/ˈeːəˌfʁaʊ̯/	زَوْجَة|zawjaa	妻子|qī zǐ	жена́|zhena	esposa|/esˈposa/
+worker	people	работник	понятие или предмет: работник	worker|/ˈwɝkɝ/	travailleur|/tʁavajœʁ/	Arbeiter|/ˈaʁbaɪ̯tɐ/	عَامِل|aaamil	工人|gōng rén	рабо́тник|rabotnik	trabajador|/t̪ɾaβ̞axaˈð̞oɾ/
+writer	people	писатель	понятие или предмет: писатель	writer|/ˈɹaɪtɝ/	écrivain|/ekʁivɛ̃/	Schriftsteller|/ˈʃʁɪftˌʃtɛlɐ/	كَاتِب|kaatib	作家|zuò jiā	писа́тель|pisatel	escritor|/eskɾiˈt̪oɾ/
+career	people	карьера	понятие или предмет: карьера	career|/kɝˈɪɹ/	carrière|/kaʁjɛʁ/	Karriere|/kaˈʁi̯eːʁə/	مِهْنَة|mihnaa	职业|zhí yè	карье́ра|karera	carrera|/kaˈreɾa/
+dear	people	дорогой	понятие или предмет: дорогой	dear|/ˈdɪɹ/	cher|/ʃɛʁ/	lieb|/liːp/	عَزِيز|aaziyz	亲爱的|qīn ài de	дорого́й|dorogoi	querido|/keˈɾið̞o/
+personal	people	личный	понятие или предмет: личный	personal|/ˈpɝsɪnəɫ/	personnel|/pɛʁsɔnɛl/	persönlich|/pɛʁˈzøːnlɪç/	شَخْصِيّ|shakhsiy	私人的|sī rén de	ли́чный|lichnyi	personal|/peɾsoˈnal/
+class	people	класс	понятие или предмет: класс	class|/ˈkɫæs/	classe|/klas/	Klasse|/ˈklasə/	صَفّ|saf	班级|bān jí	класс|klass	clase|/ˈklase/
+bar	food	бар	понятие или предмет: бар	bar|/ˈbɑɹ/	bar|/baʁ/	Bar|/baːɐ̯/	بَار|baar	酒吧|jiǔ bā	бар|bar	bar|/baɾ/
+breakfast	food	завтрак	понятие или предмет: завтрак	breakfast|/ˈbɹɛkfəst/	petit déjeuner|/ptideʒœne/	Frühstück|/ˈfʁyːˌʃtʏk/	إِفْطَار|iiftaar	早饭|zǎo fàn	за́втрак|zavtrak	desayuno|/d̪esaˈʝuno/
+cake	food	торт	понятие или предмет: торт	cake|/ˈkeɪk/	gâteau|/gato/	Kuchen|/ˈkuːxn̩/	كَعْكَة|kaakaa	蛋糕|dàn gāo	торт|tort	pastel|/pasˈt̪el/
+cheap	food	дешёвый	понятие или предмет: дешёвый	cheap|/ˈtʃip/	bon marché|/\bɔ̃ maʁ.ʃe\/	billig|/ˈbɪlɪk/	رَخِيص|rakhiys	便宜|pián yi	дешёвый|deshevyi	barato|/baɾato/
+chocolate	food	шоколад	понятие или предмет: шоколад	chocolate|/ˈtʃɔkɫət/	chocolat|/ʃɔkɔla/	Schokolade|/ʃokoˈlaːdə/	شُوكُولَاتَة|shuwkuwlaataa	巧克力|qiǎo kè lì	шокола́д|shokolad	chocolate|/t͡ʃokoˈlat̪e/
+cooking	food	готовка	понятие или предмет: готовка	cooking|/ˈkʊkɪŋ/	art culinaire|/\aʁ ky.li.nɛʁ\/	Kochen|/ˈkɔxn̩/	طَبْخ|tabkh	烹调|pēng tiáo	гото́вка|gotovka	gastronomía|/gast̪ɾonoˈmia/
+cost	food	расходы	понятие или предмет: расходы	cost|/ˈkɑst/	coût|/ku/	Kosten|/ˈkoːstn̩/	تَكْلِفَة|taklifaa	费用|fèi yòng	расхо́ды|raskhody	costo|/ˈkost̪o/
+cream	food	сливки	понятие или предмет: сливки	cream|/ˈkɹim/	crème|/kʁɛm/	Sahne|/ˈzaːnə/	قِشْطَة|qishtaa	奶油|nǎi yóu	сли́вки|slivki	nata|/ˈnat̪a/
+delicious	food	вкусный	понятие или предмет: вкусный	delicious|/dɪˈɫɪʃəs/	délicieux|/delisjø/	köstlich|/ˈkœstlɪç/	لَذِيذ|ladhiydh	好吃|hǎo chī	вку́сный|vkusnyi	rico|/ˈriko/
+diet	food	диета	понятие или предмет: диета	diet|/ˈdaɪət/	régime|/ʁeʒim/	Diät|/diˈɛːt/	حِمْيَة|himyaa	饮食|yǐn shí	дие́та|dieta	dieta|/ˈd̪jet̪a/
+dinner	food	ужин	понятие или предмет: ужин	dinner|/ˈdɪnɝ/	dîner|/dine/	Abendessen|/ˈaːbm̩dˌʔɛsn̩/	عَشَاء|aashaa	晚饭|wǎn fàn	у́жин|uzhin	cena|/ˈsena/
+dish	food	блюдо	понятие или предмет: блюдо	dish|/ˈdɪʃ/	plat|/pla/	Gericht|/ɡəˈʁɪçt/	طَبَق|tabaq	菜肴|cài yáo	блю́до|blyudo	plato|/ˈplato/
+pound	food	фунт	понятие или предмет: фунт	pound|/ˈpaʊnd/	livre sterling|/livʁ stɛʁliŋ/	Pfund|/p͡fʊnt/	جُنَيْه|junayh	英镑|yīng bàng	фунт|funt	libra|/ˈliβ̞ɾa/
+hungry	food	голодный	понятие или предмет: голодный	hungry|/ˈhəŋɡɹi/	affamé|/afame/	hungrig|/ˈhʊŋʁɪç/	جَائِع|jaaiia	饥饿|jī è	голо́дный|golodnyi	tener hambre|/t̪eˈneɾ ˈãmbɾe/
+ice	food	лёд	понятие или предмет: лёд	ice|/ˈaɪs/	glace|/glas/	Eis|/aɪ̯s/	جَلِيد|jaliyd	冰|bīng	лёд|led	hielo|/ˈjelo/
+ice-cream	food	мороженое	понятие или предмет: мороженое	ice cream|/ˈaɪs kɹim/	crème glacée|/kʁɛmglase/	Eiscreme|/ˈaɪ̯skʁɛːm/	بُوظَة|buwzaa	冰淇淋|bīng qí lín	моро́женое|morozhenoe	helado|/eˈlað̞o/
+juice	food	сок	понятие или предмет: сок	juice|/ˈdʒus/	jus|/ʒy/	Saft|/zaft/	عَصِير|aasiyr	汁|zhī	сок|sok	zumo|/ˈsumo/
+lunch	food	обед	понятие или предмет: обед	lunch|/ˈɫəntʃ/	déjeuner|/deʒœne/	Mittagessen|/ˈmɪtaːkˌʔɛsn̩/	غَدَاء|ghadaa	午饭|wǔ fàn	обе́д|obed	almuerzo|/almweɾθo/
+farm	food	ферма	понятие или предмет: ферма	farm|/ˈfɑɹm/	ferme|/fɛʁm/	Bauernhof|/ˈbaʊ̯ɐnˌhoːf/	مَزْرَعَة|mazraaaa	农场|nóng chǎng	фе́рма|ferma	granja|/ˈgɾãŋxa/
+menu	food	меню	понятие или предмет: меню	menu|/ˈmɛnju/	menu|/məny/	Menü|/meˈnyː/	قَائِمَة|qaaiimaa	菜单|cài dān	меню́|menyu	menú|/meˈnu/
+orange	food	апельсин	понятие или предмет: апельсин	orange|/ˈɔɹəndʒ/	orange|/ɔʁɑ̃ʒ/	Orange|/oˈʁanʃ/	بُرْتُقَال|burtuqaal	橙子|chéng zi	апельси́н|apelsin	naranja|/naˈɾãŋxa/
+order	food	заказ	понятие или предмет: заказ	order|/ˈɔɹdɝ/	commande|/kɔmɑ̃d/	Bestellung|/bəˈʃtɛlʊŋ/	طَلَب|talab	订单|dìng dān	зака́з|zakaz	pedido|/peˈðiðo/
+pepper	food	перец	понятие или предмет: перец	pepper|/ˈpɛpɝ/	poivre|/pwavʁ/	Pfeffer|/ˈp͡fɛfɐ/	فِلْفِل|filfil	胡椒|hú jiāo	пе́рец|perets	pimienta|/piˈmjẽn̪t̪a/
+potato	food	картофель	понятие или предмет: картофель	potato|/pəˈteɪˌtoʊ/	pomme de terre|/pɔmdətɛʁ/	Kartoffel|/kaʁˈtɔfl̩/	بَطَاطَا|bataataa	土豆|tǔ dòu	карто́фель|kartofel	patata|/paˈt̪at̪a/
+prepare	food	готовить	действие: готовить	prepare|/pɹiˈpɛɹ/	préparer|/pʁepaʁe/	vorbereiten|/ˈfoːɐ̯bəˌʁaɪ̯tn̩/	جَهَّزَ|jahaza	准备|zhǔn bèi	гото́вить|gotovit	preparar|/pɾepaˈɾaɾ/
+price	food	цена	понятие или предмет: цена	price|/ˈpɹaɪs/	prix|/pʁi/	Preis|/pʁaɪ̯s/	ثَمَن|thaman	价格|jià gé	цена́|tsena	precio|/ˈpɾesjo/
+product	food	продукт	понятие или предмет: продукт	product|/ˈpɹɑdəkt/	produit|/pʁɔdɥi/	Produkt|/pʁoˈdʊkt/	مُنْتَج|muntaj	产品|chǎn pǐn	проду́кт|produkt	producto|/pɾoˈð̞ukt̪o/
+restaurant	food	ресторан	понятие или предмет: ресторан	restaurant|/ˈɹɛsˌtɹɑnt/	restaurant|/ʁɛstɔʁɑ̃/	Restaurant|/ʁɛstoˈʁɑ̃ː/	مَطْعَم|mataam	餐厅|cān tīng	рестора́н|restoran	restaurante|/rest̪awˈɾãn̪t̪e/
+salad	food	салат	понятие или предмет: салат	salad|/ˈsæɫəd/	salade|/salad/	Salat|/zaˈlaːt/	سَلَطَة|salataa	色拉|sè lā	сала́т|salat	ensalada|/ẽnsaˈlað̞a/
+sandwich	food	сандвич	понятие или предмет: сандвич	sandwich|/ˈsæmwɪtʃ/	sandwich|/sɑ̃dwitʃ/	belegtes Brot|/bəˈleːktəs bʁoːt/	سَانْدَوِيتْش|saandawiytsh	三明治|sān míng zhì	са́ндвич|sandvich	sándwich|/ˈsãn̪d̪wit͡ʃ/
+soup	food	суп	понятие или предмет: суп	soup|/ˈsup/	potage|/pɔtaʒ/	Suppe|/ˈzʊpə/	شُورَبَة|shuwrabaa	汤|tāng	суп|sup	sopa|/ˈsopa/
+sugar	food	сахар	понятие или предмет: сахар	sugar|/ˈʃʊɡɝ/	sucre|/sykʁ/	Zucker|/ˈt͡sʊkɐ/	سُكَّر|sukar	糖|táng	са́хар|sakhar	azúcar|/aˈθukaɾ/
+supermarket	food	супермаркет	понятие или предмет: супермаркет	supermarket|/ˈsupɝˌmɑɹkɪt/	supermarché|/sypɛʁmaʁʃe/	Supermarkt|/ˈzuːpɐˌmaʁkt/	سُوبَرْمَارْكِت|suwbarmaarkit	超级市场|chāo jí shì chǎng	суперма́ркет|supermarket	supermercado|/supeɾmeɾˈkað̞o/
+thirsty	food	жаждущий	понятие или предмет: жаждущий	thirsty|/ˈθɝsti/	avoir soif|/\a.vwaʁ swaf\/	durstig|/ˈdʊʁstɪk/	عَطْشَان|aatshaan	渴|kě	жа́ждущий|zhazhdushchii	tener sed|/t̪eˈneɾ ˈseð̞/
+tomato	food	помидор	понятие или предмет: помидор	tomato|/təˈmɑˌtoʊ/	tomate|/tɔmat/	Tomate|/toˈmaːtə/	طَمَاطِم|tamaatim	西红柿|xī hóng shì	помидо́р|pomidor	tomate|/t̪oˈmat̪e/
+vegetable	food	овощ	понятие или предмет: овощ	vegetable|/ˈvɛdʒtəbəɫ/	légume|/legym/	Gemüse|/ɡəˈmyːzə/	خُضَر|khudar	蔬菜|shū cài	о́вощ|ovoshch	verdura|/beɾˈð̞uɾa/
+buy	food	покупать	действие: покупать	buy|/ˈbaɪ/	acheter|/aʃte/	kaufen|/ˈkaʊ̯fm̩/	اِشْتَرَى|aishtaraa	买|mǎi	покупа́ть|pokupat	comprar|/kõmˈpɾaɾ/
+fill	food	заполнять	действие: заполнять	fill|/ˈfɪɫ/	remplir|/ʁɑ̃pliʁ/	füllen|/ˈfʏlən/	مَلَأَ|malaaa	装满|zhuāng mǎn	заполня́ть|zapolnyat	llenar|/ʝeˈnaɾ/
+festival	food	фестиваль	понятие или предмет: фестиваль	festival|/ˈfɛstəvəɫ/	festival|/fɛstival/	Festival|/ˈfɛstival/	عِيد|aiyd	节庆|jié qìng	фестива́ль|festival	festival|/fest̪iˈβ̞al/
+party	food	вечеринка	понятие или предмет: вечеринка	party|/ˈpɑɹti/	fête|/fɛt/	Party|/ˈpaːɐ̯ti/	حَفْلَة|haflaa	聚会|jù huì	вечери́нка|vecherinka	fiesta|/ˈfjest̪a/
+apartment	home	квартира	понятие или предмет: квартира	apartment|/əˈpɑɹtmənt/	appartement|/apaʁtəmɑ̃/	Wohnung|/ˈvoːnʊŋ/	شَقَّة|shaqaa	公寓|gōng yù	кварти́ра|kvartira	apartamento|/apaɾtamento/
+area	home	площадь	понятие или предмет: площадь	area|/ˈɛɹiə/	aire|/ɛʁ/	Flächeninhalt|/ˈflɛçn̩ˌʔɪnhalt/	مِسَاحَة|misaahaa	面积|miàn jī	пло́щадь|ploshchad	área|/ˈaɾea/
+bath	home	ванна	понятие или предмет: ванна	bath|/ˈbæθ/	bain|/bɛ̃/	Badewanne|/ˈbaːdəˌvanə/	حَمَّام|hamaam	浴缸|yù gāng	ва́нна|vanna	bañera|/baɲeɾa/
+bedroom	home	спальня	понятие или предмет: спальня	bedroom|/ˈbɛˌdɹum/	chambre à coucher|/\ʃɑ̃.bʁ‿a ku.ʃe\/	Schlafzimmer|/ˈʃlaːfˌt͡sɪmɐ/	غُرْفَة نَوْم|ghurfaa nawm	卧室|wò shì	спа́льня|spalnya	dormitorio|/d̪oɾmiˈt̪oɾjo/
+building	home	здание	понятие или предмет: здание	building|/ˈbɪɫdɪŋ/	bâtiment|/batimɑ̃/	Gebäude|/ɡəˈbɔɪ̯də/	مَبْنًى|mabnana	建筑物|jiàn zhù wù	зда́ние|zdanie	edificio|/eð̞iˈfisjo/
+card	home	карточка	понятие или предмет: карточка	card|/ˈkɑɹd/	carte|/kaʁt/	Karte|/ˈkaʁtə/	بِطَاقَة|bitaaqaa	卡片|kǎ piàn	ка́рточка|kartochka	tarjeta|/t̪aɾˈxet̪a/
+clothes	home	одежда	понятие или предмет: одежда	clothes|/ˈkɫoʊðz/	vêtements|/vɛtmɑ̃/	Kleider|/ˈklaɪ̯dɐ/	مَلَابِس|malaabis	衣服|yī fú	оде́жда|odezhda	ropa|/ˈropa/
+club	home	клуб	понятие или предмет: клуб	club|/ˈkɫəb/	club|/klœb/	Klub|/klʊp/	نَادٍ|naadin	俱乐部|jù lè bù	клуб|klub	club|/ˈkluβ̞/
+coat	home	пальто	понятие или предмет: пальто	coat|/ˈkoʊt/	manteau|/mɑ̃to/	Mantel|/ˈmantl̩/	مِعْطَف|miataf	外衣|wài yī	пальто́|palto	abrigo|/aβɾiɣo/
+desk	home	письменный стол	понятие или предмет: письменный стол	desk|/ˈdɛsk/	pupitre|/pypitʁ/	Schreibtisch|/ˈʃʁaɪ̯pˌtɪʃ/	مَكْتَب|maktab	书桌|shū zhuō	пи́сьменный стол|pismennyi stol	escritorio|/eskɾiˈt̪oɾjo/
+dirty	home	грязный	понятие или предмет: грязный	dirty|/ˈdɝti/	sale|/sal/	schmutzig|/ˈʃmʊt͡sɪk/	قَذِر|qadhir	脏|zàng	гря́зный|gryaznyi	sucio|/ˈsusjo/
+dress	home	платье	понятие или предмет: платье	dress|/ˈdɹɛs/	robe|/ʁɔb/	Kleid|/klaɪ̯t/	ثَوْب|thawb	连衣裙|lián yī qún	пла́тье|plate	vestido|/besˈt̪ið̞o/
+floor	home	пол	понятие или предмет: пол	floor|/ˈfɫɔɹ/	sol|/sɔl/	Boden|/ˈboːdn̩/	أَرْضِيَّة|aardiyaa	地板|dì bǎn	пол|pol	suelo|/ˈswelo/
+front	home	передняя часть	понятие или предмет: передняя часть	front|/ˈfɹənt/	devant|/dəvɑ̃/	Vorderseite|/ˈfɔʁdɐˌzaɪ̯tə/	أَمَام|aamaam	前面|qián miàn	пере́дняя часть|perednyaya chast	frente|/ˈfɾẽn̪t̪e/
+here	home	здесь	понятие или предмет: здесь	here|/ˈhiɹ/	ici|/isi/	hier|/hiːɐ̯/	هُنَا|hunaa	这里|zhè lǐ	здесь|zdes	aquí|/aˈki/
+jacket	home	куртка	понятие или предмет: куртка	jacket|/ˈdʒækət/	veste|/vɛst/	Jacke|/ˈjakə/	جَاكِيت|jaakiyt	夹克|jiá kè	ку́ртка|kurtka	chaqueta|/t͡ʃaˈket̪a/
+jeans	home	джинсы	понятие или предмет: джинсы	jeans|/ˈdʒinz/	jeans|/dʒins/	Niethose|/ˈniːtˌhoːzə/	جِينْز|jiynz	牛仔裤|niú zǎi kù	джи́нсы|dzhinsy	vaqueros|/baˈkeɾos/
+light	home	свет	понятие или предмет: свет	light|/ˈɫaɪt/	lumière|/lymjɛʁ/	Licht|/lɪçt/	ضَوْء|daw	光|guāng	свет|svet	luz|/ˈluθ/
+mall	home	торговый центр	понятие или предмет: торговый центр	mall|/ˈmɔɫ/	centre commercial|/sɑ̃tʁ kɔmɛʁsjal/	Einkaufszentrum|/ˈaɪ̯nkaʊ̯fsˌt͡sɛntʁʊm/	مَرْكَز تَسَوُّق|markaz tasawuq	购物中心|gòu wù zhōng xīn	торго́вый центр|torgovyi tsentr	centro comercial|/ˈsẽn̪t̪ɾo komeɾˈsjal/
+neighborhood	home	соседство	понятие или предмет: соседство	neighborhood|/ˈneɪbɝˌhʊd/	voisinage|/vwazinaʒ/	Nachbarschaft|/ˈnaxbaːɐ̯ʃaft/	جِوَار|jiwaar	附近|fù jìn	сосе́дство|sosedstvo	barrio|/barjo/
+object	home	предмет	понятие или предмет: предмет	object|/ˈɑbdʒɛkt/	objet|/ɔbʒɛ/	Gegenstand|/ˈɡeːɡn̩ʃtant/	شَيْء|shay	物体|wù tǐ	предме́т|predmet	objeto|/oβ̞ˈxet̪o/
+outside	home	снаружи	понятие или предмет: снаружи	outside|/ˈaʊtˈsaɪd/	hors|/ʼɔʁ/	außerhalb|/ˈaʊ̯sɐhalp/	خَارِج|khaarij	外边|wài biān	снару́жи|snaruzhi	fuera|/ˈfweɾa/
+own	home	свой	понятие или предмет: свой	own|/ˈoʊn/	propre|/pʁɔpʁ/	eigen|/ˈaɪ̯ɡn̩/	مِلْك|milk	自己的|zì jǐ de	свой|svoi	propio|/ˈpɾopjo/
+paint	home	краска	понятие или предмет: краска	paint|/ˈpeɪnt/	peinture|/pɛ̃tyʁ/	Farbe|/ˈfaʁbə/	طِلَاء|tilaa	油漆|yóu qī	кра́ска|kraska	pintura|/pĩn̪ˈt̪uɾa/
+painting	home	живопись	понятие или предмет: живопись	painting|/ˈpeɪntɪŋ/	toile|/twal/	Gemälde|/ɡəˈmɛːldə/	لَوْحَة|lawhaa	图画|tú huà	жи́вопись|zhivopis	cuadro|/ˈkwaðɾo/
+pants	home	брюки	понятие или предмет: брюки	pants|/ˈpænts/	pantalon|/pɑ̃talɔ̃/	Hose|/ˈhoːzə/	بِنْطَال|bintaal	裤子|kù zi	брю́ки|bryuki	pantalón|/pãn̪t̪aˈlõn/
+paper	home	бумага	понятие или предмет: бумага	paper|/ˈpeɪpɝ/	papier|/papje/	Papier|/paˈpiːɐ̯/	وَرَق|waraq	纸|zhǐ	бума́га|bumaga	papel|/paˈpel/
+pencil	home	карандаш	понятие или предмет: карандаш	pencil|/ˈpɛnsəɫ/	crayon|/kʁɛjɔ̃/	Bleistift|/ˈblaɪ̯ˌʃtɪft/	قَلَم رَصَاص|qalam rasaas	铅笔|qiān bǐ	каранда́ш|karandash	lápiz|/ˈlapis/
+photograph	home	фотография	понятие или предмет: фотография	photograph|/ˈfoʊtəˌɡɹæf/	photographie|/fɔtɔgʁafi/	Photographie|/fotoɡʁaˈfiː/	صُورَة شَمْسِيَّة|suwraa shamsiyaa	照片|zhào piān	фотогра́фия|fotografiya	foto|/ˈfot̪o/
+picture	home	картина	понятие или предмет: картина	picture|/ˈpɪktʃɝ/	image|/imaʒ/	Bild|/bɪlt/	صُورَة|suwraa	圖畫|tú huà	карти́на|kartina	imagen|/iˈmaxẽn/
+pool	home	бассейн	понятие или предмет: бассейн	pool|/ˈpuɫ/	piscine|/pisin/	Schwimmbad|/ˈʃvɪmbaːt/	مَسْبَح|masbah	游泳池|yóu yǒng chí	бассе́йн|bassein	piscina|/pisˈθina/
+shirt	home	рубашка	понятие или предмет: рубашка	shirt|/ˈʃɝt/	chemise|/ʃmiz/	Hemd|/hɛmt/	قَمِيص|qamiys	衬衫|chèn shān	руба́шка|rubashka	camisa|/kaˈmisa/
+shoe	home	туфля	понятие или предмет: туфля	shoe|/ˈʃu/	chaussure|/ʃosyʁ/	Schuh|/ʃuː/	حِذَاء|hidhaa	鞋子|xié zi	ту́фля|tuflya	zapato|/saˈpat̪o/
+shopping	home	покупка	понятие или предмет: покупка	shopping|/ˈʃɑpɪŋ/	shopping|/ʃɔpiŋ/	Einkaufen|/ˈaɪ̯nˌkaʊ̯fn̩/	تَسَوُّق|tasawuq	买东西|mǎi dōng xī	поку́пка|pokupka	compras|/ˈkõmpɾas/
+shower	home	душ	понятие или предмет: душ	shower|/ˈʃaʊɝ/	douche|/duʃ/	Dusche|/ˈduːʃə/	دُشّ|dush	淋浴|lín yù	душ|dush	ducha|/ˈd̪ut͡ʃa/
+skirt	home	юбка	понятие или предмет: юбка	skirt|/ˈskɝt/	jupe|/ʒyp/	Rock|/ʁɔk/	تَنُّورَة|tanuwraa	裙子|qún zi	ю́бка|yubka	falda|/ˈfal̪d̪a/
+plant	home	растение	понятие или предмет: растение	plant|/ˈpɫænt/	plante|/plɑ̃t/	Pflanze|/ˈp͡flant͡sə/	نَبَات|nabaat	植物|zhí wù	расте́ние|rastenie	planta|/ˈplãn̪t̪a/
+sweater	home	свитер	понятие или предмет: свитер	sweater|/ˈswɛtɝ/	sweater|/switœʁ/	Sweatshirt|/ˈsvɛtˌʃœːɐ̯t/	سْوِيتَر|swiytar	毛衣|máo yī	сви́тер|sviter	jersey|/xeɾˈsej/
+wear	home	носить	действие: носить	wear|/ˈwɛɹ/	porter|/pɔʁte/	tragen|/ˈtʁaːɡn̩/	لَبِسَ|labisa	穿|chuān	носи́ть|nosit	llevar|/ʝeˈβ̞aɾ/
+yard	home	двор	понятие или предмет: двор	yard|/ˈjɑɹd/	cour|/kuʁ/	Hof|/hoːf/	يَارْدَة|yaardaa	院子|yuàn zi	двор|dvor	patio|/ˈpat̪jo/
+address	travel	адрес	понятие или предмет: адрес	address|/ˈæˌdɹɛs/	adresse|/adʁɛs/	Adresse|/aˈdʁɛsə/	عُنْوَان|aunwaan	地址|dì zhǐ	а́дрес|adres	dirección|/d̪iɾekˈsjõn/
+arrive	travel	прибывать	действие: прибывать	arrive|/ɝˈaɪv/	arriver|/aʁive/	ankommen|/ˈanˌkɔmən/	وَصَلَ|wasala	到达|dào dá	прибыва́ть|pribyvat	llegar|/ʝeˈɣ̞aɾ/
+away	travel	далеко	понятие или предмет: далеко	away|/əˈweɪ/	loin|/lwɛ̃/	weg|/veːk/	بَعِيدًا|baaiydana	远离|yuǎn lí	далеко́|daleko	lejos|/ˈlexos/
+beach	travel	пляж	понятие или предмет: пляж	beach|/ˈbitʃ/	plage|/plaʒ/	Strand|/ʃtʁant/	شَاطِئ|shaatii	海滩|hǎi tān	пляж|plyazh	playa|/ˈplaʝa/
+bicycle	travel	велосипед	понятие или предмет: велосипед	bicycle|/ˈbaɪsɪkəɫ/	vélo|/velo/	Fahrrad|/ˈfaːɐ̯ˌʁaːt/	دَرَّاجَة|daraajaa	自行车|zì xíng chē	велосипе́д|velosiped	bicicleta|/bisiˈklet̪a/
+air	travel	воздух	понятие или предмет: воздух	air|/ˈɛɹ/	air|/ɛʁ/	Luft|/lʊft/	هَوَاء|hawaa	空气|kōng qì	во́здух|vozdukh	aire|/aiɾe/
+climb	travel	подниматься	действие: подниматься	climb|/ˈkɫaɪm/	grimper|/gʁɛ̃pe/	klettern|/ˈklɛtɐn/	تَسَلَّقَ|tasalaqa	登|dēng	поднима́ться|podnimatsya	subir|/suˈβ̞iɾ/
+drive	travel	вести	действие: вести	drive|/ˈdɹaɪv/	conduire|/kɔ̃dɥiʁ/	fahren|/ˈfaːʁən/	قَادَ|qaada	开车|kāi chē	вести́|vesti	conducir|/kõn̪d̪uˈsiɾ/
+flight	travel	рейс	понятие или предмет: рейс	flight|/ˈfɫaɪt/	vol|/vɔl/	Flug|/fluːk/	رِحْلَة جَوِّيَّة|rihlaa jawiyaa	航班|háng bān	рейс|reis	vuelo|/ˈbwelo/
+follow	travel	следовать	действие: следовать	follow|/ˈfɑɫoʊ/	suivre|/sɥivʁ/	folgen|/ˈfɔlɡn̩/	تَبِعَ|tabiaa	随|suí	сле́довать|sledovat	seguir|/seˈɣ̞iɾ/
+geography	travel	география	понятие или предмет: география	geography|/dʒiˈɑɡɹəfi/	géographie|/ʒeɔgʁafi/	Geografie|/ˌɡeoɡʁaˈfiː/	جُغْرَافِيَا|jughraafiyaa	地理学|dì lǐ xué	геогра́фия|geografiya	geografía|/xeoɣ̞ɾaˈfia/
+leave	travel	оставлять	действие: оставлять	leave|/ˈɫiv/	laisser|/lɛse/	lassen|/ˈlasn̩/	تَرَكَ|taraka	留|liú	оставля́ть|ostavlyat	dejar|/d̪eˈxaɾ/
+map	travel	карта	понятие или предмет: карта	map|/ˈmæp/	plan|/plɑ̃/	Landkarte|/ˈlantˌkaʁtə/	خَرِيطَة|khariytaa	地图|dì tú	ка́рта|karta	mapa|/ˈmapa/
+mile	travel	миля	понятие или предмет: миля	mile|/ˈmaɪɫ/	mille|/mil/	Meile|/ˈmaɪ̯lə/	مِيل|miyl	英里|yīng lǐ	ми́ля|milya	milla|/ˈmiʝa/
+mountain	travel	гора	понятие или предмет: гора	mountain|/ˈmaʊntən/	montagne|/mɔ̃taɲ/	Berg|/bɛʁk/	جَبَل|jabal	山|shān	гора́|gora	montaña|/mõn̪ˈt̪aɲa/
+move	travel	двигаться	действие: двигаться	move|/ˈmuv/	se mouvoir|/\sə mu.vwaʁ\/	sich bewegen|/zɪç bəˈveːɡn̩/	حَرُكَ|haruka	动|dòng	дви́гаться|dvigatsya	moverse|/moˈβ̞eɾse/
+museum	travel	музей	понятие или предмет: музей	museum|/ˈmjuziəm/	musée|/myze/	Museum|/muˈzeːʊm/	مَتْحَف|mathaf	博物馆|bó wù guǎn	музе́й|muzei	museo|/muˈseo/
+near	travel	близкий	понятие или предмет: близкий	near|/ˈnɪɹ/	près|/pʁɛ/	nah|/naː/	قَرِيب|qariyb	近|jìn	бли́зкий|blizkii	cercano|/seɾˈkano/
+park	travel	парк	понятие или предмет: парк	park|/ˈpɑɹk/	parc|/paʁk/	Park|/paʁk/	حَدِيقَة|hadiyqaa	公园|gōng yuán	парк|park	parque|/ˈpaɾke/
+passport	travel	паспорт	понятие или предмет: паспорт	passport|/ˈpæsˌpɔɹt/	passeport|/paspɔʁ/	Reisepass|/ˈʁaɪ̯zəˌpas/	جَوَاز سَفَر|jawaaz safar	护照|hù zhào	па́спорт|pasport	pasaporte|/pasaˈpoɾt̪e/
+plane	travel	самолёт	понятие или предмет: самолёт	plane|/ˈpɫeɪn/	avion|/avjɔ̃/	Flugzeug|/ˈfluːkˌt͡sɔɪ̯k/	طَائِرَة|taaiiraa	飞机|fēi jī	самолёт|samolet	avión|/aˈβjon/
+return	travel	возвращение	понятие или предмет: возвращение	return|/ɹiˈtɝn/	retour|/ʁətuʁ/	Rückkehr|/ˈʁʏkˌkeːɐ̯/	عَوْدَة|aawdaa	归还|guī huán	возвраще́ние|vozvrashchenie	vuelta|/ˈbwel̪t̪a/
+ride	travel	ехать	действие: ехать	ride|/ˈɹaɪd/	rouler|/ʁule/	reiten|/ˈʁaɪ̯tn̩/	رَكِبَ|rakiba	骑|qí	е́хать|ekhat	montar|/mõn̪ˈt̪aɾ/
+south	travel	юг	понятие или предмет: юг	south|/ˈsaʊθ/	sud|/syd/	Süden|/ˈzyːdn̩/	جَنُوب|januwb	南|nán	юг|yug	sur|/ˈsuɾ/
+stay	travel	оставаться	действие: оставаться	stay|/ˈsteɪ/	rester|/ʁɛste/	sich aufhalten|/zɪç ˈaʊ̯fˌhaltn̩/	مَكَثَ|makatha	呆|dāi	остава́ться|ostavatsya	quedar[se]|/keˈð̞aɾ/
+taxi	travel	такси	понятие или предмет: такси	taxi|/ˈtæksi/	taxi|/taksi/	Taxi|/ˈtaksi/	تَاكْسِي|taaksiy	出租汽车|chū zū qì chē	такси́|taksi	taxi|/ˈt̪aksi/
+theater	travel	театр	понятие или предмет: театр	theater|/ˈθiətɝ/	théâtre|/teatʁ/	Theater|/teˈaːtɐ/	مَسْرَح|masrah	剧场|jù chǎng	теа́тр|teatr	teatro|/t̪eˈat̪ɾo/
+there	travel	там	понятие или предмет: там	there|/ˈðɛɹ/	là|/la/	dort|/dɔʁt/	هُنَاكَ|hunaaka	那里|nà lǐ	там|tam	ahí|/aˈi/
+capital	travel	столица	понятие или предмет: столица	capital|/ˈkæpətəɫ/	capitale|/kapital/	Hauptstadt|/ˈhaʊ̯ptˌʃtat/	عَاصِمَة|aaasimaa	首都|shǒu dū	столи́ца|stolitsa	capital|/kapiˈt̪al/
+traffic	travel	движение	понятие или предмет: движение	traffic|/ˈtɹæfɪk/	circulation|/siʁkylasjɔ̃/	Verkehr|/fɛɐ̯ˈkeːɐ̯/	مُرُور|muruwr	交通|jiāo tōng	движе́ние|dvizhenie	tráfico|/ˈt̪ɾafiko/
+travel	travel	путешествовать	понятие или предмет: путешествовать	travel|/ˈtɹævəɫ/	voyager|/vwajaʒe/	reisen|/ˈʁaɪ̯zn̩/	سَافَرَ|saafara	旅游|lǚ yóu	путеше́ствовать|puteshestvovat	viajar|/bjaˈxaɾ/
+trip	travel	поездка	понятие или предмет: поездка	trip|/ˈtɹɪp/	voyage|/vwajaʒ/	Reise|/ˈʁaɪ̯zə/	رِحْلَة|rihlaa	旅行|lǚ xíng	пое́здка|poezdka	viaje|/ˈbjaxe/
+truck	travel	грузовик	понятие или предмет: грузовик	truck|/ˈtɹək/	camion|/kamjɔ̃/	Lastwagen|/ˈlastˌvaːɡn̩/	شَاحِنَة|shaahinaa	卡车|kǎ chē	грузови́к|gruzovik	camión|/kaˈmjõn/
+turn	travel	поворот	понятие или предмет: поворот	turn|/ˈtɝn/	virage|/viʁaʒ/	Drehung|/ˈdʁeːʊŋ/	اِنْعِطَاف|ainaitaaf	转弯|zhuǎn wān	поворо́т|povorot	girada|/xiˈɾað̞a/
+vacation	travel	каникулы	понятие или предмет: каникулы	vacation|/veɪˈkeɪʃən/	vacances|/vakɑ̃s/	Ferien|/ˈfeːʁiən/	عُطْلَة|autlaa	假期|jià qī	кани́кулы|kanikuly	vacaciones|/bakaˈsjones/
+visit	travel	посещать	понятие или предмет: посещать	visit|/ˈvɪzɪt/	visiter|/vizite/	besuchen|/bəˈzuːxn̩/	زَارَ|zaara	参观|cān guān	посеща́ть|poseshchat	visitar|/bisiˈt̪aɾ/
+walk	travel	ходьба	понятие или предмет: ходьба	walk|/ˈwɑk/	promenade|/pʁɔmnad/	Spaziergang|/ʃpaˈt͡siːɐ̯ˌɡaŋ/	مَسِير|masiyr	散步|sàn bù	ходьба́|khodba	paseo|/paˈseo/
+wait	travel	ждать	действие: ждать	wait|/ˈweɪt/	attendre|/atɑ̃dʁ/	warten|/ˈvaʁtən/	اِنْتَظَرَ|aintazara	等|děng	ждать|zhdat	esperar|/espeˈɾaɾ/
+center	travel	центр	понятие или предмет: центр	center|/ˈsɛnɝ/	centre|/sɑ̃tʁ/	Zentrum|/ˈt͡sɛntʁʊm/	مَرْكَز|markaz	中心|zhōng xīn	центр|tsentr	centro|/ˈsẽn̪t̪ɾo/
+local	travel	местный	понятие или предмет: местный	local|/ˈɫoʊkəɫ/	local|/lɔkal/	lokal|/loˈkaːl/	مَحَلِّيّ|mahaliy	本地|běn dì	ме́стный|mestnyi	local|/loˈkal/
+friday	time	пятница	понятие или предмет: пятница	friday|/ˈfɹaɪˌdeɪ/	vendredi|/vɑ̃dʁədi/	Freitag|/ˈfʁaɪ̯taːk/	الْجُمُعَة|aljumuaaa	星期五|xīng qī wǔ	пя́тница|pyatnitsa	viernes|/ˈbjeɾnes/
+monday	time	понедельник	понятие или предмет: понедельник	monday|/ˈmənˌdeɪ/	lundi|/lœ̃di/	Montag|/ˈmoːntaːk/	الْاِثْنَيْن|alaithnayn	星期一|xīng qī yī	понеде́льник|ponedelnik	lunes|/ˈlunes/
+saturday	time	суббота	понятие или предмет: суббота	saturday|/ˈsæˌtɪˌdeɪ/	samedi|/samdi/	Samstag|/ˈzamstaːk/	السَّبْت|alsabt	星期六|xīng qī liù	суббо́та|subbota	sábado|/ˈsaβ̞að̞o/
+sunday	time	воскресенье	понятие или предмет: воскресенье	sunday|/ˈsənˌdeɪ/	dimanche|/dimɑ̃ʃ/	Sonntag|/ˈzɔntaːk/	الْأَحَد|alaahad	星期日|xīng qī rì	воскресе́нье|voskresene	domingo|/d̪oˈmĩŋgo/
+thursday	time	четверг	понятие или предмет: четверг	thursday|/ˈθɝzˌdeɪ/	jeudi|/ʒødi/	Donnerstag|/ˈdɔnɐsˌtaːk/	الْخَمِيس|alkhamiys	星期四|xīng qī sì	четве́рг|chetverg	jueves|/ˈxweβ̞es/
+tuesday	time	вторник	понятие или предмет: вторник	tuesday|/ˈtjuzˌdeɪ/	mardi|/maʁdi/	Dienstag|/ˈdiːnsˌtaːk/	الثُّلَاثَاء|althulaathaa	星期二|xīng qī èr	вто́рник|vtornik	martes|/ˈmaɾt̪es/
+wednesday	time	среда	понятие или предмет: среда	wednesday|/ˈwɛnzˌdeɪ/	mercredi|/mɛʁkʁədi/	Mittwoch|/ˈmɪtˌvɔx/	الْأَرْبِعَاء|alaarbiaaa	星期三|xīng qī sān	среда́|sreda	miércoles|/ˈmjeɾkoles/
+weather	time	погода	понятие или предмет: погода	weather|/ˈwɛðɝ/	temps|/tɑ̃/	Wetter|/ˈvɛtɐ/	طَقْس|taqs	天气|tiān qì	пого́да|pogoda	tiempo atmosférico|/ˈt̪jẽmpo at̪mosˈfeɾiko/
+age	time	возраст	понятие или предмет: возраст	age|/ˈeɪdʒ/	âge|/aʒ/	Alter|/ˈaltɐ/	عُمْر|aumr	年岁|nián suì	во́зраст|vozrast	edad|/eˈð̞að̞/
+birthday	time	день рождения	понятие или предмет: день рождения	birthday|/ˈbɝθˌdeɪ/	anniversaire|/anivɛʁsɛʁ/	Geburtstag|/ɡəˈbuːɐ̯t͡sˌtaːk/	عِيد مِيلَاد|aiyd miylaad	生日|shēng rì	день рожде́ния|den rozhdeniya	cumpleaños|/kũmpleˈaɲos/
+beginning	time	начало	понятие или предмет: начало	beginning|/bɪˈɡɪnɪŋ/	début|/deby/	Anfang|/ˈanˌfaŋ/	بِدَايَة|bidaayaa	开端|kāi duān	нача́ло|nachalo	comienzo|/koˈmjẽnso/
+early	time	ранний	понятие или предмет: ранний	early|/ˈɝɫi/	de bonne heure|/dbɔnœʁ/	früh|/fʁyː/	بَاكِر|baakir	早|zǎo	ра́нний|rannii	temprano|/t̪ẽmˈpɾano/
+end	time	конец	понятие или предмет: конец	end|/ˈɛnd/	fin|/fɛ̃/	Ende|/ˈɛndə/	نِهَايَة|nihaayaa	结束|jié shù	коне́ц|konets	fin|/ˈfĩn/
+event	time	событие	понятие или предмет: событие	event|/iˈvɛnt/	événement|/evɛnmɑ̃/	Ereignis|/ɛɐ̯ˈʔaɪ̯ɡnɪs/	وَاقِعَة|waaqiaaa	事件|shì jiàn	собы́тие|sobytie	evento|/eˈβ̞ẽn̪t̪o/
+future	time	будущее	понятие или предмет: будущее	future|/ˈfjutʃɝ/	avenir|/avniʁ/	Zukunft|/ˈt͡suːˌkʊnft/	مُسْتَقْبَل|mustaqbal	未来|wèi lái	бу́дущее|budushchee	futuro|/fuˈt̪uɾo/
+half	time	половина	понятие или предмет: половина	half|/ˈhæf/	moitié|/mwatje/	Hälfte|/ˈhɛlftə/	نِصْف|nisf	半|bàn	полови́на|polovina	mitad|/miˈt̪að̞/
+hour	time	час	понятие или предмет: час	hour|/ˈaʊɝ/	heure|/œʁ/	Stunde|/ˈʃtʊndə/	سَاعَة|saaaaa	小时|xiǎo shí	час|chas	hora|/ˈoɾa/
+space	time	пространство	понятие или предмет: пространство	space|/ˈspeɪs/	espace|/ɛspas/	Raum|/ʁaʊ̯m/	فَضَاء|fadaa	空间|kōng jiān	простра́нство|prostranstvo	espacio|/esˈpasjo/
+later	time	позже	понятие или предмет: позже	later|/ˈɫeɪtɝ/	plus tard|/ply taʁ/	später|/ˈʃpɛːtɐ/	فِيمَا بَعْد|fiymaa baad	更迟|gèng chí	по́зже|pozzhe	después|/d̪esˈpwes/
+midnight	time	полночь	понятие или предмет: полночь	midnight|/ˈmɪdˌnaɪt/	minuit|/minɥi/	Mitternacht|/ˈmɪtɐˌnaxt/	مُنْتَصَف لَيْل|muntasaf layl	午夜|wǔ yè	по́лночь|polnoch	medianoche|/með̞jaˈnot͡ʃe/
+moment	time	момент	понятие или предмет: момент	moment|/ˈmoʊmənt/	instant|/ɛ̃stɑ̃/	Augenblick|/ˈaʊ̯ɡŋ̍ˌblɪk/	لَحْظَة|lahzaa	瞬间|shùn jiān	моме́нт|moment	momento|/moˈmẽn̪t̪o/
+never	time	никогда	понятие или предмет: никогда	never|/ˈnɛvɝ/	jamais|/ʒamɛ/	nie|/niː/	أَبَدًا|aabadana	从未|cóng wèi	никогда́|nikogda	nunca|/ˈnũŋka/
+next	time	следующий	понятие или предмет: следующий	next|/ˈnɛks/	prochain|/pʁɔʃɛ̃/	nächster|/ˈnɛːçstɐ/	تَالٍ|taalin	下一个|xià yí gè	сле́дующий|sleduyushchii	siguiente|/siˈɣ̞jẽn̪t̪e/
+once	time	один раз	понятие или предмет: один раз	once|/ˈwəns/	une fois|/\yn fwa\/	einmal|/ˈaɪ̯nmaːl/	مَرَّةً|maraaan	一次|yī cì	оди́н раз|odin raz	una vez|/ˈuna ˈbes/
+past	time	прошлый	понятие или предмет: прошлый	past|/ˈpæst/	passé|/pase/	vergangen|/fɛɐ̯ˈɡaŋən/	مَاضٍ|maadin	过去|guò qù	про́шлый|proshlyi	pasado|/paˈsað̞o/
+period	time	период	понятие или предмет: период	period|/ˈpɪɹiəd/	période|/peʁjɔd/	Zeitraum|/ˈt͡saɪ̯tˌʁaʊ̯m/	فَتْرَة|fatraa	时期|shí qī	пери́од|period	período|/peˈɾioð̞o/
+quarter	time	четверть	понятие или предмет: четверть	quarter|/ˈkwɔɹtɝ/	quart|/kaʁ/	Viertel|/ˈfiːɐ̯tl̩/	رُبُع|rubua	四分之一|sì fēn zhī yī	че́тверть|chetvert	cuarto|/ˈkwaɾt̪o/
+soon	time	скоро	понятие или предмет: скоро	soon|/ˈsun/	bientôt|/bjɛ̃to/	bald|/balt/	قَرِيبًا|qariybana	不久|bù jiǔ	ско́ро|skoro	pronto|/ˈpɾõn̪t̪o/
+start	time	начинать	действие: начинать	start|/ˈstɑɹt/	commencer|/kɔmɑ̃se/	anfangen|/ˈanˌfaŋən/	بَدَأَ|badaaa	开始|kāi shǐ	начина́ть|nachinat	empezar|/ẽmpeˈsaɾ/
+still	time	всё ещё	понятие или предмет: всё ещё	still|/ˈstɪɫ/	encore|/ɑ̃kɔʁ/	noch|/nɔx/	مَا زَالَ|maa zaala	还|hái	всё ещё|vse eshche	todavía|/t̪oð̞aˈβ̞ia/
+then	time	тогда	понятие или предмет: тогда	then|/ˈðɛn/	alors|/alɔʁ/	dann|/dan/	آنَذَاكَ|aanadhaaka	当时|dāng shí	тогда́|togda	entonces|/ẽn̪ˈt̪õnses/
+tonight	time	сегодня вечером	понятие или предмет: сегодня вечером	tonight|/təˈnaɪt/	ce soir|/\sə\ \swaʁ\/	heute Abend|/ˈhɔɪ̯tə ˈaːbn̩t/	هٰذَا الْمَسَاء|hdhaa almasaa	今晚|jīn wǎn	сего́дня ве́чером|segodnya vecherom	esta noche|/ˈest̪a ˈnot͡ʃe/
+twice	time	дважды	понятие или предмет: дважды	twice|/ˈtwaɪs/	deux fois|/\dø\ \fwa\/	zweimal|/ˈt͡svaɪ̯maːl/	مَرَّتَيْن|maratayn	两次|liǎng cì	два́жды|dvazhdy	dos veces|/ˈd̪os ˈbeses/
+weekend	time	уик-энд	понятие или предмет: уик-энд	weekend|/ˈwiˌkɛnd/	week-end|/wikɛnd/	Wochenende|/ˈvɔxn̩ˌʔɛndə/	نِهَايَة الْأُسْبُوع|nihaayaa alausbuwa	周末|zhōu mò	уик-э́нд|uik-end	fin de semana|/ˈfĩn̪ d̪e seˈmana/
+always	time	всегда	понятие или предмет: всегда	always|/ˈɔɫˌweɪz/	toujours|/tuʒuʁ/	immer|/ˈɪmɐ/	دَائِمًا|daaiimana	总是|zǒng shì	всегда́|vsegda	siempre|/ˈsjẽmpɾe/
+again	time	снова	понятие или предмет: снова	again|/əˈɡeɪn/	de nouveau|/\də nu.vo\/	wieder|/ˈviːdɐ/	مَرَّة أُخْرَى|maraa aukhraa	再|zài	сно́ва|snova	otra vez|/ˈot̪ɾa ˈβ̞es/
+sometimes	time	иногда	понятие или предмет: иногда	sometimes|/ˈsəmˌtaɪmz/	parfois|/paʁfwa/	manchmal|/ˈmançmaːl/	أَحْيَانًا|aahyaanana	有时|yǒu shí	иногда́|inogda	a veces|/a ˈβ̞eses/
+usually	time	обычно	понятие или предмет: обычно	usually|/ˈjuʒəɫi/	généralement|/ʒeneʁalmɑ̃/	gewöhnlich|/ɡəˈvøːnlɪç/	عَادَةً|aaadaaan	通常|tōng cháng	обы́чно|obychno	usualmente|/uˌswalˈmẽn̪t̪e/
+often	time	часто	понятие или предмет: часто	often|/ˈɔfən/	souvent|/suvɑ̃/	häufig|/ˈhɔɪ̯fɪk/	كَثِيرًا|kathiyrana	经常|jīng cháng	ча́сто|chasto	a menudo|/a meˈnuð̞o/
+probably	time	вероятно	понятие или предмет: вероятно	probably|/ˈpɹɑbəˌbɫi/	probablement|/pʁɔbabləmɑ̃/	wahrscheinlich|/vaːɐ̯ˈʃaɪ̯nlɪç/	مِن اَلْمُحْتَمَل|min aalmuhtamal	或许|huò xǔ	вероя́тно|veroyatno	probablemente|/pɾoˌβ̞aβ̞leˈmẽn̪t̪e/
+action	work	действие	понятие или предмет: действие	action|/ˈækʃən/	action|/aksjɔ̃/	Handlung|/ˈhandlʊŋ/	عَمَل|aamal	行动|xíng dòng	де́йствие|deistvie	acción|/aˈkθjon/
+activity	work	деятельность	понятие или предмет: деятельность	activity|/ækˈtɪvəti/	activité|/aktivite/	Aktivität|/aktiviˈtɛːt/	نَشَاط|nashaat	活动|huó dòng	де́ятельность|deyatelnost	actividad|/aktiβiðað/
+business	work	предприятие	понятие или предмет: предприятие	business|/ˈbɪznəs/	entreprise|/ɑ̃tʁəpʁiz/	Unternehmen|/ʊntɐˈneːmən/	أَعْمَال|aaamaal	事业|shì yè	предприя́тие|predpriyatie	negocio|/neˈɣ̞osjo/
+chart	work	диаграмма	понятие или предмет: диаграмма	chart|/ˈtʃɑɹt/	graphique|/gʁafik/	Diagramm|/diaˈɡʁam/	مُخَطَّط بَيَانِيّ|mukhatat bayaaniy	图表|tú biǎo	диагра́мма|diagramma	gráfico|/ˈɡɾafiko/
+check	work	проверять	действие: проверять	check|/ˈtʃɛk/	vérifier|/veʁifje/	überprüfen|/yːbɐˈpʁyːfn̩/	فَحَصَ|fahasa	检查|jiǎn chá	проверя́ть|proveryat	verificar|/beɾifiˈkaɾ/
+classroom	work	классная комната	понятие или предмет: классная комната	classroom|/ˈkɫæsˌɹum/	salle de classe|/\sal də klas\/	Klassenzimmer|/ˈklasn̩ˌt͡sɪmɐ/	غُرْفَة صَفّ|ghurfaa saf	教室|jiào shì	кла́ссная ко́мната|klassnaya komnata	aula|/aula/
+college	work	колледж	понятие или предмет: колледж	college|/ˈkɑɫɪdʒ/	université|/ynivɛʁsite/	Hochschule|/ˈhoːxˌʃuːlə/	كُلِّيَّة|kuliyaa	大学|dà xué	ко́лледж|kolledzh	universidad|/uniβ̞eɾsiˈð̞að̞/
+company	work	компания	понятие или предмет: компания	company|/ˈkəmpəˌni/	société|/sɔsjete/	Gesellschaft|/ɡəˈzɛlʃaft/	شَرِكَة|sharikaa	公司|gōng sī	компа́ния|kompaniya	empresa|/ẽmˈpɾesa/
+compare	work	сравнивать	действие: сравнивать	compare|/kəmˈpɛɹ/	comparer|/kɔ̃paʁe/	vergleichen|/fɛɐ̯ˈɡlaɪ̯çn̩/	قَارَنَ|qaarana	比|bǐ	сра́внивать|sravnivat	comparar|/kõmpaˈɾaɾ/
+complete	work	полный	понятие или предмет: полный	complete|/kəmˈpɫit/	complet|/kɔ̃plɛ/	ganz|/ɡant͡s/	مُكْتَمِل|muktamil	完全|wán quán	по́лный|polnyi	completo|/kõmˈplet̪o/
+course	work	курс	понятие или предмет: курс	course|/ˈkɔɹs/	cours|/kuʁ/	Kurs|/kʊʁs/	دَوْرَة|dawraa	课程|kè chéng	курс|kurs	curso|/ˈkuɾso/
+create	work	создавать	действие: создавать	create|/kɹiˈeɪt/	créer|/kʁee/	schaffen|/ˈʃafn̩/	خَلَقَ|khalaqa	创造|chuàng zào	создава́ть|sozdavat	crear|/kɾeˈaɾ/
+design	work	план	понятие или предмет: план	design|/dɪˈzaɪn/	conception|/kɔ̃sɛpsjɔ̃/	Design|/diˈzaɪ̯n/	تَخْطِيط|takhtiyt	设计|shè jì	план|plan	diseño|/d̪iˈseɲo/
+detail	work	деталь	понятие или предмет: деталь	detail|/ˈditeɪɫ/	détail|/detaj/	Detail|/deˈtaj/	تَفْصِيل|tafsiyl	细节|xì jié	дета́ль|detal	detalle|/d̪eˈt̪aʝe/
+form	work	форма	понятие или предмет: форма	form|/ˈfɔɹm/	forme|/fɔʁm/	Gestalt|/ɡəˈʃtalt/	شَكْل|shakl	形式|xíng shì	фо́рма|forma	forma|/ˈfoɾma/
+homework	work	домашнее задание	понятие или предмет: домашнее задание	homework|/ˈhoʊmˌwɝk/	devoirs|/dəvwaʁ/	Hausaufgabe|/ˈhaʊ̯sʔaʊ̯fˌɡaːbə/	وَاجِب|waajib	作业|zuò yè	дома́шнее зада́ние|domashnee zadanie	deberes|/deˈβeɾes/
+improve	work	улучшать	действие: улучшать	improve|/ˌɪmˈpɹuv/	améliorer|/ameljɔʁe/	verbessern|/fɛɐ̯ˈbɛsɐn/	تَحَسَّنَ|tahasana	改善|gǎi shàn	улучша́ть|uluchshat	mejorar|/mexoˈɾaɾ/
+include	work	включать	действие: включать	include|/ˌɪnˈkɫud/	inclure|/ɛ̃klyʁ/	einschließen|/ˈaɪ̯nˌʃliːsn̩/	تضمن|tdmn	包括|bāo kuò	включа́ть|vklyuchat	incluir|/ĩŋˈklwiɾ/
+interest	work	интерес	понятие или предмет: интерес	interest|/ˈɪntɝəst/	intérêt|/ɛ̃teʁɛ/	Interesse|/ɪntəˈʁɛsə/	اِهْتِمَام|aihtimaam	兴趣|xìng qù	интере́с|interes	interés|/ĩn̪t̪eˈɾes/
+machine	work	машина	понятие или предмет: машина	machine|/məˈʃin/	machine|/maʃin/	Maschine|/maˈʃiːnə/	آلَة|aalaa	机|jī	маши́на|mashina	máquina|/ˈmakina/
+join	work	соединять	действие: соединять	join|/ˈdʒɔɪn/	joindre|/ʒwɛ̃dʁ/	verknüpfen|/fɛɐ̯ˈknʏp͡fn̩/	اِتَّصَلَ|aitasala	连接|lián jiē	соединя́ть|soedinyat	juntar|/xũn̪ˈt̪aɾ/
+lesson	work	урок	понятие или предмет: урок	lesson|/ˈɫɛsən/	leçon|/ləsɔ̃/	Lehrstunde|/ˈleːɐ̯ˌʃtʊndə/	دَرْس|dars	课业|kè yè	уро́к|urok	lección|/lekˈsjõn/
+practice	work	практика	понятие или предмет: практика	practice|/ˈpɹæktəs/	pratique|/pʁatik/	Übung|/ˈyːbʊŋ/	تَدْرِيب|tadriyb	練習|liàn xí	пра́ктика|praktika	práctica|/ˈpɾakt̪ika/
+present	work	подарок	понятие или предмет: подарок	present|/ˈpɹɛzənt/	cadeau|/kado/	Geschenk|/ɡəˈʃɛŋk/	هَدِيَّة|hadiyaa	礼物|lǐ wù	пода́рок|podarok	regalo|/reˈɣalo/
+problem	work	проблема	понятие или предмет: проблема	problem|/ˈpɹɑbɫəm/	problème|/pʁɔblɛm/	Problem|/pʁoˈbleːm/	مُشْكِلَة|mushkilaa	問題|wèn tí	пробле́ма|problema	problema|/pɾoˈβ̞lema/
+program	work	программа	понятие или предмет: программа	program|/ˈpɹoʊˌɡɹæm/	programme|/pʁɔgʁam/	Programm|/pʁoˈɡʁam/	بَرْنَامَج|barnaamaj	计划|jì huà	програ́мма|programma	programa|/pɾoˈɣ̞ɾama/
+project	work	проект	понятие или предмет: проект	project|/ˈpɹɑdʒɛkt/	projet|/pʁɔʒɛ/	Projekt|/pʁoˈjɛkt/	مَشْرُوع|mashruwa	計劃|jì huà	прое́кт|proekt	proyecto|/pɾoˈʝekt̪o/
+result	work	результат	понятие или предмет: результат	result|/ɹiˈzəɫt/	résultat|/ʁezylta/	Ergebnis|/ɛɐ̯ˈɡeːpnɪs/	نَتِيجَة|natiyjaa	结果|jié guǒ	результа́т|rezultat	resultado|/resul̪ˈt̪að̞o/
+rule	work	правило	понятие или предмет: правило	rule|/ˈɹuɫ/	règle|/ʁɛgl/	Regel|/ˈʁeːɡl̩/	قَانُون|qaanuwn	规则|guī zé	пра́вило|pravilo	regla|/ˈreɣ̞la/
+skill	work	умение	понятие или предмет: умение	skill|/ˈskɪɫ/	habileté|/abilte/	Fähigkeit|/ˈfɛːɪkkaɪ̯t/	مَهَارَة|mahaaraa	技巧|jì qiǎo	уме́ние|umenie	habilidad|/aβ̞iliˈð̞að̞/
+study	work	учение	понятие или предмет: учение	study|/ˈstədi/	étude|/etyd/	Studium|/ˈʃtuːdi̯ʊm/	دِرَاسَة|diraasaa	学习|xué xí	уче́ние|uchenie	estudio|/esˈt̪uð̞jo/
+style	work	стиль	понятие или предмет: стиль	style|/ˈstaɪɫ/	style|/stil/	Stil|/stiːl/	أُسْلُوب|ausluwb	风格|fēng gé	стиль|stil	estilo|/esˈt̪ilo/
+subject	work	учебный предмет	понятие или предмет: учебный предмет	subject|/ˈsəbdʒɪkt/	matière|/matjɛʁ/	Schulfach|/ˈʃuːlˌfax/	مَادَّة دِرَاسِيَّة|maadaa diraasiyaa	学科|xué kē	уче́бный предме́т|uchebnyi predmet	asignatura|/asiɣnatuɾa/
+success	work	успех	понятие или предмет: успех	success|/səkˈsɛs/	succès|/syksɛ/	Erfolg|/ɛɐ̯ˈfɔlk/	نَجَاح|najaah	成功|chéng gōng	успе́х|uspekh	éxito|/ˈeksit̪o/
+teach	work	преподавать	действие: преподавать	teach|/ˈtitʃ/	enseigner|/ɑ̃sɛɲe/	lehren|/ˈleːʁən/	عَلَّمَ|aalama	教|jiào	преподава́ть|prepodavat	enseñar|/ẽnseˈɲaɾ/
+test	work	тест	понятие или предмет: тест	test|/ˈtɛst/	test|/tɛst/	Test|/tɛst/	اِخْتِبَار|aikhtibaar	测试|cè shì	тест|test	prueba|/ˈpɾweβ̞a/
+title	work	титул	понятие или предмет: титул	title|/ˈtaɪtəɫ/	titre|/titʁ/	Titel|/ˈtiːtl̩/	لَقَب|laqab	称号|chēng hào	ти́тул|titul	título|/ˈt̪it̪ulo/
+writing	work	письменность	понятие или предмет: письменность	writing|/ˈɹaɪtɪŋ/	écriture|/ekʁityʁ/	Schrift|/ʃʁɪft/	كِتَابَة|kitaabaa	文字|wén zì	пи́сьменность|pismennost	escritura|/eskɾiˈt̪uɾa/
+reading	work	чтение	понятие или предмет: чтение	reading|/ˈɹɛdɪŋ/	lecture|/lɛktyʁ/	Lektüre|/lɛkˈtyːʁə/	قِرَاءَة|qiraaaa	阅读|yuè dú	чте́ние|chtenie	lectura|/lekˈt̪uɾa/
+useful	work	полезный	понятие или предмет: полезный	useful|/ˈjusfəɫ/	utile|/ytil/	nützlich|/ˈnʏt͡slɪç/	مُفِيد|mufiyd	有用|yǒu yòng	поле́зный|poleznyi	útil|/ˈut̪il/
+afraid	health	испуганный	понятие или предмет: испуганный	afraid|/əˈfɹeɪd/	effrayé|/efʁɛje/	ängstlich|/ˈɛŋstlɪç/	خَائِف|khaaiif	害怕|hài pà	испу́ганный|ispugannyi	con miedo|/kõn ˈmjeð̞o/
+angry	health	сердитый	понятие или предмет: сердитый	angry|/ˈæŋɡɹi/	fâché|/faʃe/	böse|/ˈbøːzə/	غَاضِب|ghaadib	恼怒|nǎo nù	серди́тый|serdityi	enojado|/enoˈxað̞o/
+arm	health	рука	понятие или предмет: рука	arm|/ˈɑɹm/	bras|/bʁa/	Arm|/aʁm/	ذِرَاع|dhiraaa	胳膊|gē bó	рука́|ruka	brazo|/ˈbɾaθo/
+bored	health	скучающий	понятие или предмет: скучающий	bored|/ˈbɔɹd/	ennuyé|/ɑ̃nɥije/	gelangweilt|/ɡəˈlaŋˌvaɪ̯lt/	مَلُول|maluwl	厌烦|yàn fán	скуча́ющий|skuchayushchii	aburrido|/aβuriðo/
+baseball	health	бейсбол	понятие или предмет: бейсбол	baseball|/ˈbeɪsˈbɔɫ/	baseball|/\bɛz.bol\/	Baseball|/ˈbeːsboːl/	بَيْسْبُول|baysbuwl	棒球|bàng qiú	бейсбо́л|beisbol	béisbol|/ˈbeizβol/
+dangerous	health	опасный	понятие или предмет: опасный	dangerous|/ˈdeɪndʒɝəs/	dangereux|/dɑ̃ʒʁø/	gefährlich|/ɡəˈfɛːɐ̯lɪç/	خَطِر|khatir	危险|wēi xiǎn	опа́сный|opasnyi	peligroso|/peliˈɣ̞ɾoso/
+ear	health	ухо	понятие или предмет: ухо	ear|/ˈiɹ/	oreille|/ɔʁɛj/	Ohr|/oːɐ̯/	أُذُن|audhun	耳朵|ěr duǒ	у́хо|ukho	oreja|/oˈɾexa/
+enjoy	health	наслаждаться	действие: наслаждаться	enjoy|/ˌɛnˈdʒɔɪ/	profiter de|/\pʁɔ.fi.te\ \də\/	genießen|/ɡəˈniːsn̩/	اِسْتَمْتَعَ|aistamtaaa	欣赏|xīn shǎng	наслажда́ться|naslazhdatsya	disfrutar|/d̪isfɾuˈt̪aɾ/
+enough	health	достаточно	понятие или предмет: достаточно	enough|/iˈnəf/	suffisamment|/syfizamɑ̃/	genug|/ɡəˈnuːk/	تَمَامًا|tamaamana	足够|zú gòu	доста́точно|dostatochno	suficientemente|/sufiˌsjẽn̪t̪eˈmẽn̪t̪e/
+excited	health	возбуждённый	понятие или предмет: возбуждённый	excited|/ɪkˈsaɪtəd/	excité|/ɛksite/	erregt|/ɛɐ̯ˈʁeːkt/	مُتَحَمِّس|mutahamis	兴奋|xīng fèn	возбуждённый|vozbuzhdennyi	entusiasmado|/ẽn̪t̪usjasˈmað̞o/
+feel	health	чувствовать	действие: чувствовать	feel|/ˈfiɫ/	sentir|/sɑ̃tiʁ/	fühlen|/ˈfyːlən/	شَعَرَ|shaaara	感觉|gǎn jué	чу́вствовать|chuvstvovat	sentir|/sẽn̪ˈt̪iɾ/
+feeling	health	ощущение	понятие или предмет: ощущение	feeling|/ˈfiɫɪŋ/	sensation|/sɑ̃sasjɔ̃/	Gefühl|/ɡəˈfyːl/	شُعُور|shuauwr	感受|gǎn shòu	ощуще́ние|oshchushchenie	sentimiento|/sẽn̪t̪iˈmjẽn̪t̪o/
+free	health	свободный	понятие или предмет: свободный	free|/ˈfɹi/	libre|/libʁ/	frei|/fʁaɪ̯/	حُرّ|hur	自由的|zì yóu de	свобо́дный|svobodnyi	libre|/ˈliβ̞ɾe/
+fun	health	веселье	понятие или предмет: веселье	fun|/ˈfən/	amusement|/amyzmɑ̃/	Spaß|/ʃpaːs/	مَرَح|marah	乐趣|lè qù	весе́лье|vesele	diversión|/d̪iβ̞eɾˈsjõn/
+funny	health	смешной	понятие или предмет: смешной	funny|/ˈfəni/	drôle|/dʁol/	lustig|/ˈlʊstɪk/	مُضْحِك|mudhik	可笑|kě xiào	смешно́й|smeshnoi	divertido|/d̪iβ̞eɾˈt̪ið̞o/
+hard	health	твёрдый	понятие или предмет: твёрдый	hard|/ˈhɑɹd/	dur|/dyʁ/	hart|/haʁt/	صُلْب|sulb	硬|yìng	твёрдый|tverdyi	duro|/ˈd̪uɾo/
+hate	health	ненавидеть	действие: ненавидеть	hate|/ˈheɪt/	haïr|/ʼaiʁ/	hassen|/ˈhasn̩/	كَرِهَ|kariha	恨|hèn	ненави́деть|nenavidet	odiar|/oˈð̞jaɾ/
+health	health	здоровье	понятие или предмет: здоровье	health|/ˈhɛɫθ/	santé|/sɑ̃te/	Gesundheit|/ɡəˈzʊnthaɪ̯t/	صِحَّة|sihaa	健康状况|jiàn kāng zhuàng kuàng	здоро́вье|zdorove	salud|/saˈluð̞/
+basketball	health	баскетбол	понятие или предмет: баскетбол	basketball|/ˈbæskətˌbɔɫ/	basket-ball|/baskɛtbol/	Basketball|/ˈbaskətˌbal/	كُرَة اَلسَّلَّة|kuraa aalsalaa	篮球|lán qiú	баскетбо́л|basketbol	baloncesto|/balonθesto/
+like	health	любить	действие: любить	like|/ˈɫaɪk/	aimer|/ɛme/	mögen|/ˈmøːɡn̩/	حَبَّ|haba	喜欢|xǐ huān	люби́ть|lyubit	gustar|/gusˈt̪aɾ/
+negative	health	отрицательный	понятие или предмет: отрицательный	negative|/ˈnɛɡətɪv/	négatif|/negatif/	negativ|/neɡaˈtiːf/	سَلْبِيّ|salbiy	否定的|fǒu dìng de	отрица́тельный|otritsatelnyi	negativo|/neɣ̞aˈt̪iβ̞o/
+nice	health	милый	понятие или предмет: милый	nice|/ˈnaɪs/	gentil|/ʒɑ̃ti/	sympathisch|/zʏmˈpaːtɪʃ/	جَيِّد|jayid	美好的|měi hǎo de	ми́лый|milyi	amable|/amaβle/
+poor	health	бедный	понятие или предмет: бедный	poor|/ˈpuɹ/	pauvre|/povʁ/	bedürftig|/bəˈdʏʁftɪk/	فَقِير|faqiyr	贫穷|pín qióng	бе́дный|bednyi	pobre|/ˈpoβ̞ɾe/
+positive	health	положительный	понятие или предмет: положительный	positive|/ˈpɑzətɪv/	positif|/pozitif/	positiv|/poziˈtiːf/	مُوجَب|muwjab	确定的|què dìng de	положи́тельный|polozhitelnyi	positivo|/posiˈt̪iβ̞o/
+relax	health	расслабляться	действие: расслабляться	relax|/ɹiˈɫæks/	se détendre|/sə detɑ̃dʁ/	sich entspannen|/zɪç ɛntˈʃpanən/	اِسْتَرْخَى|aistarkhaa	放松|fàng sōng	расслабля́ться|rasslablyatsya	relajarse|/relaˈxaɾse/
+tennis	health	теннис	понятие или предмет: теннис	tennis|/ˈtɛnəs/	tennis|/tenis/	Tennis|/ˈtɛnɪs/	تَنِس|tanis	网球|wǎng qiú	те́ннис|tennis	tenis|/ˈt̪enis/
+smart	health	сообразительный	понятие или предмет: сообразительный	smart|/ˈsmɑɹt/	habile|/abil/	klug|/kluːk/	شَاطِر|shaatir	机灵|jī líng	сообрази́тельный|soobrazitelnyi	listo|/ˈlist̪o/
+strong	health	сильный	понятие или предмет: сильный	strong|/ˈstɹɔŋ/	fort|/fɔʁ/	stark|/ʃtaʁk/	قَوِيّ|qawiy	强|qiáng	си́льный|silnyi	fuerte|/ˈfweɾt̪e/
+terrible	health	ужасный	понятие или предмет: ужасный	terrible|/ˈtɛɹəbəɫ/	terrible|/tɛʁibl/	schrecklich|/ˈʃʁɛklɪç/	فَظِيع|faziya	诡异的|guǐ yì de	ужа́сный|uzhasnyi	terrible|/t̪eˈriβ̞le/
+wonderful	health	замечательный	понятие или предмет: замечательный	wonderful|/ˈwəndɝfəɫ/	merveilleux|/mɛʁvɛjø/	wunderbar|/ˈvʊndɐbaːɐ̯/	عَجِيب|aajiyb	棒|bàng	замеча́тельный|zamechatelnyi	maravilloso|/maɾaβ̞iˈʝoso/
+young	health	молодой	понятие или предмет: молодой	young|/ˈjəŋ/	jeune|/ʒœn/	jung|/jʊŋ/	صَغِير|saghiyr	年轻|nián qīng	молодо́й|molodoi	joven|/ˈxoβ̞ẽn/
+beautiful	health	красивый	понятие или предмет: красивый	beautiful|/ˈbjutəfəɫ/	beau|/bo/	schön|/ʃøːn/	مَلِيح|maliyh	美|měi	краси́вый|krasivyi	hermoso|/eɾˈmoso/
+easy	health	лёгкий	понятие или предмет: лёгкий	easy|/ˈizi/	facile|/fasil/	leicht|/laɪ̯çt/	سَهْل|sahl	容易|róng yì	лёгкий|legkii	fácil|/ˈfasil/
+cool	health	прохладный	понятие или предмет: прохладный	cool|/ˈkuɫ/	frais|/fʁɛ/	kühl|/kyːl/	بَارِد|baarid	凉快|liáng kuài	прохла́дный|prokhladnyi	fresco|/ˈfɾesko/
+great	health	отличный	понятие или предмет: отличный	great|/ˈɡɹeɪt/	excellent|/ɛkselɑ̃/	großartig|/ˈɡʁoːsˌʔaːɐ̯tɪk/	مُمْتَاز|mumtaaz	很棒|hěn bàng	отли́чный|otlichnyi	genial|/xeˈnjal/
+exercise	health	упражнение	понятие или предмет: упражнение	exercise|/ˈɛksɝˌsaɪz/	exercice|/ɛgzɛʁsis/	Training|/ˈtʁeːnɪŋ/	تَمْرِين|tamriyn	练习|liàn xí	упражне́ние|uprazhnenie	ejercicio|/exeɾˈsisjo/
+important	health	важный	понятие или предмет: важный	important|/ˌɪmˈpɔɹtənt/	important|/ɛ̃pɔʁtɑ̃/	wichtig|/ˈvɪçtɪk/	مُهِمّ|muhim	重要|zhòng yào	ва́жный|vazhnyi	importante|/ĩmpoɾˈt̪ãn̪t̪e/
+show	health	представление	понятие или предмет: представление	show|/ˈʃoʊ/	spectacle|/spɛktakl/	Show|/ʃoː/	عَرْض|aard	表演|biǎo yǎn	представле́ние|predstavlenie	espectáculo|/espekˈt̪akulo/
+swimming	health	плавание	понятие или предмет: плавание	swimming|/ˈswɪmɪŋ/	natation|/natasjɔ̃/	Schwimmen|/ˈʃvɪmən/	سِبَاحَة|sibaahaa	游泳|yóu yǒng	пла́вание|plavanie	natación|/nat̪aˈsjõn/
+football	health	футбол	понятие или предмет: футбол	football|/ˈfʊtˌbɔɫ/	football|/futbol/	Fußball|/ˈfuːsˌbal/	كُرَة اَلْقَدَم|kuraa aalqadam	足球|zú qiú	футбо́л|futbol	fútbol|/ˈfut̪β̞ol/
+add	actions	добавлять	действие: добавлять	add|/ˈæd/	ajouter|/aʒute/	hinzufügen|/hɪnˈt͡suːˌfyːɡn̩/	أَضَافَ|aadaafa	加|jiā	добавля́ть|dobavlyat	añadir|/aɲaðiɾ/
+become	actions	становиться	действие: становиться	become|/bɪˈkəm/	devenir|/dəvniʁ/	werden|/ˈveːɐ̯dn̩/	صَارَ|saara	成|chéng	станови́ться|stanovitsya	volverse|/bolˈβ̞eɾse/
+begin	actions	начать	действие: начать	begin|/bɪˈɡɪn/	démarrer|/demaʁe/	beginnen|/bəˈɡɪnən/	اِبْتَدَأَ|aibtadaaa	開始|kāi shǐ	нача́ть|nachat	comenzar|/komẽnˈsaɾ/
+believe	actions	верить	действие: верить	believe|/bɪˈɫiv/	croire|/kʁwaʁ/	glauben|/ˈɡlaʊ̯bn̩/	صَدَّقَ|sadaqa	相信|xiāng xìn	ве́рить|verit	creer|/kɾeˈeɾ/
+bring	actions	приносить	действие: приносить	bring|/ˈbɹɪŋ/	apporter|/apɔʁte/	bringen|/ˈbʁɪŋən/	أَحْضَرَ|aahdara	带来|dài lái	приноси́ть|prinosit	traer|/t̪ɾaˈeɾ/
+build	actions	строить	действие: строить	build|/ˈbɪɫd/	construire|/kɔ̃stʁɥiʁ/	bauen|/ˈbaʊ̯ən/	بَنَى|banaa	建設|jiàn shè	стро́ить|stroit	construir|/kõnsˈt̪ɾwiɾ/
+choose	actions	выбирать	действие: выбирать	choose|/ˈtʃuz/	choisir|/ʃwaziʁ/	wählen|/ˈvɛːlən/	اِخْتَارَ|aikhtaara	选择|xuǎn zé	выбира́ть|vybirat	escoger|/eskoˈxeɾ/
+close	actions	закрывать	действие: закрывать	close|/ˈkɫoʊs/	fermer|/fɛʁme/	schließen|/ˈʃliːsn̩/	أَغْلَقَ|aaghlaqa	关|guān	закрыва́ть|zakryvat	cerrar|/seˈraɾ/
+cut	actions	резать	действие: резать	cut|/ˈkət/	couper|/kupe/	schneiden|/ˈʃnaɪ̯dn̩/	قَطَعَ|qataaa	切|qiè	ре́зать|rezat	cortar|/koɾˈt̪aɾ/
+decide	actions	решать	действие: решать	decide|/ˌdɪˈsaɪd/	décider|/deside/	entscheiden|/ɛntˈʃaɪ̯dn̩/	قَرَّرَ|qarara	决定|jué dìng	реша́ть|reshat	decidir|/d̪esiˈð̞iɾ/
+die	actions	умирать	действие: умирать	die|/ˈdaɪ/	mourir|/muʁiʁ/	sterben|/ˈʃtɛʁbn̩/	مَاتَ|maata	死|sǐ	умира́ть|umirat	morir|/moˈɾiɾ/
+do	actions	делать	действие: делать	do|/ˈdu/	faire|/fɛʁ/	tun|/tjuːn/	فَعَلَ|faaala	做|zuò	де́лать|delat	hacer|/aˈseɾ/
+draw	actions	рисовать	действие: рисовать	draw|/ˈdɹɔ/	dessiner|/desine/	zeichnen|/ˈt͡saɪ̯çnən/	رَسَمَ|rasama	画|huà	рисова́ть|risovat	dibujar|/d̪iβ̞uˈxaɾ/
+find	actions	находить	действие: находить	find|/ˈfaɪnd/	trouver|/tʁuve/	finden|/ˈfɪndn̩/	وَجَدَ|wajada	找到|zhǎo dào	находи́ть|nakhodit	encontrar|/ẽŋkõn̪ˈt̪ɾaɾ/
+finish	actions	заканчивать	действие: заканчивать	finish|/ˈfɪnɪʃ/	finir|/finiʁ/	beenden|/bəˈʔɛndn̩/	فَرَغَ|faragha	完成|wán chéng	зака́нчивать|zakanchivat	terminar|/t̪eɾmiˈnaɾ/
+forget	actions	забывать	действие: забывать	forget|/fɝˈɡɛt/	oublier|/ublije/	vergessen|/fɛɐ̯ˈɡɛsn̩/	نَسِيَ|nasiya	忘记|wàng jì	забыва́ть|zabyvat	olvidar|/olβ̞iˈð̞aɾ/
+get	actions	доставать	действие: доставать	get|/ˈɡɛt/	obtenir|/ɔptəniʁ/	besorgen|/bəˈzɔʁɡn̩/	اِسْتَلَمَ|aistalama	获得|huò dé	достава́ть|dostavat	conseguir|/kõnseˈɣ̞iɾ/
+grow	actions	расти	действие: расти	grow|/ˈɡɹoʊ/	grandir|/gʁɑ̃diʁ/	wachsen|/ˈvaksn̩/	نَمَى|namaa	生长|shēng zhǎng	расти́|rasti	crecer|/kɾeˈseɾ/
+happen	actions	происходить	действие: происходить	happen|/ˈhæpən/	se produire|/sə pʁɔdɥiʁ/	geschehen|/ɡəˈʃeːən/	حَدَثَ|hadatha	发生|fā shēng	происходи́ть|proiskhodit	ocurrir|/okuˈriɾ/
+hear	actions	слышать	действие: слышать	hear|/ˈhiɹ/	entendre|/ɑ̃tɑ̃dʁ/	hören|/ˈhøːʁən/	سَمِعَ|samiaa	听见|tīng jiàn	слы́шать|slyshat	oír|/oˈiɾ/
+imagine	actions	представлять	действие: представлять	imagine|/ˌɪˈmædʒən/	imaginer|/imaʒine/	einbilden|/ˈaɪ̯nˌbɪldn̩/	تَخَيَّلَ|takhayala	想像|xiǎng xiàng	представля́ть|predstavlyat	imaginar|/imaxiˈnaɾ/
+keep	actions	хранить	действие: хранить	keep|/ˈkip/	garder|/gaʁde/	behalten|/bəˈhaltn̩/	اِحْتَفَظَ|aihtafaza	保持|bǎo chí	храни́ть|khranit	guardar|/gwaɾˈð̞aɾ/
+know	actions	знать	действие: знать	know|/ˈnoʊ/	savoir|/savwaʁ/	wissen|/ˈvɪsn̩/	عَرَفَ|aarafa	懂|dǒng	знать|znat	saber|/saˈβ̞eɾ/
+learn	actions	учиться	действие: учиться	learn|/ˈɫɝn/	apprendre|/apʁɑ̃dʁ/	lernen|/ˈlɛʁnən/	تَعَلَّمَ|taaalama	学会|xué huì	учи́ться|uchitsya	aprender|/apɾendeɾ/
+let	actions	позволять	действие: позволять	let|/ˈɫɛt/	permettre|/pɛʁmɛtʁ/	erlauben|/ɛɐ̯ˈlaʊ̯bn̩/	سَمَحَ|samaha	让|ràng	позволя́ть|pozvolyat	permitir|/peɾmiˈt̪iɾ/
+lose	actions	терять	действие: терять	lose|/ˈɫuz/	perdre|/pɛʁdʁ/	verlieren|/fɛɐ̯ˈliːʁən/	خَسِرَ|khasira	丢|diū	теря́ть|teryat	perder|/peɾˈð̞eɾ/
+change	actions	менять	понятие или предмет: менять	change|/ˈtʃeɪndʒ/	changer|/ʃɑ̃ʒe/	ändern|/ˈɛndɐn/	غَيَّرَ|ghayara	改变|gǎi biàn	меня́ть|menyat	cambiar|/kamˈbjaɾ/
+meet	actions	встречать	действие: встречать	meet|/ˈmit/	rencontrer|/ʁɑ̃kɔ̃tʁe/	treffen|/ˈtʁɛfn̩/	لَاقَى|laaqaa	遇见|yù jiàn	встреча́ть|vstrechat	quedar|/keˈð̞aɾ/
+miss	actions	скучать по	действие: скучать по	miss|/ˈmɪs/	manquer|/mɑ̃ke/	vermissen|/fɛɐ̯ˈmɪsn̩/	اِشْتَاقَ إِلَى|aishtaaqa iilaa	想念|xiǎng niàn	скуча́ть по|skuchat po	extrañar|/ekstɾaˈɲaɾ/
+prefer	actions	предпочитать	действие: предпочитать	prefer|/pɹəˈfɝ/	préférer|/pʁefeʁe/	vorziehen|/ˈfoːɐ̯ˌt͡siːən/	فَضَّلَ|fadala	比较喜欢|bǐ jiào xǐ huān	предпочита́ть|predpochitat	preferir|/pɾefeˈɾiɾ/
+put	actions	класть	действие: класть	put|/ˈpʊt/	placer|/plase/	setzen|/ˈzɛt͡sn̩/	وَضَعَ|wadaaa	放|fàng	класть|klast	poner|/poˈneɾ/
+remember	actions	помнить	действие: помнить	remember|/ɹiˈmɛmbɝ/	se rappeler|/\sə ʁa.ple\/	sich erinnern|/zɪç ɛɐ̯ˈʔɪnɐn/	تَذَكَّرَ|tadhakara	记得|jì de	по́мнить|pomnit	recordar|/rekoɾˈð̞aɾ/
+sell	actions	продавать	действие: продавать	sell|/ˈsɛɫ/	vendre|/vɑ̃dʁ/	verkaufen|/fɛɐ̯ˈkaʊ̯fn̩/	بَاعَ|baaaa	卖|mài	продава́ть|prodavat	vender|/bẽn̪ˈd̪eɾ/
+send	actions	посылать	действие: посылать	send|/ˈsɛnd/	envoyer|/ɑ̃vwaje/	senden|/ˈzɛndn̩/	أَرْسَلَ|aarsala	送|sòng	посыла́ть|posylat	enviar|/ẽmˈbjaɾ/
+sing	actions	петь	действие: петь	sing|/ˈsɪŋ/	chanter|/ʃɑ̃te/	singen|/ˈzɪŋən/	غَنَّى|ghanaa	唱歌|chàng gē	петь|pet	cantar|/kãn̪ˈt̪aɾ/
+watch	actions	наручные часы	понятие или предмет: наручные часы	watch|/ˈwɑtʃ/	montre|/mɔ̃tʁ/	Uhr|/uːɐ̯/	سَاعَة يَد|saaaaa yad	手表|shǒu biǎo	нару́чные часы́|naruchnye chasy	reloj|/reˈlox/
+try	actions	пытаться	действие: пытаться	try|/ˈtɹaɪ/	essayer|/eseje/	versuchen|/fɛɐ̯ˈzuːxn̩/	حَاوَلَ|haawala	尝试|cháng shì	пыта́ться|pytatsya	intentar|/ĩn̪t̪ẽn̪ˈt̪aɾ/
+understand	actions	понимать	действие: понимать	understand|/ˌəndɝˈstænd/	comprendre|/kɔ̃pʁɑ̃dʁ/	verstehen|/fɛɐ̯ˈʃteːən/	فَهِمَ|fahima	明白|míng bái	понима́ть|ponimat	entender|/ẽn̪t̪ẽn̪ˈd̪eɾ/
+use	actions	использовать	действие: использовать	use|/ˈjus/	utiliser|/ytilize/	benutzen|/bəˈnʊt͡sn̩/	اِسْتَعْمَلَ|aistaamala	用|yòng	испо́льзовать|ispolzovat	usar|/uˈsaɾ/
+win	actions	побеждать	действие: побеждать	win|/ˈwɪn/	gagner|/gaɲe/	gewinnen|/ɡəˈvɪnən/	رَبِحَ|rabiha	赢|yíng	побежда́ть|pobezhdat	ganar|/gaˈnaɾ/
+amazing	descriptions	изумительный	понятие или предмет: изумительный	amazing|/əˈmeɪzɪŋ/	étonnant|/etɔnɑ̃/	erstaunlich|/ɛɐ̯ˈʃtaʊ̯nlɪç/	مُدْهِش|mudhish	精彩|jīng cǎi	изуми́тельный|izumitelnyi	asombroso|/asombɾoso/
+better	descriptions	лучше	понятие или предмет: лучше	better|/ˈbɛtɝ/	meilleur|/mɛjœʁ/	besser|/ˈbɛsɐ/	أَفْضَل|aafdal	更好|gèng hǎo	лу́чше|luchshe	mejor|/meˈxoɾ/
+blond	descriptions	русый	понятие или предмет: русый	blond|/ˈbɫɑnd/	blond|/blɔ̃/	blond|/blɔnt/	أَشْقَر|aashqar	金发|jīn fà	ру́сый|rusyi	rubio|/ˈruβ̞jo/
+brown	descriptions	коричневый	понятие или предмет: коричневый	brown|/ˈbɹaʊn/	brun|/bʁœ̃/	braun|/bʁaʊ̯n/	أَسْمَر|aasmar	褐色|hè sè	кори́чневый|korichnevyi	marrón|/maˈrõn/
+busy	descriptions	занятой	понятие или предмет: занятой	busy|/ˈbɪzi/	occupé|/ɔkype/	beschäftigt|/bəˈʃɛftɪkt/	مَشْغُول|mashghuwl	忙|máng	занято́й|zanyatoi	ocupado|/okuˈpað̞o/
+different	descriptions	другой	понятие или предмет: другой	different|/ˈdɪfɝənt/	différent|/difeʁɑ̃/	verschieden|/fɛɐ̯ˈʃiːdn̩/	مُخْتَلِف|mukhtalif	不一样|bù yí yàng	друго́й|drugoi	diferente|/d̪ifeˈɾẽn̪t̪e/
+difficult	descriptions	трудный	понятие или предмет: трудный	difficult|/ˈdɪfəkəɫt/	difficile|/difisil/	schwer|/ʃveːɐ̯/	صَعْب|saab	难|nán	тру́дный|trudnyi	difícil|/d̪iˈfisil/
+fantastic	descriptions	чудесный	понятие или предмет: чудесный	fantastic|/fænˈtæstɪk/	fantastique|/fɑ̃tastik/	fantastisch|/fanˈtastɪʃ/	رَائِع|raaiia	奇妙|qí miào	чуде́сный|chudesnyi	fantástico|/fãn̪ˈt̪ast̪iko/
+friendly	descriptions	дружелюбный	понятие или предмет: дружелюбный	friendly|/ˈfɹɛndɫi/	amical|/amikal/	freundlich|/ˈfʁɔɪ̯ntlɪç/	لَطِيف|latiyf	友好|yǒu hǎo	дружелю́бный|druzhelyubnyi	amistoso|/amistoso/
+gray	descriptions	серый	понятие или предмет: серый	gray|/ˈɡɹeɪ/	gris|/gʁi/	grau|/ɡʁaʊ̯/	رَمَادِيّ|ramaadiy	灰色|huī sè	се́рый|seryi	gris|/ˈgɾis/
+green	descriptions	зелёный	понятие или предмет: зелёный	green|/ˈɡɹin/	vert|/vɛʁ/	grün|/ɡʁyːn/	أَخْضَر|aakhdar	绿色的|lǜ sè de	зелёный|zelenyi	verde|/ˈbeɾð̞e/
+kind	descriptions	добрый	понятие или предмет: добрый	kind|/ˈkaɪnd/	aimable|/ɛmabl/	gütig|/ˈɡyːtɪk/	طَيِّب|tayib	善良|shàn liáng	до́брый|dobryi	bondadoso|/bondaˈðoso/
+difference	descriptions	различие	понятие или предмет: различие	difference|/ˈdɪfɝəns/	différence|/difeʁɑ̃s/	Unterschied|/ˈʊntɐˌʃiːt/	فَرْق|farq	差别|chā bié	разли́чие|razlichie	diferencia|/d̪ifeˈɾẽnsja/
+long	descriptions	длинный	понятие или предмет: длинный	long|/ˈɫɔŋ/	long|/lɔ̃/	lang|/laŋ/	طَوِيل|tawiyl	长|zhǎng	дли́нный|dlinnyi	largo|/ˈlaɾɣ̞o/
+main	descriptions	главный	понятие или предмет: главный	main|/ˈmeɪn/	principal|/pʁɛ̃sipal/	haupt-|/haʊ̯pt/	رَئِيسِيّ|raiiysiy	首要|shǒu yào	гла́вный|glavnyi	principal|/pɾĩnsiˈpal/
+married	descriptions	женатый	понятие или предмет: женатый	married|/ˈmɛɹid/	mariée|/maʁje/	verheiratet|/fɛɐ̯ˈhaɪ̯ʁaːtət/	مُتَزَوِّج|mutazawij	已婚|yǐ hūn	жена́тый|zhenatyi	casado|/kaˈsað̞o/
+modern	descriptions	современный	понятие или предмет: современный	modern|/ˈmɑdɝn/	moderne|/mɔdɛʁn/	modern|/moˈdɛʁn/	عَصْرِيّ|aasriy	现代的|xiàn dài de	совреме́нный|sovremennyi	moderno|/moˈð̞eɾno/
+natural	descriptions	природный	понятие или предмет: природный	natural|/ˈnætʃɝəɫ/	naturel|/natyʁɛl/	natürlich|/naˈtyːɐ̯lɪç/	طَبِيعِيّ|tabiyaiy	自然的|zì rán de	приро́дный|prirodnyi	natural|/nat̪uˈɾal/
+perfect	descriptions	совершенный	понятие или предмет: совершенный	perfect|/ˈpɝˌfɪkt/	parfait|/paʁfɛ/	perfekt|/ˈpɛʁfɛkt/	كَامِل|kaamil	完美|wán měi	соверше́нный|sovershennyi	perfecto|/peɾˈfekt̪o/
+pink	descriptions	розовый	понятие или предмет: розовый	pink|/ˈpɪŋk/	rose|/ʁoz/	pink|/pɪŋk/	زَهْرِيّ|zahriy	粉红色|fěn hóng sè	ро́зовый|rozovyi	rosado|/roˈsað̞o/
+popular	descriptions	популярный	понятие или предмет: популярный	popular|/ˈpɑpjəɫɝ/	populaire|/pɔpylɛʁ/	populär|/popuˈlɛːɐ̯/	شَعْبِيّ|shaabiy	受欢迎的|shòu huān yíng de	популя́рный|populyarnyi	popular|/popuˈlaɾ/
+possible	descriptions	возможный	понятие или предмет: возможный	possible|/ˈpɑsəbəɫ/	possible|/pɔsibl/	möglich|/ˈmøːklɪç/	مُمْكِن|mumkin	可能|kě néng	возмо́жный|vozmozhnyi	posible|/poˈsiβ̞le/
+pretty	descriptions	хорошенький	понятие или предмет: хорошенький	pretty|/ˈpɹɪti/	joli|/ʒɔli/	anmutig|/ˈanmuːtɪk/	جَمِيل|jamiyl	漂亮|piào liàng	хоро́шенький|khoroshenkii	bonito|/boˈnit̪o/
+purple	descriptions	фиолетовый	понятие или предмет: фиолетовый	purple|/ˈpɝpəɫ/	violet|/vjɔlɛ/	purpurn|/ˈpuːɐ̯puːɐ̯n/	أُرْجُوَانِيّ|aurjuwaaniy	紫色|zǐ sè	фиоле́товый|fioletovyi	morado|/moˈɾað̞o/
+quick	descriptions	быстрый	понятие или предмет: быстрый	quick|/ˈkwɪk/	rapide|/ʁapid/	schnell|/ʃnɛl/	سَرِيع|sariya	快|kuài	бы́стрый|bystryi	rápido|/ˈrapið̞o/
+quiet	descriptions	тихий	понятие или предмет: тихий	quiet|/ˈkwaɪət/	calme|/kalm/	still|/ʃtɪl/	صَامِت|saamit	安静|ān jìng	ти́хий|tikhii	quieto|/ˈkjet̪o/
+real	descriptions	настоящий	понятие или предмет: настоящий	real|/ˈɹiɫ/	réel|/ʁeɛl/	wirklich|/ˈvɪʁklɪç/	حَقِيقِيّ|haqiyqiy	真的|zhēn de	настоя́щий|nastoyashchii	real|/reˈal/
+same	descriptions	одинаковый	понятие или предмет: одинаковый	same|/ˈseɪm/	même|/mɛm/	selbe|/ˈzɛlbə/	نَفْسَهُ|nafsahu	同一|tóng yī	одина́ковый|odinakovyi	mismo|/ˈmismo/
+similar	descriptions	подобный	понятие или предмет: подобный	similar|/ˈsɪməɫɝ/	similaire|/similɛʁ/	ähnlich|/ˈɛːnlɪç/	مُمَاثِل|mumaathil	类似|lèi sì	подо́бный|podobnyi	similar|/simiˈlaɾ/
+slow	descriptions	медленный	понятие или предмет: медленный	slow|/ˈsɫoʊ/	lent|/lɑ̃/	langsam|/ˈlaŋzaːm/	بَطِيء|batiy	慢|màn	ме́дленный|medlennyi	lento|/ˈlẽn̪t̪o/
+special	descriptions	особый	понятие или предмет: особый	special|/ˈspɛʃəɫ/	spécial|/spesjal/	speziell|/ʃpeˈt͡si̯ɛl/	خَاصّ|khaas	特别的|tè bié de	осо́бый|osobyi	especial|/espeˈsjal/
+sure	descriptions	уверенный	понятие или предмет: уверенный	sure|/ˈʃʊɹ/	sûr|/syʁ/	sicher|/ˈzɪçɐ/	أَكِيد|aakiyd	确定|què dìng	уве́ренный|uverennyi	seguro|/seˈɣ̞uɾo/
+point	descriptions	точка	понятие или предмет: точка	point|/ˈpɔɪnt/	point|/pwɛ̃/	Punkt|/pʊŋkt/	نُقْطَة|nuqtaa	点|diǎn	то́чка|tochka	punto|/ˈpũn̪t̪o/
+true	descriptions	верный	понятие или предмет: верный	true|/ˈtɹu/	vrai|/vʁɛ/	wahr|/vaːɐ̯/	حَقّ|haq	真|zhēn	ве́рный|vernyi	cierto|/ˈsjeɾt̪o/
+wrong	descriptions	неправильный	понятие или предмет: неправильный	wrong|/ˈɹɔŋ/	erroné|/ɛʁɔne/	falsch|/falʃ/	خَاطِئ|khaatii	错|cuò	непра́вильный|nepravilnyi	incorrecto|/ĩŋkoˈrekt̪o/
+yellow	descriptions	жёлтый	понятие или предмет: жёлтый	yellow|/ˈjɛɫoʊ/	jaune|/ʒon/	gelb|/ɡɛlp/	أَصْفَر|aasfar	黄色|huáng sè	жёлтый|zheltyi	amarillo|/amaɾiʎo/
+only	descriptions	единственный	понятие или предмет: единственный	only|/ˈoʊnɫi/	unique|/ynik/	einzig|/ˈaɪ̯nt͡sɪk/	وَحِيد|wahiyd	唯一|wéi yī	еди́нственный|edinstvennyi	único|/ˈuniko/
+common	descriptions	общий	понятие или предмет: общий	common|/ˈkɑmən/	commun|/kɔmœ̃/	gemeinsam|/ɡəˈmaɪ̯nzaːm/	شَائِع|shaaiia	共同|gòng tóng	о́бщий|obshchii	común|/koˈmũn/
+very	descriptions	очень	понятие или предмет: очень	very|/ˈvɛɹi/	très|/tʁɛ/	sehr|/zeːɐ̯/	جِدًّا|jidana	很|hěn	о́чень|ochen	muy|/ˈmuj/
+famous	descriptions	известный	понятие или предмет: известный	famous|/ˈfeɪməs/	fameux|/famø/	bekannt|/bəˈkant/	مَشْهُور|mashhuwr	有名|yǒu míng	изве́стный|izvestnyi	famoso|/faˈmoso/

@@ -28,6 +28,31 @@ TOPICS = (
     "actions",
     "descriptions",
 )
+EXPECTED_SOURCE_ROWS = 500
+ENTRIES_PER_TOPIC = 50
+
+# These polysemous concepts are intentionally pinned to one everyday learning
+# sense across every generated language.  Keeping the checks beside the source
+# builder prevents a future upstream refresh from silently mixing unrelated
+# senses (for example, ``driver`` as an animal handler or ``capital`` as money).
+EXPECTED_ALIGNED_SENSES = {
+    "call": {"en": "call", "fr": "appel", "de": "Anruf", "ar": "اِتِّصَال", "zh": "呼叫", "ru": "звоно́к", "es": "llamada"},
+    "capital": {"en": "capital", "fr": "capitale", "de": "Hauptstadt", "ar": "عَاصِمَة", "zh": "首都", "ru": "столи́ца", "es": "capital"},
+    "card": {"en": "card", "fr": "carte", "de": "Karte", "ar": "بِطَاقَة", "zh": "卡片", "ru": "ка́рточка", "es": "tarjeta"},
+    "driver": {"en": "driver", "fr": "conducteur", "de": "Fahrer", "ar": "سَائِق", "zh": "司机", "ru": "води́тель", "es": "conductor"},
+    "let": {"en": "let", "fr": "permettre", "de": "erlauben", "ar": "سَمَحَ", "zh": "让", "ru": "позволя́ть", "es": "permitir"},
+    "light": {"en": "light", "fr": "lumière", "de": "Licht", "ar": "ضَوْء", "zh": "光", "ru": "свет", "es": "luz"},
+    "miss": {"en": "miss", "fr": "manquer", "de": "vermissen", "ar": "اِشْتَاقَ إِلَى", "zh": "想念", "ru": "скуча́ть по", "es": "extrañar"},
+    "news": {"en": "news", "fr": "nouvelles", "de": "Neuigkeiten", "ar": "أَخْبَار", "zh": "消息", "ru": "но́вости", "es": "noticias"},
+    "note": {"en": "note", "fr": "note", "de": "Notiz", "ar": "مُلَاحَظَة", "zh": "字条", "ru": "заме́тка", "es": "nota"},
+    "point": {"en": "point", "fr": "point", "de": "Punkt", "ar": "نُقْطَة", "zh": "点", "ru": "то́чка", "es": "punto"},
+    "present": {"en": "present", "fr": "cadeau", "de": "Geschenk", "ar": "هَدِيَّة", "zh": "礼物", "ru": "пода́рок", "es": "regalo"},
+    "sentence": {"en": "sentence", "fr": "phrase", "de": "Satz", "ar": "جُمْلَة", "zh": "句子", "ru": "предложе́ние", "es": "oración"},
+    "spell": {"en": "spell", "fr": "épeler", "de": "buchstabieren", "ar": "هَجَّى", "zh": "拼写", "ru": "произноси́ть по бу́квам", "es": "deletrear"},
+    "spelling": {"en": "spelling", "fr": "orthographe", "de": "Rechtschreibung", "ar": "تَهْجِئَة", "zh": "拼写法", "ru": "правописа́ние", "es": "ortografía"},
+    "subject": {"en": "subject", "fr": "matière", "de": "Schulfach", "ar": "مَادَّة دِرَاسِيَّة", "zh": "学科", "ru": "уче́бный предме́т", "es": "asignatura"},
+    "watch": {"en": "watch", "fr": "montre", "de": "Uhr", "ar": "سَاعَة يَد", "zh": "手表", "ru": "нару́чные часы́", "es": "reloj"},
+}
 
 
 @dataclass(frozen=True)
@@ -107,8 +132,10 @@ def load_rows(path: Path = SOURCE) -> list[dict[str, str]]:
             raise SourceError(f"unexpected header in {path.relative_to(ROOT)}")
         rows = list(reader)
 
-    if len(rows) != 100:
-        raise SourceError(f"expected 100 source rows, found {len(rows)}")
+    if len(rows) != EXPECTED_SOURCE_ROWS:
+        raise SourceError(
+            f"expected {EXPECTED_SOURCE_ROWS} source rows, found {len(rows)}"
+        )
 
     entry_ids: set[str] = set()
     targets = {pack.language: set() for pack in PACKS}
@@ -132,6 +159,11 @@ def load_rows(path: Path = SOURCE) -> list[dict[str, str]]:
             target, _, _, _ = _parse_cell(
                 row[pack.language], row=number, language=pack.language
             )
+            expected = EXPECTED_ALIGNED_SENSES.get(entry_id, {}).get(pack.language)
+            if expected is not None and target != expected:
+                raise SourceError(
+                    f"row {number}: {entry_id}.{pack.language} must stay {expected!r}"
+                )
             target_key = target.casefold()
             if target_key in targets[pack.language]:
                 raise SourceError(
@@ -139,8 +171,11 @@ def load_rows(path: Path = SOURCE) -> list[dict[str, str]]:
                 )
             targets[pack.language].add(target_key)
 
-    if topic_counts != Counter({topic: 10 for topic in TOPICS}):
-        raise SourceError(f"expected ten entries per topic, found {dict(topic_counts)}")
+    if topic_counts != Counter({topic: ENTRIES_PER_TOPIC for topic in TOPICS}):
+        raise SourceError(
+            f"expected {ENTRIES_PER_TOPIC} entries per topic, "
+            f"found {dict(topic_counts)}"
+        )
     return rows
 
 
