@@ -89,6 +89,7 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
                 bot.quick_action_label("add", "ru"),
                 bot.quick_action_label("words", "ru"),
                 bot.quick_action_label("lang", "ru"),
+                bot.quick_action_label("start", "ru"),
             ],
         )
         inline = message.reply_text.await_args_list[1].kwargs["reply_markup"].inline_keyboard

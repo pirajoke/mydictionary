@@ -1183,6 +1183,7 @@ QUICK_ACTION_KEYS = {
     "add": "quick_add_words",
     "words": "quick_my_words",
     "lang": "quick_language",
+    "start": "quick_start_again",
 }
 
 # Exact labels from keyboards already delivered before the learning-first
@@ -1222,6 +1223,8 @@ def quick_action_label(action: str, locale: str | None = None) -> str:
         return f"📖 {label}"
     if action == "lang":
         return f"🌍 {label}"
+    if action == "start":
+        return f"🔄 {label}"
     return label
 
 
@@ -1239,6 +1242,7 @@ def get_quick_actions_keyboard(locale: str | None = None) -> ReplyKeyboardMarkup
                 quick_action_label("words", locale),
                 quick_action_label("lang", locale),
             ],
+            [quick_action_label("start", locale)],
         ],
         resize_keyboard=True,
         one_time_keyboard=False,
@@ -8776,6 +8780,9 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     if action == "lang":
         await cmd_lang.__wrapped__(update, context)
+        return
+    if action == "start":
+        await cmd_start.__wrapped__(update, context)
         return
     if not AI_SETTINGS.enabled:
         await update.message.reply_text(translate("ai_disabled", locale))
