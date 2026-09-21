@@ -54,7 +54,6 @@
   --words-accent-line: color-mix(in srgb, var(--words-accent) 38%, var(--dashboard-line));
   --words-surface-raised: color-mix(in srgb, var(--words-accent) 5%, var(--dashboard-surface));
 }
-#panel-words > header[class~="section-hero"] { display: none; }
 .swipe-trainer { --surface: var(--dashboard-surface); --radius: var(--dashboard-radius); --danger: var(--dashboard-danger); --muted: var(--dashboard-muted); --line: var(--dashboard-line); min-width: 0; padding: 16px 0 22px; border-bottom: 1px solid var(--line); }
 .swipe-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .swipe-heading > div { min-width: 0; }

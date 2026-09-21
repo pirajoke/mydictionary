@@ -19,7 +19,7 @@ class MiniAppWordsClarityV1ContractTest(unittest.TestCase):
         self.assertIn('id="swipe-mode-label"', words)
         self.assertIn('aria-labelledby="swipe-mode-label"', words)
         self.assertIn('aria-describedby="swipe-mode-help"', words)
-        self.assertIn('#panel-words > header[class~="section-hero"] { display: none; }', CSS)
+        self.assertNotIn('#panel-words > header[class~="section-hero"] { display: none; }', CSS)
         self.assertIn("lexi-section-words-v1.webp') }}\" alt=\"\" loading=\"eager\"", words)
 
     def test_ac2_one_start_action_explains_the_selected_mode(self):
