@@ -4072,6 +4072,69 @@ for _locale, _messages in _AI_TUTOR_ECONOMICS_COPY.items():
     _CATALOG[_locale].update(_messages)
 
 
+_AI_INTERACTIVE_QUIZ_COPY = {
+    "en": {
+        "ai_quiz_intro": "🧠 Quick test · {count} questions\nChoose an answer — Lexi will check each one immediately.",
+        "ai_quiz_choose_word": "Choose the word:",
+        "ai_quiz_review_title": "🧾 *Answer review*",
+        "ai_quiz_new": "🧠 New test",
+        "ai_quiz_discuss": "💬 Ask Lexi",
+    },
+    "fr": {
+        "ai_quiz_intro": "🧠 Test rapide · {count} questions\nChoisis une réponse : Lexi vérifiera chacune immédiatement.",
+        "ai_quiz_choose_word": "Choisis le mot :",
+        "ai_quiz_review_title": "🧾 *Correction des réponses*",
+        "ai_quiz_new": "🧠 Nouveau test",
+        "ai_quiz_discuss": "💬 Demander à Lexi",
+    },
+    "de": {
+        "ai_quiz_intro": "🧠 Kurztest · {count} Fragen\nWähle eine Antwort – Lexi prüft jede sofort.",
+        "ai_quiz_choose_word": "Wähle das Wort:",
+        "ai_quiz_review_title": "🧾 *Antwortübersicht*",
+        "ai_quiz_new": "🧠 Neuer Test",
+        "ai_quiz_discuss": "💬 Lexi fragen",
+    },
+    "ja": {
+        "ai_quiz_intro": "🧠 ミニテスト・{count}問\n答えを選ぶと、Lexiがすぐに確認します。",
+        "ai_quiz_choose_word": "単語を選んでください：",
+        "ai_quiz_review_title": "🧾 *回答の振り返り*",
+        "ai_quiz_new": "🧠 新しいテスト",
+        "ai_quiz_discuss": "💬 Lexiに質問",
+    },
+    "ar": {
+        "ai_quiz_intro": "🧠 اختبار سريع · {count} أسئلة\nاختر إجابة، وستتحقق Lexi من كل إجابة فوراً.",
+        "ai_quiz_choose_word": "اختر الكلمة:",
+        "ai_quiz_review_title": "🧾 *مراجعة الإجابات*",
+        "ai_quiz_new": "🧠 اختبار جديد",
+        "ai_quiz_discuss": "💬 اسأل Lexi",
+    },
+    "zh": {
+        "ai_quiz_intro": "🧠 快速测试 · {count} 题\n选择答案，Lexi 会立即检查每一题。",
+        "ai_quiz_choose_word": "选择单词：",
+        "ai_quiz_review_title": "🧾 *答案回顾*",
+        "ai_quiz_new": "🧠 新测试",
+        "ai_quiz_discuss": "💬 问 Lexi",
+    },
+    "ru": {
+        "ai_quiz_intro": "🧠 Быстрый тест · {count} вопросов\nВыбирай ответ — Lexi сразу проверит каждый.",
+        "ai_quiz_choose_word": "Выбери слово:",
+        "ai_quiz_review_title": "🧾 *Разбор ответов*",
+        "ai_quiz_new": "🧠 Новый тест",
+        "ai_quiz_discuss": "💬 Спросить Lexi",
+    },
+    "es": {
+        "ai_quiz_intro": "🧠 Test rápido · {count} preguntas\nElige una respuesta y Lexi comprobará cada una al instante.",
+        "ai_quiz_choose_word": "Elige la palabra:",
+        "ai_quiz_review_title": "🧾 *Revisión de respuestas*",
+        "ai_quiz_new": "🧠 Nuevo test",
+        "ai_quiz_discuss": "💬 Preguntar a Lexi",
+    },
+}
+
+for _locale, _messages in _AI_INTERACTIVE_QUIZ_COPY.items():
+    _CATALOG[_locale].update(_messages)
+
+
 _ZERKALO_COMMUNICATION_COPY = {
     "en": {
         "mirror_progress_facts": "Accuracy {accuracy}% · {tracked} words · {due} due · {streak}-day streak.",

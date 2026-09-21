@@ -652,11 +652,10 @@ class AITutorGeneralChatTest(unittest.IsolatedAsyncioTestCase):
         )
         mirror.assert_not_awaited()
 
-    async def test_ac3_ac4_each_starter_uses_the_grounded_tutor_once(self):
+    async def test_ac3_ac4_progress_starters_use_the_grounded_tutor_once(self):
         expected = {
             "today": "ai_tutor_starter_today_question",
             "review": "ai_tutor_starter_review_question",
-            "quiz": "ai_tutor_starter_quiz_question",
         }
         for action, question_key in expected.items():
             with self.subTest(action=action):
