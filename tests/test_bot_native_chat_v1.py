@@ -29,13 +29,13 @@ class NativeChatEntryTest(unittest.IsolatedAsyncioTestCase):
         return update, SimpleNamespace(user_data={"interface_locale": locale})
 
     def test_persistent_primary_actions_include_native_mode_not_swipe(self):
-        expected = {"continue", "mode", "review", "words", "lang", "add"}
+        expected = {"continue", "mode", "review", "words", "lang", "add", "start"}
         for locale in bot.INTERFACE_LOCALES:
             markup = bot.get_quick_actions_keyboard(locale)
             labels = [button.text for row in markup.keyboard for button in row]
             actions = [bot.quick_action_for_text(label) for label in labels]
             self.assertEqual(set(actions), expected)
-            self.assertEqual(len(actions), 6)
+            self.assertEqual(len(actions), 7)
             self.assertTrue(markup.is_persistent)
             self.assertFalse(markup.one_time_keyboard)
 

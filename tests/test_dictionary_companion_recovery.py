@@ -100,12 +100,16 @@ class DictionaryCompanionRecoveryTest(unittest.IsolatedAsyncioTestCase):
             label = f"📖 {translate('command_dictionary', locale)}"
             language_label = bot.quick_action_label("lang", locale)
             keyboard = bot.get_quick_actions_keyboard(locale)
-            self.assertEqual(len([button for row in keyboard.keyboard for button in row]), 6)
+            self.assertEqual(len([button for row in keyboard.keyboard for button in row]), 7)
             self.assertEqual(
-                keyboard.keyboard[-1][0].text,
+                keyboard.keyboard[-2][0].text,
                 bot.quick_action_label("words", locale),
             )
-            self.assertEqual(keyboard.keyboard[-1][1].text, language_label)
+            self.assertEqual(keyboard.keyboard[-2][1].text, language_label)
+            self.assertEqual(
+                keyboard.keyboard[-1][0].text,
+                bot.quick_action_label("start", locale),
+            )
             self.assertNotIn(
                 label,
                 [button.text for row in keyboard.keyboard for button in row],

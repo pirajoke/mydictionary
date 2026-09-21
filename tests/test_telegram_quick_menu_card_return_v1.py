@@ -29,11 +29,12 @@ def _quick_labels(locale):
         bot.quick_action_label("add", locale),
         bot.quick_action_label("words", locale),
         bot.quick_action_label("lang", locale),
+        bot.quick_action_label("start", locale),
     ]
 
 
 class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
-    def test_ac1_quick_keyboard_has_six_learning_first_actions(self):
+    def test_ac1_quick_keyboard_has_seven_learning_first_actions(self):
         factory = getattr(bot, "get_quick_actions_keyboard", None)
         self.assertTrue(callable(factory), "quick-action keyboard is missing")
         pack_labels = {pack.label for pack in bot.CATALOG.packs}
@@ -157,6 +158,7 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                 f"📊 {translate('command_stats', locale)}": "audit",
                 f"📖 {translate('command_dictionary', locale)}": "dictionary",
                 f"🌍 {translate('command_lang', locale)}": "lang",
+                bot.quick_action_label("start", locale): "start",
             }
             for label, expected in cases.items():
                 with self.subTest(locale=locale, action=expected):

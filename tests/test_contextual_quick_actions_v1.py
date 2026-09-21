@@ -39,11 +39,13 @@ class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
                             bot.quick_action_label("words", locale),
                             bot.quick_action_label("lang", locale),
                         ],
+                        [bot.quick_action_label("start", locale)],
                     ],
                 )
                 flattened = [label for row in reply_labels(markup) for label in row]
-                self.assertEqual(len(flattened), 6)
+                self.assertEqual(len(flattened), 7)
                 self.assertIn("mode", bot.QUICK_ACTION_KEYS)
+                self.assertIn("start", bot.QUICK_ACTION_KEYS)
                 self.assertTrue(all(len(label) <= 64 for label in flattened))
                 self.assertNotIn(f"✨ {translate('command_ai', locale)}", flattened)
                 self.assertNotIn(f"📊 {translate('command_stats', locale)}", flattened)
@@ -64,7 +66,7 @@ class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
                     bot.quick_action_label("mode", locale),
                 )
 
-            for action in ("continue", "mode", "review", "add", "words", "lang"):
+            for action in ("continue", "mode", "review", "add", "words", "lang", "start"):
                 label = bot.quick_action_label(action, locale)
                 with self.subTest(locale=locale, action=action):
                     self.assertEqual(bot.quick_action_for_text(label), action)
@@ -223,6 +225,38 @@ class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
         with patch.object(bot.cmd_learn, "__wrapped__", new=AsyncMock()) as learn:
             await bot.handle_quick_action.__wrapped__(update, context)
         learn.assert_awaited_once_with(update, context)
+
+    async def test_ac4_start_again_uses_start_flow_without_clearing_progress(self):
+        user_data = {
+            "interface_locale": "ru",
+            "block_pos": 2,
+            "block_indices": [4, 5, 6],
+            "xp": 120,
+        }
+        original = {
+            "block_pos": user_data["block_pos"],
+            "block_indices": list(user_data["block_indices"]),
+            "xp": user_data["xp"],
+        }
+        message = SimpleNamespace(
+            text=bot.quick_action_label("start", "ru"),
+            reply_text=AsyncMock(),
+            chat_id=123,
+        )
+        update = SimpleNamespace(
+            message=message,
+            effective_message=message,
+            effective_user=SimpleNamespace(id=1, language_code="ru"),
+        )
+        context = SimpleNamespace(user_data=user_data, args=[])
+
+        with patch.object(bot.cmd_start, "__wrapped__", new=AsyncMock()) as start:
+            await bot.handle_quick_action.__wrapped__(update, context)
+
+        start.assert_awaited_once_with(update, context)
+        self.assertEqual(user_data["block_pos"], original["block_pos"])
+        self.assertEqual(user_data["block_indices"], original["block_indices"])
+        self.assertEqual(user_data["xp"], original["xp"])
 
     async def test_ec1_empty_pack_returns_localized_message_without_callbacks(self):
         message = SimpleNamespace(reply_text=AsyncMock(), chat_id=123)
