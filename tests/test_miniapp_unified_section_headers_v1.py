@@ -60,12 +60,18 @@ class MiniAppUnifiedSectionHeadersV1ContractTest(unittest.TestCase):
         self.assertNotRegex(CSS, r"\.profile-header\s*\{[^}]*min-height:\s*132px")
         self.assertNotRegex(CSS, r"\.section-art\s*\{[^}]*width:\s*(?:58|72)px")
 
+    def test_words_tab_keeps_its_shared_hero_visible(self) -> None:
+        self.assertNotRegex(
+            CSS,
+            r'#panel-words\s*>\s*header\[class~="section-hero"\]\s*\{[^}]*display:\s*none',
+        )
+
     def test_shared_hero_is_compact_and_uses_a_fresh_stylesheet_version(self) -> None:
         header = css_rule(".section-hero")
 
         self.assertIn("min-height: 148px", header)
         self.assertIn("height: clamp(148px, 38vw, 208px)", header)
-        self.assertIn("miniapp.css') }}?v=20260917-card-modes-v1", HTML)
+        self.assertIn("miniapp.css') }}?v=20260921-words-banner-v1", HTML)
 
 
 if __name__ == "__main__":

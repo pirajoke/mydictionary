@@ -48,7 +48,7 @@ class MiniAppBrandControlsV1Tests(unittest.TestCase):
         self.assertIn("@media (prefers-reduced-motion: reduce)", CSS)
 
     def test_stylesheet_url_is_versioned_for_telegram_webview_cache(self) -> None:
-        self.assertIn("miniapp.css') }}?v=20260917-card-modes-v1", HTML)
+        self.assertIn("miniapp.css') }}?v=20260921-words-banner-v1", HTML)
 
 
 if __name__ == "__main__":
