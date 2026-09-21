@@ -347,6 +347,27 @@ _DIRECT_PROGRESS_LOCALES = {
     "qué he completado ya": "es",
 }
 
+_DIRECT_QUIZ_LOCALES = {
+    "quiz me": "en",
+    "give me a quiz": "en",
+    "test me": "en",
+    "fais moi un quiz": "fr",
+    "teste moi": "fr",
+    "mach einen test mit mir": "de",
+    "teste mich": "de",
+    "クイズを出して": "ja",
+    "テストして": "ja",
+    "اختبرني": "ar",
+    "اعطني اختبارا": "ar",
+    "考考我": "zh",
+    "给我一个测验": "zh",
+    "давай тест": "ru",
+    "проверь меня": "ru",
+    "сделай квиз": "ru",
+    "hazme un quiz": "es",
+    "ponme a prueba": "es",
+}
+
 _DEEP_RESPONSE_PREFIXES = (
     "analyze ",
     "analyse ",
@@ -770,6 +791,13 @@ def direct_mirror_daily_plan_locale(text: str) -> str | None:
         "es": ("plan para hoy", "haz un plan para hoy", "qué debo estudiar hoy"),
     }
     return next((locale for locale, values in phrases.items() if normalized in values), None)
+
+
+def direct_mirror_quiz_locale(text: str) -> str | None:
+    """Recognize only short, explicit requests to start a native quiz."""
+    normalized = " ".join(str(text).casefold().strip().split())
+    words_only = " ".join(re.findall(r"\w+", normalized, flags=re.UNICODE))
+    return _DIRECT_QUIZ_LOCALES.get(words_only)
 
 
 def render_mirror_daily_plan(snapshot: Mapping[str, Any], *, locale: str) -> str:

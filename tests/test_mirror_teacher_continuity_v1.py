@@ -85,7 +85,7 @@ class MirrorTeacherTurnContractTest(unittest.TestCase):
         self.assertIn("▶️ ", rendered)
 
     def test_ac6_prompt_advances_and_never_reuses_recent_examples(self):
-        prompt = (ROOT / "prompts" / "mirror-v9.txt").read_text(encoding="utf-8")
+        prompt = (ROOT / "prompts" / "mirror-v10.txt").read_text(encoding="utf-8")
         self.assertIn("Never reuse an example", prompt)
         self.assertIn("advance to one fresh task", prompt)
         self.assertIn("Do not output Markdown decoration", prompt)

@@ -242,12 +242,12 @@ class MirrorResponseFormatsV1Test(unittest.TestCase):
                 }
             )
 
-    def test_ac_07_prompt_v9_is_active_and_documents_task_specific_formats(self):
-        active = ROOT / "prompts/mirror-v9.txt"
-        historical = ROOT / "prompts/mirror-v8.txt"
+    def test_ac_07_prompt_v10_is_active_and_documents_task_specific_formats(self):
+        active = ROOT / "prompts/mirror-v10.txt"
+        historical = ROOT / "prompts/mirror-v9.txt"
 
-        self.assertTrue(active.is_file(), "missing reviewed Lexi V9 prompt contract")
-        self.assertTrue(historical.is_file(), "mirror-v8 must remain historical")
+        self.assertTrue(active.is_file(), "missing reviewed Lexi V10 prompt contract")
+        self.assertTrue(historical.is_file(), "mirror-v9 must remain historical")
         reviewed = active.read_text(encoding="utf-8").removesuffix("\n")
         self.assertEqual(ai_tutor.MIRROR_INSTRUCTIONS, reviewed)
 

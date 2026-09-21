@@ -123,6 +123,7 @@ from mydictionary.mirror_assistant import (
     direct_mirror_capability_greeting_locale,
     direct_mirror_daily_plan_locale,
     direct_mirror_progress_locale,
+    direct_mirror_quiz_locale,
     grounded_progress_snapshot,
     normalize_mirror_style,
     recent_mirror_dialogue,
@@ -5812,6 +5813,14 @@ async def handle_mirror_question(
             ),
         )
         return
+    quiz_request_locale = direct_mirror_quiz_locale(question)
+    if quiz_request_locale is not None and task_kind is None:
+        await start_ai_chat_quiz(
+            message,
+            context,
+            source="natural_request",
+        )
+        return
     if deterministic_capability_greeting:
         response = translate(
             "mirror_capability_greeting",
@@ -7888,6 +7897,83 @@ async def start_home_lesson(
     await block_send_question_msg(query.message, context)
 
 
+async def start_ai_chat_quiz(
+    message,
+    context,
+    *,
+    source: str,
+) -> None:
+    """Start a five-question SRS-grounded quiz from the tutor conversation."""
+    user_data = context.user_data
+    pack = active_content_pack()
+    locale = learning_card_locale(user_data)
+    words = W()
+    selected: list[int] = []
+
+    def add(indices) -> None:
+        for raw_index in indices:
+            if len(selected) >= 5:
+                return
+            if (
+                type(raw_index) is int
+                and 0 <= raw_index < len(words)
+                and raw_index not in selected
+            ):
+                selected.append(raw_index)
+
+    if user_data.get("block_pack_id") == pack.pack_id:
+        add(user_data.get("block_all_indices", ()))
+    add(due_word_indices(5))
+    if len(selected) < 5:
+        add(pick_block(size=10, exclude_indices=set(selected)))
+    if not selected:
+        invalidate_block_session(user_data)
+        await message.reply_text(translate("learning_no_words", locale))
+        return
+
+    reset_block_state(
+        user_data,
+        selected,
+        pack.target_language,
+        None,
+        pack.pack_id,
+        lesson_kind="ai_quiz",
+    )
+    start_block_attempt(user_data, "quiz")
+    if not persist_native_block(context):
+        await message.reply_text(BLOCK_STALE_TEXT)
+        return
+    properties = {
+        "pack_id": pack.pack_id,
+        "language": pack.target_language,
+        "lesson_kind": "ai_quiz",
+        "mode": "quiz",
+        "word_count": len(selected),
+    }
+    record_product_event(
+        "lesson_started",
+        properties=properties,
+        session_id=user_data["block_session"],
+        source=source,
+    )
+    record_product_event(
+        "block_started",
+        properties={**properties, "topic": "ai_chat"},
+        session_id=user_data["block_session"],
+        source=source,
+    )
+    record_product_event(
+        "block_mode_started",
+        properties=properties,
+        session_id=user_data["block_session"],
+        source=source,
+    )
+    await message.reply_text(
+        translate("ai_quiz_intro", locale, count=len(selected))
+    )
+    await block_send_question_msg(message, context)
+
+
 def format_study_list(indices: list[int]) -> str:
     lines = []
     pack = active_content_pack()
@@ -8108,16 +8194,75 @@ def build_block_quiz_options(indices: list[int], idx: int) -> list[str]:
     return options
 
 
+def block_quiz_direction(user_data: Mapping[str, Any]) -> str:
+    """Alternate recall direction only for chat quizzes started by Lexi."""
+    if user_data.get("lesson_kind") != "ai_quiz":
+        return "meaning"
+    try:
+        position = int(user_data.get("block_pos", 0))
+    except (TypeError, ValueError):
+        position = 0
+    return "target" if position % 2 else "meaning"
+
+
+def build_block_quiz_target_options(indices: list[int], idx: int) -> list[str]:
+    """Return four unique canonical target terms for reverse recall."""
+    pack = active_content_pack()
+
+    def label(index: int) -> str:
+        value = target_text(W()[index])
+        return _directional_text(value, pack.direction)
+
+    correct = label(idx)
+    candidates = [
+        label(candidate)
+        for candidate in [*indices, *range(len(W()))]
+        if candidate != idx
+    ]
+    distractors = list(dict.fromkeys(
+        candidate for candidate in candidates if candidate != correct
+    ))
+    random.shuffle(distractors)
+    options = distractors[:3] + [correct]
+    random.shuffle(options)
+    return options
+
+
+def format_block_quiz_question(user_data: Mapping[str, Any], idx: int) -> str:
+    """Render one quiz prompt without exposing its answer."""
+    locale = learning_card_locale(user_data)
+    if block_quiz_direction(user_data) == "target":
+        meaning = escape_markdown(primary_meaning_for_word(W()[idx]))
+        return (
+            f"{active_meaning_flag()} *{meaning}*\n\n"
+            f"{translate('ai_quiz_choose_word', locale)}"
+        )
+    return (
+        f"{format_word_label(idx, locale)}\n\n"
+        f"{translate('block_quiz_prompt', locale)}"
+    )
+
+
 def build_block_quiz_keyboard(user_data: dict, idx: int) -> InlineKeyboardMarkup:
     correct_meaning = primary_meaning_for_word(W()[idx])
     session_id = user_data["block_session"]
     buttons = []
-    if user_data.get("block_mode") == "adaptive":
+    direction = block_quiz_direction(user_data)
+    if direction == "target":
+        options = build_block_quiz_target_options(
+            user_data["block_all_indices"], idx
+        )
+        correct_option = _directional_text(
+            target_text(W()[idx]), active_content_pack().direction
+        )
+    elif user_data.get("block_mode") == "adaptive":
         options, _correct_position = build_quiz_options(idx)
+        correct_option = correct_meaning
     else:
         options = build_block_quiz_options(user_data["block_all_indices"], idx)
+        correct_option = correct_meaning
     for option in options:
-        is_right = "1" if option == correct_meaning else "0"
+        is_right = "1" if option == correct_option else "0"
         callback_data = f"bquiz:{session_id}:{idx}:{is_right}"
         buttons.append([InlineKeyboardButton(option, callback_data=callback_data)])
     buttons.append([InlineKeyboardButton(
@@ -8850,7 +8995,7 @@ async def ai_tutor_entry_cb(
             show_alert=True,
         )
         return
-    if action != "start" and not AI_SETTINGS.enabled:
+    if action not in {"start", "quiz"} and not AI_SETTINGS.enabled:
         await query.answer(
             translate("ai_disabled", locale),
             show_alert=True,
@@ -8904,6 +9049,13 @@ async def ai_tutor_entry_cb(
 
     if action in AI_TUTOR_GENERAL_STARTER_QUESTION_KEYS:
         context.user_data.pop(PENDING_AI_TUTOR_KEY, None)
+        if action == "quiz":
+            await start_ai_chat_quiz(
+                query.message,
+                context,
+                source="ai_starter",
+            )
+            return
         await handle_mirror_question(
             update,
             context,
@@ -9026,8 +9178,7 @@ async def block_send_question(query, context: ContextTypes.DEFAULT_TYPE):
 
     if mode == "quiz":
         await query.edit_message_text(
-            f"{progress_text} {format_word_label(idx)}\n\n"
-            f"{translate('block_quiz_prompt', locale)}",
+            f"{progress_text} {format_block_quiz_question(ud, idx)}",
             reply_markup=build_block_quiz_keyboard(ud, idx),
             parse_mode="Markdown"
         )
@@ -9146,8 +9297,7 @@ async def block_send_question_msg(message, context: ContextTypes.DEFAULT_TYPE):
 
     if mode == "quiz":
         await message.reply_text(
-            f"{progress_text} {format_word_label(idx)}\n\n"
-            f"{translate('block_quiz_prompt', locale)}",
+            f"{progress_text} {format_block_quiz_question(ud, idx)}",
             reply_markup=build_block_quiz_keyboard(ud, idx),
             parse_mode="Markdown"
         )
@@ -9199,7 +9349,16 @@ def format_block_summary(ud) -> str:
         correct=correct,
         total=total,
     )
-    if wrong_indices:
+    if ud.get("lesson_kind") == "ai_quiz":
+        text += f"\n\n{translate('ai_quiz_review_title', locale)}"
+        wrong = set(wrong_indices)
+        pack = active_content_pack()
+        for idx in ud["block_indices"]:
+            marker = "❌" if idx in wrong else "✅"
+            target = escape_markdown(format_target_word(W()[idx], pack))
+            meaning = escape_markdown(meaning_display_for_word(W()[idx]))
+            text += f"\n{marker} *{target}* — {meaning}"
+    elif wrong_indices:
         text += f"\n\n{translate('block_summary_errors', locale)}"
         pack = active_content_pack()
         for idx in wrong_indices:
@@ -9282,6 +9441,24 @@ def track_lesson_completion(user_data: dict) -> None:
 def build_block_summary_keyboard(user_data: dict) -> InlineKeyboardMarkup:
     session_id = user_data["block_session"]
     locale = learning_card_locale(user_data)
+    if user_data.get("lesson_kind") == "ai_quiz":
+        rows = []
+        if user_data["block_wrong"]:
+            rows.append([InlineKeyboardButton(
+                translate("block_retry_errors", locale),
+                callback_data=f"bretry:{session_id}",
+            )])
+        rows.append([
+            InlineKeyboardButton(
+                translate("ai_quiz_new", locale),
+                callback_data="aitutor:quiz",
+            ),
+            InlineKeyboardButton(
+                translate("ai_quiz_discuss", locale),
+                callback_data="aitutor:ask",
+            ),
+        ])
+        return InlineKeyboardMarkup(rows)
     if user_data["block_wrong"]:
         primary = InlineKeyboardButton(
             translate("block_retry_errors", locale),
