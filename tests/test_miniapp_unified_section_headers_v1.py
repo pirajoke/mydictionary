@@ -71,7 +71,7 @@ class MiniAppUnifiedSectionHeadersV1ContractTest(unittest.TestCase):
 
         self.assertIn("min-height: 148px", header)
         self.assertIn("height: clamp(148px, 38vw, 208px)", header)
-        self.assertIn("miniapp.css') }}?v=20260921-words-banner-v1", HTML)
+        self.assertIn("miniapp.css') }}?v=20260921-native-stars-rtl-v1", HTML)
 
 
 if __name__ == "__main__":

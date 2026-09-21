@@ -1524,7 +1524,7 @@ class MiniAppFrontendAndTelegramContractTest(unittest.IsolatedAsyncioTestCase):
             violations.append("double-flag-render")
         if (
             re.search(
-                r"text\(label,\s*(?:language\.label|languageDisplayLabel\(language\))\)",
+                r"text\((?:label|name),\s*(?:language\.label|languageDisplayLabel\(language\)|languageDisplayName\(language\))\)",
                 js,
             )
             is None
