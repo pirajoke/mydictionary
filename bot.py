@@ -2823,8 +2823,12 @@ async def cmd_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
     runtime = _ACTIVE_RUNTIME.get()
     product = runtime.store.product_profile(runtime.user_id)
     try:
-        product.update(runtime.store.get_mirror_preferences(runtime.user_id))
-        product["mirror_mode"] = product.pop("mode")
+        preferences = runtime.store.get_mirror_preferences(runtime.user_id)
+        product.update({
+            "mirror_mode": preferences["mode"],
+            "mirror_depth": preferences["depth"],
+            "mirror_level": preferences["level"],
+        })
     except (AttributeError, TypeError, ValueError):
         pass
     locale = interface_locale_for_update(update)
@@ -3145,8 +3149,12 @@ async def start_menu_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
         runtime = _ACTIVE_RUNTIME.get()
         product = runtime.store.product_profile(runtime.user_id)
         try:
-            product.update(runtime.store.get_mirror_preferences(runtime.user_id))
-            product["mirror_mode"] = product.pop("mode")
+            preferences = runtime.store.get_mirror_preferences(runtime.user_id)
+            product.update({
+                "mirror_mode": preferences["mode"],
+                "mirror_depth": preferences["depth"],
+                "mirror_level": preferences["level"],
+            })
         except (AttributeError, TypeError, ValueError):
             pass
         mirror_policy = AdminStore(runtime.store).get_mirror_control_plane()
@@ -3301,8 +3309,12 @@ async def settings_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             translate("settings_unavailable", locale), show_alert=True
         )
         return
-    product.update(runtime.store.get_mirror_preferences(runtime.user_id))
-    product["mirror_mode"] = product.pop("mode")
+    preferences = runtime.store.get_mirror_preferences(runtime.user_id)
+    product.update({
+        "mirror_mode": preferences["mode"],
+        "mirror_depth": preferences["depth"],
+        "mirror_level": preferences["level"],
+    })
     await query.edit_message_text(
         settings_text(current, product, locale=locale, section=section),
         reply_markup=settings_keyboard(
