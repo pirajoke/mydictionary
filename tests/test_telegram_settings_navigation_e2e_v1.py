@@ -278,6 +278,18 @@ class TelegramSettingsNavigationE2ETest(unittest.IsolatedAsyncioTestCase):
             },
         )
 
+    async def test_selected_tutor_level_moves_checkmark_from_auto_to_b1(self):
+        query = await self.invoke_settings("settings:mirror-level:b1")
+        keyboard = query.edit_message_text.await_args.kwargs["reply_markup"]
+
+        checked_callbacks = {
+            button.callback_data
+            for row in keyboard.inline_keyboard
+            for button in row
+            if button.text.endswith(" ✓")
+        }
+        self.assertEqual(checked_callbacks, {"settings:mirror-level:b1"})
+
     async def test_language_choice_is_handled_in_settings_and_stays_in_section(self):
         pack = bot.switchable_packs()[0]
         update, query = self.update_for(f"settings:language:{pack.pack_id}")
