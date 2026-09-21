@@ -767,6 +767,12 @@
     return String(language.label || "").trim().replace(/\s*·\s*\d+\s*$/u, "");
   }
 
+  function languageDisplayName(language) {
+    const label = languageDisplayLabel(language);
+    const flag = String(language.flag || "").trim();
+    return flag && label.startsWith(flag) ? label.slice(flag.length).trim() : label;
+  }
+
   function languageCard(language, copy) {
     const template = document.createElement("template");
     template.innerHTML = '<button type="button" role="switch"></button>';
@@ -774,13 +780,23 @@
     const card = control.switch;
     card.className = "language-card language-switch";
     card.classList.add("dashboard-row");
-    card.dir = language.direction;
+    // Keep the list grid stable: only the language name is RTL, never the count.
+    card.dir = "ltr";
     card.setAttribute("aria-checked", String(language.current));
     card.dataset.packId = language.switch_value;
     control.switch.disabled = language.current;
     const label = document.createElement("strong");
-    label.dir = language.direction;
-    text(label, languageDisplayLabel(language));
+    label.className = "language-label";
+    label.dir = "ltr";
+    const flag = document.createElement("span");
+    flag.className = "language-flag";
+    flag.dir = "ltr";
+    text(flag, language.flag);
+    const name = document.createElement("span");
+    name.className = "language-name";
+    name.dir = language.direction;
+    text(name, languageDisplayName(language));
+    label.append(flag, name);
     const count = document.createElement("span");
     count.className = "language-count";
     text(count, language.word_count);
@@ -793,6 +809,21 @@
     }
     card.addEventListener("click", () => switchLanguage(language, control, copy));
     return card;
+  }
+
+  function telegramStarsPrice(amount) {
+    const price = document.createElement("span");
+    price.className = "product-card-price";
+    price.setAttribute("aria-label", `${amount} Telegram Stars`);
+    const icon = document.createElement("span");
+    icon.className = "telegram-star-icon";
+    icon.setAttribute("aria-hidden", "true");
+    text(icon, "★");
+    const value = document.createElement("span");
+    value.className = "telegram-star-value";
+    text(value, amount);
+    price.append(icon, value);
+    return price;
   }
 
   function languageSwitchStatus(control, message, retryLabel, retry) {
@@ -1076,9 +1107,7 @@
       text(title, product.title);
       text(credits, `${product.credits} ✦`);
       productCopy.append(title, credits);
-      const price = document.createElement("span");
-      price.className = "product-card-price";
-      text(price, `${product.price_xtr} XTR`);
+      const price = telegramStarsPrice(product.price_xtr);
       button.append(productCopy, price);
       button.addEventListener("click", () => openAction(product.deep_link_action));
       products.append(button);

@@ -52,20 +52,36 @@ class MiniAppSecondaryTabsV2ContractTest(unittest.TestCase):
         self.assertIn('const allowedDetailViews = new Set(["help", "privacy"]);', self.js)
         self.assertIn("allowedDetailViews.has(requestedView)", self.js)
 
-    def test_ac4_current_language_is_spotlighted_without_losing_direction_or_count(self):
+    def test_ac2_prices_use_the_native_telegram_stars_mark_instead_of_xtr_copy(self):
+        for token in (
+            "telegramStarsPrice(product.price_xtr)",
+            'icon.className = "telegram-star-icon"',
+            'value.className = "telegram-star-value"',
+            'price.setAttribute("aria-label", `${amount} Telegram Stars`)',
+            ".telegram-star-icon",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, f"{self.css}\n{self.js}")
+        self.assertNotIn('`${product.price_xtr} XTR`', self.js)
+
+    def test_ac4_current_language_is_spotlighted_without_reversing_the_row_grid(self):
         for token in (
             'id="language-current"',
             'class="language-spotlight"',
             'data.languages.find((language) => language.current)',
             'data.languages.filter((language) => !language.current)',
-            'card.dir = language.direction',
-            'languageDisplayLabel(language)',
+            'card.dir = "ltr"',
+            'flag.className = "language-flag"',
+            'name.className = "language-name"',
+            'name.dir = language.direction',
+            'languageDisplayName(language)',
             r'.replace(/\s*·\s*\d+\s*$/u, "")',
             'language.word_count',
             'copy.language_current',
         ):
             with self.subTest(token=token):
                 self.assertIn(token, f"{self.html}\n{self.js}")
+        self.assertNotIn("card.dir = language.direction", self.js)
 
     def test_ac5_settings_are_grouped_and_group_copy_is_complete(self):
         groups = (
