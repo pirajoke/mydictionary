@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from functools import wraps
+import itertools
 import json
 import random
 import re
@@ -1471,6 +1472,10 @@ async def send_pronunciation_audio(
 
 
 _PRONUNCIATION_TASKS: set[asyncio.Task] = set()
+# Newest pronunciation request per chat. A slower, older synthesis must never
+# be sent after (and so replace) the audio for the word the learner is on now.
+_PRONUNCIATION_LATEST: dict[int, int] = {}
+_PRONUNCIATION_SEQ = itertools.count(1)
 
 
 async def drain_pronunciation_tasks() -> None:
@@ -1504,11 +1509,18 @@ async def send_pronunciation(chat_id: int, idx: int, context: ContextTypes.DEFAU
         )
         return
 
+    seq = next(_PRONUNCIATION_SEQ)
+    _PRONUNCIATION_LATEST[chat_id] = seq
+    if len(_PRONUNCIATION_LATEST) > 4096:
+        _PRONUNCIATION_LATEST.pop(next(iter(_PRONUNCIATION_LATEST)))
+
     async def deliver() -> None:
         try:
             audio = await get_audio(
                 spoken, voice=voice, rate=rate, cache_namespace=namespace,
             )
+            if _PRONUNCIATION_LATEST.get(chat_id) != seq:
+                return
             await send_pronunciation_audio(
                 chat_id=chat_id, audio=audio, title=title, context=context,
             )
