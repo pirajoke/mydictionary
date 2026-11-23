@@ -332,6 +332,7 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
             patch.object(bot, "get_audio", new=AsyncMock(return_value=audio)) as get,
         ):
             await bot.send_pronunciation(123, 0, context)
+            await bot.drain_pronunciation_tasks()
 
         get.assert_awaited_once_with(
             "きょう",
@@ -340,6 +341,59 @@ class LearningAudioTest(unittest.IsolatedAsyncioTestCase):
             cache_namespace="ja-basics-100:v2",
         )
         send_voice.assert_awaited_once_with(chat_id=123, voice=audio)
+
+    async def test_superseded_pronunciation_is_not_sent(self):
+        pack = bot.CATALOG.require("ja-basics-100")
+        words = [
+            {"target": "今日", "speech": "きょう"},
+            {"target": "明日", "speech": "あした"},
+        ]
+        release_first = asyncio.Event()
+
+        async def audio_for(text, **kwargs):
+            if text == "きょう":
+                await release_first.wait()
+            return BytesIO(text.encode())
+
+        send_voice = AsyncMock(return_value=SimpleNamespace(message_id=1))
+        context = SimpleNamespace(
+            bot=SimpleNamespace(send_voice=send_voice), user_data={}
+        )
+        with (
+            patch.object(bot, "W", return_value=words),
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.object(bot, "get_audio", new=audio_for),
+        ):
+            await bot.send_pronunciation(555, 0, context)  # slow, older
+            await bot.send_pronunciation(555, 1, context)  # fast, current
+            await asyncio.sleep(0)
+            await asyncio.sleep(0)
+            release_first.set()
+            await bot.drain_pronunciation_tasks()
+        self.assertEqual(send_voice.await_count, 1)
+        self.assertEqual(send_voice.await_args.kwargs["voice"].getvalue(), "あした".encode())
+
+    async def test_pronunciation_does_not_block_the_handler(self):
+        pack = bot.CATALOG.require("ja-basics-100")
+        word = {"target": "今日", "speech": "きょう"}
+        release = asyncio.Event()
+
+        async def slow_audio(*args, **kwargs):
+            await release.wait()
+            return BytesIO(b"mp3")
+
+        send_voice = AsyncMock()
+        context = SimpleNamespace(bot=SimpleNamespace(send_voice=send_voice))
+        with (
+            patch.object(bot, "W", return_value=[word]),
+            patch.object(bot, "active_content_pack", return_value=pack),
+            patch.object(bot, "get_audio", new=slow_audio),
+        ):
+            await asyncio.wait_for(bot.send_pronunciation(123, 0, context), 1)
+            send_voice.assert_not_awaited()
+            release.set()
+            await bot.drain_pronunciation_tasks()
+        send_voice.assert_awaited_once()
 
     async def test_new_pronunciation_deletes_previous_message_in_same_chat(self):
         client = SimpleNamespace(

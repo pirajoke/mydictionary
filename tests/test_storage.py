@@ -1266,3 +1266,23 @@ class PostgresStoreTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IdleTapWritesNothingTest(unittest.TestCase):
+    """A tap that changes nothing must not open write transactions."""
+
+    def test_ensure_user_id_is_read_only_for_existing_learner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = DatabaseStore(f"sqlite:///{Path(tmp) / 's.db'}")
+            try:
+                store.ensure_user_id(77)
+                with store.Session() as session:
+                    before = session.get(storage_module.User, 77).updated_at
+                for _ in range(5):
+                    store.ensure_user_id(77)
+                    store.ensure_user(type("U", (), {"id": 77})())
+                with store.Session() as session:
+                    after = session.get(storage_module.User, 77).updated_at
+                self.assertEqual(before, after)
+            finally:
+                store.close()
