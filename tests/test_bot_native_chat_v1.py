@@ -118,11 +118,12 @@ class NativeChatEntryTest(unittest.IsolatedAsyncioTestCase):
             banner.exists.return_value = False
             await bot.send_start_message(message, context, first_name="Synthetic Learner", locale="en")
         calls = message.reply_text.await_args_list + message.reply_photo.await_args_list
-        inline = [button for call in calls for button in buttons(call.kwargs.get("reply_markup"))]
-        self.assertTrue(any(button.callback_data in {"start:daily", "start:continue"} for button in inline),
-                        "Start exposes a visible native Continue/Start button")
-        self.assertFalse(any(button.web_app for button in inline))
-        self.assertTrue(any(getattr(call.kwargs.get("reply_markup"), "is_persistent", False) for call in calls))
+        self.assertEqual(len(calls), 1, "Home is a single message without a duplicate inline menu")
+        markup = calls[0].kwargs["reply_markup"]
+        self.assertTrue(markup.is_persistent)
+        labels = [button.text for row in markup.keyboard for button in row]
+        self.assertEqual(labels[0], bot.quick_action_label("continue", "en"),
+                         "Start exposes a visible native Continue button first")
         text = "\n".join(str(call.kwargs.get("caption", call.args[0] if call.args else "")) for call in calls)
         self.assertIn("Synthetic Learner", text)
         self.assertRegex(text, r"(?i)japanese|日本|🇯🇵")

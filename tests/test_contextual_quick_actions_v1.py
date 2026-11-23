@@ -30,16 +30,18 @@ class ContextualQuickActionsV1Test(unittest.IsolatedAsyncioTestCase):
                     reply_labels(markup),
                     [
                         [bot.quick_action_label("continue", locale)],
-                        [bot.quick_action_label("mode", locale)],
                         [
                             bot.quick_action_label("review", locale),
-                            bot.quick_action_label("add", locale),
+                            bot.quick_action_label("mode", locale),
                         ],
                         [
                             bot.quick_action_label("words", locale),
-                            bot.quick_action_label("lang", locale),
+                            bot.quick_action_label("add", locale),
                         ],
-                        [bot.quick_action_label("start", locale)],
+                        [
+                            bot.quick_action_label("lang", locale),
+                            bot.quick_action_label("start", locale),
+                        ],
                     ],
                 )
                 flattened = [label for row in reply_labels(markup) for label in row]
