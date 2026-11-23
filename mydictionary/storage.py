@@ -88,6 +88,19 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# How often a tap that changes nothing may still refresh users.updated_at.
+USER_TOUCH_INTERVAL = timedelta(minutes=10)
+
+
+def _is_stale(moment: datetime | None, interval: timedelta) -> bool:
+    """True when moment is missing or older than interval (naive means UTC)."""
+    if moment is None:
+        return True
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return utcnow() - moment >= interval
+
+
 def vocabulary_id_for(word: Mapping[str, Any]) -> str:
     """Return the stable content identity used by persisted learner progress."""
     return vocabulary_progress_id(word)
@@ -1273,17 +1286,30 @@ class DatabaseStore:
                 user.role = "admin"
                 user.access_status = "active"
                 user.access_status_updated_at = utcnow()
+            changed = False
             for field in ("username", "first_name", "last_name", "language_code"):
                 value = getattr(telegram_user, field, None)
-                if value is not None:
+                if value is not None and getattr(user, field) != str(value):
                     setattr(user, field, str(value))
+                    changed = True
             if acquisition_source and not user.acquisition_source:
                 user.acquisition_source = str(acquisition_source)[:64]
-            user.updated_at = utcnow()
+                changed = True
+            # A tap that changes nothing must not cost a database write.
+            if changed or _is_stale(user.updated_at, USER_TOUCH_INTERVAL):
+                user.updated_at = utcnow()
             if session.get(UserProgress, user_id) is None:
                 session.add(UserProgress(telegram_user_id=user_id))
 
     def ensure_user_id(self, user_id: int) -> None:
+        # Read-only fast path: record_event, load_profile and product_profile
+        # call this on every tap, and each used to open a write transaction.
+        with self.Session() as session:
+            if (
+                session.get(User, int(user_id)) is not None
+                and session.get(UserProgress, int(user_id)) is not None
+            ):
+                return
         telegram_user = type("TelegramUser", (), {"id": int(user_id)})()
         self.ensure_user(telegram_user)
 

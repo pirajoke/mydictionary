@@ -1470,29 +1470,56 @@ async def send_pronunciation_audio(
     return sent_message
 
 
+_PRONUNCIATION_TASKS: set[asyncio.Task] = set()
+
+
+async def drain_pronunciation_tasks() -> None:
+    """Wait for queued pronunciation sends (shutdown and tests)."""
+    while _PRONUNCIATION_TASKS:
+        await asyncio.gather(*tuple(_PRONUNCIATION_TASKS), return_exceptions=True)
+
+
 async def send_pronunciation(chat_id: int, idx: int, context: ContextTypes.DEFAULT_TYPE):
-    """Generate and send voice pronunciation for the word at idx."""
+    """Queue voice pronunciation for the word at idx without blocking the tap.
+
+    Speech synthesis and the Telegram upload used to run inside the handler, so
+    every card waited for audio before the learner's next tap was processed.
+    Word lookup stays synchronous (in memory); only TTS and upload move to a
+    background task. `replace_previous_pronunciation` already keeps the newest
+    message when two sends overlap.
+    """
     if not callable(getattr(context.bot, "send_voice", None)):
         return
     try:
         word = W()[idx]
         pack = active_content_pack()
-        audio = await get_audio(
-            speech_text(word),
-            voice=pack.pronunciation.tts_voice,
-            rate=pack.pronunciation.tts_rate,
-            cache_namespace=f"{pack.pack_id}:v{pack.content_version}",
-        )
-        await send_pronunciation_audio(
-            chat_id=chat_id,
-            audio=audio,
-            title=target_text(word),
-            context=context,
-        )
+        spoken = speech_text(word)
+        title = target_text(word)
+        voice = pack.pronunciation.tts_voice
+        rate = pack.pronunciation.tts_rate
+        namespace = f"{pack.pack_id}:v{pack.content_version}"
     except Exception as exc:
         logger.warning(
             "TTS failed for word %s: error_type=%s", idx, type(exc).__name__
         )
+        return
+
+    async def deliver() -> None:
+        try:
+            audio = await get_audio(
+                spoken, voice=voice, rate=rate, cache_namespace=namespace,
+            )
+            await send_pronunciation_audio(
+                chat_id=chat_id, audio=audio, title=title, context=context,
+            )
+        except Exception as exc:
+            logger.warning(
+                "TTS failed for word %s: error_type=%s", idx, type(exc).__name__
+            )
+
+    task = asyncio.get_running_loop().create_task(deliver())
+    _PRONUNCIATION_TASKS.add(task)
+    task.add_done_callback(_PRONUNCIATION_TASKS.discard)
 
 def adaptive_mode(idx: int) -> str:
     """Pick quiz type based on word strength. Weak → quiz (recognition), strong → type (recall)."""
@@ -1612,6 +1639,9 @@ async def reject_access(update: Update, text: str) -> None:
     message = getattr(update, "effective_message", None)
     if message is not None:
         await message.reply_text(text)
+
+
+SLOW_HANDLER_MS = 800
 
 
 def auth(func):
@@ -1774,10 +1804,16 @@ def auth(func):
                         user_data.pop(key, None)
                 if restored is not None:
                     user_data.update(restored)
+            started = time.monotonic()
             try:
                 return await func(update, context)
             finally:
                 persist_native_block(context)
+                elapsed_ms = int((time.monotonic() - started) * 1000)
+                if elapsed_ms >= SLOW_HANDLER_MS:
+                    logger.warning(
+                        "Slow handler: name=%s ms=%d", func.__name__, elapsed_ms,
+                    )
     return wrapper
 
 # ---------------------------------------------------------------------------
