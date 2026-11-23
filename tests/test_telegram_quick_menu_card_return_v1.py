@@ -24,10 +24,10 @@ def _inline_buttons(markup):
 def _quick_labels(locale):
     return [
         bot.quick_action_label("continue", locale),
-        bot.quick_action_label("mode", locale),
         bot.quick_action_label("review", locale),
-        bot.quick_action_label("add", locale),
+        bot.quick_action_label("mode", locale),
         bot.quick_action_label("words", locale),
+        bot.quick_action_label("add", locale),
         bot.quick_action_label("lang", locale),
         bot.quick_action_label("start", locale),
     ]
@@ -133,16 +133,15 @@ class TelegramQuickMenuContractTest(unittest.IsolatedAsyncioTestCase):
                 locale="ru",
             )
 
-        self.assertEqual(message.reply_text.await_count, 2)
+        # Home is one message: the persistent keyboard is the only button set.
+        self.assertEqual(message.reply_text.await_count, 1)
         message.reply_photo.assert_not_awaited()
         markup = message.reply_text.await_args_list[0].kwargs["reply_markup"]
         self.assertEqual(
             [button.text for button in _buttons(markup)],
             _quick_labels("ru"),
         )
-        inline = _inline_buttons(message.reply_text.await_args_list[1].kwargs["reply_markup"])
-        self.assertEqual(inline[0].callback_data, "start:daily")
-        self.assertFalse(any(button.web_app for button in inline))
+        self.assertFalse(hasattr(markup, "inline_keyboard"))
 
     def test_ac4_quick_label_router_is_exact_and_registered_before_mirror(self):
         resolver = getattr(bot, "quick_action_for_text", None)

@@ -1233,16 +1233,18 @@ def get_quick_actions_keyboard(locale: str | None = None) -> ReplyKeyboardMarkup
     return ReplyKeyboardMarkup(
         [
             [quick_action_label("continue", locale)],
-            [quick_action_label("mode", locale)],
             [
                 quick_action_label("review", locale),
-                quick_action_label("add", locale),
+                quick_action_label("mode", locale),
             ],
             [
                 quick_action_label("words", locale),
-                quick_action_label("lang", locale),
+                quick_action_label("add", locale),
             ],
-            [quick_action_label("start", locale)],
+            [
+                quick_action_label("lang", locale),
+                quick_action_label("start", locale),
+            ],
         ],
         resize_keyboard=True,
         one_time_keyboard=False,
@@ -2579,11 +2581,9 @@ async def send_start_message(
             position=int(user_data.get("block_pos", 0)) + 1,
             total=len(user_data.get("block_indices", [])),
         )
+    # One home message: the persistent keyboard already carries every home
+    # action, so a second inline copy only doubled the buttons on screen.
     await message.reply_text(text, reply_markup=get_quick_actions_keyboard(locale))
-    await message.reply_text(
-        translate("native_home_actions", locale),
-        reply_markup=start_keyboard(locale, resumable=resumable),
-    )
 
 
 def _miniapp_detail_entry(

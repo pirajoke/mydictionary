@@ -108,10 +108,8 @@ class PersistentLanguageQuickActionFeedbackTest(unittest.IsolatedAsyncioTestCase
                 labels = keyboard_labels(
                     message.reply_text.await_args_list[0].kwargs["reply_markup"]
                 )
-                self.assertEqual(message.reply_text.await_count, 2)
+                self.assertEqual(message.reply_text.await_count, 1)
                 message.reply_photo.assert_not_awaited()
-                inline = message.reply_text.await_args_list[1].kwargs["reply_markup"].inline_keyboard
-                self.assertFalse(any(button.web_app for row in inline for button in row))
                 expected = bot.quick_action_label("lang", locale)
                 if labels.count(expected) != 1:
                     missing.append((locale, expected, labels))

@@ -68,7 +68,7 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
             )
 
         message.reply_photo.assert_not_awaited()
-        self.assertEqual(message.reply_text.await_count, 2)
+        self.assertEqual(message.reply_text.await_count, 1)
         first = message.reply_text.await_args_list[0]
         payload = first.kwargs
         self.assertIn("Привет, Анна!", first.args[0])
@@ -84,17 +84,14 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
             ],
             [
                 bot.quick_action_label("continue", "ru"),
-                bot.quick_action_label("mode", "ru"),
                 bot.quick_action_label("review", "ru"),
-                bot.quick_action_label("add", "ru"),
+                bot.quick_action_label("mode", "ru"),
                 bot.quick_action_label("words", "ru"),
+                bot.quick_action_label("add", "ru"),
                 bot.quick_action_label("lang", "ru"),
                 bot.quick_action_label("start", "ru"),
             ],
         )
-        inline = message.reply_text.await_args_list[1].kwargs["reply_markup"].inline_keyboard
-        self.assertEqual(inline[0][0].callback_data, "start:daily")
-        self.assertFalse(any(button.web_app for row in inline for button in row))
 
     async def test_start_does_not_attempt_photo_upload_before_native_actions(self):
         message = SimpleNamespace(
@@ -109,10 +106,9 @@ class WelcomeMessageTest(unittest.IsolatedAsyncioTestCase):
             )
 
         message.reply_photo.assert_not_awaited()
-        self.assertEqual(message.reply_text.await_count, 2)
+        self.assertEqual(message.reply_text.await_count, 1)
         self.assertIn("Привет, Иван!", message.reply_text.await_args_list[0].args[0])
         self.assertTrue(message.reply_text.await_args_list[0].kwargs["reply_markup"].is_persistent)
-        self.assertEqual(message.reply_text.await_args_list[1].kwargs["reply_markup"].inline_keyboard[0][0].callback_data, "start:daily")
 
 
 class ProductOnboardingTest(unittest.IsolatedAsyncioTestCase):

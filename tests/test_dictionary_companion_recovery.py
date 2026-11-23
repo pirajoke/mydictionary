@@ -105,9 +105,9 @@ class DictionaryCompanionRecoveryTest(unittest.IsolatedAsyncioTestCase):
                 keyboard.keyboard[-2][0].text,
                 bot.quick_action_label("words", locale),
             )
-            self.assertEqual(keyboard.keyboard[-2][1].text, language_label)
+            self.assertEqual(keyboard.keyboard[-1][0].text, language_label)
             self.assertEqual(
-                keyboard.keyboard[-1][0].text,
+                keyboard.keyboard[-1][1].text,
                 bot.quick_action_label("start", locale),
             )
             self.assertNotIn(
